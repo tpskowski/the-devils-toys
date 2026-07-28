@@ -1,12 +1,14 @@
 .dice-mode-row,
-.dice-position-row {
+.dice-position-row,
+.dice-visibility-row {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 6px;
 }
 
 .dice-mode-row button,
-.dice-position-row button {
+.dice-position-row button,
+.dice-visibility-row button {
   min-height: 40px;
   padding: 0 8px;
   border: 1px solid var(--line);
@@ -19,7 +21,8 @@
 }
 
 .dice-mode-row button.selected,
-.dice-position-row button.selected {
+.dice-position-row button.selected,
+.dice-visibility-row button.selected {
   border-color: var(--accent);
   background: color-mix(in srgb, var(--accent), transparent 88%);
   color: var(--text);
@@ -79,12 +82,8 @@
   color: #b65050;
 }
 
-/* The GM's two ways of hiding a roll sit side by side. */
-.dice-visibility-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 10px 26px;
+.dice-visibility-row.player {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 @media (max-width: 460px) {

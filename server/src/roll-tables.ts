@@ -160,6 +160,7 @@ export function parseRollTables(markdown: string, exclude: readonly string[] = [
       category: ancestors[0] ?? owningHeading,
       dice,
       columns,
+      tags: [],
       rows
     };
   });

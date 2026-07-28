@@ -1,4 +1,16 @@
-import type { RollTableSummary, TableRollVisibility } from "@devils-toys/shared";
+import type { RollTableSummary, TableRollVisibility, TableTag } from "@devils-toys/shared";
+
+export function tableTagLabel(tag: TableTag) {
+  if (tag === "scifi") return "Sci-fi";
+  return tag
+    .split("-")
+    .map((word) => `${word[0].toLocaleUpperCase()}${word.slice(1)}`)
+    .join(" ");
+}
+
+export function filterTablesByTag(tables: readonly RollTableSummary[], tag: TableTag | "") {
+  return tag ? tables.filter((table) => table.tags.includes(tag)) : [...tables];
+}
 
 /**
  * Type-ahead over a set's tables. Every word typed has to appear somewhere in
@@ -9,7 +21,7 @@ export function filterTables(tables: readonly RollTableSummary[], query: string)
   const words = query.toLocaleLowerCase().split(/\s+/).filter(Boolean);
   if (!words.length) return [...tables];
   return tables.filter((table) => {
-    const haystack = `${table.name} ${table.section} ${table.dice}`.toLocaleLowerCase();
+    const haystack = `${table.name} ${table.section} ${table.dice} ${table.tags.join(" ")}`.toLocaleLowerCase();
     return words.every((word) => haystack.includes(word));
   });
 }

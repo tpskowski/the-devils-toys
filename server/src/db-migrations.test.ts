@@ -58,7 +58,16 @@ function seedLegacyDatabase(directory: string) {
       audio_json TEXT NOT NULL DEFAULT '{}',
       updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
+    CREATE TABLE table_sets (
+      id INTEGER PRIMARY KEY,
+      name TEXT NOT NULL,
+      markdown TEXT NOT NULL,
+      created_by INTEGER NOT NULL REFERENCES accounts(id),
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
     INSERT INTO accounts (id, username, password_hash) VALUES (1, 'Warden', 'stored-hash');
+    INSERT INTO table_sets (id, name, markdown, created_by) VALUES (1, 'Old tables', '# Tables', 1);
     INSERT INTO rooms (id, name, system, theme, archived, created_by)
       VALUES (1, 'Old Table', 'cairn', 'used', 1, 1);
     INSERT INTO memberships (room_id, account_id, role) VALUES (1, 1, 'gm');
@@ -89,7 +98,7 @@ afterEach(() => {
   for (const directory of directories.splice(0)) removeDataDir(directory);
 });
 
-describe("rooms theme migration", () => {
+describe("database migrations", () => {
   it("accepts every current theme in a database created by an older build", async () => {
     const directory = dataDir();
     seedLegacyDatabase(directory);
@@ -135,6 +144,16 @@ describe("rooms theme migration", () => {
     expect(
       loaded.all<{ group_json: string; audio_json: string }>("SELECT group_json, audio_json FROM room_state")
     ).toEqual([{ group_json: "{}", audio_json: '{"trackId":null}' }]);
+  });
+
+  it("adds empty tag storage to existing custom table sets", async () => {
+    const directory = dataDir();
+    seedLegacyDatabase(directory);
+    const loaded = await openDatabase(directory);
+
+    expect(loaded.all<{ name: string; tags_json: string }>("SELECT name, tags_json FROM table_sets")).toEqual([
+      { name: "Old tables", tags_json: "[]" }
+    ]);
   });
 
   it("leaves no rebuild table behind and rebuilds only once", async () => {

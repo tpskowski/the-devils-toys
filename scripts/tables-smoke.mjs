@@ -36,6 +36,10 @@ await runSmoke(
     );
     const cairnSet = listed.body.sets[0];
     const monolithSet = listed.body.sets[1];
+    assert.ok(cairnSet.tables.every((table) => table.tags.includes("fantasy")));
+    assert.ok(monolithSet.tables.every((table) => table.tags.includes("scifi")));
+    assert.ok(cairnSet.tables.every((table) => !table.tags.includes("scifi")));
+    assert.ok(monolithSet.tables.every((table) => !table.tags.includes("fantasy")));
     assert.ok(cairnSet.tables.length >= 10, "Cairn should contribute its character-creation tables.");
     assert.ok(monolithSet.tables.length >= 40, "Monolith should contribute its generators and background tables.");
 
@@ -53,6 +57,7 @@ await runSmoke(
       headers: { cookie: gmCookie }
     });
     assert.equal(full.body.table.rows.length, 100);
+    assert.deepEqual(full.body.table.tags, ["fantasy"]);
     assert.equal(full.body.table.rows[0].label, "1");
 
     const invitation = await json(
@@ -148,17 +153,23 @@ await runSmoke(
       {
         method: "POST",
         headers: gmJson,
-        body: JSON.stringify({ name: "House rumours", markdown: customMarkdown })
+        body: JSON.stringify({
+          name: "House rumours",
+          markdown: customMarkdown,
+          tags: ["fantasy", "random-encounter"]
+        })
       },
       201
     );
     assert.equal(created.body.set.tables, 1);
+    assert.deepEqual(created.body.set.tags, ["fantasy", "random-encounter"]);
     const customId = created.body.set.id;
 
     const withCustom = await json(`/api/rooms/${roomId}/tables`, { headers: { cookie: gmCookie } });
     const customSet = withCustom.body.sets.find((set) => set.id === customId);
     assert.equal(customSet.origin, "custom");
     assert.equal(customSet.name, "House rumours");
+    assert.deepEqual(customSet.tables[0].tags, ["fantasy", "random-encounter"]);
     assert.equal(customSet.tables[0].name, "Rumours in the market (d6)");
     assert.equal(customSet.tables[0].dice, "d6");
 
@@ -181,12 +192,23 @@ await runSmoke(
       {
         method: "PATCH",
         headers: gmJson,
-        body: JSON.stringify({ name: "Market rumours", markdown: customMarkdown })
+        body: JSON.stringify({ name: "Market rumours", markdown: customMarkdown, tags: ["gear"] })
       },
       204
     );
     const edited = await json(`/api/table-sets/${numericId}`, { headers: { cookie: gmCookie } });
     assert.equal(edited.body.set.name, "Market rumours");
+    assert.deepEqual(edited.body.set.tags, ["gear"]);
+
+    await json(
+      "/api/table-sets",
+      {
+        method: "POST",
+        headers: gmJson,
+        body: JSON.stringify({ name: "Invalid tags", markdown: customMarkdown, tags: ["horror"] })
+      },
+      400
+    );
 
     // Players may not manage sets.
     await json(

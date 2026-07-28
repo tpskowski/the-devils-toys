@@ -3,8 +3,10 @@ import { rollTableLabel, type RollTableSummary } from "@devils-toys/shared";
 import {
   categoryOpensTable,
   filterTables,
+  filterTablesByTag,
   groupByCategory,
   moveHighlight,
+  tableTagLabel,
   toggleVisibility,
   visibilityNotice
 } from "./tables";
@@ -17,6 +19,7 @@ const tables: RollTableSummary[] = [
     category: "CAROUSING",
     dice: "d12",
     columns: ["Result"],
+    tags: ["fantasy"],
     rowCount: 12,
     unreachableRows: 0
   },
@@ -27,6 +30,7 @@ const tables: RollTableSummary[] = [
     category: "PSIONICS",
     dice: "d66",
     columns: ["Power"],
+    tags: ["scifi"],
     rowCount: 36,
     unreachableRows: 0
   },
@@ -37,6 +41,7 @@ const tables: RollTableSummary[] = [
     category: "BACKGROUNDS",
     dice: "d6",
     columns: ["Signature Weapon"],
+    tags: ["scifi", "gear"],
     rowCount: 6,
     unreachableRows: 0
   },
@@ -47,6 +52,7 @@ const tables: RollTableSummary[] = [
     category: "BACKGROUNDS",
     dice: "d6",
     columns: ["Old Crew Specialty"],
+    tags: ["scifi", "character-building"],
     rowCount: 6,
     unreachableRows: 0
   },
@@ -57,6 +63,7 @@ const tables: RollTableSummary[] = [
     category: "GROUP DEBT",
     dice: "d12",
     columns: ["Debt"],
+    tags: ["scifi", "random-encounter"],
     rowCount: 12,
     unreachableRows: 0
   }
@@ -161,5 +168,26 @@ describe("keyboard movement through the suggestions", () => {
 
   it("has nothing to highlight in an empty list", () => {
     expect(moveHighlight(0, 1, 0)).toBe(-1);
+  });
+});
+
+describe("tagging tables", () => {
+  it("filters tables by one controlled tag", () => {
+    expect(filterTablesByTag(tables, "gear").map((table) => table.id)).toEqual(["gear"]);
+    expect(filterTablesByTag(tables, "character-building").map((table) => table.id)).toEqual(["specialty"]);
+    expect(filterTablesByTag(tables, "scifi")).toHaveLength(4);
+  });
+
+  it("returns every table when no tag is selected", () => {
+    expect(filterTablesByTag(tables, "")).toEqual(tables);
+  });
+
+  it("includes tags in type-ahead matching", () => {
+    expect(filterTables(tables, "fantasy").map((table) => table.id)).toEqual(["mishaps"]);
+  });
+
+  it("presents tag slugs as readable labels", () => {
+    expect(tableTagLabel("scifi")).toBe("Sci-fi");
+    expect(tableTagLabel("random-encounter")).toBe("Random Encounter");
   });
 });

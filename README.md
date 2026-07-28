@@ -62,7 +62,7 @@ Open `http://localhost:4000`. The named volume keeps the database, uploads, and 
 Useful lifecycle commands:
 
 ```powershell
-wslc container list
+wslc container list -all
 wslc container logs devils-toys
 wslc container stop devils-toys
 wslc container start devils-toys

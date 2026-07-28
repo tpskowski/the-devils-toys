@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { ArrowUpRight, BookOpen, Check, ImagePlus, Pencil, Plus, Trash2, UserMinus, UserRound, X } from "lucide-react";
+import { ArrowUpRight, BookOpen, Check, Dices, ImagePlus, Pencil, Plus, Trash2, UserMinus, UserRound, X } from "lucide-react";
 import type { CharacterEntry, CharacterItem, CharacterSheetDefinition, SystemId } from "@devils-toys/shared";
 import { api } from "./api";
 import { CharacterItemEditor } from "./CharacterItemEditor";
@@ -8,6 +8,7 @@ import { RulesMarkdown } from "./RulesMarkdown";
 import { appendEntry, entryName, readEntries, removeEntry, singularLabel, updateEntry } from "./character-entries";
 import { groupRoster } from "./character-roster";
 import { currentsToBackfill } from "./character-stats";
+import { saveAbilityForStatKey, saveSetupForAttribute, type SaveRollSetup } from "./save-roll";
 import { findRuleAnchorId, findRuleExcerpt, rulesAnchorPath } from "./rules";
 import "./CharacterModal.css";
 
@@ -119,6 +120,7 @@ export function CharacterModal({
   accountId,
   revision,
   initialCharacterId,
+  onRollSave,
   onClose
 }: {
   roomId: number;
@@ -127,6 +129,7 @@ export function CharacterModal({
   accountId: number;
   revision: number;
   initialCharacterId?: number;
+  onRollSave: (setup: SaveRollSetup) => void;
   onClose: () => void;
 }) {
   const [characters, setCharacters] = useState<Character[]>([]);
@@ -453,6 +456,11 @@ export function CharacterModal({
     onClose();
   }
 
+  async function openSaveRoll(setup: SaveRollSetup) {
+    if (busy || !(await persistCurrent())) return;
+    onRollSave(setup);
+  }
+
   async function uploadPortrait(file?: File) {
     if (!file || !selected || !canEdit) return;
     if (file.size > portraitUploadLimitBytes) {
@@ -752,34 +760,60 @@ export function CharacterModal({
                 )}
               </span>
             </div>
-            {pairedStatRows(section).map(({ label, currentField, maximumField }, rowIndex) => (
-              <div className="character-stat-row" role="group" aria-label={label} key={currentField.key}>
-                <span className="character-stat-name">{label}</span>
-                <div className="character-stat-values">
-                  <input
-                    type="number"
-                    aria-label={`${label} current`}
-                    value={String(sheet[currentField.key] ?? "")}
-                    onChange={(event) =>
-                      setField(currentField.key, event.target.value === "" ? "" : Number(event.target.value))
-                    }
-                    disabled={!canEdit}
-                  />
-                  <input
-                    type="number"
-                    className="character-stat-max"
-                    aria-label={`${label} maximum`}
-                    value={String(sheet[maximumField.key] ?? "")}
-                    onChange={(event) =>
-                      setField(maximumField.key, event.target.value === "" ? "" : Number(event.target.value))
-                    }
-                    disabled={!canEdit}
-                    readOnly={!editingMaxima}
-                    ref={editingMaxima && rowIndex === 0 ? firstMaximumInputRef : undefined}
-                  />
+            {pairedStatRows(section).map(({ label, currentField, maximumField }, rowIndex) => {
+              const saveAbility = saveAbilityForStatKey(currentField.key);
+              const saveSetup = saveSetupForAttribute(currentField.key, sheet[currentField.key]);
+              return (
+                <div className="character-stat-row" role="group" aria-label={label} key={currentField.key}>
+                  <span className="character-stat-name">
+                    <span>{label}</span>
+                    {saveAbility && (
+                      <button
+                        type="button"
+                        className="character-stat-roll"
+                        aria-label={
+                          saveSetup
+                            ? `Roll ${saveAbility} save at target ${saveSetup.target}`
+                            : `Roll ${saveAbility} save`
+                        }
+                        title={
+                          saveSetup
+                            ? `Roll ${saveAbility} save (target ${saveSetup.target})`
+                            : `Enter a current ${saveAbility} score from 1 to 20 to roll a save`
+                        }
+                        disabled={!saveSetup || busy}
+                        onClick={() => saveSetup && void openSaveRoll(saveSetup)}
+                      >
+                        <Dices aria-hidden="true" />
+                      </button>
+                    )}
+                  </span>
+                  <div className="character-stat-values">
+                    <input
+                      type="number"
+                      aria-label={`${label} current`}
+                      value={String(sheet[currentField.key] ?? "")}
+                      onChange={(event) =>
+                        setField(currentField.key, event.target.value === "" ? "" : Number(event.target.value))
+                      }
+                      disabled={!canEdit}
+                    />
+                    <input
+                      type="number"
+                      className="character-stat-max"
+                      aria-label={`${label} maximum`}
+                      value={String(sheet[maximumField.key] ?? "")}
+                      onChange={(event) =>
+                        setField(maximumField.key, event.target.value === "" ? "" : Number(event.target.value))
+                      }
+                      disabled={!canEdit}
+                      readOnly={!editingMaxima}
+                      ref={editingMaxima && rowIndex === 0 ? firstMaximumInputRef : undefined}
+                    />
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         ) : (
           <div className="character-sheet-fields">
@@ -889,6 +923,9 @@ export function CharacterModal({
     if (editingSlot?.listKey !== list.key) return null;
     return (
       <CharacterItemEditor
+        // Keyed by slot so picking a second pencil starts that slot's editor
+        // fresh instead of carrying the first slot's typed value across.
+        key={`${list.key}-${editingSlot.index}`}
         slotName={list.slots[editingSlot.index] ?? `Slot ${editingSlot.index + 1}`}
         items={itemCatalogue[list.key] ?? []}
         current={slotValue(list, editingSlot.index)}

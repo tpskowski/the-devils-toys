@@ -2,7 +2,10 @@
   width: min(1420px, 100%);
 }
 
-.character-sheet label {
+/* The slot dialog is a sibling of the sheet, so it has to be named alongside it
+   to inherit the sheet's captions and fields. */
+.character-sheet label,
+.character-slot-modal label {
   display: grid;
   gap: 5px;
   color: var(--muted);
@@ -14,6 +17,7 @@
 }
 
 .character-sheet input:not([type="checkbox"]),
+.character-slot-modal input:not([type="checkbox"]),
 .character-sheet textarea {
   width: 100%;
   border: 0;
@@ -858,13 +862,38 @@
   overflow-wrap: anywhere;
 }
 
-.character-slot-modal {
-  width: min(620px, 100%);
+/* Named with .modal so it outranks the shared modal width and scrolling: only
+   the slot list scrolls, so the title and Done stay put. */
+.modal.character-slot-modal {
+  width: min(780px, 100%);
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  overflow: hidden;
 }
 
 .character-slot-body {
-  padding: 20px 26px;
+  min-width: 0;
+  padding: 22px 26px 26px;
   overflow-y: auto;
+}
+
+/* Slots get more room here than on the sheet: the dialog is the place to read
+   a whole rack of sockets at once. */
+.character-slot-body .character-list {
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  column-gap: 28px;
+  row-gap: 14px;
+}
+
+/* Wider caption column than the sheet uses: names like "Body external 2" fit
+   whole rather than ellipsing. */
+.character-slot-body .character-list label {
+  grid-template-columns: 116px minmax(0, 1fr);
+  gap: 12px;
+}
+
+.character-slot-body .character-slot {
+  gap: 10px;
 }
 
 .character-slot-modal footer {
@@ -937,13 +966,53 @@
 }
 
 .character-stat-name {
-  padding-right: 12px;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 5px;
+  padding-right: 6px;
   color: var(--muted);
   font:
     500 10px "DM Mono",
     monospace;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+}
+
+.character-stat-name > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.character-stat-roll {
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.character-stat-roll:hover:not(:disabled),
+.character-stat-roll:focus-visible {
+  border-color: var(--line);
+  color: var(--accent);
+}
+
+.character-stat-roll:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.character-stat-roll svg {
+  width: 15px;
+  height: 15px;
 }
 
 .character-stat-values {
@@ -1052,11 +1121,15 @@
   }
 }
 
+/* minmax(0, 1fr) rather than a plain column: a select is as wide as its longest
+   option unless it is told otherwise, and the book's item names are long. */
 .character-item-editor {
-  margin-top: 12px;
-  padding: 14px 16px;
+  min-width: 0;
+  margin-top: 16px;
+  padding: 16px 18px;
   display: grid;
-  gap: 10px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
   border: 1px solid var(--accent);
   background: color-mix(in srgb, var(--accent), transparent 94%);
 }
@@ -1071,9 +1144,11 @@
   text-transform: uppercase;
 }
 
-.character-sheet .character-item-editor label {
+.character-sheet .character-item-editor label,
+.character-slot-modal .character-item-editor label {
   display: grid;
-  gap: 5px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 6px;
   color: var(--muted);
   font:
     600 10px "DM Mono",
@@ -1083,10 +1158,13 @@
 }
 
 .character-sheet .character-item-editor select,
-.character-sheet .character-item-editor input {
+.character-sheet .character-item-editor input,
+.character-slot-modal .character-item-editor select,
+.character-slot-modal .character-item-editor input {
   width: 100%;
+  max-width: 100%;
   border: 1px solid var(--line);
-  padding: 8px 10px;
+  padding: 9px 10px;
   background: var(--surface);
   color: var(--text);
   font:
@@ -1096,17 +1174,24 @@
   text-transform: none;
 }
 
+/* Long item names truncate in the closed select rather than widening the panel. */
+.character-item-editor select {
+  text-overflow: ellipsis;
+}
+
 .character-item-detail {
   margin: 0;
   color: var(--muted);
   font-size: 12px;
   line-height: 1.5;
+  overflow-wrap: anywhere;
 }
 
 .character-item-actions {
+  margin-top: 2px;
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 10px;
 }
 
 .character-item-actions button:not(.primary-button) {
@@ -1264,8 +1349,24 @@
     grid-template-columns: minmax(105px, 1fr) repeat(2, minmax(64px, 72px));
   }
 
-  .character-list {
+  .character-list,
+  .character-slot-body .character-list {
     grid-template-columns: 1fr;
+  }
+
+  .character-slot-body {
+    padding: 18px 18px 22px;
+  }
+
+  /* A narrower caption column: long names wrap to two lines and the rows still
+     line up, which beats stacking and doubling the height of a twelve-slot rack. */
+  .character-slot-body .character-list label {
+    grid-template-columns: 100px minmax(0, 1fr);
+    gap: 10px;
+  }
+
+  .character-slot-modal footer {
+    padding: 12px 18px 16px;
   }
 
   .character-actions .character-delete {

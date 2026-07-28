@@ -120,6 +120,7 @@ db.exec(`
     id INTEGER PRIMARY KEY,
     name TEXT NOT NULL,
     markdown TEXT NOT NULL,
+    tags_json TEXT NOT NULL DEFAULT '[]',
     created_by INTEGER NOT NULL REFERENCES accounts(id),
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -188,6 +189,8 @@ if (!hasColumn("media", "category")) db.exec("ALTER TABLE media ADD COLUMN categ
 if (!hasColumn("media", "display_name")) db.exec("ALTER TABLE media ADD COLUMN display_name TEXT");
 if (!hasColumn("media", "artist")) db.exec("ALTER TABLE media ADD COLUMN artist TEXT");
 if (!hasColumn("media", "title")) db.exec("ALTER TABLE media ADD COLUMN title TEXT");
+if (!hasColumn("table_sets", "tags_json"))
+  db.exec("ALTER TABLE table_sets ADD COLUMN tags_json TEXT NOT NULL DEFAULT '[]'");
 if (!hasColumn("media", "metadata_loaded"))
   db.exec("ALTER TABLE media ADD COLUMN metadata_loaded INTEGER NOT NULL DEFAULT 0");
 if (!hasColumn("media", "visible")) {

@@ -63,6 +63,7 @@ import { effectiveTheme, readPersonalTheme, writePersonalTheme } from "./persona
 import { NpcModal } from "./NpcModal";
 import { TablesModal } from "./TablesModal";
 import { DiceModal as SystemDiceModal } from "./DiceModal";
+import type { SaveRollSetup } from "./save-roll";
 interface Status {
   initialized: boolean;
   systems: { id: SystemId; name: string; tagline: string; defaultTheme: ThemeId; groupPage: boolean }[];
@@ -509,6 +510,7 @@ function TableRoom({
   const [panel, setPanel] = useState<"scene" | "chat" | "rules" | "people">("chat");
   const [rulesFocus, setRulesFocus] = useState("");
   const [diceOpen, setDiceOpen] = useState(false);
+  const [diceInitialSave, setDiceInitialSave] = useState<SaveRollSetup>();
   const [charactersOpen, setCharactersOpen] = useState(false);
   const [characterToOpen, setCharacterToOpen] = useState<number>();
   const [charactersRevision, setCharactersRevision] = useState(0);
@@ -539,6 +541,16 @@ function TableRoom({
   // The dock owns the audio element; the playlist needs its live position so its
   // commands do not seek the room back to the last command's position.
   const audioPosition = useRef(0);
+
+  function openDice(initialSave?: SaveRollSetup) {
+    setDiceInitialSave(initialSave);
+    setDiceOpen(true);
+  }
+
+  function closeDice() {
+    setDiceOpen(false);
+    setDiceInitialSave(undefined);
+  }
 
   async function loadMedia() {
     const next = await api<RoomMediaState>(`/api/rooms/${room.id}/media`);
@@ -706,12 +718,7 @@ function TableRoom({
             </button>
           </div>
           {panel === "chat" && (
-            <Chat
-              roomId={room.id}
-              messages={messages}
-              canClear={detail.room.role === "gm"}
-              onDice={() => setDiceOpen(true)}
-            />
+            <Chat roomId={room.id} messages={messages} canClear={detail.room.role === "gm"} onDice={() => openDice()} />
           )}
           {panel === "rules" && (
             <Rules roomId={room.id} system={room.system} focusQuery={rulesFocus} onFocused={() => setRulesFocus("")} />
@@ -743,7 +750,7 @@ function TableRoom({
           <FileText />
           <span>Sheet</span>
         </button>
-        <button onClick={() => setDiceOpen(true)}>
+        <button onClick={() => openDice()}>
           <Dices />
           <span>Dice</span>
         </button>
@@ -769,6 +776,11 @@ function TableRoom({
           accountId={accountId}
           revision={charactersRevision}
           initialCharacterId={characterToOpen}
+          onRollSave={(setup) => {
+            setCharactersOpen(false);
+            setCharacterToOpen(undefined);
+            openDice(setup);
+          }}
           onClose={() => {
             setCharactersOpen(false);
             setCharacterToOpen(undefined);
@@ -830,6 +842,7 @@ function TableRoom({
           roomId={room.id}
           system={room.system}
           isGm={detail.room.role === "gm"}
+          initialSave={diceInitialSave}
           onRolled={(message) => {
             setMessages((current) =>
               current.some(
@@ -839,15 +852,15 @@ function TableRoom({
                 ? current
                 : [...current, message]
             );
-            setDiceOpen(false);
+            closeDice();
             setPanel("chat");
           }}
           onRules={() => {
-            setDiceOpen(false);
+            closeDice();
             setRulesFocus(room.system === "cairn" ? "Saves" : "Tests");
             setPanel("rules");
           }}
-          onClose={() => setDiceOpen(false)}
+          onClose={closeDice}
         />
       )}
       {membersOpen && (

@@ -3,15 +3,28 @@ import { BookOpen, Dices } from "lucide-react";
 import type { ChatMessage, SavePosition, SystemId } from "@devils-toys/shared";
 import { api } from "./api";
 import { Modal } from "./Modal";
+import type { SaveRollSetup } from "./save-roll";
 
 type RollMode = "dice" | "save" | "damage";
 type DamagePosition = "normal" | "impaired" | "enhanced";
 type Selection = "" | "kh1" | "kl1";
+type RollVisibility = "public" | "private" | "invisible";
+
+export function rollVisibilityNotice(visibility: RollVisibility, isGm: boolean) {
+  if (visibility === "private") {
+    return isGm
+      ? "Only you see the result. The table is told a roll was made."
+      : "Only you and the GM see the result. The table is told a roll was made.";
+  }
+  if (visibility === "invisible") return "Only you see the result. The table is told nothing.";
+  return "";
+}
 
 export function DiceModal({
   roomId,
   system,
   isGm,
+  initialSave,
   onRolled,
   onClose,
   onRules
@@ -19,21 +32,22 @@ export function DiceModal({
   roomId: number;
   system: SystemId;
   isGm: boolean;
+  initialSave?: SaveRollSetup;
   onRolled: (message: ChatMessage) => void;
   onClose: () => void;
   onRules: () => void;
 }) {
-  const [mode, setMode] = useState<RollMode>("dice");
+  const [mode, setMode] = useState<RollMode>(initialSave ? "save" : "dice");
   const [count, setCount] = useState(1);
   const [sides, setSides] = useState(20);
   const [modifier, setModifier] = useState(0);
   const [selection, setSelection] = useState<Selection>("");
-  const [ability, setAbility] = useState<"STR" | "DEX" | "WIL">("STR");
-  const [target, setTarget] = useState(10);
+  const [ability, setAbility] = useState<"STR" | "DEX" | "WIL">(initialSave?.ability ?? "STR");
+  const [target, setTarget] = useState(initialSave?.target ?? 10);
   const [savePosition, setSavePosition] = useState<SavePosition>("normal");
   const [damagePosition, setDamagePosition] = useState<DamagePosition>("normal");
-  // One choice with three states, offered as the two checkboxes a GM ticks.
-  const [visibility, setVisibility] = useState<"public" | "private" | "invisible">("public");
+  // Visibility is one mutually exclusive choice; "public" is labeled Standard in the UI.
+  const [visibility, setVisibility] = useState<RollVisibility>("public");
   const [error, setError] = useState("");
 
   const rollCount = mode === "save" ? 1 : count;
@@ -190,35 +204,35 @@ export function DiceModal({
           </>
         )}
 
-        <div className="dice-visibility-row">
-          <label className="check-row">
-            <input
-              type="checkbox"
-              checked={visibility === "private"}
-              onChange={() => setVisibility((current) => (current === "private" ? "public" : "private"))}
-            />
+        <div className={`dice-visibility-row${isGm ? "" : " player"}`} aria-label="Roll visibility">
+          <button
+            type="button"
+            className={visibility === "public" ? "selected" : ""}
+            aria-pressed={visibility === "public"}
+            onClick={() => setVisibility("public")}
+          >
+            Standard
+          </button>
+          <button
+            type="button"
+            className={visibility === "private" ? "selected" : ""}
+            aria-pressed={visibility === "private"}
+            onClick={() => setVisibility("private")}
+          >
             Private
-          </label>
+          </button>
           {isGm && (
-            <label className="check-row">
-              <input
-                type="checkbox"
-                checked={visibility === "invisible"}
-                onChange={() => setVisibility((current) => (current === "invisible" ? "public" : "invisible"))}
-              />
+            <button
+              type="button"
+              className={visibility === "invisible" ? "selected" : ""}
+              aria-pressed={visibility === "invisible"}
+              onClick={() => setVisibility("invisible")}
+            >
               Invisible
-            </label>
+            </button>
           )}
         </div>
-        {visibility !== "public" && (
-          <p className="system-dice-note">
-            {visibility === "private"
-              ? isGm
-                ? "Only you see the result. The table is told a roll was made."
-                : "Only you and the GM see the result. The table is told a roll was made."
-              : "Only you see the result. The table is told nothing."}
-          </p>
-        )}
+        {visibility !== "public" && <p className="system-dice-note">{rollVisibilityNotice(visibility, isGm)}</p>}
         {error && <p className="form-error">{error}</p>}
         <button className="rules-link" type="button" onClick={onRules}>
           <BookOpen /> Read rolling rules

@@ -26,7 +26,11 @@ export const cairn: GameSystem = {
   abilities: ["Strength", "Dexterity", "Will"],
   gmOnlyHeadings: ["Principles for Wardens", "Bestiary"],
   npcCatalog: { heading: "Bestiary", entryLevel: 3, exclude: ["Creating Monsters"] },
-  tableCatalog: { label: "Cairn tables", exclude: [] },
+  tableCatalog: {
+    label: "Cairn tables",
+    exclude: [],
+    tags: ["fantasy"]
+  },
   dice: {
     save: {
       sides: 20,

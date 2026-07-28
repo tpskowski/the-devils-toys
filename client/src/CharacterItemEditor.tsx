@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Check, X } from "lucide-react";
 import type { CharacterItem } from "@devils-toys/shared";
 
@@ -20,13 +20,20 @@ export function CharacterItemEditor({
   onSubmit: (value: string) => void;
 }) {
   const [value, setValue] = useState(current);
+  const panel = useRef<HTMLDivElement>(null);
   const categories = [...new Set(items.map((item) => item.category))];
   const chosen = items.find((item) => item.label === value);
+
+  // The editor opens below a list that can be long enough to scroll, so bring it
+  // into view rather than leaving the pencil looking like it did nothing.
+  useEffect(() => {
+    panel.current?.scrollIntoView({ block: "nearest" });
+  }, []);
 
   // A div, not a form: the character sheet is itself a form, and nesting one
   // inside another makes the submit escape to the outer form and navigate away.
   return (
-    <div className="character-item-editor" role="group" aria-label={`Fill ${slotName}`}>
+    <div className="character-item-editor" ref={panel} role="group" aria-label={`Fill ${slotName}`}>
       <p className="character-item-slot">{slotName}</p>
       <label>
         From the rules

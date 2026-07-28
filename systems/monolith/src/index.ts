@@ -28,7 +28,11 @@ export const monolith: GameSystem = {
   abilities: ["Strength", "Dexterity", "Will"],
   gmOnlyHeadings: ["NPCS", "SAMPLE BESTIARY", "PLANETS", "FACTION RULES", "SAMPLE FACTIONS", "TABLES & GENERATORS"],
   npcCatalog: { heading: "SAMPLE BESTIARY", entryLevel: 3, exclude: [] },
-  tableCatalog: { label: "Monolith tables", exclude: [] },
+  tableCatalog: {
+    label: "Monolith tables",
+    exclude: [],
+    tags: ["scifi"]
+  },
   dice: {
     save: {
       sides: 20,

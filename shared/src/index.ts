@@ -234,6 +234,8 @@ export interface RollTable {
   dice: string;
   /** Result column headings; the die column is not included. */
   columns: readonly string[];
+  /** Controlled discovery tags applied by the system or custom-set metadata. */
+  tags: readonly TableTag[];
   rows: readonly RollTableRow[];
 }
 
@@ -252,6 +254,11 @@ export function rollTableLabel(name: string, dice: string) {
 }
 
 export type RollTableSetOrigin = "system" | "custom";
+
+/** Controlled discovery tags for built-in and custom random tables. */
+export const TABLE_TAGS = ["fantasy", "scifi", "character-building", "random-encounter", "gear"] as const;
+
+export type TableTag = (typeof TABLE_TAGS)[number];
 
 export interface RollTableSet {
   /** "system:cairn" or "custom:12". */
@@ -311,6 +318,8 @@ export interface GameSystem {
   tableCatalog: {
     label: string;
     exclude: readonly string[];
+    /** Tags inherited by every table parsed from this system catalog. */
+    tags: readonly TableTag[];
   };
   dice: DiceRules;
 }

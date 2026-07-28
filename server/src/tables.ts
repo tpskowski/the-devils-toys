@@ -4,9 +4,11 @@ import { z } from "zod";
 import {
   rollTableLabel,
   TABLE_ROLL_VISIBILITIES,
+  TABLE_TAGS,
   type RollTable,
   type RollTableSet,
   type SystemId,
+  type TableTag,
   type TableRollResult,
   type TableRollVisibility
 } from "@devils-toys/shared";
@@ -26,6 +28,7 @@ interface TableSetRow {
   id: number;
   name: string;
   markdown: string;
+  tags_json: string;
   updated_at: string;
 }
 
@@ -39,13 +42,23 @@ function tablesForSystem(system: SystemId) {
   const parsed = parseRollTables(
     fs.readFileSync(projectFile("raw", filename), "utf8"),
     systems[system].tableCatalog.exclude
-  );
+  ).map((table) => ({ ...table, tags: systems[system].tableCatalog.tags }));
   systemTables.set(system, parsed);
   return parsed;
 }
 
 function customSets() {
-  return all<TableSetRow>("SELECT id, name, markdown, updated_at FROM table_sets ORDER BY name");
+  return all<TableSetRow>("SELECT id, name, markdown, tags_json, updated_at FROM table_sets ORDER BY name");
+}
+
+function storedTags(value: string): TableTag[] {
+  try {
+    const tags = JSON.parse(value);
+    if (!Array.isArray(tags)) return [];
+    return TABLE_TAGS.filter((tag) => tags.includes(tag));
+  } catch {
+    return [];
+  }
 }
 
 /** Every set a GM can switch between: one per installed system, then custom sets. */
@@ -63,7 +76,8 @@ function availableSets(): { set: RollTableSet; tables: RollTable[] }[] {
     };
   });
   const custom = customSets().map((row) => {
-    const tables = parseRollTables(row.markdown);
+    const tags = storedTags(row.tags_json);
+    const tables = parseRollTables(row.markdown).map((table) => ({ ...table, tags }));
     return {
       set: {
         id: `custom:${row.id}`,
@@ -248,36 +262,49 @@ tableRouter.post("/rooms/:roomId/tables/roll", requireAuth, (req: AuthedRequest,
 tableRouter.get("/table-sets/:setId", requireAuth, (req: AuthedRequest, res) => {
   if (!canManageSets(req, res)) return;
   const row = one<TableSetRow>(
-    "SELECT id, name, markdown, updated_at FROM table_sets WHERE id = ?",
+    "SELECT id, name, markdown, tags_json, updated_at FROM table_sets WHERE id = ?",
     Number(req.params.setId)
   );
   if (!row) return res.status(404).json({ error: "Table set not found." });
-  res.json({ set: { id: row.id, name: row.name, markdown: row.markdown, updatedAt: row.updated_at } });
+  res.json({
+    set: {
+      id: row.id,
+      name: row.name,
+      markdown: row.markdown,
+      tags: storedTags(row.tags_json),
+      updatedAt: row.updated_at
+    }
+  });
 });
 
 const setBody = z.object({
   name: z.string().trim().min(2).max(80),
-  markdown: z.string().max(200_000)
+  markdown: z.string().max(200_000),
+  tags: z.array(z.enum(TABLE_TAGS)).max(TABLE_TAGS.length).default([])
 });
 
 tableRouter.post("/table-sets", requireAuth, (req: AuthedRequest, res) => {
   if (!canManageSets(req, res)) return;
   const parsed = setBody.safeParse(req.body);
-  if (!parsed.success) return res.status(400).json({ error: "Give the set a name and valid Markdown tables." });
+  if (!parsed.success)
+    return res.status(400).json({ error: "Give the set a name, valid tags, and valid Markdown tables." });
+  const tags = TABLE_TAGS.filter((tag) => parsed.data.tags.includes(tag));
   const result = db
-    .prepare("INSERT INTO table_sets (name, markdown, created_by) VALUES (?, ?, ?)")
-    .run(parsed.data.name, parsed.data.markdown, req.account!.id);
+    .prepare("INSERT INTO table_sets (name, markdown, tags_json, created_by) VALUES (?, ?, ?, ?)")
+    .run(parsed.data.name, parsed.data.markdown, JSON.stringify(tags), req.account!.id);
   const id = Number(result.lastInsertRowid);
-  res.status(201).json({ set: { id: `custom:${id}`, tables: parseRollTables(parsed.data.markdown).length } });
+  res.status(201).json({ set: { id: `custom:${id}`, tags, tables: parseRollTables(parsed.data.markdown).length } });
 });
 
 tableRouter.patch("/table-sets/:setId", requireAuth, (req: AuthedRequest, res) => {
   if (!canManageSets(req, res)) return;
   const parsed = setBody.safeParse(req.body);
-  if (!parsed.success) return res.status(400).json({ error: "Give the set a name and valid Markdown tables." });
+  if (!parsed.success)
+    return res.status(400).json({ error: "Give the set a name, valid tags, and valid Markdown tables." });
+  const tags = TABLE_TAGS.filter((tag) => parsed.data.tags.includes(tag));
   const result = db
-    .prepare("UPDATE table_sets SET name = ?, markdown = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?")
-    .run(parsed.data.name, parsed.data.markdown, Number(req.params.setId));
+    .prepare("UPDATE table_sets SET name = ?, markdown = ?, tags_json = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?")
+    .run(parsed.data.name, parsed.data.markdown, JSON.stringify(tags), Number(req.params.setId));
   if (!result.changes) return res.status(404).json({ error: "Table set not found." });
   res.status(204).end();
 });

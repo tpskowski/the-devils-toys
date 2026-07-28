@@ -2,18 +2,22 @@ import { useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboa
 import { ChevronDown, ChevronLeft, Dices, Library, Plus, Save, Search, Trash2, X } from "lucide-react";
 import {
   rollTableLabel,
+  TABLE_TAGS,
   type ChatMessage,
   type RollTable,
   type RollTableSet,
   type RollTableSummary,
-  type TableRollVisibility
+  type TableRollVisibility,
+  type TableTag
 } from "@devils-toys/shared";
 import { api } from "./api";
 import {
   categoryOpensTable,
   filterTables,
+  filterTablesByTag,
   groupByCategory,
   moveHighlight,
+  tableTagLabel,
   toggleVisibility,
   visibilityNotice
 } from "./tables";
@@ -22,9 +26,10 @@ interface CustomSetDraft {
   id?: number;
   name: string;
   markdown: string;
+  tags: TableTag[];
 }
 
-const emptyDraft: CustomSetDraft = { name: "", markdown: "" };
+const emptyDraft: CustomSetDraft = { name: "", markdown: "", tags: [] };
 
 const sampleMarkdown = `### Rumours in the market (d6)
 
@@ -44,6 +49,7 @@ export function TablesModal({
 }) {
   const [sets, setSets] = useState<RollTableSet[]>([]);
   const [setId, setSetId] = useState("");
+  const [tagFilter, setTagFilter] = useState<TableTag | "">("");
   const [query, setQuery] = useState("");
   const [suggesting, setSuggesting] = useState(false);
   const [highlight, setHighlight] = useState(-1);
@@ -59,8 +65,9 @@ export function TablesModal({
 
   const activeSet = sets.find((entry) => entry.id === setId);
   const tables = activeSet?.tables ?? [];
-  const matches = useMemo(() => filterTables(tables, suggesting ? query : ""), [tables, query, suggesting]);
-  const categories = useMemo(() => groupByCategory(tables), [tables]);
+  const taggedTables = useMemo(() => filterTablesByTag(tables, tagFilter), [tables, tagFilter]);
+  const matches = useMemo(() => filterTables(taggedTables, suggesting ? query : ""), [taggedTables, query, suggesting]);
+  const categories = useMemo(() => groupByCategory(taggedTables), [taggedTables]);
   const selectedSummary = tables.find((entry) => entry.id === selectedId);
   const openCategory = categories.find((entry) => entry.name === category);
   const skippedCategoryList = Boolean(openCategory && categoryOpensTable(openCategory)?.id === selectedId);
@@ -90,7 +97,13 @@ export function TablesModal({
   useEffect(() => {
     clearSelection();
     setCategory("");
+    setTagFilter("");
   }, [setId]);
+
+  useEffect(() => {
+    clearSelection();
+    setCategory("");
+  }, [tagFilter]);
 
   async function chooseTable(summary: RollTableSummary) {
     setSelectedId(summary.id);
@@ -157,17 +170,18 @@ export function TablesModal({
       if (draft.id) {
         await api(`/api/table-sets/${draft.id}`, {
           method: "PATCH",
-          body: JSON.stringify({ name: draft.name, markdown: draft.markdown })
+          body: JSON.stringify({ name: draft.name, markdown: draft.markdown, tags: draft.tags })
         });
         await loadSets(`custom:${draft.id}`);
       } else {
         const created = await api<{ set: { id: string } }>("/api/table-sets", {
           method: "POST",
-          body: JSON.stringify({ name: draft.name, markdown: draft.markdown })
+          body: JSON.stringify({ name: draft.name, markdown: draft.markdown, tags: draft.tags })
         });
         await loadSets(created.set.id);
       }
       setDraft(emptyDraft);
+      setTagFilter("");
       setManaging(false);
     } catch (cause) {
       setError((cause as Error).message);
@@ -178,8 +192,10 @@ export function TablesModal({
     setError("");
     try {
       const numericId = Number(entry.id.replace("custom:", ""));
-      const result = await api<{ set: { id: number; name: string; markdown: string } }>(`/api/table-sets/${numericId}`);
-      setDraft({ id: result.set.id, name: result.set.name, markdown: result.set.markdown });
+      const result = await api<{ set: { id: number; name: string; markdown: string; tags: TableTag[] } }>(
+        `/api/table-sets/${numericId}`
+      );
+      setDraft({ id: result.set.id, name: result.set.name, markdown: result.set.markdown, tags: result.set.tags });
       setManaging(true);
     } catch (cause) {
       setError((cause as Error).message);
@@ -292,6 +308,7 @@ export function TablesModal({
                       <strong>{summary.name}</strong>
                       <small>
                         {summary.dice} · {summary.rowCount} rows{summary.section ? ` · ${summary.section}` : ""}
+                        {summary.tags.length ? ` · ${summary.tags.map(tableTagLabel).join(", ")}` : ""}
                       </small>
                     </button>
                   </li>
@@ -310,6 +327,28 @@ export function TablesModal({
           >
             <Library size={16} /> Sets
           </button>
+          <div className="tables-tag-filter" aria-label="Filter tables by tag">
+            <span>Tags</span>
+            <button
+              type="button"
+              className={!tagFilter ? "active" : ""}
+              aria-pressed={!tagFilter}
+              onClick={() => setTagFilter("")}
+            >
+              All
+            </button>
+            {TABLE_TAGS.map((tag) => (
+              <button
+                type="button"
+                key={tag}
+                className={tagFilter === tag ? "active" : ""}
+                aria-pressed={tagFilter === tag}
+                onClick={() => setTagFilter((current) => (current === tag ? "" : tag))}
+              >
+                {tableTagLabel(tag)}
+              </button>
+            ))}
+          </div>
         </div>
 
         {error && <p className="form-error tables-error">{error}</p>}
@@ -339,7 +378,8 @@ export function TablesModal({
             <div className="tables-set-editor">
               <p className="modal-intro">
                 Paste Markdown tables. A table is rollable when its first column is a die such as <code>d6</code> and
-                its rows are keyed by die values, exactly as the system books are written.
+                its rows are keyed by die values, exactly as the system books are written. Selected tags apply to every
+                rollable table in the set.
               </p>
               <label>
                 Set name
@@ -350,6 +390,28 @@ export function TablesModal({
                   onChange={(event) => setDraft((current) => ({ ...current, name: event.target.value }))}
                 />
               </label>
+              <fieldset className="tables-tag-options">
+                <legend>Tags for every table</legend>
+                <div>
+                  {TABLE_TAGS.map((tag) => (
+                    <label key={tag} className={draft.tags.includes(tag) ? "active" : ""}>
+                      <input
+                        type="checkbox"
+                        checked={draft.tags.includes(tag)}
+                        onChange={() =>
+                          setDraft((current) => ({
+                            ...current,
+                            tags: current.tags.includes(tag)
+                              ? current.tags.filter((entry) => entry !== tag)
+                              : [...current.tags, tag]
+                          }))
+                        }
+                      />
+                      {tableTagLabel(tag)}
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
               <label>
                 Markdown
                 <textarea
@@ -413,6 +475,7 @@ export function TablesModal({
                       <strong>{summary.name}</strong>
                       <small>
                         {summary.dice} · {summary.rowCount} rows{summary.section ? ` · ${summary.section}` : ""}
+                        {summary.tags.length ? ` · ${summary.tags.map(tableTagLabel).join(", ")}` : ""}
                       </small>
                     </button>
                   ))}
@@ -475,6 +538,13 @@ export function TablesModal({
                   <div className="tables-detail-heading">
                     <h3>{table.name}</h3>
                     <small>{table.section}</small>
+                    {table.tags.length > 0 && (
+                      <div className="tables-table-tags" aria-label="Table tags">
+                        {table.tags.map((tag) => (
+                          <span key={tag}>{tableTagLabel(tag)}</span>
+                        ))}
+                      </div>
+                    )}
                     {Boolean(selectedSummary?.unreachableRows) && (
                       <small className="tables-warning">
                         The source writes {selectedSummary!.rowCount} rows over a {table.dice} heading, so{" "}
