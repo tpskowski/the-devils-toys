@@ -1,0 +1,14 @@
+services:
+  table:
+    build: .
+    ports:
+      - "4000:4000"
+    environment:
+      DEVILS_TOYS_DATA_DIR: /data
+      DEVILS_TOYS_UPLOAD_LIMIT_MB: 1024
+    volumes:
+      - devils-toys-data:/data
+    restart: unless-stopped
+
+volumes:
+  devils-toys-data:

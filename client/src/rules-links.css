@@ -1,0 +1,21 @@
+.rules-link {
+  min-height: 38px;
+  padding: 0 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.rules-link:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.rules-link svg {
+  width: 15px;
+}

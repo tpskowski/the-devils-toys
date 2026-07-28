@@ -1,0 +1,128 @@
+.npc-modal {
+  width: min(100%, 900px);
+}
+.npc-create {
+  padding: 18px 24px;
+  display: grid;
+  grid-template-columns: 1fr 1.5fr auto;
+  gap: 9px;
+  border-bottom: 1px solid var(--line);
+}
+.npc-create input,
+.npc-detail input,
+.npc-detail textarea {
+  min-width: 0;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--text);
+}
+.npc-create .primary-button {
+  min-height: 40px;
+  padding-inline: 14px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.npc-create svg {
+  width: 15px;
+}
+.npc-error {
+  margin: 12px 24px 0;
+}
+.npc-workspace {
+  min-height: 470px;
+  display: grid;
+  grid-template-columns: 250px minmax(0, 1fr);
+}
+.npc-workspace > aside {
+  padding: 14px;
+  overflow-y: auto;
+  border-right: 1px solid var(--line);
+}
+.npc-workspace > aside label {
+  height: 38px;
+  padding: 0 9px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--line);
+}
+.npc-workspace > aside label svg {
+  width: 14px;
+  color: var(--muted);
+}
+.npc-workspace > aside input {
+  min-width: 0;
+  width: 100%;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--text);
+}
+.npc-workspace > aside > button {
+  width: 100%;
+  padding: 10px;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+}
+.npc-workspace > aside > button.active {
+  box-shadow: inset 2px 0 var(--accent);
+  background: color-mix(in srgb, var(--accent), transparent 94%);
+}
+.npc-workspace > aside strong,
+.npc-workspace > aside small {
+  display: block;
+}
+.npc-workspace > aside small {
+  margin-top: 2px;
+  color: var(--muted);
+  font:
+    400 8px "DM Mono",
+    monospace;
+}
+.npc-detail {
+  min-width: 0;
+  padding: 24px;
+  display: grid;
+  align-content: start;
+  gap: 12px;
+}
+.npc-detail textarea {
+  min-height: 280px;
+  padding: 12px;
+  resize: vertical;
+}
+.npc-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.npc-actions button {
+  min-height: 36px;
+  padding: 0 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--muted);
+}
+.npc-actions svg {
+  width: 14px;
+}
+@media (max-width: 700px) {
+  .npc-create {
+    grid-template-columns: 1fr;
+  }
+  .npc-workspace {
+    grid-template-columns: 1fr;
+  }
+  .npc-workspace > aside {
+    max-height: 190px;
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+}

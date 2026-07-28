@@ -1,0 +1,413 @@
+.audio-dock {
+  position: fixed;
+  z-index: 20;
+  left: calc(var(--rail-width) + 18px);
+  right: auto;
+  bottom: 12px;
+  width: min(520px, calc(100vw - var(--rail-width) - var(--context-width) - 36px));
+  min-width: 0;
+  height: 74px;
+  padding: 25px 9px 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  box-sizing: border-box;
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--surface), transparent 5%);
+  box-shadow: 0 10px 30px #0004;
+  backdrop-filter: blur(12px);
+}
+.audio-restore {
+  display: none;
+}
+
+.audio-metadata {
+  position: absolute;
+  top: 5px;
+  right: 9px;
+  left: 9px;
+  min-width: 0;
+  height: 20px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-align: left;
+  font:
+    500 9px "DM Mono",
+    monospace;
+}
+
+.audio-meta-artist,
+.audio-meta-title {
+  min-width: 0;
+}
+
+.audio-meta-artist {
+  flex: 0 1 32%;
+  color: var(--muted);
+}
+
+.audio-meta-title {
+  flex: 1 1 auto;
+  color: var(--text);
+}
+
+.audio-meta-divider {
+  flex: 0 0 auto;
+  color: var(--line);
+}
+
+.audio-time {
+  flex: 0 0 auto;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.audio-marquee {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.audio-marquee-track {
+  width: max-content;
+  min-width: 100%;
+  display: flex;
+  gap: 24px;
+}
+
+.audio-marquee-copy {
+  flex: 0 0 auto;
+}
+
+.audio-marquee-overflow .audio-marquee-track {
+  animation: audio-marquee-scroll 16s linear 1.5s infinite;
+}
+
+.audio-marquee-overflow:hover .audio-marquee-track {
+  animation-play-state: paused;
+}
+
+@keyframes audio-marquee-scroll {
+  to {
+    transform: translateX(calc(-50% - 12px));
+  }
+}
+
+.audio-collapse {
+  height: 32px;
+  display: grid;
+  place-items: center;
+}
+
+.audio-dock-minimized {
+  width: min(300px, calc(100vw - var(--rail-width) - var(--context-width) - 36px));
+  height: 42px;
+  padding: 0 4px;
+}
+
+.audio-dock-minimized > :not(audio):not(.audio-restore) {
+  display: none;
+}
+
+.audio-dock-minimized .audio-restore {
+  width: 100%;
+  min-width: 0;
+  height: 34px;
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr) 28px;
+  align-items: center;
+  gap: 7px;
+  color: var(--muted);
+  text-align: left;
+}
+
+.audio-restore > svg:first-child {
+  color: var(--accent);
+}
+
+.audio-restore > span {
+  min-width: 0;
+}
+
+.audio-restore strong,
+.audio-restore small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.audio-restore strong {
+  color: var(--text);
+  font-size: 10px;
+}
+
+.audio-restore small {
+  margin-top: 2px;
+  font:
+    400 8px "DM Mono",
+    monospace;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.audio-dock button {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+}
+
+.audio-dock svg {
+  width: 17px;
+}
+
+.audio-main,
+.audio-previous,
+.audio-next,
+.audio-repeat,
+.audio-shuffle,
+.audio-mute,
+.audio-list,
+.audio-collapse {
+  flex: 0 0 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+}
+
+.audio-main {
+  border: 1px solid var(--line) !important;
+  color: var(--accent) !important;
+}
+
+.audio-repeat.active,
+.audio-shuffle.active {
+  color: var(--accent);
+}
+.audio-track {
+  flex: 1 1 auto;
+  min-width: 0;
+  text-align: left;
+}
+
+.audio-track span,
+.audio-track small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.audio-track span {
+  color: var(--text);
+  font-size: 11px;
+}
+
+.audio-track small {
+  margin-top: 2px;
+  font:
+    400 8px "DM Mono",
+    monospace;
+}
+
+.audio-volume {
+  flex: 0 0 72px;
+  accent-color: var(--accent);
+}
+
+.audio-upload {
+  margin: 22px 24px 0;
+  min-height: 68px;
+  padding: 12px 15px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border: 1px dashed var(--line);
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.audio-upload:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.audio-upload svg {
+  width: 20px;
+}
+
+.audio-upload strong,
+.audio-upload small {
+  display: block;
+}
+
+.audio-upload strong {
+  color: var(--text);
+}
+
+.audio-upload small {
+  margin-top: 3px;
+  font:
+    400 9px "DM Mono",
+    monospace;
+}
+
+.audio-error {
+  margin: 13px 24px 0;
+}
+
+.audio-playlist {
+  padding: 22px 24px 28px;
+  display: grid;
+  gap: 8px;
+}
+
+.audio-playlist article {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) 40px;
+  border: 1px solid var(--line);
+}
+
+.audio-track-play {
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-right: 1px solid var(--line);
+  background: transparent;
+  color: var(--muted);
+  transition: color 0.2s;
+}
+
+.audio-track-play:hover:not(:disabled),
+.audio-playlist article.active .audio-track-play {
+  color: var(--accent);
+}
+
+.audio-track-play svg {
+  width: 16px;
+}
+
+.audio-playlist article.active {
+  border-color: var(--accent);
+}
+
+.audio-track-select {
+  min-width: 0;
+  padding: 12px;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  text-align: left;
+}
+
+.audio-track-select span {
+  min-width: 0;
+}
+
+.audio-track-select strong,
+.audio-track-select small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.audio-track-select strong {
+  color: var(--text);
+  font-size: 12px;
+}
+
+.audio-track-select small {
+  margin-top: 3px;
+  font:
+    400 9px "DM Mono",
+    monospace;
+}
+
+.audio-delete {
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-left: 1px solid var(--line);
+  background: transparent;
+  color: var(--muted);
+}
+
+.audio-delete:hover {
+  color: #a13b36;
+}
+
+.audio-delete svg {
+  width: 15px;
+}
+
+.audio-empty {
+  min-height: 140px;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 8px;
+  color: var(--muted);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .audio-marquee-overflow .audio-marquee-track {
+    width: 100%;
+    min-width: 0;
+    display: block;
+    animation: none !important;
+  }
+
+  .audio-marquee-copy {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .audio-marquee-copy[aria-hidden="true"] {
+    display: none;
+  }
+}
+
+@media (min-width: 901px) and (max-width: 1100px) {
+  .audio-volume {
+    display: none;
+  }
+}
+
+@media (min-width: 761px) and (max-width: 900px) {
+  .audio-previous,
+  .audio-next,
+  .audio-repeat,
+  .audio-shuffle,
+  .audio-volume {
+    display: none;
+  }
+}
+
+@media (max-width: 760px) {
+  .audio-dock {
+    left: 12px;
+    right: 12px;
+    width: auto;
+    bottom: 70px;
+    gap: 3px;
+  }
+
+  .audio-dock-minimized {
+    right: auto;
+    width: min(300px, calc(100vw - 24px));
+  }
+
+  .audio-volume {
+    display: none;
+  }
+}

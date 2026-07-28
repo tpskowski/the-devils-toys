@@ -1,0 +1,30 @@
+{
+  "name": "@devils-toys/client",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "typecheck": "tsc -b --pretty false",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@devils-toys/shared": "0.1.0",
+    "@fontsource/dm-mono": "^5.2.6",
+    "@fontsource/inter": "^5.2.6",
+    "@fontsource/unbounded": "^5.2.6",
+    "lucide-react": "^0.468.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.1"
+  },
+  "devDependencies": {
+    "@types/react": "^19.1.8",
+    "@types/react-dom": "^19.1.6",
+    "@vitejs/plugin-react": "^4.5.2",
+    "vite": "^7.0.0",
+    "vitest": "^3.2.4"
+  }
+}

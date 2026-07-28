@@ -1,0 +1,2 @@
+# Store text with LF so checkouts match across Windows, macOS, Linux, and CI
+* text=auto eol=lf

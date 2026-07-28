@@ -1,0 +1,359 @@
+.group-page {
+  width: 100%;
+  max-width: 960px;
+  min-height: 0;
+  margin: 0 auto;
+  overflow-y: auto;
+  padding: clamp(22px, 4vw, 48px);
+  align-content: start;
+  gap: 26px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
+}
+
+.group-page[hidden] {
+  display: none;
+}
+
+.group-page-header,
+.group-starship-header,
+.group-starship-header > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.group-page-header h2,
+.group-starship-header h3,
+.group-placeholder h3 {
+  margin: 0;
+}
+
+.group-page-header h2 {
+  font:
+    600 23px Unbounded,
+    sans-serif;
+  letter-spacing: -0.04em;
+}
+
+.group-page .panel-kicker {
+  margin: 0 0 4px;
+}
+
+.group-save-status {
+  flex: none;
+  padding: 4px 7px;
+  border: 1px solid var(--line);
+  color: var(--muted);
+  font:
+    500 9px "DM Mono",
+    monospace;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  transition:
+    color 0.18s,
+    border-color 0.18s;
+}
+
+.group-save-unsaved {
+  color: #c67a32;
+  border-color: color-mix(in srgb, #c67a32, transparent 45%);
+}
+
+.group-save-saving {
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent), transparent 45%);
+}
+
+.group-rules-link {
+  min-height: 24px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--accent);
+  font:
+    500 9px "DM Mono",
+    monospace;
+  letter-spacing: 0.06em;
+  text-decoration: none;
+  text-transform: uppercase;
+}
+
+.group-rules-link:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.group-rules-link svg {
+  width: 12px;
+  height: 12px;
+}
+
+.group-page .character-sheet-field {
+  max-width: none;
+}
+
+.group-page .character-sheet-fields > .narrow-field {
+  flex-basis: 92px;
+}
+
+.group-page textarea {
+  min-height: 88px;
+}
+
+.group-placeholder {
+  position: relative;
+  min-height: 86px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 13px;
+  padding: 16px;
+  border: 1px dashed var(--line);
+  background: color-mix(in srgb, var(--surface), var(--text) 2%);
+}
+
+.group-placeholder > svg {
+  width: 22px;
+  color: var(--muted);
+  stroke-width: 1.5;
+}
+
+.group-placeholder h3 {
+  font:
+    600 13px Unbounded,
+    sans-serif;
+}
+
+.group-placeholder p {
+  margin: 5px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.group-placeholder > span {
+  position: absolute;
+  top: 8px;
+  right: 9px;
+  color: var(--muted);
+  font:
+    500 8px "DM Mono",
+    monospace;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.group-starship {
+  display: grid;
+  gap: 22px;
+  padding-top: 22px;
+  border-top: 2px solid var(--text);
+}
+
+.group-starship-header > div {
+  justify-content: flex-start;
+}
+
+.group-starship-header > div > svg {
+  width: 26px;
+  height: 26px;
+  color: var(--accent);
+  stroke-width: 1.35;
+}
+
+.group-starship-header h3 {
+  font:
+    600 18px Unbounded,
+    sans-serif;
+  letter-spacing: -0.03em;
+}
+
+.group-starship .character-stat-table {
+  width: min(430px, 100%);
+}
+
+.group-starship .character-stat-header,
+.group-starship .character-stat-row {
+  grid-template-columns: minmax(78px, 1fr) repeat(2, 64px);
+}
+
+.group-starship .character-stat-values input {
+  min-width: 0;
+  text-align: center;
+}
+
+.group-starship legend small {
+  color: var(--muted);
+  font-size: 8px;
+  letter-spacing: 0.06em;
+}
+
+.group-starship .character-list {
+  grid-template-columns: 1fr;
+}
+
+.group-starship .character-list label {
+  grid-template-columns: 58px minmax(0, 1fr);
+}
+
+.group-starship .character-list-group-start {
+  margin-top: 7px;
+  padding-top: 9px;
+}
+
+.group-loading {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+/* The hull class is chosen, not typed, so its note has room to explain itself. */
+.starship-size-field {
+  flex: 1 1 260px;
+}
+
+.group-starship .starship-size-field select {
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  padding: 6px 2px;
+  background: transparent;
+  color: var(--text);
+  font:
+    500 15px Inter,
+    sans-serif;
+}
+
+.starship-size-note {
+  color: var(--muted);
+  font:
+    400 11px "DM Mono",
+    monospace;
+  line-height: 1.5;
+}
+
+/* A hold is a slot plus the pencil that opens the parts list for it. */
+.starship-hold {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 28px;
+  align-items: center;
+  gap: 4px;
+}
+
+.group-starship .starship-hold > label {
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.starship-hold-edit {
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--muted);
+}
+
+.starship-hold:hover .starship-hold-edit,
+.starship-hold-edit:focus-visible {
+  border-color: var(--line);
+  color: var(--accent);
+}
+
+.starship-hold-editor {
+  margin-top: 12px;
+  padding: 14px 16px;
+  display: grid;
+  gap: 10px;
+  border: 1px solid var(--accent);
+  background: color-mix(in srgb, var(--accent), transparent 94%);
+}
+
+.starship-hold-editor .panel-kicker {
+  margin: 0;
+}
+
+.group-starship .starship-hold-editor label {
+  display: grid;
+  gap: 5px;
+  grid-template-columns: none;
+  font:
+    600 11px "DM Mono",
+    monospace;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.group-starship .starship-hold-editor select,
+.group-starship .starship-hold-editor input:not([type="checkbox"]) {
+  width: 100%;
+  border: 1px solid var(--line);
+  padding: 8px 10px;
+  background: var(--surface);
+  color: var(--text);
+  font:
+    500 14px Inter,
+    sans-serif;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.group-starship .starship-hold-editor .starship-hold-bulky {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--text);
+  font:
+    500 12px Inter,
+    sans-serif;
+}
+
+.starship-hold-detail {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.starship-hold-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.starship-hold-actions button:not(.primary-button) {
+  min-height: 44px;
+  padding: 0 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+@media (min-width: 1180px) {
+  .table-group-panel .group-starship .character-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 5px 18px;
+  }
+}
+
+@media (max-width: 760px) {
+  .group-page {
+    padding: 20px 16px 34px;
+  }
+
+  .group-starship-header {
+    align-items: flex-start;
+  }
+}

@@ -1,0 +1,1278 @@
+.modal.modal-wide.character-modal {
+  width: min(1420px, 100%);
+}
+
+.character-sheet label {
+  display: grid;
+  gap: 5px;
+  color: var(--muted);
+  font:
+    500 10px "DM Mono",
+    monospace;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.character-sheet input:not([type="checkbox"]),
+.character-sheet textarea {
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  padding: 6px 2px;
+  background: transparent;
+  color: var(--text);
+  font:
+    500 15px Inter,
+    sans-serif;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.character-sheet textarea {
+  min-height: 74px;
+  resize: vertical;
+  border: 1px solid var(--line);
+  padding: 8px 10px;
+}
+
+.character-error {
+  margin: 14px 26px 0;
+}
+
+.character-workspace {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  min-height: 500px;
+}
+
+.character-index {
+  padding: 14px 0;
+  border-right: 1px solid var(--line);
+}
+
+.character-index > button {
+  width: 100%;
+  padding: 13px 18px;
+  border: 0;
+  border-left: 3px solid transparent;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+}
+
+.character-index > button:hover,
+.character-index > button.selected {
+  border-left-color: var(--accent);
+  background: color-mix(in srgb, var(--accent), transparent 93%);
+}
+
+.character-index span,
+.character-index small {
+  display: block;
+}
+
+.character-index span {
+  font-weight: 650;
+}
+
+/* The owning player rides along with the name, quieter than it. */
+.character-index span em {
+  color: var(--muted);
+  font-style: normal;
+  font-weight: 400;
+}
+
+.character-index small {
+  margin-top: 4px;
+  color: var(--muted);
+  font:
+    400 10px "DM Mono",
+    monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.character-index > p {
+  padding: 12px 18px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.character-index-heading {
+  margin: 12px 0 2px;
+  padding: 0 18px;
+  color: var(--muted);
+  font:
+    600 9px "DM Mono",
+    monospace;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.character-index > .character-index-toggle {
+  width: 100%;
+  min-height: 30px;
+  display: flex;
+  align-items: center;
+  padding: 0 18px;
+  border: 0;
+  border-left: 3px solid transparent;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font:
+    500 9px "DM Mono",
+    monospace;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.character-index > .character-index-toggle:hover {
+  border-left-color: transparent;
+  background: transparent;
+  color: var(--accent);
+}
+
+/* An action, not another character in the list — kept visually distinct from the rows. */
+.character-index > .character-index-create {
+  margin-top: 6px;
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 18px;
+  border-left: 0;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  cursor: pointer;
+  font:
+    500 10px "DM Mono",
+    monospace;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.character-index > .character-index-create:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--accent), transparent 93%);
+  color: var(--accent);
+}
+
+.character-index > .character-index-create:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
+.character-sheet {
+  min-width: 0;
+  padding: 22px 26px 26px;
+  display: grid;
+  gap: 18px;
+}
+
+.character-profile {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 20px;
+}
+
+.character-portrait-frame {
+  position: relative;
+  /* Caps at the desktop size and shrinks with the viewport on smaller screens. */
+  width: clamp(128px, 22vw, 216px);
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--surface), var(--text) 4%);
+  color: var(--muted);
+}
+
+.character-portrait-frame img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+
+.character-portrait-frame > svg {
+  width: 26%;
+  height: 26%;
+  stroke-width: 1.25;
+}
+
+/* Overlaid on the portrait rather than stacked under it. */
+.character-portrait-actions {
+  position: absolute;
+  inset: auto 0 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 9px 8px 8px;
+  background: linear-gradient(transparent, #000000b0);
+}
+
+/* Uploading needs to stay discoverable; replace and remove reveal on hover. */
+.character-portrait-frame.has-portrait .character-portrait-actions {
+  opacity: 0;
+  transition: opacity 0.14s var(--ease);
+}
+
+.character-portrait-frame.has-portrait:hover .character-portrait-actions,
+.character-portrait-frame.has-portrait .character-portrait-actions:focus-within {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  .character-portrait-frame.has-portrait .character-portrait-actions {
+    opacity: 1;
+  }
+}
+
+.character-portrait-actions label,
+.character-portrait-actions button {
+  min-width: 0;
+  min-height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 10px;
+  border: 1px solid #ffffff40;
+  background: #000000a6;
+  color: #fff;
+  cursor: pointer;
+  font:
+    500 9px "DM Mono",
+    monospace;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.character-portrait-actions button {
+  padding: 0 8px;
+}
+
+/* Hidden by sight only: the file input stays a focus stop, so the overlay is
+   reachable by keyboard and reveals itself through :focus-within. */
+.character-sheet .character-portrait-actions input[type="file"] {
+  position: absolute;
+  clip-path: inset(50%);
+  width: 1px;
+  height: 1px;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+}
+
+.character-portrait-actions label:hover,
+.character-portrait-actions button:hover,
+.character-portrait-actions label:focus-within,
+.character-portrait-actions button:focus-visible {
+  border-color: var(--accent);
+  background: #000000d9;
+}
+
+.character-portrait-actions svg {
+  width: 14px;
+  height: 14px;
+}
+
+.character-sheet-heading {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) auto;
+  align-items: end;
+  gap: 18px;
+}
+
+.character-sheet-heading input {
+  font:
+    600 23px Unbounded,
+    sans-serif !important;
+}
+
+.character-sheet-heading p {
+  margin: 0 0 9px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.character-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.character-actions button {
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 11px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+/* Character-level actions close the sheet out, set apart from the fields above. */
+.character-actions-footer {
+  margin-top: 4px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+
+.character-actions .character-delete {
+  margin-left: auto;
+  color: #b65050;
+}
+
+.character-warnings {
+  padding: 14px 16px;
+  border-left: 3px solid #c67a32;
+  background: color-mix(in srgb, #c67a32, transparent 91%);
+}
+
+.character-warnings strong {
+  font:
+    600 11px "DM Mono",
+    monospace;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.character-warnings p {
+  margin: 5px 0 0;
+  font-size: 12px;
+}
+
+.character-sheet fieldset {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  position: relative;
+}
+
+.character-sheet legend {
+  position: relative;
+  width: 100%;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--line);
+  color: var(--muted);
+  font:
+    600 11px "DM Mono",
+    monospace;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+/* Sits on the legend's own line, opposite the section title. */
+/* Keeps a section's own controls tucked against its title. */
+.character-legend-title {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.character-legend-add {
+  width: 22px;
+  height: 20px;
+  /* Sized so the legend keeps its text height. */
+  margin: -3px 0;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.character-legend-add:hover {
+  color: var(--accent);
+}
+
+.character-legend-add svg {
+  width: 14px;
+  height: 14px;
+}
+
+.character-rule-help {
+  display: flex;
+}
+
+.character-rule-help > button {
+  width: 24px;
+  height: 20px;
+  /* Keeps the icon from making the legend taller than its text. */
+  margin: -3px 0;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+}
+
+.character-rule-help > button[aria-expanded="true"] {
+  color: var(--accent);
+}
+
+.character-rule-popover {
+  position: absolute;
+  z-index: 8;
+  /* Anchored to the legend, so it always clears the rule under the section title. */
+  top: calc(100% + 14px);
+  right: 0;
+  width: min(430px, calc(100vw - 56px));
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 20px 55px #0005;
+  /* The popover lives inside the legend, so undo the legend's label typography. */
+  font:
+    400 13px Inter,
+    sans-serif;
+  letter-spacing: 0;
+  text-align: left;
+  text-transform: none;
+  animation: character-rule-in 0.16s var(--ease) both;
+}
+
+.character-rule-popover.pinned {
+  border-color: color-mix(in srgb, var(--accent), var(--line) 45%);
+  box-shadow:
+    0 20px 55px #0005,
+    inset 3px 0 var(--accent);
+}
+
+@keyframes character-rule-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
+.character-rule-popover > header {
+  position: static;
+  padding: 11px 13px;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  border-bottom: 1px solid var(--line);
+  background: color-mix(in srgb, var(--surface) 92%, var(--accent));
+}
+
+.character-rule-popover > header strong,
+.character-rule-jump {
+  font:
+    650 11px Unbounded,
+    sans-serif;
+  letter-spacing: -0.02em;
+}
+
+/* Pinned previews link back to the same heading in the full reference. */
+.character-rule-jump {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--text);
+  text-decoration: none;
+  border-bottom: 1px solid color-mix(in srgb, var(--accent), transparent 55%);
+}
+
+.character-rule-jump:hover,
+.character-rule-jump:focus-visible {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+.character-rule-jump svg {
+  width: 13px;
+  height: 13px;
+  flex: none;
+}
+
+.character-rule-popover > header span {
+  color: var(--muted);
+  font:
+    500 9px "DM Mono",
+    monospace;
+  white-space: nowrap;
+}
+
+.character-rule-content {
+  max-height: 310px;
+  padding: 13px;
+  overflow-y: auto;
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.character-rule-content h1,
+.character-rule-content h2,
+.character-rule-content h3 {
+  margin: 0 0 9px;
+  font-size: 14px;
+}
+
+.character-rule-content p {
+  margin: 0 0 9px;
+}
+
+.character-rule-help > button:hover {
+  color: var(--accent);
+}
+
+.character-rule-help > button svg {
+  width: 15px;
+  height: 15px;
+}
+
+/* Monolith uses the sheet body as a three-part workspace on desktop. */
+.character-layout {
+  min-width: 0;
+  display: grid;
+  align-items: start;
+  gap: 22px;
+}
+
+.character-layout-monolith {
+  grid-template-columns: minmax(180px, 0.8fr) minmax(220px, 1.05fr) minmax(210px, 0.9fr);
+  grid-template-areas:
+    "left main right"
+    "talents talents right";
+}
+
+.character-layout-rail,
+.character-layout-main,
+.character-layout-talents {
+  min-width: 0;
+  display: grid;
+  align-content: start;
+  gap: 18px;
+}
+
+.character-layout-left {
+  grid-area: left;
+  padding-right: 22px;
+  border-right: 1px solid var(--line);
+}
+
+.character-layout-main {
+  grid-area: main;
+}
+
+.character-layout-talents {
+  grid-area: talents;
+}
+
+.character-layout-right {
+  grid-area: right;
+  padding-left: 22px;
+  border-left: 1px solid var(--line);
+}
+
+.character-layout .character-sheet-fields > .character-sheet-field {
+  max-width: none;
+}
+
+.character-layout-main .character-stat-table {
+  width: 100%;
+}
+
+.character-layout-rail .character-list {
+  grid-template-columns: 1fr;
+}
+
+/* Level, XP, and Corruption stay on one line however narrow the rail gets.
+   Columns never shrink below their label, and the subgrid rows keep the inputs level. */
+/* Two per line, so the third field starts a new line with room for its caption. */
+.character-layout-left .character-sheet-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px 12px;
+}
+
+.character-layout-left .character-sheet-fields > .character-sheet-field {
+  grid-row: span 2;
+  grid-template-rows: subgrid;
+}
+
+.character-layout-right .character-list label {
+  grid-template-columns: 82px minmax(0, 1fr);
+}
+
+/* Compact sections sit beside the stat table instead of each claiming a full row. */
+.character-section-band {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: start;
+  gap: 18px 26px;
+}
+
+.character-band-stats {
+  flex: 1 1 340px;
+  max-width: 430px;
+}
+
+.character-band-compact {
+  flex: 1 1 300px;
+  min-width: 0;
+  display: grid;
+  align-content: start;
+  gap: 16px;
+}
+
+.character-sheet-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 18px;
+}
+
+.character-sheet-fields > .character-sheet-field {
+  flex: 1 1 180px;
+  min-width: 0;
+  max-width: 340px;
+  display: grid;
+  gap: 5px;
+}
+
+/* Holds the field's caption beside its own rules reminder. */
+.character-field-label {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  min-width: 0;
+}
+
+.character-sheet .character-field-label > label {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.character-field-label .character-rule-popover {
+  top: calc(100% + 8px);
+}
+
+/* Fields in the narrow left rail have no room to their left, so open rightward. */
+.character-layout-left .character-field-label .character-rule-popover {
+  right: auto;
+  left: 0;
+}
+
+/* Numbers and toggles never need a text field's width. */
+.character-sheet-fields > .narrow-field {
+  flex: 0 1 102px;
+}
+
+.character-sheet-fields > .wide-field {
+  flex: 1 1 100%;
+  max-width: none;
+}
+
+.character-sheet-fields input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--accent);
+}
+
+/* Entry fields: a growable list of titled, free-form notes. */
+.character-entries {
+  display: grid;
+  gap: 10px;
+}
+
+.character-entry {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 4px 10px;
+  padding: 9px 12px 11px;
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--surface), var(--text) 2%);
+}
+
+.character-sheet .character-entry-title {
+  border-bottom-color: transparent;
+  font:
+    600 14px Inter,
+    sans-serif;
+}
+
+.character-sheet .character-entry-title:focus {
+  border-bottom-color: var(--accent);
+}
+
+.character-entry-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.character-entry-remove,
+.character-entry-confirm,
+.character-entry-edit {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.character-entry-remove:hover {
+  color: #b65050;
+}
+
+.character-entry-confirm:hover,
+.character-entry-edit:hover {
+  color: var(--accent);
+}
+
+.character-entry-remove svg,
+.character-entry-confirm svg,
+.character-entry-edit svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* A confirmed entry reads as a note rather than a form. */
+.character-entry-locked {
+  align-items: start;
+  gap: 2px 10px;
+  padding: 7px 12px 9px;
+}
+
+.character-entry-locked > strong {
+  min-width: 0;
+  padding-top: 4px;
+  font:
+    600 13px Inter,
+    sans-serif;
+  overflow-wrap: anywhere;
+}
+
+.character-entry-locked > p {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.character-sheet .character-entry textarea {
+  grid-column: 1 / -1;
+  min-height: 54px;
+  border: 0;
+  padding: 0;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.character-entry-add {
+  justify-self: start;
+  min-height: 30px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 11px;
+  border: 1px dashed var(--line);
+  background: transparent;
+  color: var(--muted);
+  font:
+    500 10px "DM Mono",
+    monospace;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.character-entry-add:hover {
+  border-style: solid;
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.character-entries-empty {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+/* Only the sockets actually in use appear on the sheet. */
+.character-slot-summary {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 4px 22px;
+}
+
+.character-slot-summary li {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr);
+  align-items: baseline;
+  gap: 10px;
+}
+
+.character-slot-summary span {
+  overflow: hidden;
+  color: var(--muted);
+  font:
+    500 10px "DM Mono",
+    monospace;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-overflow: ellipsis;
+}
+
+.character-slot-summary strong {
+  min-width: 0;
+  font:
+    500 14px Inter,
+    sans-serif;
+  overflow-wrap: anywhere;
+}
+
+.character-slot-modal {
+  width: min(620px, 100%);
+}
+
+.character-slot-body {
+  padding: 20px 26px;
+  overflow-y: auto;
+}
+
+.character-slot-modal footer {
+  display: flex;
+  justify-content: flex-end;
+  padding: 14px 26px 18px;
+  border-top: 1px solid var(--line);
+}
+
+.character-stat-table {
+  width: min(430px, 100%);
+}
+
+.character-band-stats .character-stat-table {
+  width: 100%;
+}
+
+.character-stat-header,
+.character-stat-row {
+  display: grid;
+  grid-template-columns: minmax(96px, 1fr) repeat(2, 68px);
+  align-items: center;
+}
+
+.character-stat-header {
+  margin-bottom: 4px;
+  color: var(--muted);
+  font:
+    500 9px "DM Mono",
+    monospace;
+  letter-spacing: 0.1em;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.character-stat-max-header {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.character-stat-max-toggle {
+  width: 26px;
+  height: 24px;
+  /* A thumb-sized target that still lets the header keep its text height. */
+  margin: -6px -4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.character-stat-max-toggle:hover,
+.character-stat-max-toggle[aria-pressed="true"] {
+  color: var(--accent);
+}
+
+.character-stat-max-toggle svg {
+  width: 12px;
+  height: 12px;
+}
+
+.character-stat-row + .character-stat-row {
+  margin-top: 5px;
+}
+
+.character-stat-name {
+  padding-right: 12px;
+  color: var(--muted);
+  font:
+    500 10px "DM Mono",
+    monospace;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.character-stat-values {
+  grid-column: 2 / 4;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  overflow: hidden;
+  border: 1px solid var(--line);
+}
+
+.character-sheet .character-stat-values input {
+  min-width: 0;
+  height: 34px;
+  padding: 6px 4px;
+  border: 0;
+  background: transparent;
+  text-align: center;
+}
+
+.character-sheet .character-stat-values input + input {
+  border-left: 1px solid var(--line);
+}
+
+.character-sheet .character-stat-values input:focus {
+  position: relative;
+  outline: 1px solid var(--accent);
+  outline-offset: -1px;
+  background: color-mix(in srgb, var(--accent), transparent 94%);
+}
+
+/* A locked maximum offers no steppers; unlocking it restores them. */
+.character-sheet .character-stat-values input.character-stat-max:read-only {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+.character-sheet .character-stat-values input.character-stat-max:read-only::-webkit-outer-spin-button,
+.character-sheet .character-stat-values input.character-stat-max:read-only::-webkit-inner-spin-button {
+  margin: 0;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.character-sheet .character-stat-values input.character-stat-max:read-only {
+  color: var(--muted);
+  cursor: default;
+}
+
+.character-sheet .character-stat-values input.character-stat-max:not(:read-only):not(:disabled) {
+  background: color-mix(in srgb, var(--accent), transparent 93%);
+}
+
+.character-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  column-gap: 22px;
+  row-gap: 2px;
+}
+
+.character-list label {
+  grid-template-columns: 92px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+}
+
+.character-list label span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Drops a group of slots onto its own row rather than continuing the previous one. */
+.character-list .character-list-group-start {
+  grid-column: 1;
+}
+
+/* A slot keeps its free-text field; the pencil offers the book's own gear. */
+.character-slot {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 26px;
+  align-items: center;
+  gap: 4px;
+}
+
+.character-slot-edit {
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.character-slot:hover .character-slot-edit,
+.character-slot-edit:focus-visible {
+  border-color: var(--line);
+  color: var(--accent);
+}
+
+@media (hover: none) {
+  .character-slot-edit {
+    border-color: var(--line);
+  }
+}
+
+.character-item-editor {
+  margin-top: 12px;
+  padding: 14px 16px;
+  display: grid;
+  gap: 10px;
+  border: 1px solid var(--accent);
+  background: color-mix(in srgb, var(--accent), transparent 94%);
+}
+
+.character-item-slot {
+  margin: 0;
+  color: var(--muted);
+  font:
+    600 10px "DM Mono",
+    monospace;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.character-sheet .character-item-editor label {
+  display: grid;
+  gap: 5px;
+  color: var(--muted);
+  font:
+    600 10px "DM Mono",
+    monospace;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.character-sheet .character-item-editor select,
+.character-sheet .character-item-editor input {
+  width: 100%;
+  border: 1px solid var(--line);
+  padding: 8px 10px;
+  background: var(--surface);
+  color: var(--text);
+  font:
+    500 14px Inter,
+    sans-serif;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.character-item-detail {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.character-item-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.character-item-actions button:not(.primary-button) {
+  min-height: 38px;
+  padding: 0 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.character-save {
+  justify-self: start;
+}
+
+.character-empty {
+  max-width: 520px;
+  padding: 70px 42px;
+}
+
+.character-empty h3 {
+  margin: 0 0 14px;
+  font:
+    600 28px/1.05 Unbounded,
+    sans-serif;
+  letter-spacing: -0.04em;
+}
+
+.character-empty p:last-child {
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+@media (max-width: 1100px) and (min-width: 701px) {
+  .character-workspace {
+    grid-template-columns: 180px minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 940px) {
+  .character-layout-monolith {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "left"
+      "main"
+      "talents"
+      "right";
+  }
+
+  .character-layout-left,
+  .character-layout-right {
+    padding-inline: 0;
+    border-inline: 0;
+  }
+}
+
+@media (max-width: 700px) {
+  .table-header .header-actions .icon-button.invite-player-button {
+    display: none;
+  }
+
+  .modal.modal-wide.character-modal {
+    width: 100%;
+    height: 96svh;
+    max-height: 96svh;
+  }
+
+  .character-workspace {
+    display: block;
+  }
+
+  .character-index {
+    display: flex;
+    overflow-x: auto;
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+    padding: 0;
+  }
+
+  .character-index > button {
+    flex: 0 0 150px;
+    border-left: 0;
+    border-bottom: 3px solid transparent;
+  }
+
+  .character-index > button:hover,
+  .character-index > button.selected {
+    border-left-color: transparent;
+    border-bottom-color: var(--accent);
+  }
+
+  .character-index > p {
+    min-width: 100%;
+  }
+
+  /* Group labels would break the horizontal strip, so the rows just run together. */
+  .character-index-heading {
+    display: none;
+  }
+
+  .character-index > .character-index-toggle {
+    flex: 0 0 auto;
+    width: auto;
+    border-left: 1px solid var(--line);
+    white-space: nowrap;
+  }
+
+  /* The rail is a horizontal strip here, so the action trails the characters. */
+  .character-index > .character-index-create {
+    flex: 0 0 auto;
+    /* Undoes the full-width sizing the character rows use in the vertical rail. */
+    width: auto;
+    margin-top: 0;
+    border-top: 0;
+    border-left: 1px solid var(--line);
+    white-space: nowrap;
+  }
+
+  .character-sheet {
+    padding: 22px 18px 40px;
+  }
+
+  .character-profile {
+    gap: 14px;
+  }
+
+  .character-sheet-heading {
+    grid-template-columns: 1fr;
+    gap: 5px;
+  }
+
+  .character-rule-popover > header {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .character-section-band {
+    gap: 16px;
+  }
+
+  .character-band-stats {
+    max-width: none;
+  }
+
+  .character-stat-table {
+    width: 100%;
+  }
+
+  .character-stat-header,
+  .character-stat-row {
+    grid-template-columns: minmax(105px, 1fr) repeat(2, minmax(64px, 72px));
+  }
+
+  .character-list {
+    grid-template-columns: 1fr;
+  }
+
+  .character-actions .character-delete {
+    margin-left: 0;
+  }
+
+  .character-save {
+    width: 100%;
+  }
+}
