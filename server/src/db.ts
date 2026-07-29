@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import { THEME_IDS } from "@devils-toys/shared";
+import { BUILTIN_TABLE_TAGS, defaultTagLabel, SYSTEM_IDS, THEME_IDS } from "@devils-toys/shared";
 import { config } from "./config.js";
 
 fs.mkdirSync(config.dataDir, { recursive: true });
@@ -9,13 +9,16 @@ fs.mkdirSync(path.join(config.dataDir, "uploads"), { recursive: true });
 fs.mkdirSync(path.join(config.dataDir, "logs"), { recursive: true });
 
 export const db = new DatabaseSync(path.join(config.dataDir, "devils-toys.sqlite"));
-db.exec("PRAGMA foreign_keys = ON; PRAGMA journal_mode = WAL;");
+// The Devil's Tables runs as its own process against this same file, so a writer
+// waits its turn instead of failing the request outright.
+db.exec("PRAGMA foreign_keys = ON; PRAGMA journal_mode = WAL; PRAGMA busy_timeout = 5000;");
 
+const systemCheckList = SYSTEM_IDS.map((system) => `'${system}'`).join(",");
 const themeCheckList = THEME_IDS.map((theme) => `'${theme}'`).join(",");
 const roomsColumns = `
     id INTEGER PRIMARY KEY,
     name TEXT NOT NULL,
-    system TEXT NOT NULL CHECK(system IN ('cairn','monolith')),
+    system TEXT NOT NULL CHECK(system IN (${systemCheckList})),
     theme TEXT NOT NULL CHECK(theme IN (${themeCheckList})),
     archived INTEGER NOT NULL DEFAULT 0,
     created_by INTEGER NOT NULL REFERENCES accounts(id),
@@ -125,6 +128,13 @@ db.exec(`
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
   );
+  CREATE TABLE IF NOT EXISTS table_tags (
+    slug TEXT PRIMARY KEY,
+    label TEXT NOT NULL,
+    builtin INTEGER NOT NULL DEFAULT 0,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+  );
   CREATE TABLE IF NOT EXISTS custom_npcs (
     id INTEGER PRIMARY KEY,
     room_id INTEGER NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
@@ -140,11 +150,15 @@ function hasColumn(table: string, column: string) {
   return (db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[]).some((item) => item.name === column);
 }
 
-// A theme added after a database was created is still rejected by the older CHECK
-// constraint, so rebuild rooms whenever its recorded schema is missing a theme.
+// A system or theme added after a database was created is still rejected by the
+// older CHECK constraint, so rebuild rooms whenever its recorded schema is stale.
 const roomsSchema =
   one<{ sql: string }>("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'rooms'")?.sql ?? "";
-if (roomsSchema && THEME_IDS.some((theme) => !roomsSchema.includes(`'${theme}'`))) {
+if (
+  roomsSchema &&
+  (SYSTEM_IDS.some((system) => !roomsSchema.includes(`'${system}'`)) ||
+    THEME_IDS.some((theme) => !roomsSchema.includes(`'${theme}'`)))
+) {
   db.exec("PRAGMA foreign_keys = OFF");
   db.exec("BEGIN IMMEDIATE");
   try {
@@ -204,6 +218,26 @@ if (!hasColumn("room_state", "map_id"))
   db.exec("ALTER TABLE room_state ADD COLUMN map_id INTEGER REFERENCES media(id)");
 if (!hasColumn("room_state", "group_json"))
   db.exec("ALTER TABLE room_state ADD COLUMN group_json TEXT NOT NULL DEFAULT '{}'");
+
+// The tag vocabulary is editable, so the tags shipped with the application are
+// seeded rather than fixed. Ignoring a conflict leaves a tag that has since been
+// relabelled exactly as the instance renamed it.
+const seedTableTag = db.prepare(
+  "INSERT OR IGNORE INTO table_tags (slug, label, builtin, sort_order) VALUES (?, ?, 1, ?)"
+);
+BUILTIN_TABLE_TAGS.forEach((slug, position) => seedTableTag.run(slug, defaultTagLabel(slug), position));
+
+// A tag added to the application after a database was made would otherwise take
+// its new position while the tags already there kept their old ones, leaving the
+// vocabulary interleaved. Position is presentation only, so it is safe to
+// restate: built-ins sit where they are declared, and anything this instance
+// added keeps its own order after them.
+const placeBuiltinTag = db.prepare("UPDATE table_tags SET sort_order = ? WHERE slug = ? AND sort_order <> ?");
+BUILTIN_TABLE_TAGS.forEach((slug, position) => placeBuiltinTag.run(position, slug, position));
+db.prepare("UPDATE table_tags SET sort_order = sort_order + ? WHERE builtin = 0 AND sort_order < ?").run(
+  BUILTIN_TABLE_TAGS.length,
+  BUILTIN_TABLE_TAGS.length
+);
 
 export function one<T>(sql: string, ...params: (string | number | bigint | null | Uint8Array)[]): T | undefined {
   return db.prepare(sql).get(...params) as T | undefined;

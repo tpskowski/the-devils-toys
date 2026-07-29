@@ -10,7 +10,11 @@ Cairn was written by Yochai Gal and its text is licensed under [CC BY-SA 4.0](ht
 
 Monolith: Interstellar Science-Fiction Adventure, version 1.1, was written by Adam Hensley and its text is licensed under [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/). Monolith is a science-fiction hack of Cairn. It is reprinted with minor changes for the digital format and with the art removed; its own credits are preserved in `raw/Monolith.md`. For the original, visit [adamhensley.itch.io](https://adamhensley.itch.io/).
 
-Both games are used under CC BY-SA 4.0. The rules text this application serves, and the tables, bestiary entries, and starship parts read out of it, stay under that licence. Repairs to imported wording are recorded in `raw/corrections.md`.
+The Cairn and Monolith rules text this application serves, and data read out of it, remain under CC BY-SA 4.0. Repairs to those sources are recorded in `raw/corrections.md`.
+
+## Cities Without Number
+
+Cities Without Number was written by Kevin Crawford and released under [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/). The canonical HTML source and runtime Markdown derivative are included in `raw/`; all intentional differences are recorded in `raw/citieswithoutnumber-corrections.md`. For the original game, visit [Sine Nomine Publishing](https://sine-nomine-publishing.myshopify.com/).
 
 ## Software
 

@@ -33,6 +33,16 @@
 - Custom sets live in the `table_sets` table as Markdown and go through the same parser, so a set added outside any system behaves exactly like a system's own.
 - Roll visibility is one choice with four values (`public`, `private`, `invisible`, `reveal`) even though the interface presents three checkboxes. The server decides what each one broadcasts; a client must never be trusted to withhold table text it was sent.
 
+## The Devil's Tables
+
+- The editor is a second application: `tables-client/` served by `server/src/tables-server.ts` on `DEVILS_TABLES_PORT`. It shares the database and the session cookie — which is scoped by host, not port — and holds no rooms, media, or WebSockets. It has to start and run with the game server stopped; anything it needs from `server/src/index.ts` gets extracted into a router both entries mount, as `sessionRouter` and `tableSetRouter` were.
+- Markdown in `table_sets` stays the source of truth. The grid is a view onto it, parsed in the browser with the same `parseRollTables` the roller uses, so what is shown is what will be rolled. Never add a second store for table contents.
+- An edit is written back with `spliceTable`, which replaces only the lines `RollTable.source` recorded and leaves every other line — prose, notes, other tables — exactly as it was. Re-emitting a whole document to change one row is a bug. `serializeSet` is for documents with no source to preserve: CSV imports and bundles.
+- A table's own tags live in a `<!-- tags: … -->` comment above it, so they survive an export and a merge into `raw/`. Set-level tags stay in `table_sets.tags_json`. A table shows both, deduplicated in vocabulary order.
+- The tag vocabulary is a database table seeded from `BUILTIN_TABLE_TAGS`, not a fixed union. Seeding is keyed on the slug, so a built-in's slug can never change — it would come back beside its replacement on the next start. Validate tags against the vocabulary on read and write, and refuse an unknown slug rather than dropping it.
+- Three gates in `server/src/table-permissions.ts` cover every table route: anyone signed in reads, a GM authors, an admin also re-slugs, merges, and retires tags and produces a repository bundle. Put a new route behind one of them; do not write another role check.
+- Round-trip fidelity is the property the editor rests on. `server/src/table-markdown.test.ts` rewrites every table in both rulebooks and re-reads it; keep it passing rather than special-casing the parser.
+
 ## Database schema changes
 
 - The schema in `server/src/db.ts` runs on every start with `CREATE TABLE IF NOT EXISTS`, so it never alters a table that already exists. Changes to a table in the field need an explicit migration below the schema block.

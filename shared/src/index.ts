@@ -1,4 +1,9 @@
-export const SYSTEM_IDS = ["cairn", "monolith"] as const;
+export * from "./roll-tables.js";
+export * from "./table-csv.js";
+export * from "./table-markdown.js";
+export * from "./table-tags.js";
+
+export const SYSTEM_IDS = ["cairn", "monolith", "cwn"] as const;
 export const THEME_IDS = ["heroic", "digital", "used", "grim", "shinji"] as const;
 
 export type SystemId = (typeof SYSTEM_IDS)[number];
@@ -89,6 +94,11 @@ export interface CharacterFieldDefinition {
   label: string;
   kind: CharacterFieldKind;
   placeholder?: string;
+  /** A number field that can open a configured system roll with this value as its target. */
+  roll?: {
+    kind: "save";
+    label: string;
+  };
 }
 
 export interface CharacterSheetSection {
@@ -197,19 +207,72 @@ export interface SaveOutcomeLabels {
 export interface DiceRules {
   save: {
     sides: 20;
-    success: "equal-or-under";
-    automaticSuccess: 1;
-    automaticFailure: 20;
+    success: "equal-or-under" | "equal-or-over";
+    automaticSuccess: number;
+    automaticFailure: number;
+    /** Save choices shown by the dice builder when a roll is not launched from the sheet. */
+    types: readonly { id: string; label: string }[];
     outcomes: {
       normal: SaveOutcomeLabels;
       advantage?: SaveOutcomeLabels;
       disadvantage?: SaveOutcomeLabels;
     };
   };
-  damage: {
+  /** Cairn-family damage positions. Omit for systems that roll ordinary weapon damage. */
+  damage?: {
     impairedSides: 4;
     enhancedSides: 12;
     multipleRolls: "keep-highest";
+  };
+  /** A named check preset in addition to the free-form dice builder. */
+  skillCheck?: {
+    dice: "2d6";
+    success: "equal-or-over";
+    defaultDifficulty: number;
+    label: string;
+  };
+}
+
+export interface SystemSourceDocument {
+  /** Stable within the owning system package. */
+  id: string;
+  /** Runtime source read by the application. */
+  markdownFile: string;
+  /** Canonical source used to audit the Markdown conversion. */
+  canonicalFile?: string;
+  /** Human-readable ledger of intentional differences from the canonical source. */
+  correctionsFile?: string;
+  license: string;
+}
+
+export interface SystemCompatibility {
+  family: string;
+  version: number;
+}
+
+/**
+ * A compiled, provenance-aware slice of a system. Imports are deliberately
+ * declarations rather than runtime installation: a future system can reference
+ * a compatible module and the application can compose it at build time.
+ */
+export interface GameSystemContentModule {
+  /** Globally stable, namespaced id such as "cwn/cyberware". */
+  id: string;
+  label: string;
+  sourceDocumentId: string;
+  /** Root headings owned by this module in its source document. */
+  rootHeadings: readonly string[];
+  classification: RoomRole;
+  compatibility?: SystemCompatibility;
+  /** Namespace reserved for module-owned character data and anchors. */
+  storageNamespace: string;
+  provides: readonly string[];
+  requires: readonly string[];
+  conflictsWith?: readonly string[];
+  /** Native sheet fragments this module contributes; useful to a future composer. */
+  characterSheet?: {
+    sections?: readonly CharacterSheetSection[];
+    lists?: readonly CharacterListDefinition[];
   };
 }
 
@@ -220,6 +283,28 @@ export interface RollTableRow {
   min: number;
   max: number;
   cells: readonly string[];
+}
+
+/**
+ * Where a table sits in the document it was parsed from, so an editor can rewrite
+ * one table without re-emitting — and reformatting — everything around it.
+ * Line numbers are zero-based and `tableEnd` is inclusive.
+ */
+export interface RollTableSource {
+  /** The heading that owns the table, when the table has one above it. */
+  heading: { line: number; level: number; text: string } | null;
+  /** The line holding this table's `<!-- tags: ... -->` comment, when it has one. */
+  tagsLine: number | null;
+  /** The table's header row. */
+  tableStart: number;
+  /** The table's last row. */
+  tableEnd: number;
+  /** The die column heading as written, kept so an untouched die is not restyled. */
+  dieColumn: string;
+  /** The die this table parsed as, for noticing when an edit changes it. */
+  dice: string;
+  /** Whether the owning heading has exactly one table, so renaming it is unambiguous. */
+  soleTable: boolean;
 }
 
 export interface RollTable {
@@ -237,9 +322,11 @@ export interface RollTable {
   /** Controlled discovery tags applied by the system or custom-set metadata. */
   tags: readonly TableTag[];
   rows: readonly RollTableRow[];
+  /** Only present on a freshly parsed table; never sent to the roller. */
+  source?: RollTableSource;
 }
 
-export type RollTableSummary = Omit<RollTable, "rows"> & {
+export type RollTableSummary = Omit<RollTable, "rows" | "source"> & {
   rowCount: number;
   /** Rows written past what the stated die can roll, reported rather than hidden. */
   unreachableRows: number;
@@ -255,10 +342,42 @@ export function rollTableLabel(name: string, dice: string) {
 
 export type RollTableSetOrigin = "system" | "custom";
 
-/** Controlled discovery tags for built-in and custom random tables. */
-export const TABLE_TAGS = ["fantasy", "scifi", "character-building", "random-encounter", "gear"] as const;
+/**
+ * The discovery tags every instance starts with. They are seed data rather than
+ * law: the vocabulary lives in the database and is editable, so a tag is any slug
+ * the instance knows about.
+ */
+export const BUILTIN_TABLE_TAGS = [
+  "fantasy",
+  "scifi",
+  "cyberpunk",
+  "real-world",
+  "character-building",
+  "world-building",
+  "random-encounter",
+  "names",
+  "gear",
+  "loot"
+] as const;
 
-export type TableTag = (typeof TABLE_TAGS)[number];
+/** @deprecated Use `BUILTIN_TABLE_TAGS`; kept while callers migrate. */
+export const TABLE_TAGS = BUILTIN_TABLE_TAGS;
+
+export type BuiltinTableTag = (typeof BUILTIN_TABLE_TAGS)[number];
+
+/** A tag is identified by its slug, so tags added by an instance are first class. */
+export type TableTag = string;
+
+/** Lower-case words joined by single hyphens, matching the built-in vocabulary. */
+export const TABLE_TAG_SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
+export interface TableTagDefinition {
+  slug: TableTag;
+  label: string;
+  /** Seeded with the application and protected from deletion. */
+  builtin: boolean;
+  sortOrder: number;
+}
 
 export interface RollTableSet {
   /** "system:cairn" or "custom:12". */
@@ -295,8 +414,16 @@ export interface GameSystem {
   id: SystemId;
   name: string;
   shortName: string;
+  glyph: string;
   defaultTheme: ThemeId;
   tagline: string;
+  /** Heading to focus when the dice builder links to this system's rolling rules. */
+  rollRulesQuery: string;
+  sourceDocuments: readonly SystemSourceDocument[];
+  contentModules: readonly GameSystemContentModule[];
+  /** Compiled cross-system module references. Empty until imports are supported. */
+  imports: readonly string[];
+  compatibility?: SystemCompatibility;
   /** What this system calls the group of characters at the table. */
   partyLabel: string;
   characterSheet: CharacterSheetDefinition;

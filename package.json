@@ -5,6 +5,7 @@
   "type": "module",
   "workspaces": [
     "client",
+    "tables-client",
     "server",
     "shared",
     "systems/*"
@@ -13,12 +14,16 @@
     "dev": "concurrently -n client,server -c cyan,magenta \"npm:dev:client\" \"npm:dev:server\"",
     "dev:client": "npm run dev --workspace @devils-toys/client",
     "dev:server": "npm run dev --workspace @devils-toys/server",
-    "build": "npm run build --workspace @devils-toys/client && npm run build --workspace @devils-toys/server",
+    "build": "npm run build --workspace @devils-toys/client && npm run build --workspace @devils-toys/tables-client && npm run build --workspace @devils-toys/server",
     "start": "npm run start --workspace @devils-toys/server",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
     "format:check": "prettier --check .",
-    "smoke": "node scripts/smoke.mjs && node scripts/characters-smoke.mjs && node scripts/management-smoke.mjs && node scripts/capacity-smoke.mjs && node scripts/media-smoke.mjs && node scripts/audio-smoke.mjs && node scripts/npc-smoke.mjs && node scripts/dice-smoke.mjs && node scripts/tables-smoke.mjs"
+    "smoke": "node scripts/smoke.mjs && node scripts/characters-smoke.mjs && node scripts/management-smoke.mjs && node scripts/capacity-smoke.mjs && node scripts/media-smoke.mjs && node scripts/audio-smoke.mjs && node scripts/npc-smoke.mjs && node scripts/dice-smoke.mjs && node scripts/tables-smoke.mjs && node scripts/tables-editor-smoke.mjs",
+    "dev:tables-client": "npm run dev --workspace @devils-toys/tables-client",
+    "dev:tables-server": "npm run dev:tables --workspace @devils-toys/server",
+    "dev:tables": "concurrently -n tables-client,tables-server -c cyan,magenta \"npm:dev:tables-client\" \"npm:dev:tables-server\"",
+    "start:tables": "npm run start:tables --workspace @devils-toys/server"
   },
   "devDependencies": {
     "concurrently": "^9.2.0",

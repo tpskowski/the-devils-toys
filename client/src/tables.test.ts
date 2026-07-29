@@ -1,12 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { rollTableLabel, type RollTableSummary } from "@devils-toys/shared";
+import { defaultTagLabel, rollTableLabel, tagLabel, type RollTableSummary } from "@devils-toys/shared";
 import {
   categoryOpensTable,
   filterTables,
   filterTablesByTag,
   groupByCategory,
   moveHighlight,
-  tableTagLabel,
   toggleVisibility,
   visibilityNotice
 } from "./tables";
@@ -187,7 +186,13 @@ describe("tagging tables", () => {
   });
 
   it("presents tag slugs as readable labels", () => {
-    expect(tableTagLabel("scifi")).toBe("Sci-fi");
-    expect(tableTagLabel("random-encounter")).toBe("Random Encounter");
+    expect(defaultTagLabel("scifi")).toBe("Sci-fi");
+    expect(defaultTagLabel("random-encounter")).toBe("Random Encounter");
+  });
+
+  it("prefers the name the instance gave a tag", () => {
+    const vocabulary = [{ slug: "scifi", label: "Science Fiction", builtin: true, sortOrder: 1 }];
+    expect(tagLabel("scifi", vocabulary)).toBe("Science Fiction");
+    expect(tagLabel("gear", vocabulary)).toBe("Gear");
   });
 });

@@ -1,7 +1,6 @@
-import fs from "node:fs";
 import type { StarshipPart, SystemId } from "@devils-toys/shared";
-import { projectFile } from "./paths.js";
 import { readPricedRows, splitPricedCell } from "./rules-tables.js";
+import { systemMarkdown } from "./systems.js";
 
 /**
  * Reads the installable parts out of a system's Markdown. Every table under the
@@ -32,8 +31,7 @@ const cache = new Map<SystemId, StarshipPart[]>();
 export function starshipPartsFor(system: SystemId) {
   const cached = cache.get(system);
   if (cached) return cached;
-  const filename = system === "cairn" ? "Cairn.md" : "Monolith.md";
-  const parsed = parseStarshipParts(fs.readFileSync(projectFile("raw", filename), "utf8"));
+  const parsed = parseStarshipParts(systemMarkdown(system));
   cache.set(system, parsed);
   return parsed;
 }

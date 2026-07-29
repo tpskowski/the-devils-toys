@@ -1,10 +1,11 @@
 import fs from "node:fs";
 import { cairn } from "@devils-toys/system-cairn";
+import { cwn } from "@devils-toys/system-cwn";
 import { monolith } from "@devils-toys/system-monolith";
 import type { SystemId } from "@devils-toys/shared";
 import { projectFile } from "./paths.js";
 
-export const systems = { cairn, monolith } as const;
+export const systems = { cairn, monolith, cwn } as const;
 
 export function filterPlayerRules(markdown: string, gmOnlyHeadings: readonly string[]) {
   const blocked = new Set(gmOnlyHeadings.map((heading) => heading.trim().toLocaleLowerCase()));
@@ -22,8 +23,13 @@ export function filterPlayerRules(markdown: string, gmOnlyHeadings: readonly str
   return visible.join("\n");
 }
 
+export function systemMarkdown(system: SystemId) {
+  const source = systems[system].sourceDocuments[0];
+  if (!source) throw new Error(`${systems[system].name} has no rules source.`);
+  return fs.readFileSync(projectFile("raw", source.markdownFile), "utf8");
+}
+
 export function rulesMarkdown(system: SystemId, role: "gm" | "player") {
-  const filename = system === "cairn" ? "Cairn.md" : "Monolith.md";
-  const markdown = fs.readFileSync(projectFile("raw", filename), "utf8");
+  const markdown = systemMarkdown(system);
   return role === "gm" ? markdown : filterPlayerRules(markdown, systems[system].gmOnlyHeadings);
 }

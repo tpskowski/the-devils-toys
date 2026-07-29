@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { BookOpen, Dices } from "lucide-react";
-import type { ChatMessage, SavePosition, SystemId } from "@devils-toys/shared";
+import type { ChatMessage, DiceRules, SavePosition } from "@devils-toys/shared";
 import { api } from "./api";
 import { Modal } from "./Modal";
 import type { SaveRollSetup } from "./save-roll";
 
-type RollMode = "dice" | "save" | "damage";
+type RollMode = "dice" | "save" | "skill" | "damage";
 type DamagePosition = "normal" | "impaired" | "enhanced";
 type Selection = "" | "kh1" | "kl1";
 type RollVisibility = "public" | "private" | "invisible";
@@ -22,7 +22,7 @@ export function rollVisibilityNotice(visibility: RollVisibility, isGm: boolean) 
 
 export function DiceModal({
   roomId,
-  system,
+  diceRules,
   isGm,
   initialSave,
   onRolled,
@@ -30,7 +30,7 @@ export function DiceModal({
   onRules
 }: {
   roomId: number;
-  system: SystemId;
+  diceRules: DiceRules;
   isGm: boolean;
   initialSave?: SaveRollSetup;
   onRolled: (message: ChatMessage) => void;
@@ -42,23 +42,26 @@ export function DiceModal({
   const [sides, setSides] = useState(20);
   const [modifier, setModifier] = useState(0);
   const [selection, setSelection] = useState<Selection>("");
-  const [ability, setAbility] = useState<"STR" | "DEX" | "WIL">(initialSave?.ability ?? "STR");
+  const [saveLabel, setSaveLabel] = useState(initialSave?.label ?? diceRules.save.types[0]?.label ?? "Save");
   const [target, setTarget] = useState(initialSave?.target ?? 10);
+  const [difficulty, setDifficulty] = useState(diceRules.skillCheck?.defaultDifficulty ?? 8);
   const [savePosition, setSavePosition] = useState<SavePosition>("normal");
   const [damagePosition, setDamagePosition] = useState<DamagePosition>("normal");
   // Visibility is one mutually exclusive choice; "public" is labeled Standard in the UI.
   const [visibility, setVisibility] = useState<RollVisibility>("public");
   const [error, setError] = useState("");
 
-  const rollCount = mode === "save" ? 1 : count;
+  const rollCount = mode === "save" ? 1 : mode === "skill" ? 2 : count;
   const rollSides =
     mode === "save"
       ? 20
-      : mode === "damage" && damagePosition !== "normal"
-        ? damagePosition === "impaired"
-          ? 4
-          : 12
-        : sides;
+      : mode === "skill"
+        ? 6
+        : mode === "damage" && damagePosition !== "normal"
+          ? damagePosition === "impaired"
+            ? (diceRules.damage?.impairedSides ?? 4)
+            : (diceRules.damage?.enhancedSides ?? 12)
+          : sides;
   const rollSelection = mode === "damage" && rollCount > 1 ? "kh1" : mode === "dice" && rollCount > 1 ? selection : "";
   const rollModifier = mode === "save" ? 0 : modifier;
   const expression = `${rollCount}d${rollSides}${rollSelection}${rollModifier ? `${rollModifier > 0 ? "+" : ""}${rollModifier}` : ""}`;
@@ -72,8 +75,8 @@ export function DiceModal({
           expression,
           private: visibility !== "public",
           invisible: visibility === "invisible",
-          save:
-            mode === "save" ? { target, ability, position: system === "monolith" ? savePosition : "normal" } : undefined
+          save: mode === "save" ? { target, label: saveLabel, position: savePosition } : undefined,
+          check: mode === "skill" ? { difficulty, label: diceRules.skillCheck?.label ?? "Skill check" } : undefined
         })
       });
       onRolled(response.message);
@@ -86,9 +89,16 @@ export function DiceModal({
     <Modal title="Roll dice" onClose={onClose}>
       <div className="dice-builder">
         <div className="dice-mode-row" aria-label="Roll type">
-          {(["dice", "save", "damage"] as const).map((item) => (
+          {(
+            [
+              "dice",
+              "save",
+              ...(diceRules.skillCheck ? (["skill"] as const) : []),
+              ...(diceRules.damage ? (["damage"] as const) : [])
+            ] as RollMode[]
+          ).map((item) => (
             <button key={item} className={mode === item ? "selected" : ""} onClick={() => setMode(item)}>
-              {item === "dice" ? "Free roll" : item === "save" ? "Save" : "Damage"}
+              {item === "dice" ? "Free roll" : item === "save" ? "Save" : item === "skill" ? "Skill check" : "Damage"}
             </button>
           ))}
         </div>
@@ -97,11 +107,13 @@ export function DiceModal({
           <>
             <div className="dice-field-row">
               <label>
-                Ability
-                <select value={ability} onChange={(event) => setAbility(event.target.value as typeof ability)}>
-                  <option value="STR">STR</option>
-                  <option value="DEX">DEX</option>
-                  <option value="WIL">WIL</option>
+                Save
+                <select value={saveLabel} onChange={(event) => setSaveLabel(event.target.value)}>
+                  {diceRules.save.types.map((type) => (
+                    <option value={type.label} key={type.id}>
+                      {type.label}
+                    </option>
+                  ))}
                 </select>
               </label>
               <label>
@@ -115,7 +127,7 @@ export function DiceModal({
                 />
               </label>
             </div>
-            {system === "monolith" && (
+            {(diceRules.save.outcomes.advantage || diceRules.save.outcomes.disadvantage) && (
               <>
                 <div className="dice-position-row" aria-label="Save position">
                   {(["normal", "advantage", "disadvantage"] as const).map((position) => (
@@ -134,8 +146,36 @@ export function DiceModal({
               </>
             )}
             <p className="system-dice-note">
-              Roll d20 equal to or under the ability. 1 always succeeds; 20 always fails.
+              Roll d20 {diceRules.save.success === "equal-or-under" ? "equal to or under" : "equal to or over"} the
+              target. Natural {diceRules.save.automaticSuccess} succeeds; natural {diceRules.save.automaticFailure}{" "}
+              fails.
             </p>
+          </>
+        ) : mode === "skill" ? (
+          <>
+            <div className="dice-field-row">
+              <label>
+                Modifier
+                <input
+                  type="number"
+                  min={-20}
+                  max={20}
+                  value={modifier}
+                  onChange={(event) => setModifier(Number(event.target.value))}
+                />
+              </label>
+              <label>
+                Difficulty
+                <input
+                  type="number"
+                  min={1}
+                  max={30}
+                  value={difficulty}
+                  onChange={(event) => setDifficulty(Number(event.target.value))}
+                />
+              </label>
+            </div>
+            <p className="system-dice-note">Roll 2d6 plus skill and attribute modifiers against the difficulty.</p>
           </>
         ) : (
           <>

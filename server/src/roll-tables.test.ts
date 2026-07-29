@@ -166,6 +166,20 @@ describe("finding rollable tables in system Markdown", () => {
     ]);
   });
 
+  it("reads multi-die headings and modifier-open row labels", () => {
+    const [reaction] = parseRollTables(`### Reaction
+
+| 2d6 | Result |
+| --- | --- |
+| 2- | Hostile |
+| 3-11 | Uncertain |
+| 12+ | Helpful |
+`);
+    expect(reaction.dice).toBe("2d6");
+    expect(rowForRoll(reaction, -5)?.cells).toEqual(["Hostile"]);
+    expect(rowForRoll(reaction, 15)?.cells).toEqual(["Helpful"]);
+  });
+
   it("reports rows the stated die cannot reach instead of changing the die", () => {
     const [hollowing] = parseRollTables(`### ASPECT DISTORTION
 

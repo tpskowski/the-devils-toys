@@ -7,7 +7,8 @@ import { extractRuleTocHeadings, filterRules, standaloneRuleIdPrefix } from "./r
 
 const systemNames: Record<SystemId, string> = {
   cairn: "Cairn",
-  monolith: "Monolith"
+  monolith: "Monolith",
+  cwn: "Cities Without Number"
 };
 
 export function RulesReferencePage({ system }: { system: SystemId }) {
@@ -60,7 +61,7 @@ export function RulesReferencePage({ system }: { system: SystemId }) {
 
   const filtered = filterRules(markdown, query);
   const headings = extractRuleTocHeadings(filtered);
-  const fallbackTheme = system === "monolith" ? "digital" : "heroic";
+  const fallbackTheme = system === "cairn" ? "heroic" : "digital";
 
   return (
     <main className={`standalone-rules theme-${room?.theme ?? fallbackTheme}`}>

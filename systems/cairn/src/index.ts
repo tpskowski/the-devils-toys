@@ -1,11 +1,11 @@
 import type { GameSystem } from "@devils-toys/shared";
 
 const statFields = [
-  { key: "strCurrent", label: "STR current", kind: "number" },
+  { key: "strCurrent", label: "STR current", kind: "number", roll: { kind: "save", label: "STR" } },
   { key: "strMax", label: "STR maximum", kind: "number" },
-  { key: "dexCurrent", label: "DEX current", kind: "number" },
+  { key: "dexCurrent", label: "DEX current", kind: "number", roll: { kind: "save", label: "DEX" } },
   { key: "dexMax", label: "DEX maximum", kind: "number" },
-  { key: "wilCurrent", label: "WIL current", kind: "number" },
+  { key: "wilCurrent", label: "WIL current", kind: "number", roll: { kind: "save", label: "WIL" } },
   { key: "wilMax", label: "WIL maximum", kind: "number" },
   { key: "hpCurrent", label: "HP current", kind: "number" },
   { key: "hpMax", label: "HP maximum", kind: "number" }
@@ -20,8 +20,41 @@ export const cairn: GameSystem = {
   id: "cairn",
   name: "Cairn",
   shortName: "Cairn",
+  glyph: "C",
   defaultTheme: "heroic",
   tagline: "Strange folk, hidden treasure, and the dark Wood.",
+  rollRulesQuery: "Saves",
+  sourceDocuments: [
+    {
+      id: "cairn",
+      markdownFile: "Cairn.md",
+      correctionsFile: "corrections.md",
+      license: "CC BY-SA 4.0"
+    }
+  ],
+  contentModules: [
+    {
+      id: "cairn/core",
+      label: "Cairn core rules",
+      sourceDocumentId: "cairn",
+      rootHeadings: ["Cairn"],
+      classification: "player",
+      storageNamespace: "cairn.core",
+      provides: ["cairn/core"],
+      requires: []
+    },
+    {
+      id: "cairn/gm",
+      label: "Cairn Warden rules",
+      sourceDocumentId: "cairn",
+      rootHeadings: ["Principles for Wardens", "Bestiary"],
+      classification: "gm",
+      storageNamespace: "cairn.gm",
+      provides: ["cairn/gm"],
+      requires: ["cairn/core"]
+    }
+  ],
+  imports: [],
   partyLabel: "Party",
   abilities: ["Strength", "Dexterity", "Will"],
   gmOnlyHeadings: ["Principles for Wardens", "Bestiary"],
@@ -37,6 +70,11 @@ export const cairn: GameSystem = {
       success: "equal-or-under",
       automaticSuccess: 1,
       automaticFailure: 20,
+      types: [
+        { id: "STR", label: "STR" },
+        { id: "DEX", label: "DEX" },
+        { id: "WIL", label: "WIL" }
+      ],
       outcomes: {
         normal: { success: "Success", failure: "Failure" }
       }

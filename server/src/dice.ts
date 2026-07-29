@@ -84,9 +84,16 @@ export function evaluateSave(roll: number, target: number, position: SavePositio
 
   const passed =
     roll === rules.save.automaticSuccess ||
-    (roll !== rules.save.automaticFailure && rules.save.success === "equal-or-under" && roll <= target);
+    (roll !== rules.save.automaticFailure &&
+      (rules.save.success === "equal-or-under" ? roll <= target : roll >= target));
   const labels = rules.save.outcomes[position] ?? rules.save.outcomes.normal;
   return { passed, label: passed ? labels.success : labels.failure, target, position };
+}
+
+export function evaluateCheck(total: number, difficulty: number) {
+  if (!Number.isInteger(difficulty) || difficulty < 1 || difficulty > 30)
+    throw new Error("Check difficulties must be between 1 and 30.");
+  return { passed: total >= difficulty, label: total >= difficulty ? "Success" : "Failure", difficulty };
 }
 
 export function parseRollCommand(body: string): string | undefined {

@@ -198,14 +198,18 @@ Mercenary crews are guns for hire. They have experience in combat, insider knowl
 
 - Cigar
 
+##### Signature Weapon
+
 | D6 | Signature Weapon |
 | --- | --- |
-| 1 HP | Ifriti-9000 “Hell Spitter” (D10 Blast, Thermal, Bulky) and 2 tanks of fuel (spec-ammo) A deluxe model flamethrower that sprays super-thermal plasma that can burn through metal. |
-| 2 HP | Folding Vibro-Shank (D6, Deadly, Shock, concealable) A five-inch blade that does absolutely devastating damage. Folds up for concealing. Very-illegal. |
-| 3 HP | Supercharged Carbine Repeater (D8 Thermal and d6 Cryo, bulky) Custom modded to switch between thermal or sub-zero energy rounds. Switching takes 1 turn. |
-| 4 HP | Jade-Iron Machete (D8, Deadly) 3 feet of marbled green metal with a wicked cutting edge. Expert craftsmanship and quite valuable. |
-| 5 HP | “Trusty” (D6 Blaster) & “Rusty” (D6 Blaster, Cheap) These two guns have been with you through thick & thin. |
-| 6 HP | “Rusty” (D6 Blaster, Cheap) You used to have two but lost the good one… |
+| 1 | Ifriti-9000 “Hell Spitter” (D10 Blast, Thermal, Bulky) and 2 tanks of fuel (spec-ammo) A deluxe model flamethrower that sprays super-thermal plasma that can burn through metal. |
+| 2 | Folding Vibro-Shank (D6, Deadly, Shock, concealable) A five-inch blade that does absolutely devastating damage. Folds up for concealing. Very-illegal. |
+| 3 | Supercharged Carbine Repeater (D8 Thermal and d6 Cryo, bulky) Custom modded to switch between thermal or sub-zero energy rounds. Switching takes 1 turn. |
+| 4 | Jade-Iron Machete (D8, Deadly) 3 feet of marbled green metal with a wicked cutting edge. Expert craftsmanship and quite valuable. |
+| 5 | “Trusty” (D6 Blaster) & “Rusty” (D6 Blaster, Cheap) These two guns have been with you through thick & thin. |
+| 6 | “Rusty” (D6 Blaster, Cheap) You used to have two but lost the good one… |
+
+##### Old Crew Specialty
 
 | D6 | Old Crew Specialty |
 | --- | --- |
@@ -215,6 +219,8 @@ Mercenary crews are guns for hire. They have experience in combat, insider knowl
 | 4 | **Hit Squad:** Assassinations were your bread & butter. Take a thermal detonator, a dark outfit, and an infrared visor helm (Armor 1, heat vision) |
 | 5 | **Corp-Sec:** Private megacorporate security for a major faction. Generate a faction and NPC and determine what type of business. Take the talent “Human Shield”. |
 | 6 | **Deep Cover:** Specialists in infiltration as double agents for espionage and intel gathering. Take an auto-lock slicer, drone cam, and fake ID. |
+
+##### What Happened?
 
 | D6 | What Happened? |
 | --- | --- |
@@ -239,14 +245,18 @@ You have been the subject of unethical and experimental scientific tinkering. Th
 
 - Tattoo (Serial Number or Bar Code)
 
+##### Side-Effects
+
 | D6 | Side-Effects |
 | --- | --- |
-| 1 HP | **Exothermic Lungs:** Exhale a superheated spray of plasma (D10 blast, thermal). Costs 1 fatigue |
-| 2 HP | **Magnetism:** Manipulate metal objects up to 100 lbs with your mind. Costs 1 fatigue. |
-| 3 HP | **Ghost Skin:** Willingly phase through solid objects up to 3 feet thick. Costs 1 fatigue. |
-| 4 HP | **Elasticity:** Your arms and hands can stretch and change form up to 20 sq feet or 60 feet in length. |
-| 5 HP | **Biomimicry:** Change or alter your face and skin once a day. |
-| 6 HP | **Ultra-Conductive:** You can discharge, locally disrupting all nearby computers and circuitry once a day. Immune to electricity and EMP damage. |
+| 1 | **Exothermic Lungs:** Exhale a superheated spray of plasma (D10 blast, thermal). Costs 1 fatigue |
+| 2 | **Magnetism:** Manipulate metal objects up to 100 lbs with your mind. Costs 1 fatigue. |
+| 3 | **Ghost Skin:** Willingly phase through solid objects up to 3 feet thick. Costs 1 fatigue. |
+| 4 | **Elasticity:** Your arms and hands can stretch and change form up to 20 sq feet or 60 feet in length. |
+| 5 | **Biomimicry:** Change or alter your face and skin once a day. |
+| 6 | **Ultra-Conductive:** You can discharge, locally disrupting all nearby computers and circuitry once a day. Immune to electricity and EMP damage. |
+
+##### Type of Experiment
 
 | D6 | Type of Experiment |
 | --- | --- |
@@ -256,6 +266,8 @@ You have been the subject of unethical and experimental scientific tinkering. Th
 | 4 | **Gene-Splicing:** Bio-Engineering via illegal methods made your body more hardy and adaptable. You naturally have 1 armor. |
 | 5 | **Ghost-Shell:** You are a recently re-animated or unwilling consciousness implanted into a synthetic body. You know one random Astromancy from your previous life. Your memory is slowly returning in pieces... |
 | 6 | **6 Billion Credit Person:** You were a pet project of some unknown billionaire. They were attempting to create a perfect specimen. The project was considered a partial failure. Increase one Ability Score to 16. |
+
+##### How Did You Escape?
 
 | D6 | How Did You Escape? |
 | --- | --- |
@@ -280,14 +292,18 @@ You’ve built a career around being handy. You’re skilled at repairing and ma
 
 - Grease-stained work clothes
 
+##### Pet Project
+
 | D6 | Pet Project |
 | --- | --- |
-| 1 HP | **Dimension De-stabilizer:** Tech belt that allows the wearer to slip in and out of reality. You cannot interact with anything in this reality but are still visible. |
-| 2 HP | **Division Multiplier:** Harness that when activated splits you into two smaller versions of yourself. HP & Ability Scores are halved. Inventory exists in a quantum state; items used by one version are inaccessible to the other. Lasts 1 minute. Causes 1 fatigue. |
-| 3 HP | **Molecular Shield Generator:** (+1 armor, 3 bonus HP a day) Swarm of fly-sized nanobots orbit you, occasionally running scans on your biological makeup, providing you with customized shielding and protection. Bonus HP takes a day to recharge. |
-| 4 HP | **Anti-Grav Boots:** Activate to reduce your fall speed at the last second and land safely. Recharge via 100 credit worth of common battery parts in 1d6 hours. |
-| 5 HP | **Catherine:** An A.I. chip you can implant into any basic device. Currently installed in your personal comm unit. Catherine is very polite. Will warn you of any imminent danger you might not notice. May run advanced diagnostics. |
-| 6 HP | **Spider-Wasp Drone:** A spider-sized drone that can quietly fly, crawl on most surfaces, and transmit video footage up to 200ft. |
+| 1 | **Dimension De-stabilizer:** Tech belt that allows the wearer to slip in and out of reality. You cannot interact with anything in this reality but are still visible. |
+| 2 | **Division Multiplier:** Harness that when activated splits you into two smaller versions of yourself. HP & Ability Scores are halved. Inventory exists in a quantum state; items used by one version are inaccessible to the other. Lasts 1 minute. Causes 1 fatigue. |
+| 3 | **Molecular Shield Generator:** (+1 armor, 3 bonus HP a day) Swarm of fly-sized nanobots orbit you, occasionally running scans on your biological makeup, providing you with customized shielding and protection. Bonus HP takes a day to recharge. |
+| 4 | **Anti-Grav Boots:** Activate to reduce your fall speed at the last second and land safely. Recharge via 100 credit worth of common battery parts in 1d6 hours. |
+| 5 | **Catherine:** An A.I. chip you can implant into any basic device. Currently installed in your personal comm unit. Catherine is very polite. Will warn you of any imminent danger you might not notice. May run advanced diagnostics. |
+| 6 | **Spider-Wasp Drone:** A spider-sized drone that can quietly fly, crawl on most surfaces, and transmit video footage up to 200ft. |
+
+##### Technical Expertise
 
 | D6 | Technical Expertise |
 | --- | --- |
@@ -297,6 +313,8 @@ You’ve built a career around being handy. You’re skilled at repairing and ma
 | 4 | **Security Systems:** You can get through manually locked doors and shut down surveillance with minimal effort and tools. |
 | 5 | **Robotics:** Take a chest harness (1 slot) with a robotic arm on it that can carry a weapon and perform similar actions to your own arms. Only works with your DNA signature. |
 | 6 | **Software:** You have increased effect and reduced failure when performing tasks related to computers, hacking, and using software or user-interfaces. |
+
+##### Savant Specialty
 
 | D6 | Savant Specialty |
 | --- | --- |
@@ -323,14 +341,18 @@ Running contraband goods for underworld clients is a dangerous game, but you’v
 
 - GM Optional, start with a small starship (stolen or indebted) with smuggling holds. It’s currently impounded or stolen.
 
+##### Lucky Charm
+
 | D6 | Lucky Charm |
 | --- | --- |
-| 1 HP | **Paired Sudo-Collars:** Highly unethical metal collars with a subject-object relationship. If you can get another living being to wear one, they pretty much do what you want. Make a opposed WIL save every day to maintain control. |
-| 2 HP | **Hummingbird Knife:** (D6, Vorpal) Vibrates at subsonic frequencies. Illegal. |
-| 3 HP | **Loyal Sidekick:** Create a freelancer. You’ve been through thick and thin together. Think about how you met. |
-| 4 HP | **Hacking Sleeve:** Mechanized gauntlet with tools to hack, slice, and infiltrate just about any system or mechanical device. 1 fatigue when successfully used. |
-| 5 HP | **Custom Cape:** (Reaction rolls are always one category higher) Flamboyant design of your choice. Looking good is part of the job. |
-| 6 HP | **Moon Gum:** Tastes great. Causes intense hallucinations for 1d6 hours and is effectively immobilizing. Pretty colors… (6 sticks left) |
+| 1 | **Paired Sudo-Collars:** Highly unethical metal collars with a subject-object relationship. If you can get another living being to wear one, they pretty much do what you want. Make a opposed WIL save every day to maintain control. |
+| 2 | **Hummingbird Knife:** (D6, Vorpal) Vibrates at subsonic frequencies. Illegal. |
+| 3 | **Loyal Sidekick:** Create a freelancer. You’ve been through thick and thin together. Think about how you met. |
+| 4 | **Hacking Sleeve:** Mechanized gauntlet with tools to hack, slice, and infiltrate just about any system or mechanical device. 1 fatigue when successfully used. |
+| 5 | **Custom Cape:** (Reaction rolls are always one category higher) Flamboyant design of your choice. Looking good is part of the job. |
+| 6 | **Moon Gum:** Tastes great. Causes intense hallucinations for 1d6 hours and is effectively immobilizing. Pretty colors… (6 sticks left) |
+
+##### Recent Entanglements
 
 | D6 | Recent Entanglements |
 | --- | --- |
@@ -340,6 +362,8 @@ Running contraband goods for underworld clients is a dangerous game, but you’v
 | 4 | **Flawless Career:** You were one of the best and you’ve managed to retire without incident. Your reputation grants you 10% discount from any underworld dealers. |
 | 5 | **Jail Time:** After getting caught, you served some jail time. You’re just now getting out and have decided to try a change of career. |
 | 6 | **Criminal Elements:** Your smuggling services have recently disrupted a local criminal element’s business. |
+
+##### Trick Up Your Sleeve
 
 | D6 | Trick Up Your Sleeve |
 | --- | --- |
@@ -364,14 +388,18 @@ You feel most comfortable behind the controls of a starship. Quick reflexes and 
 
 - GM Optional, start with a small Starship. Make it impounded or in need of repairs.
 
+##### Suited Up
+
 | D6 | Suited Up |
 | --- | --- |
-| 1 HP | **Deluxe Array:** Holo-shades (improve visuals in darkness, look slick), armor-lined red jacket (1 Armor), and 2 blasters (D6), pack of alien cigars (blue smoke) |
-| 2 HP | **Alien Companion:** Generate a retainer (merc) with one unique feature befitting an alien species (alternatively can be a droid or other non-human.) |
-| 3 HP | **Exo-Skin Suit:** (1 armor) Nanotech morph suit, conforms to your body, wear under your regular clothes. Has a built in grappling gun and rebreather mask. |
-| 4 HP | **Stylin’:** Take a dashing outfit and cloak, silver-plated blaster (d6, replace starting weapon) and a thermal detonator (d6, blast, thermal). |
-| 5 HP | **Committed to Flying:** Take a datajack implant (Cerebral Socket). Installs the back of your head with a jack that allows you to plug into vehicles to more rapidly access special systems and data. |
-| 6 HP | **Just the Essentials:** Take a leather jacket, a stun gun and a retractable baton (D6, concealable) |
+| 1 | **Deluxe Array:** Holo-shades (improve visuals in darkness, look slick), armor-lined red jacket (1 Armor), and 2 blasters (D6), pack of alien cigars (blue smoke) |
+| 2 | **Alien Companion:** Generate a retainer (merc) with one unique feature befitting an alien species (alternatively can be a droid or other non-human.) |
+| 3 | **Exo-Skin Suit:** (1 armor) Nanotech morph suit, conforms to your body, wear under your regular clothes. Has a built in grappling gun and rebreather mask. |
+| 4 | **Stylin’:** Take a dashing outfit and cloak, silver-plated blaster (d6, replace starting weapon) and a thermal detonator (d6, blast, thermal). |
+| 5 | **Committed to Flying:** Take a datajack implant (Cerebral Socket). Installs the back of your head with a jack that allows you to plug into vehicles to more rapidly access special systems and data. |
+| 6 | **Just the Essentials:** Take a leather jacket, a stun gun and a retractable baton (D6, concealable) |
+
+##### Flying Expertise
 
 | D6 | Flying Expertise |
 | --- | --- |
@@ -381,6 +409,8 @@ You feel most comfortable behind the controls of a starship. Quick reflexes and 
 | 4 | **Union Licensed:** It was an honest living. Other pilots respect that. You get union discounts for yourself and friends with starport docking, lodging, and buying anything starship related. |
 | 5 | **Syndicate Contractor:** Any reaction rolls or social encounters with professional syndicates are one category higher, or more favorable in another abstract way. |
 | 6 | **Test Pilot:** You can pilot anything, and are experienced at operating vehicles that are damaged or partially broken. If your ship takes critical damage, delay the negative effects for 1D4 rounds. |
+
+##### Other Talents
 
 | D6 | Other Talents |
 | --- | --- |
@@ -403,14 +433,18 @@ All machines have a purpose. What was yours, and what will it become? Machines c
 
 - Antivirus.EXE (1 use, removes 1 fatigue)
 
+##### Custom Hardware
+
 | D6 | Custom Hardware |
 | --- | --- |
-| 1 HP | **Heat-Wave Optics:** (D8, or D6 blast, thermal) Eye lasers. Take 1 fatigue. |
-| 2 HP | **Reinforced Casing:** If you take max damage from an attack, half it. |
-| 3 HP | **Auto-Targeting Subroutine:** Re-roll damage results of 1. |
-| 4 HP | **Overclocked Processors:** Re-roll 1 DEX save a day. |
-| 5 HP | **Hidden Storage:** Two extra inventory slots inside your chassis. |
-| 6 HP | **High-Speed Data Jack:** Improved hacking into networked systems. |
+| 1 | **Heat-Wave Optics:** (D8, or D6 blast, thermal) Eye lasers. Take 1 fatigue. |
+| 2 | **Reinforced Casing:** If you take max damage from an attack, half it. |
+| 3 | **Auto-Targeting Subroutine:** Re-roll damage results of 1. |
+| 4 | **Overclocked Processors:** Re-roll 1 DEX save a day. |
+| 5 | **Hidden Storage:** Two extra inventory slots inside your chassis. |
+| 6 | **High-Speed Data Jack:** Improved hacking into networked systems. |
+
+##### Model Type
 
 | D6 | Model Type |
 | --- | --- |
@@ -420,6 +454,8 @@ All machines have a purpose. What was yours, and what will it become? Machines c
 | 4 | **Lazarus Machine:** You are the last remains of an intelligent organic being, and mostly brain tissue at this point. Your consciousness was uploaded into this robotic body. Your chassis was designed to be heavily modded. 50% discount on all cyberware. |
 | 5 | **Bio-Synth:** You’re composed of a mix of mechanical and biological parts. You can use and get a 50% discount on genetic modifications. |
 | 6 | **Incomplete Prototype:** You function well enough, but were never fully completed for the original purpose of your build. |
+
+##### Manufacturer
 
 | D6 | Manufacturer |
 | --- | --- |
@@ -444,14 +480,18 @@ Just another low life trying to make a few creds. You likely have ties to other 
 
 - Bolt cutters
 
+##### What Keeps You Safe on the Streets?
+
 | D6 | What Keeps You Safe on the Streets? |
 | --- | --- |
-| 1 HP | **Ultraviolet Shotgun:** (D8 blast, cryo, illegal). Black market weapon that emits sub-zero wavelengths. Particularly devastating to unarmored flesh. |
-| 2 HP | **Heart-Stopper Helmet:** Face-mask that looks like a devil (+1 armor) and emits a low-frequency hum, unsettling others. Can discharge a 30’ sonic blast (D6 sonic) once a day. |
-| 3 HP | **“Brick”:** Take a freelancer (merc) with 12 STR, 8 DEX, 6 WIL, 3 HP, Billhook (D6, bulky) They’re not the brightest bulb, but they’re pretty large and intimidating. Rename if you wish. |
-| 4 HP | **Red Hyena:** (6 HP, 14 DEX, D6 bite, critical damage save vs STR or break a bone) A very large, red coated hyena. Obeys you via a neural link, but some of its affection might be natural. |
-| 5 HP | **Prototype Vibro-spear:** (D8, bulky, shock) Considered a truly nasty weapon. |
-| 6 HP | **Synth-weave Duster:** (1 armor, lots of pockets) It’s like a jacket only it’s longer, thicker, and far more bad-ass. |
+| 1 | **Ultraviolet Shotgun:** (D8 blast, cryo, illegal). Black market weapon that emits sub-zero wavelengths. Particularly devastating to unarmored flesh. |
+| 2 | **Heart-Stopper Helmet:** Face-mask that looks like a devil (+1 armor) and emits a low-frequency hum, unsettling others. Can discharge a 30’ sonic blast (D6 sonic) once a day. |
+| 3 | **“Brick”:** Take a freelancer (merc) with 12 STR, 8 DEX, 6 WIL, 3 HP, Billhook (D6, bulky) They’re not the brightest bulb, but they’re pretty large and intimidating. Rename if you wish. |
+| 4 | **Red Hyena:** (6 HP, 14 DEX, D6 bite, critical damage save vs STR or break a bone) A very large, red coated hyena. Obeys you via a neural link, but some of its affection might be natural. |
+| 5 | **Prototype Vibro-spear:** (D8, bulky, shock) Considered a truly nasty weapon. |
+| 6 | **Synth-weave Duster:** (1 armor, lots of pockets) It’s like a jacket only it’s longer, thicker, and far more bad-ass. |
+
+##### Type of Scum
 
 | D6 | Type of Scum |
 | --- | --- |
@@ -461,6 +501,8 @@ Just another low life trying to make a few creds. You likely have ties to other 
 | 4 | **Goon:** You did the shakedowns. You impose DIS on anyone making a WIL save against your intimidation efforts. |
 | 5 | **Ex-Syndicate Captain:** You used to be a top dog in a syndicate until you were double crossed and kicked out. Roll a random Ex-Tech you “liberated” on the way out. |
 | 6 | **Fixer:** You were a fixer, setting up jobs for the criminal underworld. You can negotiate for higher pay on jobs involving criminal activity. |
+
+##### Criminal Knack
 
 | D6 | Criminal Knack |
 | --- | --- |
@@ -487,14 +529,18 @@ A power within you has awoken. Whether from trauma, an evolving mind, or some ot
 
 - Candy bar
 
+##### Psionic Awakening
+
 | D6 | Psionic Awakening |
 | --- | --- |
-| 1 HP | **You are Gifted. Shatter:** Your voice echoes with the sound of an earthquake, causing d8 damage (blast 20’) to creatures, and shatters delicate objects. Take 1 fatigue. |
-| 2 HP | **You are Psychic. Read Thoughts:** You can hear the surface thoughts of nearby creatures and can communicate telepathically, either clearly in languages you know, or a general sense of emotions in languages you are unfamiliar with. |
-| 3 HP | **You are Telekinetic. Telekinesis:** You may mentally move an item under 60lbs. Take 1 fatigue. |
-| 4 HP | **You are a Mesmer. Spectacle:** A clearly false but impressive illusion of your choice appears, under your control. It may be up to the size of a palace and has full motion and sound. |
-| 5 HP | **You are a Precog. Vision:** Once a day, roll a 1d20 and keep that roll. You may substitute that roll for any Save you, an ally, or an enemy makes after seeing the results. Gain 1 fatigue when you roll your vision and keep it in inventory until the dice is used. |
-| 6 HP | **You are an Esper. Calm:** A creature you can see is soothed and treats you as a friend for 1d6 hours. Take 1 fatigue. |
+| 1 | **You are Gifted. Shatter:** Your voice echoes with the sound of an earthquake, causing d8 damage (blast 20’) to creatures, and shatters delicate objects. Take 1 fatigue. |
+| 2 | **You are Psychic. Read Thoughts:** You can hear the surface thoughts of nearby creatures and can communicate telepathically, either clearly in languages you know, or a general sense of emotions in languages you are unfamiliar with. |
+| 3 | **You are Telekinetic. Telekinesis:** You may mentally move an item under 60lbs. Take 1 fatigue. |
+| 4 | **You are a Mesmer. Spectacle:** A clearly false but impressive illusion of your choice appears, under your control. It may be up to the size of a palace and has full motion and sound. |
+| 5 | **You are a Precog. Vision:** Once a day, roll a 1d20 and keep that roll. You may substitute that roll for any Save you, an ally, or an enemy makes after seeing the results. Gain 1 fatigue when you roll your vision and keep it in inventory until the dice is used. |
+| 6 | **You are an Esper. Calm:** A creature you can see is soothed and treats you as a friend for 1d6 hours. Take 1 fatigue. |
+
+##### Old Cover Identity
 
 | D6 | Old Cover Identity |
 | --- | --- |
@@ -504,6 +550,8 @@ A power within you has awoken. Whether from trauma, an evolving mind, or some ot
 | 4 | **Charlatan:** A fool and his money, as they say. Running scams are just easier when you have psionic. Take 10d6 credits and a low level bounty for petty crimes. |
 | 5 | **Pilgrim:** You lived a simple life following the path inside. You learned to open your mind and attune to your gifts. Roll another random psionic power. |
 | 6 | **Military Peon:** The rigorous life of a military grunt was a simple way to get by. Your service is up now. Take a Shard-sprayer (D8 blast, bulky) and grunt armor (Armor 1, bulky). |
+
+##### Neural Ramifications
 
 | D6 | Neural Ramifications |
 | --- | --- |
@@ -528,14 +576,18 @@ You’ve spent most of your life dedicated to the advancement of science. Due to
 
 - Plasma-Knife (D6 thermal, concealable)
 
+##### Prized Lifetime Research
+
 | D6 | Prized Lifetime Research |
 | --- | --- |
-| 1 HP | **Skeletal Resonator:** Attract or repel a single target that has a skeleton, unless they pass a STR save. No effect on cartilage. |
-| 2 HP | **Portal Generator:** Create a portal between two flat sources that you can see. The gate closes if you pass through or break line of sight. Causes 1 fatigue. |
-| 3 HP | **Temporal Bomb:** Time slows down 60 times in a 20 foot sphere (blast). Lasts for 1 minute outside the sphere, or one second inside. One use. |
-| 4 HP | **Corpse Reviver #42:** Brings back the dead if used within 1 minute of death. One use. |
-| 5 HP | **Particle-Mirror Array:** (+1 Armor) A molecular shield generator. Once a day, make a DEX save to reflect energy weapon shots back at their source. |
-| 6 HP | **Creature in a Jar:** A baby sludge creature with one eye. Upon release, it will eat a corpse’s brain consuming its memories, effectively allowing the user to ask a corpse one question. The fresher the corpse, the better the memory. Needs a day to rest before it will come back out. |
+| 1 | **Skeletal Resonator:** Attract or repel a single target that has a skeleton, unless they pass a STR save. No effect on cartilage. |
+| 2 | **Portal Generator:** Create a portal between two flat sources that you can see. The gate closes if you pass through or break line of sight. Causes 1 fatigue. |
+| 3 | **Temporal Bomb:** Time slows down 60 times in a 20 foot sphere (blast). Lasts for 1 minute outside the sphere, or one second inside. One use. |
+| 4 | **Corpse Reviver #42:** Brings back the dead if used within 1 minute of death. One use. |
+| 5 | **Particle-Mirror Array:** (+1 Armor) A molecular shield generator. Once a day, make a DEX save to reflect energy weapon shots back at their source. |
+| 6 | **Creature in a Jar:** A baby sludge creature with one eye. Upon release, it will eat a corpse’s brain consuming its memories, effectively allowing the user to ask a corpse one question. The fresher the corpse, the better the memory. Needs a day to rest before it will come back out. |
+
+##### Field of Expertise
 
 | D6 | Field of Expertise |
 | --- | --- |
@@ -545,6 +597,8 @@ You’ve spent most of your life dedicated to the advancement of science. Due to
 | 4 | **Xeno Biology:** Take a strange alien Gecko-Fox as a pet. (3hp, 14 DEX, d6 bite, can climb sheer surfaces, must be fed something living once a week) |
 | 5 | **Toxicology:** Years of experimentation, immunity-building & study have provided you an immunity to all known poisons, and reduced effect on failed saves against unknown or alien toxins and poisons. |
 | 6 | **Higher Dimensions:** Prying open the secrets of the universe have exposed you to things you can’t explain. Roll for a random Astromancy. |
+
+##### Why You Left Science
 
 | D6 | Why You Left Science |
 | --- | --- |
@@ -569,14 +623,18 @@ You’re ex-special ops. Having completed or parting with your duties, new oppor
 
 - Dog tags
 
+##### Special-Issue Equipment
+
 | D6 | Special-Issue Equipment |
 | --- | --- |
-| 1 HP | **Gate Cloak:** Hooded cloak inscribed with nano-particle algebraic equations that allows the user to phase-shift 10’ in any direction instead of taking damage. One use a day. |
-| 2 HP | **Mark IV Executioner:** (D8 blast, silencer) A combat shotgun created by a legendary weapons manufacturer - limited run. Replaces starting weapon. |
-| 3 HP | **Kinetic Katana:** (D8, bulky, thermal) An alien weapon you recovered. Slender black blade sheathed in a metal casing. Vibrates at subsonic levels producing an intense heat and orange glow. On a roll of maximum damage, the target must make a STR save or be fatally severed in half. |
-| 4 HP | **RNA-Attuned Shield Generator:** (+1 Armor, immune to bio damage) Gene-synthesized custom shield generator. Prevents illness. Take a few cigars too. |
-| 5 HP | **Dual-Oculus Hooded Mask:** A hooded faceplate mask with two circular smart-display goggles. Allows for perfect vision in darkness and other debris via A.I. aided image sequencing. |
-| 6 HP | **Cockatrice Claymores:** 3 remote-operated explosives that explode with a gray bio-synthetic dust. (blast 40’) Make a STR save or instantly be turned to stone. |
+| 1 | **Gate Cloak:** Hooded cloak inscribed with nano-particle algebraic equations that allows the user to phase-shift 10’ in any direction instead of taking damage. One use a day. |
+| 2 | **Mark IV Executioner:** (D8 blast, silencer) A combat shotgun created by a legendary weapons manufacturer - limited run. Replaces starting weapon. |
+| 3 | **Kinetic Katana:** (D8, bulky, thermal) An alien weapon you recovered. Slender black blade sheathed in a metal casing. Vibrates at subsonic levels producing an intense heat and orange glow. On a roll of maximum damage, the target must make a STR save or be fatally severed in half. |
+| 4 | **RNA-Attuned Shield Generator:** (+1 Armor, immune to bio damage) Gene-synthesized custom shield generator. Prevents illness. Take a few cigars too. |
+| 5 | **Dual-Oculus Hooded Mask:** A hooded faceplate mask with two circular smart-display goggles. Allows for perfect vision in darkness and other debris via A.I. aided image sequencing. |
+| 6 | **Cockatrice Claymores:** 3 remote-operated explosives that explode with a gray bio-synthetic dust. (blast 40’) Make a STR save or instantly be turned to stone. |
+
+##### Spec-Ops Team
 
 | D6 | Spec-Ops Team |
 | --- | --- |
@@ -586,6 +644,8 @@ You’re ex-special ops. Having completed or parting with your duties, new oppor
 | 4 | **Shock Trooper:** Special weapons drop troopers. Add shock damage to your starting weapon. |
 | 5 | **Counter-Insurgency:** If fighting in small, confined urban spaces, your first attack roll in combat is enhanced if your weapon is suited for close-range (melee, shotgun) |
 | 6 | **Top Secret Project:** You were part of an experimental top-secret project. Start with a bio-aug. Roll augment and re-flavor. |
+
+##### Squad Job
 
 | D6 | Squad Job |
 | --- | --- |
@@ -606,14 +666,18 @@ The living void and its myriad aspects reach out to you. You now belong to some 
 
 - Nothing can truly be possessed. You start with nothing but your clothing.
 
+##### What Gift Did the Stars Bring?
+
 | D6 | What Gift Did the Stars Bring? |
 | --- | --- |
-| 1 HP | **The Deplorable Word:** Anyone you speak the word to must make a WIL save or take 1d12 WIL damage. Use once a day. WIL save vs corruption. |
-| 2 HP | **Carried By the Wind:** Fly: Can fly once a day for 2d6 seconds at your normal movement. |
-| 3 HP | **Puzzle Tongue:** Comprehend Languages: Can speak to, understand, and be understood by all spoken languages of approximately human-level intelligence. |
-| 4 HP | **Warding Scriptures:** Your body is covered in a glowing script. Once a day when an attack is made against you for maximum damage, the damage is reverted back to the attacker. Save vs corruption as the scriptures crawl further into you. |
-| 5 HP | **Sunder:** You can attack with your mind and two free hands for D6 damage from up to 60 ft. Does not cause fatigue. |
-| 6 HP | **Glittering Gate:** Spend 10 minutes performing a ritual in a 10’ circular area. Star-blessed spaces exist as a dyad, and only two can exist at once. Stepping into one space transfers those who enter to the other space. When a new space is created, the creator mentally chooses one of the existing two locations to dissipate. All who pass through this void space must save vs corruption. |
+| 1 | **The Deplorable Word:** Anyone you speak the word to must make a WIL save or take 1d12 WIL damage. Use once a day. WIL save vs corruption. |
+| 2 | **Carried By the Wind:** Fly: Can fly once a day for 2d6 seconds at your normal movement. |
+| 3 | **Puzzle Tongue:** Comprehend Languages: Can speak to, understand, and be understood by all spoken languages of approximately human-level intelligence. |
+| 4 | **Warding Scriptures:** Your body is covered in a glowing script. Once a day when an attack is made against you for maximum damage, the damage is reverted back to the attacker. Save vs corruption as the scriptures crawl further into you. |
+| 5 | **Sunder:** You can attack with your mind and two free hands for D6 damage from up to 60 ft. Does not cause fatigue. |
+| 6 | **Glittering Gate:** Spend 10 minutes performing a ritual in a 10’ circular area. Star-blessed spaces exist as a dyad, and only two can exist at once. Stepping into one space transfers those who enter to the other space. When a new space is created, the creator mentally chooses one of the existing two locations to dissipate. All who pass through this void space must save vs corruption. |
+
+##### Your Vision
 
 | D6 | Your Vision |
 | --- | --- |
@@ -623,6 +687,8 @@ The living void and its myriad aspects reach out to you. You now belong to some 
 | 4 | **Belly of a Black Hole:** Your eyes are pitch black. You can see in the dark. |
 | 5 | **The Secret Truth:** You cannot understand or speak it. You can sense any untruth you hear. |
 | 6 | **Perfect Symmetry:** It was almost too beautiful to behold. Social encounters are much easier for you. Reaction rolls in social situations are always one category higher than your result. |
+
+##### What Was Taken?
 
 | D6 | What Was Taken? |
 | --- | --- |
@@ -649,14 +715,18 @@ It’s a slimy, treacherous world out there, and you had to be just as nasty to 
 
 - Bounty Hunting License & Union Membership.
 
+##### Specialty Tool
+
 | D6 | Specialty Tool |
 | --- | --- |
-| 1 HP | **Visage of Dread:** (+1 Armor, immune to mind-altering effects): Skull helmet (or something intimidating). At the start of combat, enemies save vs WIL or cower in fear for 1 round. |
-| 2 HP | **Heat-Seeking Sniper Rifle:** (D10) One mile range. 9-10 damage on the first shot of combat or from a hidden position is an instant kill. |
-| 3 HP | **Grave-Foam Gauntlet:** Sprays a liquid cloud of gray dust, forming a 12 inch thick casing around the target for 1d12 hours. Nothing inside can break out. The casing keeps its contents alive in a safe stasis until released. 1 cartridge of fuel (3 uses). Buy more fuel from Bounty Hunters’ Union. |
-| 4 HP | **Shock Dart:** (D6, spec ammo) Wrist mounted rocket dart. DEX save vs paralysis for 1d6 minutes. |
-| 5 HP | **Wire Shot:** (grappling) Wrist-mounted. Shoots a magnetic smart-wire that wraps around and ensnares targets. Dex save or completely grappled. No save if surprised. |
-| 6 HP | **Trick-Axe:** (D8, bulky, sweep): Can retract down to 3 feet in length for (D6). |
+| 1 | **Visage of Dread:** (+1 Armor, immune to mind-altering effects): Skull helmet (or something intimidating). At the start of combat, enemies save vs WIL or cower in fear for 1 round. |
+| 2 | **Heat-Seeking Sniper Rifle:** (D10) One mile range. 9-10 damage on the first shot of combat or from a hidden position is an instant kill. |
+| 3 | **Grave-Foam Gauntlet:** Sprays a liquid cloud of gray dust, forming a 12 inch thick casing around the target for 1d12 hours. Nothing inside can break out. The casing keeps its contents alive in a safe stasis until released. 1 cartridge of fuel (3 uses). Buy more fuel from Bounty Hunters’ Union. |
+| 4 | **Shock Dart:** (D6, spec ammo) Wrist mounted rocket dart. DEX save vs paralysis for 1d6 minutes. |
+| 5 | **Wire Shot:** (grappling) Wrist-mounted. Shoots a magnetic smart-wire that wraps around and ensnares targets. Dex save or completely grappled. No save if surprised. |
+| 6 | **Trick-Axe:** (D8, bulky, sweep): Can retract down to 3 feet in length for (D6). |
+
+##### How Did You Hunt?
 
 | D6 | How Did You Hunt? |
 | --- | --- |
@@ -666,6 +736,8 @@ It’s a slimy, treacherous world out there, and you had to be just as nasty to 
 | 4 | **Loaded With Tech:** Take 1d4 smart grenades (d6 blast, thermal, grappling) an auto-saw, and binocs. |
 | 5 | **By Any Means Necessary:** It was sometimes dirty, or unfair, but you got the job done. Any damage from traps, snares, or other preparations you make are enhanced. |
 | 6 | **Just for the Money:** It’s only a job, after all. Negotiate for double payouts on any bounty job. The NPC offering the job must pass a WIL save to resist, otherwise they’re persuaded to pay extra. |
+
+##### A Past Complication
 
 | D6 | A Past Complication |
 | --- | --- |

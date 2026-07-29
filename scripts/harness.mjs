@@ -26,34 +26,93 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
  * touch the configured database. `run` receives the request, session, and socket helpers below;
  * everything is torn down afterwards whether it passed or threw.
  */
-export async function runSmoke(name, run, { env = {} } = {}) {
+export async function runSmoke(name, run, { env = {}, withTablesServer = false } = {}) {
   const dataDir = await mkdtemp(path.join(os.tmpdir(), "devils-toys-smoke-"));
   const port = await freePort();
   const base = `http://127.0.0.1:${port}`;
-  const server = spawn(process.execPath, ["server/dist/index.js"], {
-    cwd: process.cwd(),
-    env: { ...process.env, PORT: String(port), DEVILS_TOYS_DATA_DIR: dataDir, ...env },
-    stdio: ["ignore", "pipe", "pipe"]
-  });
   let output = "";
-  server.stdout.on("data", (chunk) => (output += chunk.toString()));
-  server.stderr.on("data", (chunk) => (output += chunk.toString()));
+
+  /**
+   * Spawns a server and hands back a `stop` that can be called more than once.
+   * The exit is awaited through a promise made now rather than by listening
+   * after the fact: a process killed by a signal leaves `exitCode` null, so
+   * asking again later would wait for an event that has already been and gone.
+   */
+  function start(entry, extraEnv) {
+    const child = spawn(process.execPath, [entry], {
+      cwd: process.cwd(),
+      env: { ...process.env, DEVILS_TOYS_DATA_DIR: dataDir, ...extraEnv, ...env },
+      stdio: ["ignore", "pipe", "pipe"]
+    });
+    child.stdout.on("data", (chunk) => (output += chunk.toString()));
+    child.stderr.on("data", (chunk) => (output += chunk.toString()));
+    const exited = new Promise((resolve) => child.once("exit", resolve));
+    return {
+      child,
+      stop: async () => {
+        child.kill();
+        await exited;
+      }
+    };
+  }
+
+  // The Devil's Tables runs as a second process against the same database, so a
+  // test that wants it gets its own port and shares this data directory. The
+  // game server is told that port too, since it reports where the editor is and
+  // whether it is answering; left to the default it would probe whatever else
+  // happens to be listening on 4100.
+  const tablesPort = withTablesServer ? await freePort() : undefined;
+  const tablesBase = withTablesServer ? `http://127.0.0.1:${tablesPort}` : undefined;
+
+  const server = start("server/dist/index.js", {
+    PORT: String(port),
+    ...(tablesPort ? { DEVILS_TABLES_PORT: String(tablesPort) } : {})
+  });
+  const tablesServer = withTablesServer
+    ? start("server/dist/tables-server.js", { DEVILS_TABLES_PORT: String(tablesPort) })
+    : undefined;
+
   const sockets = [];
 
-  async function ready() {
+  async function readyAt(url, label) {
     for (let attempt = 0; attempt < 50; attempt += 1) {
       try {
-        if ((await fetch(`${base}/api/status`)).ok) return;
+        if ((await fetch(`${url}/api/status`)).ok) return;
       } catch {}
       await sleep(100);
     }
-    throw new Error(`${name} server did not become ready. ${output}`);
+    throw new Error(`${name} ${label} did not become ready. ${output}`);
   }
+
+  async function ready() {
+    await readyAt(base, "server");
+    if (tablesBase) await readyAt(tablesBase, "tables server");
+  }
+
+  /** Stops the game server, to prove The Devil's Tables stands on its own. */
+  const stopGameServer = () => server.stop();
 
   async function json(pathname, init = {}, expected = 200) {
     const response = await fetch(`${base}${pathname}`, init);
     assert.equal(response.status, expected, `${pathname} returned ${response.status}`);
     return { response, body: response.status === 204 ? undefined : await response.json() };
+  }
+
+  /** The same, against The Devil's Tables rather than the game server. */
+  async function tablesJson(pathname, init = {}, expected = 200) {
+    const response = await fetch(`${tablesBase}${pathname}`, init);
+    assert.equal(response.status, expected, `${pathname} returned ${response.status}`);
+    const type = response.headers.get("content-type") ?? "";
+    if (response.status === 204) return { response, body: undefined };
+    if (!type.includes("application/json")) return { response, body: undefined };
+    return { response, body: await response.json() };
+  }
+
+  /** A download from The Devil's Tables, as the bytes it sent. */
+  async function tablesBytes(pathname, init = {}, expected = 200) {
+    const response = await fetch(`${tablesBase}${pathname}`, init);
+    assert.equal(response.status, expected, `${pathname} returned ${response.status}`);
+    return { response, bytes: Buffer.from(await response.arrayBuffer()) };
   }
 
   async function request(pathname, init = {}, expected = 200) {
@@ -153,13 +212,17 @@ export async function runSmoke(name, run, { env = {} } = {}) {
       connect,
       waitFor,
       sleep,
+      tablesBase,
+      tablesPort,
+      tablesJson,
+      tablesBytes,
+      stopGameServer,
       serverOutput: () => output
     });
     console.log(`${name} passed.`);
   } finally {
     for (const socket of sockets) socket.close();
-    server.kill();
-    if (server.exitCode === null) await new Promise((resolve) => server.once("exit", resolve));
+    for (const running of [server, tablesServer]) await running?.stop();
     await rm(dataDir, { recursive: true, force: true });
   }
 }

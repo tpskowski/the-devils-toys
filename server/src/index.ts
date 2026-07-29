@@ -5,13 +5,13 @@ import cookieParser from "cookie-parser";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import type { AuthedRequest } from "./auth.js";
-import { authMiddleware, clearSession, createSession, requireAuth, roomRole } from "./auth.js";
+import { authMiddleware, createSession, requireAuth, roomRole } from "./auth.js";
 import { all, db, one } from "./db.js";
 import { inGameDisplayName } from "./display-name.js";
 import { config } from "./config.js";
 import { logger } from "./logger.js";
 import { invitationRouter } from "./invitations.js";
-import { evaluateSave, parseRollCommand, rollDice } from "./dice.js";
+import { evaluateCheck, evaluateSave, parseRollCommand, rollDice } from "./dice.js";
 import { characterRouter } from "./characters.js";
 import { roomAdminRouter } from "./room-admin.js";
 import { canResetAccountPassword } from "./account-permissions.js";
@@ -21,6 +21,10 @@ import { audioRouter } from "./audio.js";
 import { attachRealtime, broadcastRoom, disconnectAccount, sendToRoomGms } from "./realtime.js";
 import { npcRouter } from "./npcs.js";
 import { tableRouter } from "./tables.js";
+import { tagRouter } from "./table-tags.js";
+import { tableSetRouter } from "./table-sets.js";
+import { tablesLinkRouter } from "./tables-link.js";
+import { asyncRoute, parse, publicAccount, sessionRouter } from "./session-routes.js";
 import { groupRouter } from "./group.js";
 import { projectFile } from "./paths.js";
 import { rulesMarkdown, systems } from "./systems.js";
@@ -38,32 +42,13 @@ app.use("/api", audioRouter);
 
 app.use("/api", npcRouter);
 app.use("/api", tableRouter);
+app.use("/api", tableSetRouter);
+app.use("/api", tagRouter);
+app.use("/api", tablesLinkRouter);
 app.use("/api", groupRouter);
 app.use("/api", roomAdminRouter);
 app.use("/api", managementRouter);
-const asyncRoute =
-  (handler: (req: AuthedRequest, res: express.Response) => Promise<unknown> | unknown) =>
-  async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
-    try {
-      await handler(req, res);
-    } catch (error) {
-      next(error);
-    }
-  };
-
-function parse<T>(schema: z.ZodType<T>, input: unknown, res: express.Response): T | undefined {
-  const result = schema.safeParse(input);
-  if (!result.success) {
-    res.status(400).json({ error: result.error.issues[0]?.message ?? "Invalid request." });
-    return;
-  }
-  return result.data;
-}
-
-function publicAccount(row: { id: number; username: string; is_admin: number; account_role: AccountRole }) {
-  return { id: row.id, username: row.username, isAdmin: Boolean(row.is_admin), role: row.account_role };
-}
-
+app.use("/api", sessionRouter);
 function publicMessage(row: {
   id: number;
   room_id: number;
@@ -143,21 +128,6 @@ function privateRollMessage(row: {
   };
 }
 
-app.get("/api/status", (_req, res) => {
-  const count = one<{ count: number }>("SELECT COUNT(*) AS count FROM accounts")?.count ?? 0;
-  res.json({
-    initialized: count > 0,
-    systems: Object.values(systems).map(({ id, name, tagline, defaultTheme, groupPage }) => ({
-      id,
-      name,
-      tagline,
-      defaultTheme,
-      groupPage: Boolean(groupPage)
-    })),
-    themes: THEME_IDS
-  });
-});
-
 app.post(
   "/api/setup",
   asyncRoute(async (req, res) => {
@@ -179,32 +149,6 @@ app.post(
       .json({ account: { id: Number(result.lastInsertRowid), username: body.username, isAdmin: true, role: "admin" } });
   })
 );
-
-app.post(
-  "/api/login",
-  asyncRoute(async (req, res) => {
-    const body = parse(z.object({ username: z.string().trim().min(1), password: z.string().min(1) }), req.body, res);
-    if (!body) return;
-    const account = one<{
-      id: number;
-      username: string;
-      password_hash: string;
-      is_admin: number;
-      account_role: AccountRole;
-    }>("SELECT id, username, password_hash, is_admin, account_role FROM accounts WHERE username = ?", body.username);
-    if (!account || !(await bcrypt.compare(body.password, account.password_hash)))
-      return res.status(401).json({ error: "Username or password is incorrect." });
-    createSession(res, account.id);
-    res.json({ account: publicAccount(account) });
-  })
-);
-
-app.post("/api/logout", (req: AuthedRequest, res) => {
-  clearSession(req, res);
-  res.status(204).end();
-});
-
-app.get("/api/me", requireAuth, (req: AuthedRequest, res) => res.json({ account: req.account }));
 
 app.get("/api/project/:document", requireAuth, (req, res) => {
   const files: Record<string, string> = { credits: "credits.md", changelog: "changelog.md", roadmap: "roadmap.md" };
@@ -502,8 +446,14 @@ app.post("/api/rooms/:roomId/rolls", requireAuth, (req: AuthedRequest, res) => {
       save: z
         .object({
           target: z.number().int().min(1).max(20),
-          ability: z.enum(["STR", "DEX", "WIL"]),
+          label: z.string().trim().min(1).max(40),
           position: z.enum(["normal", "advantage", "disadvantage"])
+        })
+        .optional(),
+      check: z
+        .object({
+          difficulty: z.number().int().min(1).max(30),
+          label: z.string().trim().min(1).max(40)
         })
         .optional()
     }),
@@ -518,12 +468,15 @@ app.post("/api/rooms/:roomId/rolls", requireAuth, (req: AuthedRequest, res) => {
     return res.status(403).json({ error: "Invisible rolls are reserved for the GM." });
   const system = one<{ system: SystemId }>("SELECT system FROM rooms WHERE id = ?", roomId)!.system;
   const diceRules = systems[system].dice;
+  if (body.check && !diceRules.skillCheck)
+    return res.status(400).json({ error: `${systems[system].name} does not define skill checks.` });
   if (body.save && body.save.position !== "normal" && !diceRules.save.outcomes[body.save.position])
     return res.status(400).json({
       error: `${systems[system].name} does not define ${body.save.position} for saves.`
     });
   let rolled;
   let saveOutcome;
+  let checkOutcome;
   try {
     rolled = rollDice(body.save ? "1d20" : body.expression);
     if (body.save) {
@@ -531,15 +484,24 @@ app.post("/api/rooms/:roomId/rolls", requireAuth, (req: AuthedRequest, res) => {
       rolled = {
         ...rolled,
         outcome: saveOutcome,
-        detail: `${rolled.detail} · ${body.save.ability} ${body.save.target} · ${saveOutcome.label}`
+        detail: `${rolled.detail} · ${body.save.label} ${body.save.target} · ${saveOutcome.label}`
+      };
+    } else if (body.check) {
+      checkOutcome = evaluateCheck(rolled.total, body.check.difficulty);
+      rolled = {
+        ...rolled,
+        outcome: checkOutcome,
+        detail: `${rolled.detail} · difficulty ${body.check.difficulty} · ${checkOutcome.label}`
       };
     }
   } catch (error) {
     return res.status(400).json({ error: (error as Error).message });
   }
   const rollLabel = body.save
-    ? `${body.save.ability} save${body.save.position === "normal" ? "" : ` (${body.save.position === "advantage" ? "ADV" : "DIS"})`}`
-    : rolled.expression;
+    ? `${body.save.label} save${body.save.position === "normal" ? "" : ` (${body.save.position === "advantage" ? "ADV" : "DIS"})`}`
+    : body.check
+      ? body.check.label
+      : rolled.expression;
   if (hidden) {
     const result = db
       .prepare("INSERT INTO private_rolls (room_id, account_id, expression, result) VALUES (?, ?, ?, ?)")
@@ -576,7 +538,7 @@ app.post("/api/rooms/:roomId/rolls", requireAuth, (req: AuthedRequest, res) => {
     .run(
       roomId,
       req.account!.id,
-      `${rollLabel} → ${rolled.total}${body.save ? ` · ${saveOutcome!.label}` : ""}`,
+      `${rollLabel} → ${rolled.total}${body.save ? ` · ${saveOutcome!.label}` : body.check ? ` · ${checkOutcome!.label}` : ""}`,
       rolled.detail
     );
   const row = one<any>(

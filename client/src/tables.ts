@@ -1,13 +1,5 @@
 import type { RollTableSummary, TableRollVisibility, TableTag } from "@devils-toys/shared";
 
-export function tableTagLabel(tag: TableTag) {
-  if (tag === "scifi") return "Sci-fi";
-  return tag
-    .split("-")
-    .map((word) => `${word[0].toLocaleUpperCase()}${word.slice(1)}`)
-    .join(" ");
-}
-
 export function filterTablesByTag(tables: readonly RollTableSummary[], tag: TableTag | "") {
   return tag ? tables.filter((table) => table.tags.includes(tag)) : [...tables];
 }

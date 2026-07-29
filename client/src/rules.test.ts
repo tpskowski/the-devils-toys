@@ -165,11 +165,13 @@ describe("standalone rules routes", () => {
   it("builds per-system paths while retaining the authorizing room", () => {
     expect(rulesPath("cairn", 12)).toBe("/rules/cairn?room=12");
     expect(rulesPath("monolith")).toBe("/rules/monolith");
+    expect(rulesPath("cwn", 7)).toBe("/rules/cwn?room=7");
   });
 
   it("recognizes only supported standalone rules paths", () => {
     expect(rulesSystemFromPath("/rules/cairn")).toBe("cairn");
     expect(rulesSystemFromPath("/rules/monolith/")).toBe("monolith");
+    expect(rulesSystemFromPath("/rules/cwn")).toBe("cwn");
     expect(rulesSystemFromPath("/rules/unknown")).toBeNull();
   });
 

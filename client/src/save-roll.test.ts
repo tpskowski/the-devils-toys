@@ -1,23 +1,23 @@
 import { describe, expect, it } from "vitest";
-import { saveAbilityForStatKey, saveSetupForAttribute } from "./save-roll";
+import { saveSetupForField } from "./save-roll";
 
-describe("character attribute save setup", () => {
-  it("maps the three character attributes to save abilities", () => {
-    expect(saveAbilityForStatKey("strCurrent")).toBe("STR");
-    expect(saveAbilityForStatKey("dexCurrent")).toBe("DEX");
-    expect(saveAbilityForStatKey("wilCurrent")).toBe("WIL");
+const physicalSave = {
+  key: "physicalSave",
+  label: "Physical save",
+  kind: "number" as const,
+  roll: { kind: "save" as const, label: "Physical" }
+};
+
+describe("character save setup", () => {
+  it("uses field metadata and the recorded target", () => {
+    expect(saveSetupForField(physicalSave, 12)).toEqual({ label: "Physical", target: 12 });
+    expect(saveSetupForField(physicalSave, "9")).toEqual({ label: "Physical", target: 9 });
   });
 
-  it("uses the current attribute score as the save target", () => {
-    expect(saveSetupForAttribute("strCurrent", 12)).toEqual({ ability: "STR", target: 12 });
-    expect(saveSetupForAttribute("dexCurrent", "9")).toEqual({ ability: "DEX", target: 9 });
-  });
-
-  it("does not offer saves for other stats or invalid targets", () => {
-    expect(saveSetupForAttribute("hpCurrent", 6)).toBeUndefined();
-    expect(saveSetupForAttribute("armorCurrent", 2)).toBeUndefined();
-    expect(saveSetupForAttribute("wilCurrent", "")).toBeUndefined();
-    expect(saveSetupForAttribute("wilCurrent", 0)).toBeUndefined();
-    expect(saveSetupForAttribute("wilCurrent", 21)).toBeUndefined();
+  it("does not offer saves for unconfigured fields or invalid targets", () => {
+    expect(saveSetupForField({ key: "hp", label: "HP", kind: "number" }, 6)).toBeUndefined();
+    expect(saveSetupForField(physicalSave, "")).toBeUndefined();
+    expect(saveSetupForField(physicalSave, 0)).toBeUndefined();
+    expect(saveSetupForField(physicalSave, 21)).toBeUndefined();
   });
 });

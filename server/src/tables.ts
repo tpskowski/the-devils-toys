@@ -1,99 +1,23 @@
-import fs from "node:fs";
 import express from "express";
 import { z } from "zod";
 import {
   rollTableLabel,
   TABLE_ROLL_VISIBILITIES,
-  TABLE_TAGS,
-  type RollTable,
-  type RollTableSet,
-  type SystemId,
-  type TableTag,
   type TableRollResult,
-  type TableRollVisibility
+  type TableRollVisibility,
+  type SystemId
 } from "@devils-toys/shared";
 import type { AuthedRequest } from "./auth.js";
 import { requireAuth, roomRole } from "./auth.js";
-import { all, db, one } from "./db.js";
+import { db, one } from "./db.js";
+import { availableSets, findSet } from "./table-sets.js";
 import { rollDice } from "./dice.js";
 import { inGameDisplayName } from "./display-name.js";
-import { parseRollTables, rowForRoll, rowText, tableSummary } from "./roll-tables.js";
+import { rowForRoll, rowText } from "./roll-tables.js";
 import { broadcastRoom } from "./realtime.js";
-import { projectFile } from "./paths.js";
-import { systems } from "./systems.js";
 
+/** Browsing and rolling on the catalogue from inside a room, for the room's GM. */
 export const tableRouter = express.Router();
-
-interface TableSetRow {
-  id: number;
-  name: string;
-  markdown: string;
-  tags_json: string;
-  updated_at: string;
-}
-
-/** Parsed system tables, kept because the raw Markdown cannot change at runtime. */
-const systemTables = new Map<SystemId, RollTable[]>();
-
-function tablesForSystem(system: SystemId) {
-  const cached = systemTables.get(system);
-  if (cached) return cached;
-  const filename = system === "cairn" ? "Cairn.md" : "Monolith.md";
-  const parsed = parseRollTables(
-    fs.readFileSync(projectFile("raw", filename), "utf8"),
-    systems[system].tableCatalog.exclude
-  ).map((table) => ({ ...table, tags: systems[system].tableCatalog.tags }));
-  systemTables.set(system, parsed);
-  return parsed;
-}
-
-function customSets() {
-  return all<TableSetRow>("SELECT id, name, markdown, tags_json, updated_at FROM table_sets ORDER BY name");
-}
-
-function storedTags(value: string): TableTag[] {
-  try {
-    const tags = JSON.parse(value);
-    if (!Array.isArray(tags)) return [];
-    return TABLE_TAGS.filter((tag) => tags.includes(tag));
-  } catch {
-    return [];
-  }
-}
-
-/** Every set a GM can switch between: one per installed system, then custom sets. */
-function availableSets(): { set: RollTableSet; tables: RollTable[] }[] {
-  const system = Object.values(systems).map((entry) => {
-    const tables = tablesForSystem(entry.id);
-    return {
-      set: {
-        id: `system:${entry.id}`,
-        name: entry.tableCatalog.label,
-        origin: "system" as const,
-        tables: tables.map(tableSummary)
-      },
-      tables
-    };
-  });
-  const custom = customSets().map((row) => {
-    const tags = storedTags(row.tags_json);
-    const tables = parseRollTables(row.markdown).map((table) => ({ ...table, tags }));
-    return {
-      set: {
-        id: `custom:${row.id}`,
-        name: row.name,
-        origin: "custom" as const,
-        tables: tables.map(tableSummary)
-      },
-      tables
-    };
-  });
-  return [...system, ...custom];
-}
-
-function findSet(setId: string) {
-  return availableSets().find((entry) => entry.set.id === setId);
-}
 
 function gmRoom(req: AuthedRequest, res: express.Response) {
   const roomId = Number(req.params.roomId);
@@ -102,14 +26,6 @@ function gmRoom(req: AuthedRequest, res: express.Response) {
     return;
   }
   return roomId;
-}
-
-function canManageSets(req: AuthedRequest, res: express.Response) {
-  if (req.account!.role === "player") {
-    res.status(403).json({ error: "Only a GM can manage table sets." });
-    return false;
-  }
-  return true;
 }
 
 function rolledMessage(id: number) {
@@ -167,7 +83,9 @@ tableRouter.get("/rooms/:roomId/tables/:setId/:tableId", requireAuth, (req: Auth
   const found = findSet(String(req.params.setId));
   const table = found?.tables.find((entry) => entry.id === req.params.tableId);
   if (!table) return res.status(404).json({ error: "Table not found." });
-  res.json({ table });
+  // Where the table sits in its Markdown is the editor's business, not the roller's.
+  const { source, ...rest } = table;
+  res.json({ table: rest });
 });
 
 tableRouter.post("/rooms/:roomId/tables/roll", requireAuth, (req: AuthedRequest, res) => {
@@ -177,6 +95,7 @@ tableRouter.post("/rooms/:roomId/tables/roll", requireAuth, (req: AuthedRequest,
     .object({
       setId: z.string().min(1).max(80),
       tableId: z.string().min(1).max(200),
+      modifier: z.number().int().min(-100).max(100).default(0),
       visibility: z.enum(TABLE_ROLL_VISIBILITIES).default("public")
     })
     .safeParse(req.body);
@@ -185,7 +104,9 @@ tableRouter.post("/rooms/:roomId/tables/roll", requireAuth, (req: AuthedRequest,
   const table = found?.tables.find((entry) => entry.id === parsed.data.tableId);
   if (!found || !table) return res.status(404).json({ error: "Table not found." });
 
-  const rolled = rollDice(table.dice);
+  const rolled = rollDice(
+    `${table.dice}${parsed.data.modifier ? `${parsed.data.modifier > 0 ? "+" : ""}${parsed.data.modifier}` : ""}`
+  );
   const row = rowForRoll(table, rolled.total);
   const text = rowText(table, row);
   const visibility: TableRollVisibility = parsed.data.visibility;
@@ -257,61 +178,4 @@ tableRouter.post("/rooms/:roomId/tables/roll", requireAuth, (req: AuthedRequest,
   };
   if (visibility === "private") publicTableMessage(roomId, req.account!.id, `Rolled privately on ${table.name}`, null);
   res.status(201).json({ roll, message, private: true });
-});
-
-tableRouter.get("/table-sets/:setId", requireAuth, (req: AuthedRequest, res) => {
-  if (!canManageSets(req, res)) return;
-  const row = one<TableSetRow>(
-    "SELECT id, name, markdown, tags_json, updated_at FROM table_sets WHERE id = ?",
-    Number(req.params.setId)
-  );
-  if (!row) return res.status(404).json({ error: "Table set not found." });
-  res.json({
-    set: {
-      id: row.id,
-      name: row.name,
-      markdown: row.markdown,
-      tags: storedTags(row.tags_json),
-      updatedAt: row.updated_at
-    }
-  });
-});
-
-const setBody = z.object({
-  name: z.string().trim().min(2).max(80),
-  markdown: z.string().max(200_000),
-  tags: z.array(z.enum(TABLE_TAGS)).max(TABLE_TAGS.length).default([])
-});
-
-tableRouter.post("/table-sets", requireAuth, (req: AuthedRequest, res) => {
-  if (!canManageSets(req, res)) return;
-  const parsed = setBody.safeParse(req.body);
-  if (!parsed.success)
-    return res.status(400).json({ error: "Give the set a name, valid tags, and valid Markdown tables." });
-  const tags = TABLE_TAGS.filter((tag) => parsed.data.tags.includes(tag));
-  const result = db
-    .prepare("INSERT INTO table_sets (name, markdown, tags_json, created_by) VALUES (?, ?, ?, ?)")
-    .run(parsed.data.name, parsed.data.markdown, JSON.stringify(tags), req.account!.id);
-  const id = Number(result.lastInsertRowid);
-  res.status(201).json({ set: { id: `custom:${id}`, tags, tables: parseRollTables(parsed.data.markdown).length } });
-});
-
-tableRouter.patch("/table-sets/:setId", requireAuth, (req: AuthedRequest, res) => {
-  if (!canManageSets(req, res)) return;
-  const parsed = setBody.safeParse(req.body);
-  if (!parsed.success)
-    return res.status(400).json({ error: "Give the set a name, valid tags, and valid Markdown tables." });
-  const tags = TABLE_TAGS.filter((tag) => parsed.data.tags.includes(tag));
-  const result = db
-    .prepare("UPDATE table_sets SET name = ?, markdown = ?, tags_json = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?")
-    .run(parsed.data.name, parsed.data.markdown, JSON.stringify(tags), Number(req.params.setId));
-  if (!result.changes) return res.status(404).json({ error: "Table set not found." });
-  res.status(204).end();
-});
-
-tableRouter.delete("/table-sets/:setId", requireAuth, (req: AuthedRequest, res) => {
-  if (!canManageSets(req, res)) return;
-  const result = db.prepare("DELETE FROM table_sets WHERE id = ?").run(Number(req.params.setId));
-  if (!result.changes) return res.status(404).json({ error: "Table set not found." });
-  res.status(204).end();
 });

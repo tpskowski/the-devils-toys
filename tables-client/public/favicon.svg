@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Red devil horns">
+  <title>Red devil horns</title>
+  <g fill="#ef233c" stroke="#9d1026" stroke-width="2.5" stroke-linejoin="round">
+    <path d="M30 50
+             C21 49 14 46 10 40
+             C5 32 7 19 12 7
+             C14 20 20 28 29 32
+             C26 38 27 45 30 50Z"/>
+    <path d="M34 50
+             C43 49 50 46 54 40
+             C59 32 57 19 52 7
+             C50 20 44 28 35 32
+             C38 38 37 45 34 50Z"/>
+  </g>
+</svg>

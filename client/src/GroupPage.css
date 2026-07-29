@@ -102,6 +102,157 @@
   min-height: 88px;
 }
 
+.group-obligations {
+  display: grid;
+  gap: 24px;
+}
+
+.group-obligations-toolbar,
+.group-obligations-toolbar > div {
+  display: flex;
+  align-items: center;
+}
+
+.group-obligations-toolbar {
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.group-obligations-toolbar > div {
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  color: var(--muted);
+  font:
+    500 10px "DM Mono",
+    monospace;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.group-obligations-toolbar .primary-button {
+  min-height: 40px;
+  padding: 0 14px;
+  font-size: 12px;
+}
+
+.group-obligations-toolbar .primary-button svg {
+  width: 15px;
+}
+
+.group-obligations-empty {
+  margin: 0;
+  padding: 26px 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.group-obligation-list {
+  display: grid;
+  gap: 28px;
+}
+
+.group-obligation-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(140px, 1fr);
+  gap: 18px 22px;
+}
+
+.group-obligation-fields label {
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font:
+    600 10px "DM Mono",
+    monospace;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.group-obligation-fields input,
+.group-obligation-fields textarea {
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  padding: 7px 2px;
+  background: transparent;
+  color: var(--text);
+  font:
+    500 14px Inter,
+    sans-serif;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.group-obligation-fields input:focus,
+.group-obligation-fields textarea:focus {
+  border-color: var(--accent);
+  outline: 0;
+}
+
+.group-obligation-details {
+  grid-column: 1 / -1;
+}
+
+.group-obligation-fields textarea {
+  min-height: 78px;
+  resize: vertical;
+}
+
+.group-obligation-name {
+  min-width: 0;
+  width: min(420px, 100%);
+  border: 0;
+  border-bottom: 1px solid transparent;
+  padding: 4px 1px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+}
+
+.group-obligation-name::placeholder {
+  color: var(--muted);
+  opacity: 1;
+}
+
+.group-obligation-name:hover,
+.group-obligation-name:focus {
+  border-color: var(--line);
+  outline: 0;
+}
+
+.group-obligation-name:focus {
+  border-color: var(--accent);
+}
+
+.group-obligation-remove {
+  min-height: 28px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font:
+    500 9px "DM Mono",
+    monospace;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.group-obligation-remove:hover,
+.group-obligation-remove:focus-visible {
+  color: #d8614d;
+}
+
+.group-obligation-remove svg {
+  width: 13px;
+}
+
 .group-placeholder {
   position: relative;
   min-height: 86px;
@@ -145,11 +296,232 @@
   text-transform: uppercase;
 }
 
+.group-starships {
+  display: grid;
+  gap: 22px;
+}
+
+.group-starships-toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px 16px;
+  color: var(--muted);
+  font:
+    500 10px "DM Mono",
+    monospace;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.group-starship-list {
+  border-top: 1px solid var(--line);
+}
+
+.group-starship-entry {
+  border-bottom: 1px solid var(--line);
+  transition: background 0.16s ease;
+}
+
+.group-starship-entry.expanded {
+  background: color-mix(in srgb, var(--accent), transparent 96%);
+}
+
+.group-starship-entry > header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 46px;
+  align-items: stretch;
+}
+
+.group-starship-toggle,
+.group-starship-edit {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+}
+
+.group-starship-toggle {
+  min-height: 68px;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr) 18px;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px 10px 4px;
+  text-align: left;
+}
+
+.group-starship-toggle > svg:first-child {
+  width: 23px;
+  color: var(--accent);
+  stroke-width: 1.35;
+}
+
+.group-starship-toggle > span {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.group-starship-toggle strong {
+  overflow: hidden;
+  color: var(--text);
+  font:
+    600 14px Unbounded,
+    sans-serif;
+  letter-spacing: -0.025em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.group-starship-toggle small {
+  color: var(--muted);
+  font:
+    500 9px "DM Mono",
+    monospace;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.group-starship-toggle > svg:last-child {
+  width: 15px;
+  transition: rotate 0.16s ease;
+}
+
+.group-starship-entry.expanded .group-starship-toggle > svg:last-child {
+  rotate: 180deg;
+}
+
+.group-starship-edit {
+  display: grid;
+  place-items: center;
+  border-left: 1px solid var(--line);
+}
+
+.group-starship-edit:hover,
+.group-starship-edit:focus-visible {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent), transparent 92%);
+}
+
+.group-starship-edit svg {
+  width: 15px;
+}
+
+.group-starship-readout {
+  padding: 4px 14px 24px 42px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 22px 32px;
+  animation: group-starship-readout-in 0.18s ease both;
+}
+
+.group-starship-readout section {
+  min-width: 0;
+}
+
+.group-starship-readout h4 {
+  margin: 0 0 9px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--line);
+  color: var(--muted);
+  font:
+    600 9px "DM Mono",
+    monospace;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.group-starship-readout dl {
+  margin: 0;
+  display: grid;
+  gap: 7px;
+}
+
+.group-starship-readout dl > div {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(82px, 1fr) minmax(0, 1.4fr);
+  gap: 10px;
+}
+
+.group-starship-readout dt {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.group-starship-readout dd {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: var(--text);
+  font:
+    500 12px "DM Mono",
+    monospace;
+  text-align: right;
+}
+
+.group-starship-readout p,
+.group-starships-empty {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.group-starships-empty {
+  padding: 26px 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+.group-starship-add {
+  min-height: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px dashed var(--line);
+  background: transparent;
+  color: var(--muted);
+  font:
+    600 11px "DM Mono",
+    monospace;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.group-starship-add:hover,
+.group-starship-add:focus-visible {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.group-starship-add svg {
+  width: 15px;
+}
+
+@keyframes group-starship-readout-in {
+  from {
+    opacity: 0;
+    translate: 0 -4px;
+  }
+}
+
 .group-starship {
   display: grid;
   gap: 22px;
   padding-top: 22px;
   border-top: 2px solid var(--text);
+}
+
+.group-starship-editor {
+  padding: 27px;
+  border-top: 0;
+}
+
+.group-starship-editor .modal-intro {
+  margin: 0;
 }
 
 .group-starship-header > div {
@@ -355,5 +727,26 @@
 
   .group-starship-header {
     align-items: flex-start;
+  }
+
+  .group-obligations-toolbar {
+    align-items: flex-start;
+  }
+
+  .group-obligation-fields {
+    grid-template-columns: 1fr;
+  }
+
+  .group-obligation-details {
+    grid-column: auto;
+  }
+
+  .group-starship-readout {
+    padding-left: 14px;
+    grid-template-columns: 1fr;
+  }
+
+  .group-starship-editor {
+    padding: 20px 16px 28px;
   }
 }

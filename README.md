@@ -1,6 +1,6 @@
 # The Devil's Toys
 
-A local-first virtual tabletop for Cairn and Monolith. The first release focuses on a persistent room, a fast shared table, rules at hand, and useful GM controls without trying to automate the games away.
+A local-first virtual tabletop for Cairn, Monolith, and Cities Without Number. The first release focuses on a persistent room, a fast shared table, rules at hand, and useful GM controls without trying to automate the games away.
 
 ## Requirements
 
@@ -18,6 +18,26 @@ npm run dev
 
 Open `http://localhost:10666`. Vite forwards API and WebSocket traffic to the Node server on port 4000.
 
+## The Devil's Tables
+
+A second application in this repository, for writing and curating the random tables the games roll on. It runs on its own port against the same database, so it can be started, stopped, and updated without touching a game in progress.
+
+```sh
+npm run dev:tables
+```
+
+Open `http://localhost:10667`. Vite forwards API traffic to the tables server on port 4100.
+
+Admins and GMs reach it from **The Devil's Tables** in the game's left rail, beneath the room list. Because it is a separate process, the game checks whether it is answering: when it is, the rail links straight to it; when it is not, the row reads _Not running_ and opens a panel with the command to start it. Nothing about a game depends on it being up.
+
+That link points at this host on `DEVILS_TABLES_PORT`. Set `DEVILS_TABLES_URL` when a reverse proxy serves the editor somewhere else.
+
+It signs in with the same accounts as The Devil's Toys — the session cookie is scoped to the host rather than the port, so signing in to either signs you in to both. Accounts are still created in The Devil's Toys. An admin can do everything; a GM writes tables for this instance; a player can read the catalogue but change nothing.
+
+It edits tables as grids, manages the tag vocabulary, imports CSV against a downloadable template, and produces two kinds of zip archive: a bundle for moving sets into another copy of the application, and a bundle shaped for folding a set into this repository as built-in content.
+
+How to use it — adding tables, tagging them, importing CSV, and moving sets between instances — is written up in [devils-tables.md](devils-tables.md), which the editor also serves as its **Guide** page.
+
 ## Production
 
 ```sh
@@ -25,9 +45,9 @@ npm run build
 npm start
 ```
 
-The production server serves both the API and `client/dist` at `http://localhost:4000`.
+The production server serves both the API and `client/dist` at `http://localhost:4000`. To serve the table editor as well, run `npm run start:tables` alongside it; it serves the API and `tables-client/dist` at `http://localhost:4100`.
 
-Mutable data defaults to `.data/` and can be moved with `DEVILS_TOYS_DATA_DIR`. The port can be set with `PORT`. See `.env.example`.
+Mutable data defaults to `.data/` and can be moved with `DEVILS_TOYS_DATA_DIR`. The ports can be set with `PORT` and `DEVILS_TABLES_PORT`. See `.env.example`.
 
 ## Run with WSLC on Windows
 
@@ -84,7 +104,7 @@ Do not run `wslc volume remove devils-toys-data` unless you intend to permanentl
 
 ## Prepare players and characters
 
-Server admins and room GMs have a **Players & characters** entry beneath the room list. Use it to create player sign-ins before granting room access, reset player passwords, and prepare Cairn or Monolith character records before choosing their player or room. Admins can assign account roles; GMs can create and add player-level accounts only. Downgrading an account that manages rooms requires confirmation and transfers those rooms to the acting admin.
+Server admins and room GMs have a **Players & characters** entry beneath the room list. Use it to create player sign-ins before granting room access, reset player passwords, and prepare Cairn, Monolith, or Cities Without Number character records before choosing their player or room. Admins can assign account roles; GMs can create and add player-level accounts only. Downgrading an account that manages rooms requires confirmation and transfers those rooms to the acting admin.
 
 A character's player and room are independent assignments. When setting both, give the player access to that room first. Full character-sheet details remain available from the room's Characters screen.
 
@@ -102,6 +122,6 @@ Stop the server, copy the complete configured data directory, then restart. Rest
 
 The application code is released under the [MIT License](LICENSE).
 
-The bundled rules text is not. Cairn by Yochai Gal and Monolith by Adam Hensley are each licensed under [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/), and so is everything in this repository derived from them: the Markdown in `raw/`, the rules pages the server delivers, and the random tables, bestiary entries, and starship parts read out of those files. If you redistribute any of that, ShareAlike requires you to keep it under the same licence and to credit the authors.
+The bundled rules use their authors' licences. Cairn by Yochai Gal and Monolith by Adam Hensley are licensed under [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/); Cities Without Number by Kevin Crawford is released under [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/). Derived rules pages and extracted game data retain the licence of their source.
 
 Attributions, the changes made to each source, and what is deliberately _not_ redistributed here are recorded in [NOTICE.md](NOTICE.md), and shown in the app under Credits.

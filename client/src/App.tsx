@@ -1,4 +1,5 @@
 import {
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -38,11 +39,22 @@ import {
   UserMinus,
   UserPlus,
   Users,
+  Library,
   UsersRound,
   X
 } from "lucide-react";
-import type { Account, ChatMessage, PresenceMember, RoomSummary, SystemId, ThemeId } from "@devils-toys/shared";
+import type {
+  Account,
+  ChatMessage,
+  DiceRules,
+  PresenceMember,
+  RoomSummary,
+  SystemId,
+  ThemeId
+} from "@devils-toys/shared";
 import { api } from "./api";
+import { tablesAppUrl, type TablesApp } from "./tables-app";
+import { TablesAppDialog } from "./TablesAppDialog";
 import { shouldSubmitChatOnEnter } from "./chat";
 import type { AudioPlaybackState, RoomAudioState } from "@devils-toys/shared";
 import { InviteScreen } from "./InviteScreen";
@@ -55,7 +67,7 @@ import type { ScenePing } from "./SceneViewer";
 import { TableMediaViewer } from "./TableMediaViewer";
 import { AudioDock, AudioModal } from "./AudioPlayer";
 import { ManagementWorkspace } from "./ManagementWorkspace";
-import { GroupPage } from "./GroupPage";
+import { GroupPage, MONOLITH_GROUP_VIEWS, type GroupView } from "./GroupPage";
 import { canShowPasswordReset } from "./member-permissions";
 
 import { AppearanceModal } from "./AppearanceModal";
@@ -64,9 +76,21 @@ import { NpcModal } from "./NpcModal";
 import { TablesModal } from "./TablesModal";
 import { DiceModal as SystemDiceModal } from "./DiceModal";
 import type { SaveRollSetup } from "./save-roll";
+interface SystemStatus {
+  id: SystemId;
+  name: string;
+  shortName: string;
+  glyph: string;
+  tagline: string;
+  defaultTheme: ThemeId;
+  rollRulesQuery: string;
+  dice: DiceRules;
+  groupPage: boolean;
+}
+
 interface Status {
   initialized: boolean;
-  systems: { id: SystemId; name: string; tagline: string; defaultTheme: ThemeId; groupPage: boolean }[];
+  systems: SystemStatus[];
   themes: ThemeId[];
 }
 
@@ -192,7 +216,7 @@ function AuthScreen({ mode, onSuccess }: { mode: "setup" | "login"; onSuccess: (
           <br />
           Toys
         </h1>
-        <p className="auth-intro">Cairn and Monolith, gathered around one persistent table.</p>
+        <p className="auth-intro">Cairn, Monolith, and Cities Without Number around one persistent table.</p>
         <form onSubmit={submit}>
           <label>
             Username
@@ -235,6 +259,9 @@ function Workspace({ account, status, onLogout }: { account: Account; status: St
   const [document, setDocument] = useState<string>();
   const [menuOpen, setMenuOpen] = useState(false);
   const [railCollapsed, setRailCollapsed] = useState(false);
+  const [tablesApp, setTablesApp] = useState<TablesApp>();
+  const [tablesPrompt, setTablesPrompt] = useState(false);
+  const [checkingTables, setCheckingTables] = useState(false);
   const [managementOpen, setManagementOpen] = useState(false);
   // Bumped when a player picks their own theme, to re-read what is stored.
   const [themeChoiceRevision, setThemeChoiceRevision] = useState(0);
@@ -250,8 +277,28 @@ function Workspace({ account, status, onLogout }: { account: Account; status: St
     loadRooms();
   }, []);
 
+  // Only the accounts that see the link need to know whether the editor is up.
+  const loadTablesApp = useCallback(async () => {
+    if (account.role === "player") return;
+    setCheckingTables(true);
+    try {
+      const next = await api<TablesApp>("/api/tables-app");
+      setTablesApp(next);
+      return next;
+    } catch {
+      setTablesApp(undefined);
+    } finally {
+      setCheckingTables(false);
+    }
+  }, [account.role]);
+
+  useEffect(() => {
+    loadTablesApp();
+  }, [loadTablesApp]);
+
   const active = rooms.find((room) => room.id === selectedId);
   const canManage = account.role !== "player";
+  const tablesUrl = tablesAppUrl(tablesApp, window.location, import.meta.env.DEV ? 10667 : undefined);
   const browserStorage = typeof localStorage === "undefined" ? undefined : localStorage;
   // Read on render rather than in an effect so opening a room never shows one
   // theme before settling on another.
@@ -295,7 +342,9 @@ function Workspace({ account, status, onLogout }: { account: Account; status: St
                   setManagementOpen(false);
                 }}
               >
-                <span className="system-glyph">{room.system === "cairn" ? "C" : "M"}</span>
+                <span className="system-glyph">
+                  {status.systems.find((system) => system.id === room.system)?.glyph ?? "?"}
+                </span>
                 <span>
                   {room.name}
                   <small>{room.role === "gm" ? "Game master" : room.system}</small>
@@ -324,6 +373,41 @@ function Workspace({ account, status, onLogout }: { account: Account; status: St
                   <small>Company setup</small>
                 </span>
               </button>
+              {tablesUrl &&
+                // The editor is its own application on its own port, so a link
+                // leaves the game rather than opening a screen inside it. When
+                // that process is not running the link would simply fail, so it
+                // becomes a button that says how to start it instead.
+                (tablesApp?.running ? (
+                  <a
+                    className="management-nav-button"
+                    href={tablesUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    title="The Devil's Tables, the random-table editor"
+                  >
+                    <Library size={18} />
+                    <span>
+                      The Devil’s Tables
+                      <small>Build random tables</small>
+                    </span>
+                  </a>
+                ) : (
+                  <button
+                    className="management-nav-button tables-nav-stopped"
+                    title="The Devil's Tables is not running"
+                    onClick={() => {
+                      setTablesPrompt(true);
+                      setMenuOpen(false);
+                    }}
+                  >
+                    <Library size={18} />
+                    <span>
+                      The Devil’s Tables
+                      <small>Not running</small>
+                    </span>
+                  </button>
+                ))}
             </>
           )}
         </nav>
@@ -379,6 +463,7 @@ function Workspace({ account, status, onLogout }: { account: Account; status: St
       ) : active ? (
         <TableRoom
           room={active}
+          systemDefinition={status.systems.find((system) => system.id === active.system)!}
           isAdmin={account.isAdmin}
           accountId={account.id}
           hasGroupPage={status.systems.find((system) => system.id === active.system)?.groupPage ?? false}
@@ -393,6 +478,7 @@ function Workspace({ account, status, onLogout }: { account: Account; status: St
       ) : (
         <Lobby
           rooms={rooms}
+          systems={status.systems}
           canCreate={account.role !== "player"}
           onCreate={() => setShowCreate(true)}
           onSelect={setSelectedId}
@@ -413,17 +499,31 @@ function Workspace({ account, status, onLogout }: { account: Account; status: St
       )}
       {showPlayer && active && <CreatePlayer roomId={active.id} onClose={() => setShowPlayer(false)} />}
       {document && <DocumentModal name={document} onClose={() => setDocument(undefined)} />}
+      {tablesPrompt && (
+        <TablesAppDialog
+          command={tablesApp?.command || "npm run dev:tables"}
+          url={tablesUrl}
+          checking={checkingTables}
+          onRecheck={async () => {
+            // Stay open while it is still down, so the command remains readable.
+            if ((await loadTablesApp())?.running) setTablesPrompt(false);
+          }}
+          onClose={() => setTablesPrompt(false)}
+        />
+      )}
     </main>
   );
 }
 
 function Lobby({
   rooms,
+  systems,
   canCreate,
   onCreate,
   onSelect
 }: {
   rooms: RoomSummary[];
+  systems: SystemStatus[];
   canCreate: boolean;
   onCreate: () => void;
   onSelect: (id: number) => void;
@@ -451,7 +551,9 @@ function Lobby({
                   onClick={() => onSelect(room.id)}
                   aria-label={`Open ${room.name}, ${room.role === "gm" ? "Game master" : "Player"}`}
                 >
-                  <span className="system-glyph">{room.system === "cairn" ? "C" : "M"}</span>
+                  <span className="system-glyph">
+                    {systems.find((system) => system.id === room.system)?.glyph ?? "?"}
+                  </span>
                   <span className="lobby-room-name">
                     {room.name}
                     <small>
@@ -487,6 +589,7 @@ function Lobby({
 
 function TableRoom({
   room,
+  systemDefinition,
   isAdmin,
   accountId,
   hasGroupPage,
@@ -496,6 +599,7 @@ function TableRoom({
   onPersonalTheme
 }: {
   room: RoomSummary;
+  systemDefinition: SystemStatus;
   isAdmin: boolean;
   accountId: number;
   hasGroupPage: boolean;
@@ -536,6 +640,7 @@ function TableRoom({
   const [tablesOpen, setTablesOpen] = useState(false);
   const [appearanceOpen, setAppearanceOpen] = useState(false);
   const [groupRevision, setGroupRevision] = useState(0);
+  const [groupView, setGroupView] = useState<GroupView>("obligations");
 
   const socketRef = useRef<WebSocket | null>(null);
   // The dock owns the audio element; the playlist needs its live position so its
@@ -581,6 +686,7 @@ function TableRoom({
     load();
     loadMedia();
     loadAudio();
+    setGroupView("obligations");
   }, [room.id]);
   useEffect(() => {
     let stopped = false;
@@ -697,8 +803,23 @@ function TableRoom({
             pings={pings}
             groupPage={
               hasGroupPage ? (
-                <GroupPage roomId={room.id} system={room.system} revision={groupRevision} hidden={false} />
+                <GroupPage
+                  roomId={room.id}
+                  system={room.system}
+                  revision={groupRevision}
+                  hidden={false}
+                  view={groupView}
+                />
               ) : undefined
+            }
+            groupPicker={
+              room.system === "monolith"
+                ? {
+                    options: MONOLITH_GROUP_VIEWS,
+                    selected: groupView,
+                    onSelect: (id) => setGroupView(id as GroupView)
+                  }
+                : undefined
             }
             onManage={() => setMediaOpen(true)}
             onPing={(x, y) => socketRef.current?.send(JSON.stringify({ type: "scene-ping", x, y }))}
@@ -840,7 +961,7 @@ function TableRoom({
       {diceOpen && (
         <SystemDiceModal
           roomId={room.id}
-          system={room.system}
+          diceRules={systemDefinition.dice}
           isGm={detail.room.role === "gm"}
           initialSave={diceInitialSave}
           onRolled={(message) => {
@@ -857,7 +978,7 @@ function TableRoom({
           }}
           onRules={() => {
             closeDice();
-            setRulesFocus(room.system === "cairn" ? "Saves" : "Tests");
+            setRulesFocus(systemDefinition.rollRulesQuery);
             setPanel("rules");
           }}
           onClose={closeDice}
@@ -1298,7 +1419,7 @@ function CreateRoom({
               className={`system-choice ${system === item.id ? "selected" : ""}`}
               onClick={() => setSystem(item.id)}
             >
-              <span>{item.id === "cairn" ? "C" : "M"}</span>
+              <span>{item.glyph}</span>
               <div>
                 <strong>{item.name}</strong>
                 <small>{item.tagline}</small>

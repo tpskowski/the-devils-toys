@@ -1,4 +1,3 @@
-import fs from "node:fs";
 import express from "express";
 import { z } from "zod";
 import type { SystemId } from "@devils-toys/shared";
@@ -6,15 +5,13 @@ import type { AuthedRequest } from "./auth.js";
 import { requireAuth, roomRole } from "./auth.js";
 import { all, db, one } from "./db.js";
 import { broadcastRoom } from "./realtime.js";
-import { projectFile } from "./paths.js";
-import { systems } from "./systems.js";
+import { systemMarkdown, systems } from "./systems.js";
 
 export const npcRouter = express.Router();
 
 export function npcCatalog(system: SystemId) {
   const metadata = systems[system].npcCatalog;
-  const filename = system === "cairn" ? "Cairn.md" : "Monolith.md";
-  const lines = fs.readFileSync(projectFile("raw", filename), "utf8").split("\n");
+  const lines = systemMarkdown(system).split("\n");
   const rootIndex = lines.findIndex((line) => {
     const match = /^(#+)\s+(.+?)\s*$/.exec(line);
     return match?.[2].toLocaleLowerCase() === metadata.heading.toLocaleLowerCase();

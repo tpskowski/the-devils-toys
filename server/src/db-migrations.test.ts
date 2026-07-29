@@ -3,7 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { THEME_IDS } from "@devils-toys/shared";
+import { BUILTIN_TABLE_TAGS, SYSTEM_IDS, THEME_IDS } from "@devils-toys/shared";
 import { removeDataDir } from "./test-setup.js";
 
 // The themes that shipped before `shinji` was added. A database created by that
@@ -99,6 +99,22 @@ afterEach(() => {
 });
 
 describe("database migrations", () => {
+  it("accepts every current system in a database created by an older build", async () => {
+    const directory = dataDir();
+    seedLegacyDatabase(directory);
+    const loaded = await openDatabase(directory);
+
+    for (const system of SYSTEM_IDS) expect(roomsSchema(loaded)).toContain(`'${system}'`);
+    for (const [index, system] of SYSTEM_IDS.entries()) {
+      loaded.db
+        .prepare("INSERT INTO rooms (name, system, theme, created_by) VALUES (?, ?, 'used', 1)")
+        .run(`System room ${index}`, system);
+    }
+    expect(loaded.all<{ system: string }>("SELECT system FROM rooms WHERE id > 1").map((row) => row.system)).toEqual([
+      ...SYSTEM_IDS
+    ]);
+  });
+
   it("accepts every current theme in a database created by an older build", async () => {
     const directory = dataDir();
     seedLegacyDatabase(directory);
@@ -153,6 +169,67 @@ describe("database migrations", () => {
 
     expect(loaded.all<{ name: string; tags_json: string }>("SELECT name, tags_json FROM table_sets")).toEqual([
       { name: "Old tables", tags_json: "[]" }
+    ]);
+  });
+
+  it("seeds the tag vocabulary into a database that predates it", async () => {
+    const directory = dataDir();
+    seedLegacyDatabase(directory);
+    const loaded = await openDatabase(directory);
+
+    expect(
+      loaded.all<{ slug: string; builtin: number }>("SELECT slug, builtin FROM table_tags ORDER BY sort_order")
+    ).toEqual(BUILTIN_TABLE_TAGS.map((slug) => ({ slug, builtin: 1 })));
+  });
+
+  it("puts a tag added to the application in its declared place, after the ones already stored", async () => {
+    const directory = dataDir();
+    const first = await openDatabase(directory);
+    // A database that predates the newest tags: only the first three, and one
+    // this instance added sitting immediately after them.
+    first.db.exec("DELETE FROM table_tags");
+    BUILTIN_TABLE_TAGS.slice(0, 3).forEach((slug, position) =>
+      first.db
+        .prepare("INSERT INTO table_tags (slug, label, builtin, sort_order) VALUES (?, ?, 1, ?)")
+        .run(slug, slug, position)
+    );
+    first.db
+      .prepare("INSERT INTO table_tags (slug, label, builtin, sort_order) VALUES ('horror', 'Horror', 0, 3)")
+      .run();
+    first.db.close();
+    opened.splice(opened.indexOf(first), 1);
+
+    const second = await openDatabase(directory);
+    const order = () =>
+      second.all<{ slug: string }>("SELECT slug FROM table_tags ORDER BY sort_order, slug").map((row) => row.slug);
+    // Declared order, with what the instance added kept after it rather than
+    // interleaved among the tags that arrived later.
+    expect(order()).toEqual([...BUILTIN_TABLE_TAGS, "horror"]);
+
+    // Restating a position must not move anything on a later start.
+    const settled = order();
+    second.db.close();
+    opened.splice(opened.indexOf(second), 1);
+    const third = await openDatabase(directory);
+    expect(
+      third.all<{ slug: string }>("SELECT slug FROM table_tags ORDER BY sort_order, slug").map((r) => r.slug)
+    ).toEqual(settled);
+  });
+
+  it("leaves a renamed built-in tag alone on the next start", async () => {
+    const directory = dataDir();
+    const first = await openDatabase(directory);
+    first.db.prepare("UPDATE table_tags SET label = ? WHERE slug = 'scifi'").run("Science Fiction");
+    first.db.close();
+    opened.splice(opened.indexOf(first), 1);
+
+    const second = await openDatabase(directory);
+    expect(second.all<{ label: string }>("SELECT label FROM table_tags WHERE slug = 'scifi'")).toEqual([
+      { label: "Science Fiction" }
+    ]);
+    // A tag added by the instance survives a restart, and no built-in is duplicated.
+    expect(second.all<{ total: number }>("SELECT COUNT(*) AS total FROM table_tags")).toEqual([
+      { total: BUILTIN_TABLE_TAGS.length }
     ]);
   });
 

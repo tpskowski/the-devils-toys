@@ -331,19 +331,7 @@ button:disabled {
   color: var(--muted);
   text-transform: capitalize;
 }
-/* Named as well as default so a theme swatch can carry its own palette. */
-.workspace,
-.theme-heroic {
-  --bg: #e7e3d7;
-  --surface: #f3f0e8;
-  --rail: #171711;
-  --text: #191914;
-  --muted: #6d6a60;
-  --line: #ccc7b9;
-  --accent: #b63e2e;
-  --accent-soft: #e8c9bd;
-  --button-text: #fff;
-}
+/* Palettes live in @devils-toys/shared/theme.css; this is layout only. */
 .workspace {
   --rail-width: 224px;
   --context-width: 400px;
@@ -356,50 +344,6 @@ button:disabled {
     grid-template-columns 0.28s var(--ease);
   display: grid;
   grid-template-columns: 224px minmax(0, 1fr);
-}
-.theme-digital {
-  --bg: #071018;
-  --surface: #0b1720;
-  --rail: #03080d;
-  --text: #e9f9ff;
-  --muted: #70919a;
-  --line: #1c3a45;
-  --accent: #18e1d1;
-  --accent-soft: #0c4c50;
-  --button-text: #031210;
-}
-.theme-used {
-  --bg: #c9c0ad;
-  --surface: #d8d0bf;
-  --rail: #24221d;
-  --text: #2d2b25;
-  --muted: #716a5b;
-  --line: #a79d88;
-  --accent: #9a4c2f;
-  --accent-soft: #bba68d;
-  --button-text: #fff8e9;
-}
-.theme-grim {
-  --bg: #171717;
-  --surface: #202020;
-  --rail: #0c0c0c;
-  --text: #e4e0d7;
-  --muted: #8d8880;
-  --line: #3a3937;
-  --accent: #9f2634;
-  --accent-soft: #56232a;
-  --button-text: #fff;
-}
-.theme-shinji {
-  --bg: #1d1a2f;
-  --surface: #27203c;
-  --rail: #11101c;
-  --text: #ebe6f7;
-  --muted: #9d93b5;
-  --line: #443260;
-  --accent: #8bd450;
-  --accent-soft: #3f6d4e;
-  --button-text: #1d1a2f;
 }
 .rail {
   position: sticky;
@@ -509,11 +453,15 @@ button:disabled {
   padding: 0 8px 5px;
   color: #77756d;
 }
-.room-list > button {
+.room-list > button,
+.room-list > a {
   width: 100%;
   min-height: 50px;
   border: 0;
   background: transparent;
+  /* The Devil's Tables is a separate application, so its row is a real link. */
+  text-decoration: none;
+  cursor: pointer;
   display: flex;
   align-items: center;
   gap: 11px;
@@ -526,12 +474,14 @@ button:disabled {
     transform 0.2s;
 }
 .room-list > button:hover,
+.room-list > a:hover,
 .room-list > button.room-active {
   background: #ffffff0c;
   color: #fff;
   transform: translateX(2px);
 }
-.room-list button > span:nth-child(2) {
+.room-list button > span:nth-child(2),
+.room-list a > span:nth-child(2) {
   /* Without this the label keeps its min-content width and the ellipsis never
      engages, so the row outgrows the rail instead of truncating. */
   min-width: 0;
@@ -1811,6 +1761,12 @@ button:disabled {
   color: var(--text);
   border-color: var(--line);
 }
+/* A dropdown panel is drawn using the control's own colours, so a transparent
+   select would render its options against a default that need not match. */
+.settings-list select,
+.settings-list select option {
+  background: var(--surface);
+}
 .stack-form fieldset {
   display: grid;
   gap: 8px;
@@ -2236,4 +2192,56 @@ button:disabled {
     scroll-behavior: auto !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* The rail row for a table editor that is not currently running. */
+.room-list > .tables-nav-stopped {
+  color: #8d8880;
+}
+.room-list > .tables-nav-stopped:hover {
+  color: var(--accent);
+}
+.tables-app-dialog {
+  width: min(100%, 560px);
+}
+.tables-app-body {
+  padding: 20px 27px 24px;
+}
+.tables-app-command {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 4px 0 10px;
+  padding: 11px 13px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--bg);
+}
+.tables-app-command code {
+  flex: 1;
+  font-family: "DM Mono", ui-monospace, monospace;
+  font-size: 0.92rem;
+  overflow-x: auto;
+  white-space: nowrap;
+}
+.tables-app-command button,
+.tables-app-actions button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: transparent;
+  font-size: 0.85rem;
+}
+.tables-app-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 10px;
+  margin-top: 16px;
+}
+.tables-app-actions .primary-button {
+  text-decoration: none;
 }

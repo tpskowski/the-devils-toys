@@ -1,6 +1,18 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { ArrowUpRight, BookOpen, Check, Dices, ImagePlus, Pencil, Plus, Trash2, UserMinus, UserRound, X } from "lucide-react";
+import {
+  ArrowUpRight,
+  BookOpen,
+  Check,
+  Dices,
+  ImagePlus,
+  Pencil,
+  Plus,
+  Trash2,
+  UserMinus,
+  UserRound,
+  X
+} from "lucide-react";
 import type { CharacterEntry, CharacterItem, CharacterSheetDefinition, SystemId } from "@devils-toys/shared";
 import { api } from "./api";
 import { CharacterItemEditor } from "./CharacterItemEditor";
@@ -8,7 +20,7 @@ import { RulesMarkdown } from "./RulesMarkdown";
 import { appendEntry, entryName, readEntries, removeEntry, singularLabel, updateEntry } from "./character-entries";
 import { groupRoster } from "./character-roster";
 import { currentsToBackfill } from "./character-stats";
-import { saveAbilityForStatKey, saveSetupForAttribute, type SaveRollSetup } from "./save-roll";
+import { saveSetupForField, type SaveRollSetup } from "./save-roll";
 import { findRuleAnchorId, findRuleExcerpt, rulesAnchorPath } from "./rules";
 import "./CharacterModal.css";
 
@@ -761,25 +773,24 @@ export function CharacterModal({
               </span>
             </div>
             {pairedStatRows(section).map(({ label, currentField, maximumField }, rowIndex) => {
-              const saveAbility = saveAbilityForStatKey(currentField.key);
-              const saveSetup = saveSetupForAttribute(currentField.key, sheet[currentField.key]);
+              const saveSetup = saveSetupForField(currentField, sheet[currentField.key]);
               return (
                 <div className="character-stat-row" role="group" aria-label={label} key={currentField.key}>
                   <span className="character-stat-name">
                     <span>{label}</span>
-                    {saveAbility && (
+                    {currentField.roll && (
                       <button
                         type="button"
                         className="character-stat-roll"
                         aria-label={
                           saveSetup
-                            ? `Roll ${saveAbility} save at target ${saveSetup.target}`
-                            : `Roll ${saveAbility} save`
+                            ? `Roll ${saveSetup.label} save at target ${saveSetup.target}`
+                            : `Roll ${currentField.roll.label} save`
                         }
                         title={
                           saveSetup
-                            ? `Roll ${saveAbility} save (target ${saveSetup.target})`
-                            : `Enter a current ${saveAbility} score from 1 to 20 to roll a save`
+                            ? `Roll ${saveSetup.label} save (target ${saveSetup.target})`
+                            : `Enter a target from 1 to 20 to roll a ${currentField.roll.label} save`
                         }
                         disabled={!saveSetup || busy}
                         onClick={() => saveSetup && void openSaveRoll(saveSetup)}
@@ -825,6 +836,21 @@ export function CharacterModal({
                 <div className={`character-sheet-field ${fieldWidthClass(field.kind)}`} key={field.key}>
                   <span className="character-field-label">
                     <label htmlFor={fieldId}>{field.label}</label>
+                    {field.roll && (
+                      <button
+                        type="button"
+                        className="character-stat-roll"
+                        aria-label={`Roll ${field.roll.label} save`}
+                        title={`Roll ${field.roll.label} save`}
+                        disabled={!saveSetupForField(field, sheet[field.key]) || busy}
+                        onClick={() => {
+                          const setup = saveSetupForField(field, sheet[field.key]);
+                          if (setup) void openSaveRoll(setup);
+                        }}
+                      >
+                        <Dices aria-hidden="true" />
+                      </button>
+                    )}
                     {fieldQuery && renderRuleHelp(`field-${field.key}`, fieldQuery)}
                   </span>
                   {field.kind === "checkbox" ? (

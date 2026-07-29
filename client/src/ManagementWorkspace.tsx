@@ -34,6 +34,7 @@ interface ManagedCharacter {
 
 interface ManagementData {
   viewerRole: AccountRole;
+  systems: { id: SystemId; name: string; glyph: string }[];
   rooms: ManagedRoom[];
   players: ManagedPlayer[];
   characters: ManagedCharacter[];
@@ -322,7 +323,9 @@ function PlayerManagement({
                         disabled={busy}
                         onClick={() => toggleRoom(room, assigned)}
                       >
-                        <span className="system-glyph">{room.system === "cairn" ? "C" : "M"}</span>
+                        <span className="system-glyph">
+                          {data.systems.find((system) => system.id === room.system)?.glyph ?? "?"}
+                        </span>
                         <span>
                           {room.name}
                           <small>{room.system}</small>
@@ -459,8 +462,11 @@ function CharacterManagement({
         <label>
           System
           <select name="system" defaultValue="cairn">
-            <option value="cairn">Cairn</option>
-            <option value="monolith">Monolith</option>
+            {data.systems.map((system) => (
+              <option value={system.id} key={system.id}>
+                {system.name}
+              </option>
+            ))}
           </select>
         </label>
         <button className="primary-button compact" disabled={busy}>
@@ -482,7 +488,9 @@ function CharacterManagement({
                 className={selectedId === character.id ? "selected" : ""}
                 onClick={() => onSelect(character.id)}
               >
-                <span className="system-glyph">{character.system === "cairn" ? "C" : "M"}</span>
+                <span className="system-glyph">
+                  {data.systems.find((system) => system.id === character.system)?.glyph ?? "?"}
+                </span>
                 <span className="ledger-name">
                   {character.name}
                   <small>

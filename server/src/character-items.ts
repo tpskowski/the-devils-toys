@@ -1,7 +1,6 @@
-import fs from "node:fs";
 import type { CharacterItem, CharacterSheetDefinition, SystemId } from "@devils-toys/shared";
-import { projectFile } from "./paths.js";
 import { readPricedRows, splitPricedCell } from "./rules-tables.js";
+import { systemMarkdown } from "./systems.js";
 
 /**
  * The gear a character can be carrying, read out of the system's own tables. A
@@ -43,7 +42,7 @@ export function parseCharacterItems(
 }
 
 function markdownFor(system: SystemId) {
-  return fs.readFileSync(projectFile("raw", system === "cairn" ? "Cairn.md" : "Monolith.md"), "utf8");
+  return systemMarkdown(system);
 }
 
 /** Parsed once per system, because the raw Markdown cannot change at runtime. */

@@ -3,11 +3,11 @@ import type { GameSystem } from "@devils-toys/shared";
 const statFields = [
   { key: "hpCurrent", label: "Hit Protection current", kind: "number" },
   { key: "hpMax", label: "Hit Protection maximum", kind: "number" },
-  { key: "strCurrent", label: "Strength current", kind: "number" },
+  { key: "strCurrent", label: "Strength current", kind: "number", roll: { kind: "save", label: "STR" } },
   { key: "strMax", label: "Strength maximum", kind: "number" },
-  { key: "dexCurrent", label: "Dexterity current", kind: "number" },
+  { key: "dexCurrent", label: "Dexterity current", kind: "number", roll: { kind: "save", label: "DEX" } },
   { key: "dexMax", label: "Dexterity maximum", kind: "number" },
-  { key: "wilCurrent", label: "Willpower current", kind: "number" },
+  { key: "wilCurrent", label: "Willpower current", kind: "number", roll: { kind: "save", label: "WIL" } },
   { key: "wilMax", label: "Willpower maximum", kind: "number" },
   { key: "armorCurrent", label: "Armor current", kind: "number" },
   { key: "armorMax", label: "Armor maximum", kind: "number" }
@@ -22,8 +22,41 @@ export const monolith: GameSystem = {
   id: "monolith",
   name: "Monolith",
   shortName: "MONOLITH",
+  glyph: "M",
   defaultTheme: "digital",
   tagline: "Freelancers at the edge of a sprawling, dangerous cosmos.",
+  rollRulesQuery: "Tests",
+  sourceDocuments: [
+    {
+      id: "monolith",
+      markdownFile: "Monolith.md",
+      correctionsFile: "corrections.md",
+      license: "CC BY-SA 4.0"
+    }
+  ],
+  contentModules: [
+    {
+      id: "monolith/core",
+      label: "Monolith core rules",
+      sourceDocumentId: "monolith",
+      rootHeadings: ["MONOLITH"],
+      classification: "player",
+      storageNamespace: "monolith.core",
+      provides: ["monolith/core"],
+      requires: []
+    },
+    {
+      id: "monolith/gm",
+      label: "Monolith GM rules",
+      sourceDocumentId: "monolith",
+      rootHeadings: ["NPCS", "SAMPLE BESTIARY", "PLANETS", "FACTION RULES", "SAMPLE FACTIONS", "TABLES & GENERATORS"],
+      classification: "gm",
+      storageNamespace: "monolith.gm",
+      provides: ["monolith/gm"],
+      requires: ["monolith/core"]
+    }
+  ],
+  imports: [],
   partyLabel: "Company",
   abilities: ["Strength", "Dexterity", "Will"],
   gmOnlyHeadings: ["NPCS", "SAMPLE BESTIARY", "PLANETS", "FACTION RULES", "SAMPLE FACTIONS", "TABLES & GENERATORS"],
@@ -39,6 +72,11 @@ export const monolith: GameSystem = {
       success: "equal-or-under",
       automaticSuccess: 1,
       automaticFailure: 20,
+      types: [
+        { id: "STR", label: "STR" },
+        { id: "DEX", label: "DEX" },
+        { id: "WIL", label: "WIL" }
+      ],
       outcomes: {
         normal: { success: "Success", failure: "Failure" },
         advantage: { success: "Enhanced success", failure: "Reduced failure" },
@@ -136,8 +174,8 @@ export const monolith: GameSystem = {
       }
     ],
     hirelings: {
-      label: "Hirelings",
-      placeholder: "A shared hireling roster will live here."
+      label: "Freelancers",
+      placeholder: "A shared freelancer roster will live here."
     },
     starshipSheet: {
       sections: [

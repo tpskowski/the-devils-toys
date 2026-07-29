@@ -19,51 +19,69 @@
   display: none;
 }
 
-.table-media-tabs button {
-  min-width: 0;
-  padding: 0 18px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 7px;
-  border: 0;
+.table-media-tab {
+  position: relative;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: stretch;
   border-right: 1px solid var(--line);
-  background: transparent;
-  color: var(--muted);
-  font:
-    500 10px "DM Mono",
-    monospace;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
   transition:
     color 160ms ease,
     background 160ms ease;
 }
 
-.table-media-tabs button:last-child {
-  border-right: 0;
+.table-media-tab-main,
+.table-media-tabs > .table-media-manage {
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
 }
 
-.table-media-tabs button:hover,
-.table-media-tabs button.active {
-  color: var(--accent);
+.table-media-tab-main {
+  padding: 0 18px;
+  gap: 7px;
+  font:
+    500 10px "DM Mono",
+    monospace;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.table-media-tab:hover,
+.table-media-tab.active {
   background: color-mix(in srgb, var(--accent), transparent 92%);
 }
 
-.table-media-tabs button.active {
+.table-media-tab:hover .table-media-tab-main,
+.table-media-tab.active .table-media-tab-main,
+.table-media-tabs > .table-media-manage:hover {
+  color: var(--accent);
+}
+
+.table-media-tab.active {
   box-shadow: inset 0 -2px var(--accent);
 }
 
-.table-media-tabs svg {
+.table-media-tab-main svg {
   width: 15px;
 }
 
-.table-media-tabs span {
-  min-width: 18px;
-  padding: 2px 5px;
-  border: 1px solid currentColor;
-  font-size: 8px;
-  text-align: center;
+.table-media-tab-main .table-media-picker-chevron {
+  width: 12px;
+  margin-left: 1px;
+  transition: rotate 140ms ease;
+}
+
+.table-media-tab-main.picker-open .table-media-picker-chevron {
+  rotate: 180deg;
+}
+
+.table-media-tab-main .table-media-picker-chevron.picker-empty {
+  opacity: 0.35;
 }
 
 .table-media-panel,
@@ -231,73 +249,68 @@
   width: 28px;
 }
 
-.table-media-picker {
-  flex: 1 1 220px;
-  min-width: 140px;
-  max-width: 260px;
-  display: flex;
-  align-items: stretch;
-  border-right: 1px solid var(--line);
-  background: color-mix(in srgb, var(--accent), transparent 96%);
-  animation: media-picker-in 160ms ease both;
-}
-
-.table-media-picker select {
-  width: 100%;
-  min-width: 0;
-  height: 100%;
-  padding: 0 30px 0 12px;
-  overflow: hidden;
-  border: 0;
-  outline: none;
+.table-media-picker-menu {
+  position: fixed;
+  z-index: 80;
+  max-height: min(320px, calc(100svh - 80px));
+  overflow-y: auto;
+  padding: 4px;
+  border: 1px solid color-mix(in srgb, var(--line), var(--text) 12%);
   background: var(--surface);
   color: var(--text);
+  box-shadow: 0 14px 36px #0005;
+  animation: media-picker-menu-in 140ms var(--ease) both;
+}
+
+.table-media-picker-menu button {
+  width: 100%;
+  min-height: 36px;
+  padding: 0 9px 0 11px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
   font:
     500 10px "DM Mono",
     monospace;
+  text-align: left;
+}
+
+.table-media-picker-menu button:hover,
+.table-media-picker-menu button.selected {
+  background: color-mix(in srgb, var(--accent), transparent 90%);
+  color: var(--accent);
+}
+
+.table-media-picker-menu button span {
+  min-width: 0;
+  overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.table-media-picker select:focus {
-  box-shadow: inset 0 -2px var(--accent);
+.table-media-picker-menu button svg {
+  flex: 0 0 auto;
+  width: 13px;
 }
 
-.table-media-picker select:disabled {
-  color: var(--muted);
-  opacity: 0.7;
-}
-@keyframes media-picker-in {
+@keyframes media-picker-menu-in {
   from {
     opacity: 0;
-    transform: scaleX(0.96);
-    transform-origin: left;
+    translate: 0 -4px;
   }
 }
-
 @media (max-width: 700px) {
-  .table-media-picker {
-    flex: 0 0 150px;
-    width: 150px;
-    min-width: 150px;
-    max-width: 150px;
-  }
-
-  .table-media-picker select {
-    height: 40px;
-  }
-
   .table-media-viewer {
     grid-template-rows: 42px minmax(0, 1fr);
   }
 
-  .table-media-tabs button {
-    flex: 0 0 auto;
+  .table-media-tab-main {
     padding: 0 11px;
     font-size: 9px;
-  }
-
-  .table-media-tabs span {
-    display: none;
   }
 
   .table-reference-list button {

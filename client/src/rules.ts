@@ -1,4 +1,4 @@
-import type { SystemId } from "@devils-toys/shared";
+import { SYSTEM_IDS, type SystemId } from "@devils-toys/shared";
 export function stripMarkdownMetadata(markdown: string) {
   const withoutBom = markdown.replace(/^\uFEFF/, "");
   const frontMatter = /^---[ \t]*\r?\n[\s\S]*?\r?\n(?:---|\.\.\.)[ \t]*(?:\r?\n|$)/.exec(withoutBom);
@@ -134,6 +134,6 @@ export function rulesAnchorPath(system: SystemId, roomId: number | undefined, an
 }
 
 export function rulesSystemFromPath(pathname: string): SystemId | null {
-  const match = /^\/rules\/(cairn|monolith)\/?$/.exec(pathname);
-  return match ? (match[1] as SystemId) : null;
+  const match = /^\/rules\/([^/]+)\/?$/.exec(pathname);
+  return match && SYSTEM_IDS.includes(match[1] as SystemId) ? (match[1] as SystemId) : null;
 }

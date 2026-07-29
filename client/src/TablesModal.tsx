@@ -2,13 +2,14 @@ import { useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboa
 import { ChevronDown, ChevronLeft, Dices, Library, Plus, Save, Search, Trash2, X } from "lucide-react";
 import {
   rollTableLabel,
-  TABLE_TAGS,
+  tagLabel,
   type ChatMessage,
   type RollTable,
   type RollTableSet,
   type RollTableSummary,
   type TableRollVisibility,
-  type TableTag
+  type TableTag,
+  type TableTagDefinition
 } from "@devils-toys/shared";
 import { api } from "./api";
 import {
@@ -17,7 +18,6 @@ import {
   filterTablesByTag,
   groupByCategory,
   moveHighlight,
-  tableTagLabel,
   toggleVisibility,
   visibilityNotice
 } from "./tables";
@@ -48,6 +48,7 @@ export function TablesModal({
   onClose: () => void;
 }) {
   const [sets, setSets] = useState<RollTableSet[]>([]);
+  const [vocabulary, setVocabulary] = useState<TableTagDefinition[]>([]);
   const [setId, setSetId] = useState("");
   const [tagFilter, setTagFilter] = useState<TableTag | "">("");
   const [query, setQuery] = useState("");
@@ -56,6 +57,7 @@ export function TablesModal({
   const [selectedId, setSelectedId] = useState("");
   const [table, setTable] = useState<RollTable>();
   const [visibility, setVisibility] = useState<TableRollVisibility>("public");
+  const [modifier, setModifier] = useState(0);
   const [rolled, setRolled] = useState<{ total: number; text: string; label: string }>();
   const [error, setError] = useState("");
   const [category, setCategory] = useState("");
@@ -69,6 +71,9 @@ export function TablesModal({
   const matches = useMemo(() => filterTables(taggedTables, suggesting ? query : ""), [taggedTables, query, suggesting]);
   const categories = useMemo(() => groupByCategory(taggedTables), [taggedTables]);
   const selectedSummary = tables.find((entry) => entry.id === selectedId);
+  // The vocabulary is editable in The Devil's Tables, so it is read rather than
+  // assumed; until it arrives a slug stands in for its own label.
+  const label = (tag: TableTag) => tagLabel(tag, vocabulary);
   const openCategory = categories.find((entry) => entry.name === category);
   const skippedCategoryList = Boolean(openCategory && categoryOpensTable(openCategory)?.id === selectedId);
 
@@ -83,12 +88,16 @@ export function TablesModal({
 
   useEffect(() => {
     loadSets().catch((cause: Error) => setError(cause.message));
+    api<{ tags: TableTagDefinition[] }>("/api/table-tags")
+      .then((result) => setVocabulary(result.tags))
+      .catch((cause: Error) => setError(cause.message));
   }, [roomId]);
 
   function clearSelection() {
     setSelectedId("");
     setTable(undefined);
     setRolled(undefined);
+    setModifier(0);
     setQuery("");
     setHighlight(-1);
     setSuggesting(false);
@@ -155,7 +164,7 @@ export function TablesModal({
         message: ChatMessage;
       }>(`/api/rooms/${roomId}/tables/roll`, {
         method: "POST",
-        body: JSON.stringify({ setId, tableId: table.id, visibility })
+        body: JSON.stringify({ setId, tableId: table.id, modifier, visibility })
       });
       setRolled({ total: result.roll.total, text: result.roll.text, label: result.roll.row?.label ?? "" });
       onRolled(result.message);
@@ -308,7 +317,7 @@ export function TablesModal({
                       <strong>{summary.name}</strong>
                       <small>
                         {summary.dice} · {summary.rowCount} rows{summary.section ? ` · ${summary.section}` : ""}
-                        {summary.tags.length ? ` · ${summary.tags.map(tableTagLabel).join(", ")}` : ""}
+                        {summary.tags.length ? ` · ${summary.tags.map(label).join(", ")}` : ""}
                       </small>
                     </button>
                   </li>
@@ -337,15 +346,15 @@ export function TablesModal({
             >
               All
             </button>
-            {TABLE_TAGS.map((tag) => (
+            {vocabulary.map(({ slug }) => (
               <button
                 type="button"
-                key={tag}
-                className={tagFilter === tag ? "active" : ""}
-                aria-pressed={tagFilter === tag}
-                onClick={() => setTagFilter((current) => (current === tag ? "" : tag))}
+                key={slug}
+                className={tagFilter === slug ? "active" : ""}
+                aria-pressed={tagFilter === slug}
+                onClick={() => setTagFilter((current) => (current === slug ? "" : slug))}
               >
-                {tableTagLabel(tag)}
+                {label(slug)}
               </button>
             ))}
           </div>
@@ -393,21 +402,21 @@ export function TablesModal({
               <fieldset className="tables-tag-options">
                 <legend>Tags for every table</legend>
                 <div>
-                  {TABLE_TAGS.map((tag) => (
-                    <label key={tag} className={draft.tags.includes(tag) ? "active" : ""}>
+                  {vocabulary.map(({ slug }) => (
+                    <label key={slug} className={draft.tags.includes(slug) ? "active" : ""}>
                       <input
                         type="checkbox"
-                        checked={draft.tags.includes(tag)}
+                        checked={draft.tags.includes(slug)}
                         onChange={() =>
                           setDraft((current) => ({
                             ...current,
-                            tags: current.tags.includes(tag)
-                              ? current.tags.filter((entry) => entry !== tag)
-                              : [...current.tags, tag]
+                            tags: current.tags.includes(slug)
+                              ? current.tags.filter((entry) => entry !== slug)
+                              : [...current.tags, slug]
                           }))
                         }
                       />
-                      {tableTagLabel(tag)}
+                      {label(slug)}
                     </label>
                   ))}
                 </div>
@@ -475,7 +484,7 @@ export function TablesModal({
                       <strong>{summary.name}</strong>
                       <small>
                         {summary.dice} · {summary.rowCount} rows{summary.section ? ` · ${summary.section}` : ""}
-                        {summary.tags.length ? ` · ${summary.tags.map(tableTagLabel).join(", ")}` : ""}
+                        {summary.tags.length ? ` · ${summary.tags.map(label).join(", ")}` : ""}
                       </small>
                     </button>
                   ))}
@@ -500,6 +509,16 @@ export function TablesModal({
                   <button className="tables-roll" onClick={roll} title={`Roll ${table.dice}`}>
                     <Dices /> Roll {table.dice}
                   </button>
+                  <label className="tables-modifier">
+                    Modifier
+                    <input
+                      type="number"
+                      min={-100}
+                      max={100}
+                      value={modifier}
+                      onChange={(event) => setModifier(Number(event.target.value))}
+                    />
+                  </label>
                   <div className="tables-visibility">
                     {(["private", "invisible", "reveal"] as const).map((option) => (
                       <label key={option}>
@@ -541,7 +560,7 @@ export function TablesModal({
                     {table.tags.length > 0 && (
                       <div className="tables-table-tags" aria-label="Table tags">
                         {table.tags.map((tag) => (
-                          <span key={tag}>{tableTagLabel(tag)}</span>
+                          <span key={tag}>{label(tag)}</span>
                         ))}
                       </div>
                     )}

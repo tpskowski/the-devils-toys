@@ -11,6 +11,7 @@ import "@fontsource/dm-mono/400.css";
 import "@fontsource/dm-mono/500.css";
 import "@fontsource/unbounded/500.css";
 import "@fontsource/unbounded/600.css";
+import "@devils-toys/shared/theme.css";
 import "./styles.css";
 import "./media.css";
 import "./table-media.css";

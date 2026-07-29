@@ -1,7 +1,7 @@
 import express from "express";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
-import type { AccountRole, SystemId } from "@devils-toys/shared";
+import { SYSTEM_IDS, type AccountRole, type SystemId } from "@devils-toys/shared";
 import type { AuthedRequest, AuthAccount } from "./auth.js";
 import { requireAuth } from "./auth.js";
 import { all, db, one } from "./db.js";
@@ -188,7 +188,8 @@ managementRouter.get("/management", requireAuth, (req: AuthedRequest, res) => {
       rooms: playerMemberships(player.id, context.roomIds),
       ownedRooms: req.account!.isAdmin ? managedGameRoomsForAccount(player.id) : []
     })),
-    characters: manageableCharacterRows(context, req.account!).map(publicCharacter)
+    characters: manageableCharacterRows(context, req.account!).map(publicCharacter),
+    systems: Object.values(systems).map(({ id, name, glyph }) => ({ id, name, glyph }))
   });
 });
 
@@ -384,7 +385,7 @@ managementRouter.post("/management/characters", requireAuth, (req: AuthedRequest
   const parsed = z
     .object({
       name: z.string().trim().min(1).max(80),
-      system: z.enum(["cairn", "monolith"]),
+      system: z.enum(SYSTEM_IDS),
       ownerAccountId: z.number().int().positive().nullable().default(null),
       roomId: z.number().int().positive().nullable().default(null)
     })

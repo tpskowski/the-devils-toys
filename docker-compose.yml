@@ -10,5 +10,19 @@ services:
       - devils-toys-data:/data
     restart: unless-stopped
 
+  # The Devil's Tables shares the database and nothing else, so it is its own
+  # service on its own port and can be stopped without touching a game in play.
+  tables:
+    build: .
+    command: ["npm", "run", "start:tables"]
+    ports:
+      - "4100:4100"
+    environment:
+      DEVILS_TOYS_DATA_DIR: /data
+      DEVILS_TABLES_PORT: 4100
+    volumes:
+      - devils-toys-data:/data
+    restart: unless-stopped
+
 volumes:
   devils-toys-data:

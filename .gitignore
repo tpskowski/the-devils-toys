@@ -22,6 +22,9 @@ coverage/
 
 # Per-developer tool state
 .claude/settings.local.json
+/dev-local.ps1
+/dev-local-linux.sh
+/dev-local-macos.sh
 
 # Editor and merge leftovers
 .DS_Store

@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { cairn } from "@devils-toys/system-cairn";
 import { monolith } from "@devils-toys/system-monolith";
-import { evaluateSave, parseRollCommand, rollDice } from "./dice.js";
+import { cwn } from "@devils-toys/system-cwn";
+import { evaluateCheck, evaluateSave, parseRollCommand, rollDice } from "./dice.js";
 
 function sequence(...values: number[]) {
   let index = 0;
@@ -88,5 +89,17 @@ describe("system saves", () => {
       passed: false,
       label: "Disastrous failure"
     });
+  });
+
+  it("applies Cities Without Number roll-over saves and natural outcomes", () => {
+    expect(evaluateSave(12, 12, "normal", cwn.dice).passed).toBe(true);
+    expect(evaluateSave(11, 12, "normal", cwn.dice).passed).toBe(false);
+    expect(evaluateSave(20, 20, "normal", cwn.dice).passed).toBe(true);
+    expect(evaluateSave(1, 1, "normal", cwn.dice).passed).toBe(false);
+  });
+
+  it("evaluates skill checks against their difficulty", () => {
+    expect(evaluateCheck(8, 8)).toMatchObject({ passed: true, label: "Success" });
+    expect(evaluateCheck(7, 8)).toMatchObject({ passed: false, label: "Failure" });
   });
 });

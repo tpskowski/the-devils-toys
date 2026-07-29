@@ -1,0 +1,76 @@
+/*
+ * The palettes, shared by The Devil's Toys and The Devil's Tables so a theme is
+ * defined once. Layout lives with each application; only the colours are here.
+ * The default is `heroic`, so a page that names no theme still has a palette.
+ */
+:root,
+.theme-heroic {
+  --bg: #e7e3d7;
+  --surface: #f3f0e8;
+  --rail: #171711;
+  --text: #191914;
+  --muted: #6d6a60;
+  --line: #ccc7b9;
+  --accent: #b63e2e;
+  --accent-soft: #e8c9bd;
+  --button-text: #fff;
+}
+/*
+ * Which way each palette leans. The browser draws the parts of a control it owns
+ * — dropdown panels, scrollbars, focus rings — from this, and without it a dark
+ * theme gets a light panel behind light text.
+ */
+.theme-heroic,
+.theme-used {
+  color-scheme: light;
+}
+.theme-digital,
+.theme-grim,
+.theme-shinji {
+  color-scheme: dark;
+}
+
+.theme-digital {
+  --bg: #071018;
+  --surface: #0b1720;
+  --rail: #03080d;
+  --text: #e9f9ff;
+  --muted: #70919a;
+  --line: #1c3a45;
+  --accent: #18e1d1;
+  --accent-soft: #0c4c50;
+  --button-text: #031210;
+}
+.theme-used {
+  --bg: #c9c0ad;
+  --surface: #d8d0bf;
+  --rail: #24221d;
+  --text: #2d2b25;
+  --muted: #716a5b;
+  --line: #a79d88;
+  --accent: #9a4c2f;
+  --accent-soft: #bba68d;
+  --button-text: #fff8e9;
+}
+.theme-grim {
+  --bg: #171717;
+  --surface: #202020;
+  --rail: #0c0c0c;
+  --text: #e4e0d7;
+  --muted: #8d8880;
+  --line: #3a3937;
+  --accent: #9f2634;
+  --accent-soft: #56232a;
+  --button-text: #fff;
+}
+.theme-shinji {
+  --bg: #1d1a2f;
+  --surface: #27203c;
+  --rail: #11101c;
+  --text: #ebe6f7;
+  --muted: #9d93b5;
+  --line: #443260;
+  --accent: #8bd450;
+  --accent-soft: #3f6d4e;
+  --button-text: #1d1a2f;
+}
