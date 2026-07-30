@@ -6,6 +6,7 @@ export default defineConfig({
   server: {
     host: "0.0.0.0",
     port: 10666,
+    strictPort: true,
     proxy: {
       "/api": "http://localhost:4000",
       "/ws": { target: "ws://localhost:4000", ws: true }

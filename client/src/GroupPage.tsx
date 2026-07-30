@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ArrowUpRight, ChevronDown, Pencil, Plus, Rocket, Trash2, UsersRound } from "lucide-react";
+import { ArrowUpRight, ChevronDown, ImagePlus, Pencil, Plus, Rocket, Trash2, UsersRound } from "lucide-react";
 import type {
   CharacterFieldDefinition,
   CharacterListDefinition,
@@ -12,7 +12,10 @@ import { api } from "./api";
 import { parseGroupObligations, type GroupObligation } from "./group-obligations";
 import { parseGroupStarships, type GroupStarship } from "./group-starships";
 import { Modal } from "./Modal";
+import { otherPartyMembers } from "./party-members";
+import { ReadOnlyCharacterSheet, type ReadOnlyCharacter } from "./ReadOnlyCharacterSheet";
 import { headingSlug, rulesAnchorPath } from "./rules";
+import { readStarshipExpansion, writeStarshipExpansion } from "./starship-expansion";
 import { applyStarshipSize, holdSlots, setHoldValue, starshipHolds, starshipSizeFor } from "./starship";
 import { HoldEditor } from "./StarshipHoldEditor";
 import "./GroupPage.css";
@@ -20,10 +23,26 @@ import "./GroupPage.css";
 interface GroupResponse {
   state: Record<string, unknown>;
   definition: GroupPageDefinition;
+  images?: StarshipImage[];
   updatedAt: string | null;
 }
 
+interface StarshipImage {
+  starshipId: string;
+  url: string;
+  filename: string;
+}
+
+interface PartyCharacterResponse {
+  characters: ReadOnlyCharacter[];
+  activeCharacterId: number | null;
+  partyLabel: string;
+  sheetDefinition: CharacterSheetDefinition;
+}
+
 type SaveStatus = "Saved" | "Unsaved" | "Saving…";
+const starshipImageLimitBytes = 5 * 1024 * 1024;
+const starshipImageTypes = new Set(["image/png", "image/jpeg", "image/webp"]);
 
 function pairedStatRows(section: CharacterSheetDefinition["sections"][number]) {
   return section.fields.flatMap((currentField) => {
@@ -50,10 +69,25 @@ function fixedValue(value: unknown) {
 export const MONOLITH_GROUP_VIEWS = [
   { id: "obligations", label: "Group Obligations" },
   { id: "freelancers", label: "Freelancers" },
-  { id: "starship", label: "Starship" }
+  { id: "starship", label: "Starship" },
+  { id: "party", label: "Party Members" }
 ] as const;
 
-export type GroupView = (typeof MONOLITH_GROUP_VIEWS)[number]["id"];
+export const STANDARD_GROUP_VIEWS = [
+  { id: "group", label: "Group" },
+  { id: "party", label: "Party Members" }
+] as const;
+
+export type GroupView = "group" | (typeof MONOLITH_GROUP_VIEWS)[number]["id"];
+
+export function groupViewsForSystem(system: SystemId) {
+  return system === "monolith" ? MONOLITH_GROUP_VIEWS : STANDARD_GROUP_VIEWS;
+}
+
+export function defaultGroupView(system: SystemId): GroupView {
+  return system === "monolith" ? "obligations" : "group";
+}
+
 type GroupObligationField = Exclude<keyof GroupObligation, "id">;
 
 function newObligationId() {
@@ -68,13 +102,17 @@ export function GroupPage({
   roomId,
   system,
   revision,
+  characterRevision,
   hidden,
-  view = "obligations"
+  viewerId,
+  view = "group"
 }: {
   roomId: number;
   system: SystemId;
   revision: number;
+  characterRevision: number;
   hidden: boolean;
+  viewerId: number;
   view?: GroupView;
 }) {
   const [definition, setDefinition] = useState<GroupPageDefinition>();
@@ -83,7 +121,18 @@ export function GroupPage({
   const [error, setError] = useState("");
   const [editingHold, setEditingHold] = useState<{ index: number; value: string }>();
   const [editingStarshipId, setEditingStarshipId] = useState<string>();
-  const [expandedStarships, setExpandedStarships] = useState<string[]>([]);
+  const [starshipExpansion, setStarshipExpansion] = useState<Record<string, boolean>>(() => {
+    const storage = typeof localStorage === "undefined" ? undefined : localStorage;
+    return readStarshipExpansion(storage, roomId, viewerId);
+  });
+  const [starshipImages, setStarshipImages] = useState<StarshipImage[]>([]);
+  const [busyStarshipImageId, setBusyStarshipImageId] = useState<string>();
+  const [partyCharacters, setPartyCharacters] = useState<ReadOnlyCharacter[]>([]);
+  const [partyDefinition, setPartyDefinition] = useState<CharacterSheetDefinition>();
+  const [partyLabel, setPartyLabel] = useState("Party");
+  const [partyLoading, setPartyLoading] = useState(true);
+  const [partyError, setPartyError] = useState("");
+  const [expandedPartyMembers, setExpandedPartyMembers] = useState<ReadonlySet<number>>(new Set());
   const [holdError, setHoldError] = useState("");
   const saveTimerRef = useRef<number | undefined>(undefined);
   const saveChainRef = useRef<Promise<void>>(Promise.resolve());
@@ -95,6 +144,7 @@ export function GroupPage({
     const response = await api<GroupResponse>(`/api/rooms/${roomId}/group`);
     setDefinition(response.definition);
     setState(response.state);
+    setStarshipImages(response.images ?? []);
     latestStateRef.current = response.state;
     dirtyRef.current = false;
     setStatus("Saved");
@@ -115,8 +165,37 @@ export function GroupPage({
   }, [roomId]);
 
   useEffect(() => {
+    const storage = typeof localStorage === "undefined" ? undefined : localStorage;
+    setStarshipExpansion(readStarshipExpansion(storage, roomId, viewerId));
+  }, [roomId, viewerId]);
+
+  useEffect(() => {
     if (revision > 0 && !dirtyRef.current) void load().catch((cause: Error) => setError(cause.message));
   }, [revision]);
+
+  useEffect(() => {
+    if (view !== "party") return;
+    let current = true;
+    setPartyLoading(true);
+    setPartyError("");
+    api<PartyCharacterResponse>(`/api/rooms/${roomId}/characters`)
+      .then((response) => {
+        if (!current) return;
+        const party = otherPartyMembers(response.characters, viewerId, response.activeCharacterId);
+        setPartyCharacters(party);
+        setPartyDefinition(response.sheetDefinition);
+        setPartyLabel(response.partyLabel);
+        setExpandedPartyMembers((expanded) => {
+          const available = new Set(party.map((character) => character.id));
+          return new Set([...expanded].filter((id) => available.has(id)));
+        });
+      })
+      .catch((cause: Error) => current && setPartyError(cause.message))
+      .finally(() => current && setPartyLoading(false));
+    return () => {
+      current = false;
+    };
+  }, [roomId, viewerId, characterRevision, view]);
 
   function queueSave(next: Record<string, unknown>) {
     latestStateRef.current = next;
@@ -198,7 +277,6 @@ export function GroupPage({
   function addStarship() {
     const id = newStarshipId();
     updateStarships((current) => [...current, { id, name: "" }]);
-    setExpandedStarships((current) => [...new Set([...current, id])]);
     setEditingStarshipId(id);
   }
 
@@ -218,15 +296,70 @@ export function GroupPage({
   }
 
   function toggleStarship(shipId: string) {
-    setExpandedStarships((current) =>
-      current.includes(shipId) ? current.filter((id) => id !== shipId) : [...current, shipId]
-    );
+    setStarshipExpansion((current) => {
+      const next = { ...current, [shipId]: !(current[shipId] ?? true) };
+      const storage = typeof localStorage === "undefined" ? undefined : localStorage;
+      writeStarshipExpansion(storage, roomId, viewerId, next);
+      return next;
+    });
+  }
+
+  function togglePartyMember(characterId: number) {
+    setExpandedPartyMembers((current) => {
+      const next = new Set(current);
+      if (next.has(characterId)) next.delete(characterId);
+      else next.add(characterId);
+      return next;
+    });
   }
 
   function closeStarshipEditor() {
     setEditingStarshipId(undefined);
     setEditingHold(undefined);
     setHoldError("");
+  }
+
+  async function uploadStarshipImage(shipId: string, file?: File) {
+    if (!file) return;
+    if (file.size > starshipImageLimitBytes) {
+      setError("Starship images may be at most 5 MB.");
+      return;
+    }
+    if (!starshipImageTypes.has(file.type)) {
+      setError("Choose a PNG, JPEG, or WebP image.");
+      return;
+    }
+
+    setBusyStarshipImageId(shipId);
+    setError("");
+    try {
+      const body = new FormData();
+      body.append("file", file);
+      const result = await api<{ image: StarshipImage }>(
+        `/api/rooms/${roomId}/group/starships/${encodeURIComponent(shipId)}/image`,
+        { method: "POST", body }
+      );
+      setStarshipImages((current) => [...current.filter((image) => image.starshipId !== shipId), result.image]);
+    } catch (cause) {
+      setError((cause as Error).message);
+    } finally {
+      setBusyStarshipImageId(undefined);
+    }
+  }
+
+  async function removeStarshipImage(shipId: string) {
+    setBusyStarshipImageId(shipId);
+    setError("");
+    try {
+      await api<void>(`/api/rooms/${roomId}/group/starships/${encodeURIComponent(shipId)}/image`, {
+        method: "DELETE"
+      });
+      setStarshipImages((current) => current.filter((image) => image.starshipId !== shipId));
+    } catch (cause) {
+      setError((cause as Error).message);
+    } finally {
+      setBusyStarshipImageId(undefined);
+    }
   }
 
   /** Installs a part through the hold rules, reporting a refusal rather than forcing it. */
@@ -416,54 +549,61 @@ export function GroupPage({
   function renderStarshipReadout(ship: GroupStarship) {
     const sheet = definition?.starshipSheet;
     const capacity = starshipHolds(sheet, ship.size);
+    const image = starshipImages.find((candidate) => candidate.starshipId === ship.id);
+    const shipName = String(ship.name || "").trim() || "Starship";
     return (
       <div className="group-starship-readout">
-        {sheet?.sections.map((section) => (
-          <section key={section.id}>
-            <h4>{section.label}</h4>
-            <dl>
-              {section.layout === "paired-current-max"
-                ? pairedStatRows(section).map(({ label, currentField, maximumField }) => (
-                    <div key={currentField.key}>
-                      <dt>{label}</dt>
-                      <dd>
-                        {fixedValue(ship[currentField.key])} / {fixedValue(ship[maximumField.key])}
-                      </dd>
-                    </div>
-                  ))
-                : section.fields.map((field) => (
-                    <div className={field.kind === "textarea" ? "wide" : ""} key={field.key}>
-                      <dt>{field.label}</dt>
-                      <dd>{fixedValue(ship[field.key])}</dd>
-                    </div>
-                  ))}
-            </dl>
-          </section>
-        ))}
-        {sheet?.lists.map((list) => {
-          const visibleSlots = capacity ? list.slots.slice(0, capacity) : list.slots;
-          const occupied = visibleSlots.flatMap((slot, index) => {
-            const value = String((Array.isArray(ship[list.key]) ? (ship[list.key] as unknown[])[index] : "") ?? "");
-            return value.trim() ? [{ slot, value }] : [];
-          });
-          return (
-            <section key={list.key}>
-              <h4>{list.label}</h4>
-              {occupied.length ? (
-                <dl>
-                  {occupied.map(({ slot, value }) => (
-                    <div key={slot}>
-                      <dt>{slot}</dt>
-                      <dd>{value}</dd>
-                    </div>
-                  ))}
-                </dl>
-              ) : (
-                <p>No occupied holds.</p>
-              )}
+        <div className={`group-starship-image-frame${image ? " has-image" : ""}`}>
+          {image ? <img src={image.url} alt={`${shipName} starship`} /> : <Rocket aria-hidden="true" />}
+        </div>
+        <div className="group-starship-readout-sections">
+          {sheet?.sections.map((section) => (
+            <section key={section.id}>
+              <h4>{section.label}</h4>
+              <dl>
+                {section.layout === "paired-current-max"
+                  ? pairedStatRows(section).map(({ label, currentField, maximumField }) => (
+                      <div key={currentField.key}>
+                        <dt>{label}</dt>
+                        <dd>
+                          {fixedValue(ship[currentField.key])} / {fixedValue(ship[maximumField.key])}
+                        </dd>
+                      </div>
+                    ))
+                  : section.fields.map((field) => (
+                      <div className={field.kind === "textarea" ? "wide" : ""} key={field.key}>
+                        <dt>{field.label}</dt>
+                        <dd>{fixedValue(ship[field.key])}</dd>
+                      </div>
+                    ))}
+              </dl>
             </section>
-          );
-        })}
+          ))}
+          {sheet?.lists.map((list) => {
+            const visibleSlots = capacity ? list.slots.slice(0, capacity) : list.slots;
+            const occupied = visibleSlots.flatMap((slot, index) => {
+              const value = String((Array.isArray(ship[list.key]) ? (ship[list.key] as unknown[])[index] : "") ?? "");
+              return value.trim() ? [{ slot, value }] : [];
+            });
+            return (
+              <section key={list.key}>
+                <h4>{list.label}</h4>
+                {occupied.length ? (
+                  <dl>
+                    {occupied.map(({ slot, value }) => (
+                      <div key={slot}>
+                        <dt>{slot}</dt>
+                        <dd>{value}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                ) : (
+                  <p>No occupied holds.</p>
+                )}
+              </section>
+            );
+          })}
+        </div>
       </div>
     );
   }
@@ -480,20 +620,88 @@ export function GroupPage({
   const editingHoldCapacity = editingStarship
     ? starshipHolds(definition.starshipSheet, editingStarship.size)
     : undefined;
+  const editingStarshipImage = editingStarship
+    ? starshipImages.find((image) => image.starshipId === editingStarship.id)
+    : undefined;
   const partsList = definition.starshipSheet?.partsList;
   const isMonolith = system === "monolith";
   const obligations = parseGroupObligations(state);
-  const pageTitle = isMonolith
-    ? (MONOLITH_GROUP_VIEWS.find((option) => option.id === view)?.label ?? "Group Obligations")
-    : "Group";
+  const pageTitle =
+    view === "party"
+      ? "Party Members"
+      : isMonolith
+        ? (MONOLITH_GROUP_VIEWS.find((option) => option.id === view)?.label ?? "Group Obligations")
+        : "Group";
 
   return (
     <div className="group-page character-sheet" hidden={hidden}>
       <header className="group-page-header">
         <h2>{pageTitle}</h2>
-        <span className={`group-save-status group-save-${status.replace("…", "").toLocaleLowerCase()}`}>{status}</span>
+        {view === "party" ? (
+          <span className="group-save-status">Read only</span>
+        ) : (
+          <span className={`group-save-status group-save-${status.replace("…", "").toLocaleLowerCase()}`}>
+            {status}
+          </span>
+        )}
       </header>
       {error && <p className="form-error">{error}</p>}
+
+      {view === "party" && (
+        <section className="group-party" aria-label="Party members">
+          <header className="group-party-toolbar">
+            <span>
+              {partyCharacters.length === 1
+                ? `1 other ${partyLabel.toLocaleLowerCase()} member`
+                : `${partyCharacters.length} other ${partyLabel.toLocaleLowerCase()} members`}
+            </span>
+            <small>Active {partyLabel}</small>
+          </header>
+          {partyLoading ? (
+            <p className="group-party-empty">Opening the party roster…</p>
+          ) : partyError ? (
+            <p className="form-error">{partyError}</p>
+          ) : partyCharacters.length === 0 ? (
+            <p className="group-party-empty">No other active party members.</p>
+          ) : (
+            <div className="group-party-list">
+              {partyCharacters.map((character) => {
+                const expanded = expandedPartyMembers.has(character.id);
+                const detailsId = `group-party-character-${character.id}`;
+                return (
+                  <article className={`group-party-entry${expanded ? " expanded" : ""}`} key={character.id}>
+                    <header>
+                      <button
+                        type="button"
+                        className="group-party-toggle"
+                        onClick={() => togglePartyMember(character.id)}
+                        aria-expanded={expanded}
+                        aria-controls={detailsId}
+                      >
+                        <UsersRound aria-hidden="true" />
+                        <span>
+                          <strong>{character.name}</strong>
+                          <small>
+                            {character.activeBy.map((member) => member.displayName).join(", ") ||
+                              character.ownerUsername ||
+                              "Unassigned"}
+                          </small>
+                        </span>
+                        <ChevronDown aria-hidden="true" />
+                      </button>
+                    </header>
+                    {expanded && partyDefinition && (
+                      <div id={detailsId}>
+                        <ReadOnlyCharacterSheet character={character} definition={partyDefinition} system={system} />
+                      </div>
+                    )}
+                  </article>
+                );
+              })}
+            </div>
+          )}
+        </section>
+      )}
 
       {isMonolith && view === "obligations" && (
         <section className="group-obligations" aria-label="Group obligations">
@@ -565,7 +773,8 @@ export function GroupPage({
         </section>
       )}
 
-      {!isMonolith &&
+      {view !== "party" &&
+        !isMonolith &&
         definition.sections.map((section) => (
           <fieldset key={section.id}>
             <legend>{section.label}</legend>
@@ -575,7 +784,7 @@ export function GroupPage({
           </fieldset>
         ))}
 
-      {(!isMonolith || view === "freelancers") && definition.hirelings && (
+      {view !== "party" && (!isMonolith || view === "freelancers") && definition.hirelings && (
         <section className="group-placeholder" aria-labelledby="group-hirelings-heading">
           <UsersRound aria-hidden="true" />
           <div>
@@ -586,7 +795,7 @@ export function GroupPage({
         </section>
       )}
 
-      {(!isMonolith || view === "starship") && definition.starshipSheet && (
+      {view !== "party" && (!isMonolith || view === "starship") && definition.starshipSheet && (
         <section className="group-starships" aria-label="Starships">
           <header className="group-starships-toolbar">
             <span>{starships.length === 1 ? "1 starship" : `${starships.length} starships`}</span>
@@ -595,7 +804,7 @@ export function GroupPage({
           {starships.length ? (
             <div className="group-starship-list">
               {starships.map((ship, index) => {
-                const expanded = expandedStarships.includes(ship.id);
+                const expanded = starshipExpansion[ship.id] ?? true;
                 return (
                   <article className={`group-starship-entry${expanded ? " expanded" : ""}`} key={ship.id}>
                     <header>
@@ -644,6 +853,45 @@ export function GroupPage({
           wide
         >
           <div className="group-starship group-starship-editor">
+            <div
+              className={`group-starship-image-frame group-starship-editor-image${editingStarshipImage ? " has-image" : ""}`}
+            >
+              {editingStarshipImage ? (
+                <img
+                  src={editingStarshipImage.url}
+                  alt={`${String(editingStarship.name || "").trim() || "Starship"} starship`}
+                />
+              ) : (
+                <Rocket aria-hidden="true" />
+              )}
+              <div className="group-starship-image-actions">
+                <label title={editingStarshipImage ? "Replace starship image" : "Upload starship image"}>
+                  <ImagePlus aria-hidden="true" />
+                  <span>{editingStarshipImage ? "Replace" : "Upload"}</span>
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp"
+                    disabled={busyStarshipImageId === editingStarship.id}
+                    onChange={(event) => {
+                      const file = event.target.files?.[0];
+                      event.target.value = "";
+                      void uploadStarshipImage(editingStarship.id, file);
+                    }}
+                  />
+                </label>
+                {editingStarshipImage && (
+                  <button
+                    type="button"
+                    onClick={() => void removeStarshipImage(editingStarship.id)}
+                    disabled={busyStarshipImageId === editingStarship.id}
+                    aria-label={`Remove ${String(editingStarship.name || "").trim() || "starship"} image`}
+                    title="Remove starship image"
+                  >
+                    <Trash2 aria-hidden="true" />
+                  </button>
+                )}
+              </div>
+            </div>
             <p className="modal-intro">Changes save automatically.</p>
             {definition.starshipSheet.sections.map((section) => renderStarshipSection(section, editingStarship))}
             {definition.starshipSheet.lists.map((list) => {

@@ -223,7 +223,9 @@ mediaRouter.post(
     const mediaBytes = one<{ size: number }>("SELECT COALESCE(SUM(size), 0) AS size FROM media")?.size ?? 0;
     const portraitBytes =
       one<{ size: number }>("SELECT COALESCE(SUM(portrait_size), 0) AS size FROM characters")?.size ?? 0;
-    const used = mediaBytes + portraitBytes;
+    const starshipBytes =
+      one<{ size: number }>("SELECT COALESCE(SUM(size), 0) AS size FROM starship_images")?.size ?? 0;
+    const used = mediaBytes + portraitBytes + starshipBytes;
     if (used + req.file.size > config.uploadLimitMb * 1024 * 1024) {
       removeUploaded(req.file);
       return res.status(413).json({ error: "The server upload-storage allowance has been reached." });

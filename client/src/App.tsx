@@ -67,7 +67,7 @@ import type { ScenePing } from "./SceneViewer";
 import { TableMediaViewer } from "./TableMediaViewer";
 import { AudioDock, AudioModal } from "./AudioPlayer";
 import { ManagementWorkspace } from "./ManagementWorkspace";
-import { GroupPage, MONOLITH_GROUP_VIEWS, type GroupView } from "./GroupPage";
+import { defaultGroupView, GroupPage, groupViewsForSystem, type GroupView } from "./GroupPage";
 import { canShowPasswordReset } from "./member-permissions";
 
 import { AppearanceModal } from "./AppearanceModal";
@@ -640,7 +640,7 @@ function TableRoom({
   const [tablesOpen, setTablesOpen] = useState(false);
   const [appearanceOpen, setAppearanceOpen] = useState(false);
   const [groupRevision, setGroupRevision] = useState(0);
-  const [groupView, setGroupView] = useState<GroupView>("obligations");
+  const [groupView, setGroupView] = useState<GroupView>(() => defaultGroupView(room.system));
 
   const socketRef = useRef<WebSocket | null>(null);
   // The dock owns the audio element; the playlist needs its live position so its
@@ -686,7 +686,7 @@ function TableRoom({
     load();
     loadMedia();
     loadAudio();
-    setGroupView("obligations");
+    setGroupView(defaultGroupView(room.system));
   }, [room.id]);
   useEffect(() => {
     let stopped = false;
@@ -807,15 +807,17 @@ function TableRoom({
                   roomId={room.id}
                   system={room.system}
                   revision={groupRevision}
+                  characterRevision={charactersRevision}
                   hidden={false}
+                  viewerId={accountId}
                   view={groupView}
                 />
               ) : undefined
             }
             groupPicker={
-              room.system === "monolith"
+              hasGroupPage
                 ? {
-                    options: MONOLITH_GROUP_VIEWS,
+                    options: groupViewsForSystem(room.system),
                     selected: groupView,
                     onSelect: (id) => setGroupView(id as GroupView)
                   }

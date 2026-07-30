@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { one } from "./db.js";
 import { groupStateSchema, parseGroupState } from "./group.js";
 
 describe("group state", () => {
@@ -14,5 +15,11 @@ describe("group state", () => {
   it("accepts object documents and rejects oversized data", () => {
     expect(groupStateSchema.safeParse({ groupDebt: "10k" }).success).toBe(true);
     expect(groupStateSchema.safeParse({ notes: "x".repeat(250_001) }).success).toBe(false);
+  });
+
+  it("creates storage for one uploaded image per starship", () => {
+    expect(
+      one<{ sql: string }>("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'starship_images'")?.sql
+    ).toContain("PRIMARY KEY(room_id, starship_id)");
   });
 });

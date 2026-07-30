@@ -82,7 +82,13 @@ roomAdminRouter.delete("/rooms/:roomId", requireAuth, (req: AuthedRequest, res: 
   const roomId = Number(req.params.roomId);
   const room = one<{ id: number }>("SELECT id FROM rooms WHERE id = ?", roomId);
   if (!room) return res.status(404).json({ error: "Room not found." });
-  const storedNames = all<{ stored_name: string }>("SELECT stored_name FROM media WHERE room_id = ?", roomId);
+  const storedNames = all<{ stored_name: string }>(
+    `SELECT stored_name FROM media WHERE room_id = ?
+     UNION ALL
+     SELECT stored_name FROM starship_images WHERE room_id = ?`,
+    roomId,
+    roomId
+  );
   db.prepare("DELETE FROM rooms WHERE id = ?").run(roomId);
   refreshRoomAccess(roomId);
   const uploadsDir = path.join(config.dataDir, "uploads");

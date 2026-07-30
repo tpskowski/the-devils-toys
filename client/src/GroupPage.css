@@ -296,12 +296,14 @@
   text-transform: uppercase;
 }
 
-.group-starships {
+.group-starships,
+.group-party {
   display: grid;
   gap: 22px;
 }
 
-.group-starships-toolbar {
+.group-starships-toolbar,
+.group-party-toolbar {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
@@ -315,16 +317,24 @@
   text-transform: uppercase;
 }
 
-.group-starship-list {
+.group-party-toolbar small {
+  color: var(--muted);
+  font: inherit;
+}
+
+.group-starship-list,
+.group-party-list {
   border-top: 1px solid var(--line);
 }
 
-.group-starship-entry {
+.group-starship-entry,
+.group-party-entry {
   border-bottom: 1px solid var(--line);
   transition: background 0.16s ease;
 }
 
-.group-starship-entry.expanded {
+.group-starship-entry.expanded,
+.group-party-entry.expanded {
   background: color-mix(in srgb, var(--accent), transparent 96%);
 }
 
@@ -334,14 +344,21 @@
   align-items: stretch;
 }
 
+.group-party-entry > header {
+  display: block;
+}
+
 .group-starship-toggle,
-.group-starship-edit {
+.group-starship-edit,
+.group-party-toggle {
   border: 0;
   background: transparent;
   color: var(--muted);
 }
 
-.group-starship-toggle {
+.group-starship-toggle,
+.group-party-toggle {
+  width: 100%;
   min-height: 68px;
   min-width: 0;
   display: grid;
@@ -352,19 +369,22 @@
   text-align: left;
 }
 
-.group-starship-toggle > svg:first-child {
+.group-starship-toggle > svg:first-child,
+.group-party-toggle > svg:first-child {
   width: 23px;
   color: var(--accent);
   stroke-width: 1.35;
 }
 
-.group-starship-toggle > span {
+.group-starship-toggle > span,
+.group-party-toggle > span {
   min-width: 0;
   display: grid;
   gap: 3px;
 }
 
-.group-starship-toggle strong {
+.group-starship-toggle strong,
+.group-party-toggle strong {
   overflow: hidden;
   color: var(--text);
   font:
@@ -375,21 +395,27 @@
   white-space: nowrap;
 }
 
-.group-starship-toggle small {
+.group-starship-toggle small,
+.group-party-toggle small {
+  overflow: hidden;
   color: var(--muted);
   font:
     500 9px "DM Mono",
     monospace;
   letter-spacing: 0.08em;
+  text-overflow: ellipsis;
   text-transform: uppercase;
+  white-space: nowrap;
 }
 
-.group-starship-toggle > svg:last-child {
+.group-starship-toggle > svg:last-child,
+.group-party-toggle > svg:last-child {
   width: 15px;
   transition: rotate 0.16s ease;
 }
 
-.group-starship-entry.expanded .group-starship-toggle > svg:last-child {
+.group-starship-entry.expanded .group-starship-toggle > svg:last-child,
+.group-party-entry.expanded .group-party-toggle > svg:last-child {
   rotate: 180deg;
 }
 
@@ -412,13 +438,46 @@
 .group-starship-readout {
   padding: 4px 14px 24px 42px;
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 22px 32px;
+  grid-template-columns: minmax(180px, 260px) minmax(0, 1fr);
+  align-items: start;
+  gap: 24px 32px;
   animation: group-starship-readout-in 0.18s ease both;
 }
 
-.group-starship-readout section {
+.group-starship-readout-sections {
   min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 22px 32px;
+}
+
+.group-starship-readout-sections section {
+  min-width: 0;
+}
+
+.group-starship-image-frame {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--surface), var(--text) 4%);
+  color: var(--muted);
+}
+
+.group-starship-image-frame img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+
+.group-starship-image-frame > svg {
+  width: 26%;
+  height: 26%;
+  stroke-width: 1.25;
 }
 
 .group-starship-readout h4 {
@@ -463,13 +522,15 @@
 }
 
 .group-starship-readout p,
-.group-starships-empty {
+.group-starships-empty,
+.group-party-empty {
   margin: 0;
   color: var(--muted);
   font-size: 12px;
 }
 
-.group-starships-empty {
+.group-starships-empty,
+.group-party-empty {
   padding: 26px 0;
   border-top: 1px solid var(--line);
   border-bottom: 1px solid var(--line);
@@ -518,6 +579,86 @@
 .group-starship-editor {
   padding: 27px;
   border-top: 0;
+}
+
+.group-starship-editor-image {
+  width: min(420px, 100%);
+  aspect-ratio: 16 / 9;
+}
+
+.group-starship-image-actions {
+  position: absolute;
+  inset: auto 0 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 9px 8px 8px;
+  background: linear-gradient(transparent, #000000b0);
+}
+
+.group-starship-image-frame.has-image .group-starship-image-actions {
+  opacity: 0;
+  transition: opacity 0.14s var(--ease);
+}
+
+.group-starship-image-frame.has-image:hover .group-starship-image-actions,
+.group-starship-image-frame.has-image .group-starship-image-actions:focus-within {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  .group-starship-image-frame.has-image .group-starship-image-actions {
+    opacity: 1;
+  }
+}
+
+.group-starship-image-actions label,
+.group-starship-image-actions button {
+  min-width: 0;
+  min-height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 10px;
+  border: 1px solid #ffffff40;
+  background: #000000a6;
+  color: #fff;
+  cursor: pointer;
+  font:
+    500 9px "DM Mono",
+    monospace;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.group-starship-image-actions button {
+  padding: 0 8px;
+}
+
+.group-starship-image-actions input[type="file"] {
+  position: absolute;
+  clip-path: inset(50%);
+  width: 1px;
+  height: 1px;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+}
+
+.group-starship-image-actions label:hover,
+.group-starship-image-actions button:hover,
+.group-starship-image-actions label:focus-within,
+.group-starship-image-actions button:focus-visible {
+  border-color: var(--accent);
+  background: #000000d9;
+}
+
+.group-starship-image-actions svg {
+  width: 14px;
+  height: 14px;
 }
 
 .group-starship-editor .modal-intro {
@@ -744,6 +885,14 @@
   .group-starship-readout {
     padding-left: 14px;
     grid-template-columns: 1fr;
+  }
+
+  .group-starship-readout-sections {
+    grid-template-columns: 1fr;
+  }
+
+  .group-starship-readout .group-starship-image-frame {
+    width: min(100%, 420px);
   }
 
   .group-starship-editor {
