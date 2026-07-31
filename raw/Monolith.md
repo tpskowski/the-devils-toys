@@ -198,7 +198,9 @@ Mercenary crews are guns for hire. They have experience in combat, insider knowl
 
 - Cigar
 
-##### Signature Weapon
+##### Mercenary - Signature Weapon
+
+<!-- tags: character-building -->
 
 | D6 | Signature Weapon |
 | --- | --- |
@@ -209,7 +211,9 @@ Mercenary crews are guns for hire. They have experience in combat, insider knowl
 | 5 | “Trusty” (D6 Blaster) & “Rusty” (D6 Blaster, Cheap) These two guns have been with you through thick & thin. |
 | 6 | “Rusty” (D6 Blaster, Cheap) You used to have two but lost the good one… |
 
-##### Old Crew Specialty
+##### Mercenary - Old Crew Specialty
+
+<!-- tags: character-building -->
 
 | D6 | Old Crew Specialty |
 | --- | --- |
@@ -220,7 +224,9 @@ Mercenary crews are guns for hire. They have experience in combat, insider knowl
 | 5 | **Corp-Sec:** Private megacorporate security for a major faction. Generate a faction and NPC and determine what type of business. Take the talent “Human Shield”. |
 | 6 | **Deep Cover:** Specialists in infiltration as double agents for espionage and intel gathering. Take an auto-lock slicer, drone cam, and fake ID. |
 
-##### What Happened?
+##### Mercenary - What Happened?
+
+<!-- tags: character-building -->
 
 | D6 | What Happened? |
 | --- | --- |
@@ -245,7 +251,9 @@ You have been the subject of unethical and experimental scientific tinkering. Th
 
 - Tattoo (Serial Number or Bar Code)
 
-##### Side-Effects
+##### Human Experiment - Side-Effects
+
+<!-- tags: character-building -->
 
 | D6 | Side-Effects |
 | --- | --- |
@@ -256,7 +264,9 @@ You have been the subject of unethical and experimental scientific tinkering. Th
 | 5 | **Biomimicry:** Change or alter your face and skin once a day. |
 | 6 | **Ultra-Conductive:** You can discharge, locally disrupting all nearby computers and circuitry once a day. Immune to electricity and EMP damage. |
 
-##### Type of Experiment
+##### Human Experiment - Type of Experiment
+
+<!-- tags: character-building -->
 
 | D6 | Type of Experiment |
 | --- | --- |
@@ -267,7 +277,9 @@ You have been the subject of unethical and experimental scientific tinkering. Th
 | 5 | **Ghost-Shell:** You are a recently re-animated or unwilling consciousness implanted into a synthetic body. You know one random Astromancy from your previous life. Your memory is slowly returning in pieces... |
 | 6 | **6 Billion Credit Person:** You were a pet project of some unknown billionaire. They were attempting to create a perfect specimen. The project was considered a partial failure. Increase one Ability Score to 16. |
 
-##### How Did You Escape?
+##### Human Experiment - How Did You Escape?
+
+<!-- tags: character-building -->
 
 | D6 | How Did You Escape? |
 | --- | --- |
@@ -292,7 +304,9 @@ You’ve built a career around being handy. You’re skilled at repairing and ma
 
 - Grease-stained work clothes
 
-##### Pet Project
+##### Engineer - Pet Project
+
+<!-- tags: character-building -->
 
 | D6 | Pet Project |
 | --- | --- |
@@ -303,7 +317,9 @@ You’ve built a career around being handy. You’re skilled at repairing and ma
 | 5 | **Catherine:** An A.I. chip you can implant into any basic device. Currently installed in your personal comm unit. Catherine is very polite. Will warn you of any imminent danger you might not notice. May run advanced diagnostics. |
 | 6 | **Spider-Wasp Drone:** A spider-sized drone that can quietly fly, crawl on most surfaces, and transmit video footage up to 200ft. |
 
-##### Technical Expertise
+##### Engineer - Technical Expertise
+
+<!-- tags: character-building -->
 
 | D6 | Technical Expertise |
 | --- | --- |
@@ -314,7 +330,9 @@ You’ve built a career around being handy. You’re skilled at repairing and ma
 | 5 | **Robotics:** Take a chest harness (1 slot) with a robotic arm on it that can carry a weapon and perform similar actions to your own arms. Only works with your DNA signature. |
 | 6 | **Software:** You have increased effect and reduced failure when performing tasks related to computers, hacking, and using software or user-interfaces. |
 
-##### Savant Specialty
+##### Engineer - Savant Specialty
+
+<!-- tags: character-building -->
 
 | D6 | Savant Specialty |
 | --- | --- |
@@ -341,7 +359,9 @@ Running contraband goods for underworld clients is a dangerous game, but you’v
 
 - GM Optional, start with a small starship (stolen or indebted) with smuggling holds. It’s currently impounded or stolen.
 
-##### Lucky Charm
+##### Smuggler - Lucky Charm
+
+<!-- tags: character-building -->
 
 | D6 | Lucky Charm |
 | --- | --- |
@@ -352,7 +372,9 @@ Running contraband goods for underworld clients is a dangerous game, but you’v
 | 5 | **Custom Cape:** (Reaction rolls are always one category higher) Flamboyant design of your choice. Looking good is part of the job. |
 | 6 | **Moon Gum:** Tastes great. Causes intense hallucinations for 1d6 hours and is effectively immobilizing. Pretty colors… (6 sticks left) |
 
-##### Recent Entanglements
+##### Smuggler - Recent Entanglements
+
+<!-- tags: character-building -->
 
 | D6 | Recent Entanglements |
 | --- | --- |
@@ -363,7 +385,9 @@ Running contraband goods for underworld clients is a dangerous game, but you’v
 | 5 | **Jail Time:** After getting caught, you served some jail time. You’re just now getting out and have decided to try a change of career. |
 | 6 | **Criminal Elements:** Your smuggling services have recently disrupted a local criminal element’s business. |
 
-##### Trick Up Your Sleeve
+##### Smuggler - Trick Up Your Sleeve
+
+<!-- tags: character-building -->
 
 | D6 | Trick Up Your Sleeve |
 | --- | --- |
@@ -388,7 +412,9 @@ You feel most comfortable behind the controls of a starship. Quick reflexes and 
 
 - GM Optional, start with a small Starship. Make it impounded or in need of repairs.
 
-##### Suited Up
+##### Pilot - Suited Up
+
+<!-- tags: character-building -->
 
 | D6 | Suited Up |
 | --- | --- |
@@ -399,7 +425,9 @@ You feel most comfortable behind the controls of a starship. Quick reflexes and 
 | 5 | **Committed to Flying:** Take a datajack implant (Cerebral Socket). Installs the back of your head with a jack that allows you to plug into vehicles to more rapidly access special systems and data. |
 | 6 | **Just the Essentials:** Take a leather jacket, a stun gun and a retractable baton (D6, concealable) |
 
-##### Flying Expertise
+##### Pilot - Flying Expertise
+
+<!-- tags: character-building -->
 
 | D6 | Flying Expertise |
 | --- | --- |
@@ -410,7 +438,9 @@ You feel most comfortable behind the controls of a starship. Quick reflexes and 
 | 5 | **Syndicate Contractor:** Any reaction rolls or social encounters with professional syndicates are one category higher, or more favorable in another abstract way. |
 | 6 | **Test Pilot:** You can pilot anything, and are experienced at operating vehicles that are damaged or partially broken. If your ship takes critical damage, delay the negative effects for 1D4 rounds. |
 
-##### Other Talents
+##### Pilot - Other Talents
+
+<!-- tags: character-building -->
 
 | D6 | Other Talents |
 | --- | --- |
@@ -433,7 +463,9 @@ All machines have a purpose. What was yours, and what will it become? Machines c
 
 - Antivirus.EXE (1 use, removes 1 fatigue)
 
-##### Custom Hardware
+##### Machine - Custom Hardware
+
+<!-- tags: character-building -->
 
 | D6 | Custom Hardware |
 | --- | --- |
@@ -444,7 +476,9 @@ All machines have a purpose. What was yours, and what will it become? Machines c
 | 5 | **Hidden Storage:** Two extra inventory slots inside your chassis. |
 | 6 | **High-Speed Data Jack:** Improved hacking into networked systems. |
 
-##### Model Type
+##### Machine - Model Type
+
+<!-- tags: character-building -->
 
 | D6 | Model Type |
 | --- | --- |
@@ -455,7 +489,9 @@ All machines have a purpose. What was yours, and what will it become? Machines c
 | 5 | **Bio-Synth:** You’re composed of a mix of mechanical and biological parts. You can use and get a 50% discount on genetic modifications. |
 | 6 | **Incomplete Prototype:** You function well enough, but were never fully completed for the original purpose of your build. |
 
-##### Manufacturer
+##### Machine - Manufacturer
+
+<!-- tags: character-building -->
 
 | D6 | Manufacturer |
 | --- | --- |
@@ -480,7 +516,9 @@ Just another low life trying to make a few creds. You likely have ties to other 
 
 - Bolt cutters
 
-##### What Keeps You Safe on the Streets?
+##### Underworld - What Keeps You Safe on the Streets?
+
+<!-- tags: character-building -->
 
 | D6 | What Keeps You Safe on the Streets? |
 | --- | --- |
@@ -491,7 +529,9 @@ Just another low life trying to make a few creds. You likely have ties to other 
 | 5 | **Prototype Vibro-spear:** (D8, bulky, shock) Considered a truly nasty weapon. |
 | 6 | **Synth-weave Duster:** (1 armor, lots of pockets) It’s like a jacket only it’s longer, thicker, and far more bad-ass. |
 
-##### Type of Scum
+##### Underworld - Type of Scum
+
+<!-- tags: character-building -->
 
 | D6 | Type of Scum |
 | --- | --- |
@@ -502,7 +542,9 @@ Just another low life trying to make a few creds. You likely have ties to other 
 | 5 | **Ex-Syndicate Captain:** You used to be a top dog in a syndicate until you were double crossed and kicked out. Roll a random Ex-Tech you “liberated” on the way out. |
 | 6 | **Fixer:** You were a fixer, setting up jobs for the criminal underworld. You can negotiate for higher pay on jobs involving criminal activity. |
 
-##### Criminal Knack
+##### Underworld - Criminal Knack
+
+<!-- tags: character-building -->
 
 | D6 | Criminal Knack |
 | --- | --- |
@@ -529,7 +571,9 @@ A power within you has awoken. Whether from trauma, an evolving mind, or some ot
 
 - Candy bar
 
-##### Psionic Awakening
+##### Psionic - Psionic Awakening
+
+<!-- tags: character-building -->
 
 | D6 | Psionic Awakening |
 | --- | --- |
@@ -540,7 +584,9 @@ A power within you has awoken. Whether from trauma, an evolving mind, or some ot
 | 5 | **You are a Precog. Vision:** Once a day, roll a 1d20 and keep that roll. You may substitute that roll for any Save you, an ally, or an enemy makes after seeing the results. Gain 1 fatigue when you roll your vision and keep it in inventory until the dice is used. |
 | 6 | **You are an Esper. Calm:** A creature you can see is soothed and treats you as a friend for 1d6 hours. Take 1 fatigue. |
 
-##### Old Cover Identity
+##### Psionic - Old Cover Identity
+
+<!-- tags: character-building -->
 
 | D6 | Old Cover Identity |
 | --- | --- |
@@ -551,7 +597,9 @@ A power within you has awoken. Whether from trauma, an evolving mind, or some ot
 | 5 | **Pilgrim:** You lived a simple life following the path inside. You learned to open your mind and attune to your gifts. Roll another random psionic power. |
 | 6 | **Military Peon:** The rigorous life of a military grunt was a simple way to get by. Your service is up now. Take a Shard-sprayer (D8 blast, bulky) and grunt armor (Armor 1, bulky). |
 
-##### Neural Ramifications
+##### Psionic - Neural Ramifications
+
+<!-- tags: character-building -->
 
 | D6 | Neural Ramifications |
 | --- | --- |
@@ -576,7 +624,9 @@ You’ve spent most of your life dedicated to the advancement of science. Due to
 
 - Plasma-Knife (D6 thermal, concealable)
 
-##### Prized Lifetime Research
+##### Scientist - Prized Lifetime Research
+
+<!-- tags: character-building -->
 
 | D6 | Prized Lifetime Research |
 | --- | --- |
@@ -587,7 +637,9 @@ You’ve spent most of your life dedicated to the advancement of science. Due to
 | 5 | **Particle-Mirror Array:** (+1 Armor) A molecular shield generator. Once a day, make a DEX save to reflect energy weapon shots back at their source. |
 | 6 | **Creature in a Jar:** A baby sludge creature with one eye. Upon release, it will eat a corpse’s brain consuming its memories, effectively allowing the user to ask a corpse one question. The fresher the corpse, the better the memory. Needs a day to rest before it will come back out. |
 
-##### Field of Expertise
+##### Scientist - Field of Expertise
+
+<!-- tags: character-building -->
 
 | D6 | Field of Expertise |
 | --- | --- |
@@ -598,7 +650,9 @@ You’ve spent most of your life dedicated to the advancement of science. Due to
 | 5 | **Toxicology:** Years of experimentation, immunity-building & study have provided you an immunity to all known poisons, and reduced effect on failed saves against unknown or alien toxins and poisons. |
 | 6 | **Higher Dimensions:** Prying open the secrets of the universe have exposed you to things you can’t explain. Roll for a random Astromancy. |
 
-##### Why You Left Science
+##### Scientist - Why You Left Science
+
+<!-- tags: character-building -->
 
 | D6 | Why You Left Science |
 | --- | --- |
@@ -623,7 +677,9 @@ You’re ex-special ops. Having completed or parting with your duties, new oppor
 
 - Dog tags
 
-##### Special-Issue Equipment
+##### Soldier - Special-Issue Equipment
+
+<!-- tags: character-building -->
 
 | D6 | Special-Issue Equipment |
 | --- | --- |
@@ -634,7 +690,9 @@ You’re ex-special ops. Having completed or parting with your duties, new oppor
 | 5 | **Dual-Oculus Hooded Mask:** A hooded faceplate mask with two circular smart-display goggles. Allows for perfect vision in darkness and other debris via A.I. aided image sequencing. |
 | 6 | **Cockatrice Claymores:** 3 remote-operated explosives that explode with a gray bio-synthetic dust. (blast 40’) Make a STR save or instantly be turned to stone. |
 
-##### Spec-Ops Team
+##### Soldier - Spec-Ops Team
+
+<!-- tags: character-building -->
 
 | D6 | Spec-Ops Team |
 | --- | --- |
@@ -645,7 +703,9 @@ You’re ex-special ops. Having completed or parting with your duties, new oppor
 | 5 | **Counter-Insurgency:** If fighting in small, confined urban spaces, your first attack roll in combat is enhanced if your weapon is suited for close-range (melee, shotgun) |
 | 6 | **Top Secret Project:** You were part of an experimental top-secret project. Start with a bio-aug. Roll augment and re-flavor. |
 
-##### Squad Job
+##### Soldier - Squad Job
+
+<!-- tags: character-building -->
 
 | D6 | Squad Job |
 | --- | --- |
@@ -666,7 +726,9 @@ The living void and its myriad aspects reach out to you. You now belong to some 
 
 - Nothing can truly be possessed. You start with nothing but your clothing.
 
-##### What Gift Did the Stars Bring?
+##### Star-Touched - What Gift Did the Stars Bring?
+
+<!-- tags: character-building -->
 
 | D6 | What Gift Did the Stars Bring? |
 | --- | --- |
@@ -677,7 +739,9 @@ The living void and its myriad aspects reach out to you. You now belong to some 
 | 5 | **Sunder:** You can attack with your mind and two free hands for D6 damage from up to 60 ft. Does not cause fatigue. |
 | 6 | **Glittering Gate:** Spend 10 minutes performing a ritual in a 10’ circular area. Star-blessed spaces exist as a dyad, and only two can exist at once. Stepping into one space transfers those who enter to the other space. When a new space is created, the creator mentally chooses one of the existing two locations to dissipate. All who pass through this void space must save vs corruption. |
 
-##### Your Vision
+##### Star-Touched - Your Vision
+
+<!-- tags: character-building -->
 
 | D6 | Your Vision |
 | --- | --- |
@@ -688,7 +752,9 @@ The living void and its myriad aspects reach out to you. You now belong to some 
 | 5 | **The Secret Truth:** You cannot understand or speak it. You can sense any untruth you hear. |
 | 6 | **Perfect Symmetry:** It was almost too beautiful to behold. Social encounters are much easier for you. Reaction rolls in social situations are always one category higher than your result. |
 
-##### What Was Taken?
+##### Star-Touched - What Was Taken?
+
+<!-- tags: character-building -->
 
 | D6 | What Was Taken? |
 | --- | --- |
@@ -715,7 +781,9 @@ It’s a slimy, treacherous world out there, and you had to be just as nasty to 
 
 - Bounty Hunting License & Union Membership.
 
-##### Specialty Tool
+##### Bounty Hunter - Specialty Tool
+
+<!-- tags: character-building -->
 
 | D6 | Specialty Tool |
 | --- | --- |
@@ -726,7 +794,9 @@ It’s a slimy, treacherous world out there, and you had to be just as nasty to 
 | 5 | **Wire Shot:** (grappling) Wrist-mounted. Shoots a magnetic smart-wire that wraps around and ensnares targets. Dex save or completely grappled. No save if surprised. |
 | 6 | **Trick-Axe:** (D8, bulky, sweep): Can retract down to 3 feet in length for (D6). |
 
-##### How Did You Hunt?
+##### Bounty Hunter - How Did You Hunt?
+
+<!-- tags: character-building -->
 
 | D6 | How Did You Hunt? |
 | --- | --- |
@@ -737,7 +807,9 @@ It’s a slimy, treacherous world out there, and you had to be just as nasty to 
 | 5 | **By Any Means Necessary:** It was sometimes dirty, or unfair, but you got the job done. Any damage from traps, snares, or other preparations you make are enhanced. |
 | 6 | **Just for the Money:** It’s only a job, after all. Negotiate for double payouts on any bounty job. The NPC offering the job must pass a WIL save to resist, otherwise they’re persuaded to pay extra. |
 
-##### A Past Complication
+##### Bounty Hunter - A Past Complication
+
+<!-- tags: character-building -->
 
 | D6 | A Past Complication |
 | --- | --- |
