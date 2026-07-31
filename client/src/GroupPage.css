@@ -297,13 +297,16 @@
 }
 
 .group-starships,
-.group-party {
+.group-party,
+.group-hirelings {
   display: grid;
   gap: 22px;
 }
 
 .group-starships-toolbar,
-.group-party-toolbar {
+.group-party-toolbar,
+.group-hirelings-toolbar,
+.group-hirelings-toolbar > div {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
@@ -315,6 +318,129 @@
     monospace;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+}
+
+.group-hirelings-toolbar > div {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+}
+
+.group-hirelings-toolbar .primary-button {
+  min-height: 40px;
+  padding: 0 14px;
+}
+
+.group-hirelings-empty {
+  margin: 0;
+  padding: 26px 0;
+  border-block: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.group-hireling-list {
+  display: grid;
+  gap: 12px;
+}
+
+.group-hireling-entry {
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--surface), var(--text) 2%);
+}
+
+.group-hireling-entry > header {
+  display: flex;
+  align-items: stretch;
+}
+
+.group-hireling-toggle {
+  min-width: 0;
+  flex: 1;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  border: 0;
+  padding: 14px 16px;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+}
+
+.group-hireling-toggle > svg {
+  width: 18px;
+  color: var(--accent);
+}
+.group-hireling-toggle > svg:last-child {
+  transition: transform 0.18s;
+}
+.group-hireling-entry.expanded .group-hireling-toggle > svg:last-child {
+  transform: rotate(180deg);
+}
+.group-hireling-toggle span {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+.group-hireling-toggle strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.group-hireling-toggle small {
+  color: var(--muted);
+}
+
+.group-hireling-entry > header .group-obligation-remove {
+  padding: 0 14px;
+}
+
+.group-hireling-sheet {
+  display: grid;
+  gap: 18px;
+  padding: 18px;
+  border-top: 1px solid var(--line);
+}
+
+.group-hireling-inventory {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 16px;
+}
+
+.group-hireling-inventory label {
+  display: grid;
+  gap: 5px;
+  color: var(--muted);
+  font:
+    500 9px "DM Mono",
+    monospace;
+  text-transform: uppercase;
+}
+.group-hireling-inventory input {
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  padding: 7px 2px;
+  background: transparent;
+  color: var(--text);
+}
+.group-hireling-level {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.group-hireling-level button {
+  min-height: 36px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--muted);
+}
+.group-hireling-level small {
+  color: var(--muted);
 }
 
 .group-party-toolbar small {
@@ -894,6 +1020,20 @@
 }
 
 @media (max-width: 760px) {
+  .group-hirelings-toolbar {
+    align-items: stretch;
+  }
+  .group-hirelings-toolbar .primary-button {
+    width: 100%;
+    justify-content: center;
+  }
+  .group-hireling-inventory {
+    grid-template-columns: 1fr;
+  }
+  .group-hireling-entry > header .group-obligation-remove {
+    padding-inline: 8px;
+    font-size: 0;
+  }
   .group-page {
     padding: 20px 16px 34px;
   }

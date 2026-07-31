@@ -106,6 +106,11 @@ export const monolith: GameSystem = {
         label: "Talents",
         // Stored under the original `abilities` key so existing sheets keep their text.
         fields: [{ key: "abilities", label: "Talents", kind: "entries" }]
+      },
+      {
+        id: "vices",
+        label: "Vices",
+        fields: [{ key: "vices", label: "Vices", kind: "vices" }]
       }
     ],
     lists: [
@@ -175,7 +180,44 @@ export const monolith: GameSystem = {
     ],
     hirelings: {
       label: "Freelancers",
-      placeholder: "A shared freelancer roster will live here."
+      singularLabel: "Freelancer",
+      rulesQuery: "Freelancers & Mercs",
+      creationHint:
+        "Roll 3D6 for each ability, 1D6 HP, add a standard D6 weapon, then use the Finishing Touches tables.",
+      levelUpHint: "Level-up automation for crew members is coming in a future update.",
+      sheet: {
+        sections: [
+          {
+            id: "identity",
+            label: "Identity",
+            fields: [
+              { key: "name", label: "Name", kind: "text" },
+              { key: "details", label: "Finishing touches", kind: "textarea" }
+            ]
+          },
+          {
+            id: "core",
+            label: "Core statistics",
+            layout: "paired-current-max",
+            fields: statFields.filter((field) => !field.key.startsWith("armor"))
+          },
+          {
+            id: "gear",
+            label: "Gear",
+            fields: [
+              { key: "weapon", label: "Standard weapon (D6)", kind: "text" },
+              { key: "notes", label: "Notes", kind: "textarea" }
+            ]
+          }
+        ],
+        lists: [
+          {
+            key: "equipment",
+            label: "Equipment slots",
+            slots: Array.from({ length: 10 }, (_, index) => `Slot ${index + 1}`)
+          }
+        ]
+      }
     },
     starshipSheet: {
       sections: [
