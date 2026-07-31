@@ -42,6 +42,7 @@ describe("room calendar day segments", () => {
     legacy.segmentNames = ["Morning", "Afternoon", "Night"];
 
     expect(readCalendar(JSON.stringify(legacy))).toMatchObject({
+      revision: 0,
       segmentsPerDay: 3,
       segmentNames: ["Morning", "Afternoon", "Night"]
     });

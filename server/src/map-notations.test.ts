@@ -29,4 +29,18 @@ describe("map notation labels", () => {
       }).success
     ).toBe(true);
   });
+
+  it.each([{ width: 0.35 }, { height: 0.15 }])("rejects a partial label size: %o", (dimensions) => {
+    expect(
+      mapNotationSchema.safeParse({
+        kind: "label",
+        color: "#f5f5f5",
+        x: 0.1,
+        y: 0.2,
+        ...dimensions,
+        text: "Airlock",
+        fontSize: 12
+      }).success
+    ).toBe(false);
+  });
 });

@@ -16,6 +16,13 @@ function slug(value: string) {
   );
 }
 
+/** Heading emphasis is source formatting, not part of a catalogue display name. */
+function plainHeading(value: string) {
+  const trimmed = value.trim();
+  const match = /^(\*\*|__|\*|_)(.+)\1$/.exec(trimmed);
+  return match ? match[2].trim() : trimmed;
+}
+
 /**
  * Splits a pipe row into its cells. Monolith writes literal pipes inside cells as
  * "\|", as its injury tables do, so a delimiter only counts when it is unescaped.
@@ -254,21 +261,25 @@ export function parseRollTables(markdown: string, exclude: readonly string[] = [
 
   const usedIds = new Set<string>();
   return found.map(({ path, subject, dice, columns, rows, tags, source }) => {
-    const owningHeading = path[path.length - 1] ?? "Table";
+    const displayPath = path.map(plainHeading);
+    const owningHeading = displayPath[displayPath.length - 1] ?? "Table";
+    const displaySubject = plainHeading(subject);
     const shared = (perHeading.get(path.join("/")) ?? 0) > 1;
     const name =
       shared && subject && subject.toLocaleLowerCase() !== "result" ? `${owningHeading} — ${subject}` : owningHeading;
-    const base = slug([...path.slice(0, -1), name].join("-"));
+    const plainName =
+      shared && subject && subject.toLocaleLowerCase() !== "result" ? name.replace(subject, displaySubject) : owningHeading;
+    const base = slug([...displayPath.slice(0, -1), plainName].join("-"));
     let id = base;
     for (let suffix = 2; usedIds.has(id); suffix += 1) id = `${base}-${suffix}`;
     usedIds.add(id);
 
     // A table with no heading above it is its own part of the book, the way
     // Monolith's one-table GROUP DEBT chapter is.
-    const ancestors = path.slice(0, -1).filter((entry, position) => !(position === 0 && entry === documentTitle));
+    const ancestors = displayPath.slice(0, -1).filter((entry, position) => !(position === 0 && entry === documentTitle));
     return {
       id,
-      name,
+      name: plainName,
       section: ancestors.join(" · "),
       category: ancestors[0] ?? owningHeading,
       dice,

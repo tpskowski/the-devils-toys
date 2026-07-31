@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Dices, X } from "lucide-react";
 import type { RollTable, TableRollVisibility } from "@devils-toys/shared";
 import { api } from "./api";
@@ -21,6 +21,8 @@ export function TableRollModal({
   const [table, setTable] = useState<RollTable>();
   const [result, setResult] = useState<{ total: number; text: string }>();
   const [error, setError] = useState("");
+  const [rollError, setRollError] = useState("");
+  const closeButton = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     api<{ table: RollTable }>(
@@ -30,8 +32,16 @@ export function TableRollModal({
       .catch((cause: Error) => setError(cause.message));
   }, [roomId, setId, tableId]);
 
+  useEffect(() => {
+    closeButton.current?.focus();
+    const close = (event: KeyboardEvent) => event.key === "Escape" && onClose();
+    addEventListener("keydown", close);
+    return () => removeEventListener("keydown", close);
+  }, [onClose]);
+
   async function roll(visibility: TableRollVisibility) {
     if (!table || !isGm) return;
+    setRollError("");
     try {
       const response = await api<{ roll: { total: number; text: string } }>(`/api/rooms/${roomId}/tables/roll`, {
         method: "POST",
@@ -39,7 +49,7 @@ export function TableRollModal({
       });
       setResult(response.roll);
     } catch (cause) {
-      setError((cause as Error).message);
+      setRollError((cause as Error).message);
     }
   }
 
@@ -53,7 +63,7 @@ export function TableRollModal({
         <header>
           <p className="eyebrow">Rules table</p>
           <h2>{table?.name ?? "Loading table…"}</h2>
-          <button type="button" onClick={onClose} aria-label="Close">
+          <button ref={closeButton} type="button" onClick={onClose} aria-label="Close">
             <X />
           </button>
         </header>
@@ -63,7 +73,7 @@ export function TableRollModal({
           <div className="tables-workspace">
             {isGm && (
               <div className="tables-toolbar">
-                {(["public", "private", ...(isGm ? ["invisible"] : []), "reveal"] as TableRollVisibility[]).map(
+                {(["public", "private", "invisible", "reveal"] as TableRollVisibility[]).map(
                   (visibility) => (
                     <button
                       type="button"
@@ -86,6 +96,7 @@ export function TableRollModal({
                 </span>
               </div>
             )}
+            {rollError && <p className="form-error tables-error">{rollError}</p>}
             <div className="tables-detail">
               <small>{table.section}</small>
               <div className="tables-grid-scroll">

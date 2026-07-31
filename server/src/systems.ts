@@ -31,9 +31,19 @@ export function systemMarkdown(system: SystemId) {
   return fs.readFileSync(projectFile("raw", source.markdownFile), "utf8");
 }
 
-export function rulesMarkdown(system: SystemId, role: "gm" | "player") {
+export function systemTablesFile(system: SystemId) {
   const source = systems[system].sourceDocuments[0];
   if (!source?.tablesFile) throw new Error(`${systems[system].name} has no sourceDocument.tablesFile.`);
-  const linked = substituteTableLinks(systemMarkdown(system), `system:${system}`, tablesForSetJson(source.tablesFile));
+  return source.tablesFile;
+}
+
+const linkedRules = new Map<SystemId, string>();
+
+export function rulesMarkdown(system: SystemId, role: "gm" | "player") {
+  let linked = linkedRules.get(system);
+  if (!linked) {
+    linked = substituteTableLinks(systemMarkdown(system), `system:${system}`, tablesForSetJson(systemTablesFile(system)));
+    linkedRules.set(system, linked);
+  }
   return role === "gm" ? linked : filterPlayerRules(linked, systems[system].gmOnlyHeadings);
 }

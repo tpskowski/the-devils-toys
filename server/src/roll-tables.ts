@@ -4,7 +4,7 @@
  * keeps the server's existing imports pointing somewhere sensible.
  */
 import { parseRollTables, type SystemId } from "@devils-toys/shared";
-import { systems } from "./systems.js";
+import { systemTablesFile } from "./systems.js";
 import { tablesForSetJson, type CatalogRollTable } from "./table-json.js";
 
 export {
@@ -33,9 +33,7 @@ export function parseCompactRollTables(markdown: string, section: string): Compa
 }
 
 export function compactTables(system: SystemId, section: string): CompactRollTable[] {
-  const source = systems[system].sourceDocuments[0];
-  if (!source?.tablesFile) throw new Error(`${systems[system].name} has no sourceDocument.tablesFile.`);
-  return compactTablesFromTables(tablesForSetJson(source.tablesFile), section);
+  return compactTablesFromTables(tablesForSetJson(systemTablesFile(system)), section);
 }
 
 function compactTablesFromTables(tables: readonly CatalogRollTable[], section: string): CompactRollTable[] {

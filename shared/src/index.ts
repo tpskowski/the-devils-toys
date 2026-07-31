@@ -76,6 +76,8 @@ export interface CalendarEvent {
 }
 
 export interface RoomCalendar {
+  /** Monotonic server revision used to reject stale editor saves. */
+  revision: number;
   year: number;
   month: number;
   day: number;

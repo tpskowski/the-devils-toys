@@ -1,15 +1,21 @@
 import express from "express";
 import multer from "multer";
 import { z } from "zod";
-import { parseRollTables, SAMPLE_CSV, tablesFromCsv, tableToCsv } from "@devils-toys/shared";
+import { appendTable, parseRollTables, SAMPLE_CSV, serializeSet, tablesFromCsv, tableToCsv } from "@devils-toys/shared";
 import type { AuthedRequest } from "./auth.js";
 import { requireAuth } from "./auth.js";
 import { all, db, one } from "./db.js";
 import { requireTableAdmin, requireTableEdit, requireTableRead } from "./table-permissions.js";
-import { buildBundle, buildRepoBundle, compareToExisting, readBundle, type BundleSet } from "./table-bundles.js";
+import {
+  buildBundle,
+  buildRepoBundle,
+  bundleSetMarkdown,
+  compareToExisting,
+  readBundle,
+  type BundleSet
+} from "./table-bundles.js";
 import { customSets, findSet, storedTags, type TableSetRow } from "./table-sets.js";
 import { knownTags, tagVocabulary } from "./table-tags.js";
-import { customSetDocument, parseCustomSet } from "./table-json.js";
 
 /**
  * Getting tables in and out: a CSV of rows, and the zip bundles that move sets
@@ -52,7 +58,7 @@ tableEditorRouter.post(
   (req: AuthedRequest, res) => {
     if (!requireTableEdit(req, res)) return;
     const row = one<TableSetRow>(
-      "SELECT id, name, tables_json, tags_json, updated_at FROM table_sets WHERE id = ?",
+      "SELECT id, name, markdown, tags_json, updated_at FROM table_sets WHERE id = ?",
       Number(req.params.setId)
     );
     if (!row) return res.status(404).json({ error: "Table set not found." });
@@ -88,14 +94,9 @@ tableEditorRouter.post(
     if (unknownTags.length) return res.status(400).json({ error: `Unknown table tag "${unknownTags[0]}".` });
     const cleaned = tables.map((table) => ({ ...table, tags: knownTags(table.tags, vocabulary) }));
 
-    const current = parseCustomSet(row.tables_json, row.name, vocabulary);
-    const document = replace
-      ? customSetDocument(row.name, cleaned, vocabulary)
-      : customSetDocument(row.name, [...current.tables, ...cleaned], vocabulary, current.preamble, current.postamble);
-
-    db.prepare(
-      "UPDATE table_sets SET tables_json = ?, migration_markdown = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = ?"
-    ).run(JSON.stringify(document), row.id);
+    let markdown = replace ? serializeSet(cleaned, row.name) : row.markdown;
+    if (!replace) for (const table of cleaned) markdown = appendTable(markdown, table);
+    db.prepare("UPDATE table_sets SET markdown = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(markdown, row.id);
     res.status(201).json({ imported: cleaned.length, problems });
   }
 );
@@ -113,14 +114,13 @@ tableEditorRouter.get("/table-export", requireAuth, (req: AuthedRequest, res) =>
 
   const sets: BundleSet[] = rows.map((row) => ({
     name: row.name,
-    markdown: "",
-    document: parseCustomSet(row.tables_json, row.name, tagVocabulary()),
+    markdown: row.markdown,
     tags: storedTags(row.tags_json)
   }));
   const used = new Set(
     sets
       .flatMap((set) => set.tags)
-      .concat(sets.flatMap((set) => (set.document?.tables ?? []).flatMap((table) => table.tags)))
+      .concat(sets.flatMap((set) => parseRollTables(set.markdown).flatMap((table) => table.tags)))
   );
   const tags = tagVocabulary().filter((tag) => used.has(tag.slug));
 
@@ -134,12 +134,12 @@ tableEditorRouter.post("/table-import", requireAuth, upload.single("file"), (req
 
   let bundle;
   try {
-    bundle = readBundle(new Uint8Array(req.file.buffer));
+    bundle = readBundle(new Uint8Array(req.file.buffer), tagVocabulary());
   } catch (error) {
     return res.status(400).json({ error: error instanceof Error ? error.message : "That bundle could not be read." });
   }
 
-  const existing = all<{ name: string; tables_json: string }>("SELECT name, tables_json FROM table_sets");
+  const existing = all<{ name: string; markdown: string }>("SELECT name, markdown FROM table_sets");
   const vocabulary = tagVocabulary();
   const newTags = bundle.tags.filter((tag) => !vocabulary.some((entry) => entry.slug === tag.slug));
 
@@ -151,9 +151,9 @@ tableEditorRouter.post("/table-import", requireAuth, upload.single("file"), (req
   const insertTag = db.prepare(
     "INSERT OR IGNORE INTO table_tags (slug, label, builtin, sort_order) VALUES (?, ?, 0, ?)"
   );
-  const insertSet = db.prepare("INSERT INTO table_sets (name, tables_json, tags_json, created_by) VALUES (?, ?, ?, ?)");
+  const insertSet = db.prepare("INSERT INTO table_sets (name, markdown, tags_json, created_by) VALUES (?, ?, ?, ?)");
   const updateSet = db.prepare(
-    "UPDATE table_sets SET tables_json = ?, migration_markdown = NULL, tags_json = ?, updated_at = CURRENT_TIMESTAMP WHERE name = ?"
+    "UPDATE table_sets SET markdown = ?, tags_json = ?, updated_at = CURRENT_TIMESTAMP WHERE name = ?"
   );
 
   let created = 0;
@@ -176,15 +176,17 @@ tableEditorRouter.post("/table-import", requireAuth, upload.single("file"), (req
       }
       const tags = JSON.stringify(knownTags(set.tags, known));
       const clash = existing.find((entry) => entry.name.toLocaleLowerCase() === set.name.toLocaleLowerCase());
-      const document = set.document
-        ? customSetDocument(set.name, set.document.tables, known, set.document.preamble, set.document.postamble)
-        : customSetDocument(set.name, parseRollTables(set.markdown ?? ""), known);
+      const markdown = bundleSetMarkdown(set);
+      const unknown = parseRollTables(markdown)
+        .flatMap((table) => table.tags)
+        .find((tag) => !known.some((entry) => entry.slug === tag));
+      if (unknown) throw new Error(`Unknown table tag "${unknown}".`);
       if (clash && action === "overwrite") {
-        updateSet.run(JSON.stringify(document), tags, clash.name);
+        updateSet.run(markdown, tags, clash.name);
         overwritten += 1;
       } else {
         const name = clash ? `${set.name} (imported)` : set.name;
-        insertSet.run(name, JSON.stringify({ ...document, setName: name }), tags, req.account!.id);
+        insertSet.run(name, markdown, tags, req.account!.id);
         created += 1;
       }
     }

@@ -1,6 +1,15 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ChevronLeft, Code, Download, Plus, Save } from "lucide-react";
-import { tagLabel, type RollTable, type TableTag, type TableTagDefinition } from "@devils-toys/shared";
+import {
+  appendTable,
+  parseRollTables,
+  serializeSet,
+  spliceTable,
+  tagLabel,
+  type RollTable,
+  type TableTag,
+  type TableTagDefinition
+} from "@devils-toys/shared";
 import { api, download } from "./api";
 import { CsvImport } from "./CsvImport";
 import { TableGrid } from "./TableGrid";
@@ -11,17 +20,16 @@ import type { Permissions } from "./session";
 interface StoredSet {
   id: number | string;
   name: string;
-  tables: RollTable[];
-  preamble?: string;
-  postamble?: string;
+  markdown?: string;
+  tables?: RollTable[];
   tags: TableTag[];
   updatedAt: string | null;
   readOnly: boolean;
 }
 
 /**
- * A whole set. JSON is the source of truth; the grid edits the same table objects
- * the roller receives, so there is no second Markdown representation to drift.
+ * A whole set. Custom tables are always derived from the stored Markdown; grid
+ * edits splice only the parsed source range back into that document.
  */
 export function SetEditor({
   setId,
@@ -40,9 +48,8 @@ export function SetEditor({
 }) {
   const [name, setName] = useState("");
   const [tags, setTags] = useState<TableTag[]>([]);
-  const [tables, setTables] = useState<RollTable[]>([]);
-  const [preamble, setPreamble] = useState("");
-  const [postamble, setPostamble] = useState("");
+  const [markdown, setMarkdown] = useState<string>();
+  const [systemTables, setSystemTables] = useState<RollTable[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [locked, setLocked] = useState(false);
   const [dirty, setDirty] = useState(false);
@@ -54,6 +61,10 @@ export function SetEditor({
 
   const [tagFilter, setTagFilter] = useState<TableTag | "">("");
 
+  const tables = useMemo(
+    () => (markdown === undefined ? systemTables : parseRollTables(markdown)),
+    [markdown, systemTables]
+  );
   const tallies = useMemo(() => tagTallies(tables, tags, vocabulary), [tables, tags, vocabulary]);
   const shown = useMemo(() => tablesWithTag(tables, tags, tagFilter), [tables, tags, tagFilter]);
   const customId = setId.startsWith("custom:") ? Number(setId.replace("custom:", "")) : undefined;
@@ -70,9 +81,8 @@ export function SetEditor({
       api<{ set: StoredSet }>(`/api/table-sets/${setId}`).then((result) => {
         setName(result.set.name);
         setTags(result.set.tags);
-        setTables(result.set.tables ?? []);
-        setPreamble(result.set.preamble ?? "");
-        setPostamble(result.set.postamble ?? "");
+        setMarkdown(result.set.markdown);
+        setSystemTables(result.set.tables ?? []);
         setLocked(result.set.readOnly);
         setLoaded(true);
         setDirty(false);
@@ -91,15 +101,19 @@ export function SetEditor({
 
   function applyEdit() {
     if (!editing) return;
-    setTables((current) => current.map((table) => (table.id === editing.id ? editing : table)));
+    if (!editing.source) {
+      setError("That table has no source range and cannot be edited in place.");
+      return;
+    }
+    setMarkdown((current) => (current === undefined ? current : spliceTable(current, editing)));
     setDirty(true);
     setEditing(undefined);
     setEditingId("");
   }
 
   function addTable() {
-    const table = { ...blankTable(`New table ${tables.length + 1}`), id: `new-${Date.now()}` };
-    setTables((current) => [...current, table]);
+    const table = blankTable(`New table ${tables.length + 1}`);
+    setMarkdown((current) => appendTable(current ?? "", table));
     setDirty(true);
   }
 
@@ -110,7 +124,7 @@ export function SetEditor({
     try {
       await api(`/api/table-sets/${customId}`, {
         method: "PATCH",
-        body: JSON.stringify({ name, tables, preamble, postamble, tags })
+        body: JSON.stringify({ name, markdown: markdown ?? "", tags })
       });
       setDirty(false);
       onSaved();
@@ -187,16 +201,22 @@ export function SetEditor({
 
       {raw ? (
         <label className="set-editor-raw">
-          <span className="nav-label">JSON preview</span>
+          <span className="nav-label">Markdown source</span>
           <textarea
-            value={JSON.stringify({ formatVersion: 1, setName: name, preamble, postamble, tables }, null, 2)}
+            value={markdown ?? serializeSet(systemTables, name)}
             rows={24}
-            readOnly
+            readOnly={readOnly}
+            onChange={(event) => {
+              setMarkdown(event.target.value);
+              setDirty(true);
+              setEditing(undefined);
+              setEditingId("");
+            }}
             spellCheck={false}
           />
           <p className="empty-note">
-            This is a read-only view of the JSON that will be saved. Use the grid for edits so ids, ranges, and tags are
-            validated consistently.
+            The grid and roller are derived from this document. Grid changes replace only the selected table's source
+            lines, leaving surrounding notes and formatting intact.
           </p>
         </label>
       ) : (

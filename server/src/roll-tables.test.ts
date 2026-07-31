@@ -118,6 +118,27 @@ describe("finding rollable tables in system Markdown", () => {
     expect(unreachableRows(table)).toBe(0);
   });
 
+  it("infers d30 from a heading marker when the die column only says Roll", () => {
+    const [table] = parseRollTables(`### Omens (d30)
+
+| Roll | Result |
+| --- | --- |
+| 1 | The first omen |
+| 30 | The final omen |
+`);
+    expect(table.dice).toBe("d30");
+  });
+
+  it("drops surrounding emphasis from a table's derived display name", () => {
+    const [table] = parseRollTables(`#### *3.6.1.1 Implant Complications*
+
+| d6 | Result |
+| --- | --- |
+| 1 | A complication |
+`);
+    expect(table.name).toBe("3.6.1.1 Implant Complications");
+  });
+
   it("flattens compact repeated Roll and Result pairs", () => {
     const [compact] = parseRollTables(`## Generators
 

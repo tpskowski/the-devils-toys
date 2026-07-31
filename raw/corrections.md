@@ -2,7 +2,8 @@
 
 Record repairs with the source, original text, correction, and reason before changing imported wording.
 
-No wording has been changed. The repairs below are to table structure only.
+Except for the documented Hollowing wording correction below, no wording has
+been changed. The repairs before that section are to table structure only.
 
 ## Monolith — background tables given headings of their own
 

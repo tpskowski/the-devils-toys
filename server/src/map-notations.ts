@@ -10,28 +10,34 @@ export const mapNotationRouter = express.Router();
 
 const coordinate = z.number().finite().min(0).max(1);
 const color = z.enum(MAP_NOTATION_COLORS);
-export const mapNotationSchema = z.discriminatedUnion("kind", [
-  z.object({
-    kind: z.literal("line"),
-    color,
-    points: z
-      .array(z.object({ x: coordinate, y: coordinate }))
-      .min(2)
-      .max(1000)
-  }),
-  z.object({
-    kind: z.literal("label"),
-    color,
-    x: coordinate,
-    y: coordinate,
-    width: coordinate.optional(),
-    height: coordinate.optional(),
-    text: z.string().trim().min(1).max(200),
-    fontSize: z.number().int().min(8).max(72)
-  }),
-  z.object({ kind: z.literal("box"), color, x: coordinate, y: coordinate, width: coordinate, height: coordinate }),
-  z.object({ kind: z.literal("circle"), color, x: coordinate, y: coordinate, width: coordinate, height: coordinate })
-]);
+export const mapNotationSchema = z
+  .discriminatedUnion("kind", [
+    z.object({
+      kind: z.literal("line"),
+      color,
+      points: z
+        .array(z.object({ x: coordinate, y: coordinate }))
+        .min(2)
+        .max(1000)
+    }),
+    z.object({
+      kind: z.literal("label"),
+      color,
+      x: coordinate,
+      y: coordinate,
+      width: coordinate.optional(),
+      height: coordinate.optional(),
+      text: z.string().trim().min(1).max(200),
+      fontSize: z.number().int().min(8).max(72)
+    }),
+    z.object({ kind: z.literal("box"), color, x: coordinate, y: coordinate, width: coordinate, height: coordinate }),
+    z.object({ kind: z.literal("circle"), color, x: coordinate, y: coordinate, width: coordinate, height: coordinate })
+  ])
+  .refine(
+    (notation) =>
+      notation.kind !== "label" || (notation.width === undefined) === (notation.height === undefined),
+    "A label needs both width and height."
+  );
 const createNotation = z.object({
   notation: mapNotationSchema,
   clientMutationId: z.string().trim().min(1).max(120).optional()

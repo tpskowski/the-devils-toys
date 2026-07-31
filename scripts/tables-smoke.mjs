@@ -19,6 +19,13 @@ const customTable = {
   ].map((text, index) => ({ label: String(index + 1), min: index + 1, max: index + 1, cells: [text] }))
 };
 
+const customMarkdown = `## Rumours in the market (d6)
+
+| d6 | Rumour |
+| --- | --- |
+${customTable.rows.map((row) => `| ${row.label} | ${row.cells[0]} |`).join("\n")}
+`;
+
 await runSmoke(
   "Random table catalogue, visibility, and custom table set smoke test",
   async ({ json, setup, redeem, connect, sleep }) => {
@@ -182,7 +189,7 @@ await runSmoke(
         headers: gmJson,
         body: JSON.stringify({
           name: "House rumours",
-          tables: [customTable],
+          markdown: customMarkdown,
           tags: ["fantasy", "random-encounter"]
         })
       },
@@ -219,7 +226,7 @@ await runSmoke(
       {
         method: "PATCH",
         headers: gmJson,
-        body: JSON.stringify({ name: "Market rumours", tables: [customTable], tags: ["gear"] })
+        body: JSON.stringify({ name: "Market rumours", markdown: customMarkdown, tags: ["gear"] })
       },
       204
     );
@@ -232,7 +239,7 @@ await runSmoke(
       {
         method: "POST",
         headers: gmJson,
-        body: JSON.stringify({ name: "Invalid tags", tables: [customTable], tags: ["horror"] })
+        body: JSON.stringify({ name: "Invalid tags", markdown: customMarkdown, tags: ["horror"] })
       },
       400
     );
@@ -243,7 +250,7 @@ await runSmoke(
       {
         method: "POST",
         headers: { "content-type": "application/json", cookie: playerCookie },
-        body: JSON.stringify({ name: "Player set", tables: [customTable] })
+        body: JSON.stringify({ name: "Player set", markdown: customMarkdown })
       },
       403
     );

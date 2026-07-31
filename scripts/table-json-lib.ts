@@ -80,5 +80,16 @@ export function canonicalTableData(table: JsonTable) {
 }
 
 export function canonicalJson(value: unknown) {
-  return JSON.stringify(value);
+  const sort = (item: unknown): unknown => {
+    if (Array.isArray(item)) return item.map(sort);
+    if (item && typeof item === "object") {
+      return Object.fromEntries(
+        Object.keys(item as Record<string, unknown>)
+          .sort()
+          .map((key) => [key, sort((item as Record<string, unknown>)[key])])
+      );
+    }
+    return item;
+  };
+  return JSON.stringify(sort(value));
 }

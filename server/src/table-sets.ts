@@ -1,6 +1,8 @@
 import express from "express";
 import { z } from "zod";
 import {
+  parseRollTables,
+  serializeSet,
   tableSummary,
   TABLE_TAG_SLUG,
   type RollTable,
@@ -15,7 +17,7 @@ import { all, db, one } from "./db.js";
 import { knownTags, tagVocabulary } from "./table-tags.js";
 import { requireTableEdit, requireTableRead } from "./table-permissions.js";
 import { systems } from "./systems.js";
-import { customSetDocument, parseCustomSet, tablesForSetJson, type CatalogRollTable } from "./table-json.js";
+import { tablesForSetJson, type CatalogRollTable } from "./table-json.js";
 
 /**
  * The table catalogue itself: what sets exist, and how a set is created, edited,
@@ -27,8 +29,7 @@ export const tableSetRouter = express.Router();
 export interface TableSetRow {
   id: number;
   name: string;
-  tables_json: string;
-  migration_markdown?: string | null;
+  markdown: string;
   tags_json: string;
   updated_at: string;
 }
@@ -36,7 +37,7 @@ export interface TableSetRow {
 /** Parsed system tables, kept because the raw Markdown cannot change at runtime. */
 const systemTables = new Map<SystemId, CatalogRollTable[]>();
 
-function tablesForSystem(system: SystemId) {
+export function tablesForSystem(system: SystemId) {
   const cached = systemTables.get(system);
   if (cached) return cached;
   const source = systems[system].sourceDocuments[0];
@@ -50,7 +51,7 @@ function tablesForSystem(system: SystemId) {
 }
 
 export function customSets() {
-  return all<TableSetRow>("SELECT id, name, tables_json, tags_json, updated_at FROM table_sets ORDER BY name");
+  return all<TableSetRow>("SELECT id, name, markdown, tags_json, updated_at FROM table_sets ORDER BY name");
 }
 
 /** A set's stored tags, less any the instance no longer knows about. */
@@ -93,8 +94,7 @@ export function availableSets(): { set: RollTableSet; tables: RollTable[] }[] {
   });
   const custom = customSets().map((row) => {
     const tags = storedTags(row.tags_json, vocabulary);
-    const document = parseCustomSet(row.tables_json, row.name, vocabulary);
-    const customTables = document.tables.map((table) => ({
+    const customTables = parseRollTables(row.markdown).map((table) => ({
       ...table,
       tags: mergeTags(tags, table.tags, vocabulary)
     }));
@@ -131,11 +131,16 @@ export function resolveTags(input: readonly string[], res: express.Response): Ta
 
 const setBody = z.object({
   name: z.string().trim().min(2).max(80),
-  tables: z.array(z.unknown()).max(500),
-  preamble: z.string().max(200_000).default(""),
-  postamble: z.string().max(200_000).default(""),
+  markdown: z.string().max(500_000),
   tags: z.array(z.string().trim().toLowerCase().regex(TABLE_TAG_SLUG).max(40)).max(64).default([])
 });
+
+function validateTableTags(markdown: string, vocabulary: readonly TableTagDefinition[]) {
+  for (const table of parseRollTables(markdown)) {
+    const unknown = table.tags.find((tag) => !vocabulary.some((entry) => entry.slug === tag));
+    if (unknown) throw new Error(`This instance has no tag called "${unknown}".`);
+  }
+}
 
 /** The whole catalogue with its summaries, for an editor rather than a room. */
 tableSetRouter.get("/table-sets", requireAuth, (req: AuthedRequest, res) => {
@@ -169,18 +174,18 @@ tableSetRouter.get("/table-sets/:setId", requireAuth, (req: AuthedRequest, res) 
 
   const numericId = Number(setId.replace("custom:", ""));
   const row = one<TableSetRow>(
-    "SELECT id, name, tables_json, tags_json, updated_at FROM table_sets WHERE id = ?",
+    "SELECT id, name, markdown, tags_json, updated_at FROM table_sets WHERE id = ?",
     numericId
   );
   if (!row) return res.status(404).json({ error: "Table set not found." });
   const tags = storedTags(row.tags_json);
-  const document = parseCustomSet(row.tables_json, row.name, tagVocabulary());
+  const tables = parseRollTables(row.markdown);
   res.json({
     set: {
       id: row.id,
       name: row.name,
-      ...document,
-      tables: document.tables.map((table) => ({ ...table, tags: mergeTags(tags, table.tags, tagVocabulary()) })),
+      markdown: row.markdown,
+      tables,
       tags,
       updatedAt: row.updated_at,
       readOnly: false
@@ -194,23 +199,16 @@ tableSetRouter.post("/table-sets", requireAuth, (req: AuthedRequest, res) => {
   if (!parsed.success) return res.status(400).json({ error: "Give the set a name, valid tags, and valid table data." });
   const tags = resolveTags(parsed.data.tags, res);
   if (!tags) return;
-  let document;
   try {
-    document = customSetDocument(
-      parsed.data.name,
-      parsed.data.tables,
-      tagVocabulary(),
-      parsed.data.preamble,
-      parsed.data.postamble
-    );
+    validateTableTags(parsed.data.markdown, tagVocabulary());
   } catch (error) {
     return res.status(400).json({ error: error instanceof Error ? error.message : "Invalid table data." });
   }
   const result = db
-    .prepare("INSERT INTO table_sets (name, tables_json, tags_json, created_by) VALUES (?, ?, ?, ?)")
-    .run(parsed.data.name, JSON.stringify(document), JSON.stringify(tags), req.account!.id);
+    .prepare("INSERT INTO table_sets (name, markdown, tags_json, created_by) VALUES (?, ?, ?, ?)")
+    .run(parsed.data.name, parsed.data.markdown, JSON.stringify(tags), req.account!.id);
   const id = Number(result.lastInsertRowid);
-  res.status(201).json({ set: { id: `custom:${id}`, tags, tables: document.tables.length } });
+  res.status(201).json({ set: { id: `custom:${id}`, tags, tables: parseRollTables(parsed.data.markdown).length } });
 });
 
 tableSetRouter.patch("/table-sets/:setId", requireAuth, (req: AuthedRequest, res) => {
@@ -219,23 +217,16 @@ tableSetRouter.patch("/table-sets/:setId", requireAuth, (req: AuthedRequest, res
   if (!parsed.success) return res.status(400).json({ error: "Give the set a name, valid tags, and valid table data." });
   const tags = resolveTags(parsed.data.tags, res);
   if (!tags) return;
-  let document;
   try {
-    document = customSetDocument(
-      parsed.data.name,
-      parsed.data.tables,
-      tagVocabulary(),
-      parsed.data.preamble,
-      parsed.data.postamble
-    );
+    validateTableTags(parsed.data.markdown, tagVocabulary());
   } catch (error) {
     return res.status(400).json({ error: error instanceof Error ? error.message : "Invalid table data." });
   }
   const result = db
     .prepare(
-      "UPDATE table_sets SET name = ?, tables_json = ?, migration_markdown = NULL, tags_json = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?"
+      "UPDATE table_sets SET name = ?, markdown = ?, tags_json = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?"
     )
-    .run(parsed.data.name, JSON.stringify(document), JSON.stringify(tags), Number(req.params.setId));
+    .run(parsed.data.name, parsed.data.markdown, JSON.stringify(tags), Number(req.params.setId));
   if (!result.changes) return res.status(404).json({ error: "Table set not found." });
   res.status(204).end();
 });
@@ -249,20 +240,18 @@ tableSetRouter.post("/table-sets/:setId/duplicate", requireAuth, (req: AuthedReq
   const source =
     found.set.origin === "custom"
       ? one<TableSetRow>(
-          "SELECT id, name, tables_json, tags_json, updated_at FROM table_sets WHERE id = ?",
+          "SELECT id, name, markdown, tags_json, updated_at FROM table_sets WHERE id = ?",
           Number(found.set.id.replace("custom:", ""))
         )
       : undefined;
-  const document = source
-    ? parseCustomSet(source.tables_json, source.name, tagVocabulary())
-    : customSetDocument(found.set.name, found.tables, tagVocabulary());
+  const markdown = source ? source.markdown : serializeSet(found.tables, found.set.name);
   const tags = source ? storedTags(source.tags_json) : knownTags(found.tables.flatMap((table) => table.tags));
 
   const result = db
-    .prepare("INSERT INTO table_sets (name, tables_json, tags_json, created_by) VALUES (?, ?, ?, ?)")
+    .prepare("INSERT INTO table_sets (name, markdown, tags_json, created_by) VALUES (?, ?, ?, ?)")
     .run(
       `${found.set.name} copy`,
-      JSON.stringify({ ...document, setName: `${found.set.name} copy` }),
+      markdown,
       JSON.stringify(tags),
       req.account!.id
     );

@@ -50,7 +50,7 @@ export function tablesForSetJson(file: string): CatalogRollTable[] {
   return readSetJson(file).tables.map(({ origin, classification, ...table }) => ({
     ...table,
     ...(origin ? { source: origin } : {}),
-    ...(classification ? { classification } : {})
+    classification
   }));
 }
 
@@ -81,7 +81,7 @@ function normalizedRows(table: Record<string, unknown>, columns: readonly string
 
 export function normalizeCustomTables(
   input: readonly unknown[],
-  vocabulary: readonly TableTagDefinition[] = []
+  vocabulary: readonly TableTagDefinition[]
 ): StoredCustomTable[] {
   const used = new Set<string>();
   return input.map((raw, index) => {
@@ -113,8 +113,13 @@ export function normalizeCustomTables(
     }
     used.add(id);
     const tags = Array.isArray(value.tags) ? value.tags.map((tag) => String(tag)) : [];
-    const unknown = tags.filter((tag) => vocabulary.length && !vocabulary.some((entry) => entry.slug === tag));
+    const unknown = tags.filter((tag) => !vocabulary.some((entry) => entry.slug === tag));
     if (unknown.length) throw new Error(`Unknown table tag "${unknown[0]}".`);
+    const rows = normalizedRows(value, columns);
+    for (let position = 1; position < rows.length; position += 1) {
+      if (rows[position].min <= rows[position - 1].max)
+        throw new Error(`Table "${name}" has overlapping or unordered ranges at "${rows[position].label}".`);
+    }
     return {
       id,
       name,
@@ -123,7 +128,7 @@ export function normalizeCustomTables(
       dice,
       columns,
       tags: [...new Set(tags)],
-      rows: normalizedRows(value, columns),
+      rows,
       ...(typeof value.notesBefore === "string" ? { notesBefore: value.notesBefore } : {})
     };
   });
@@ -132,7 +137,7 @@ export function normalizeCustomTables(
 export function parseCustomSet(
   value: string,
   name: string,
-  vocabulary: readonly TableTagDefinition[] = []
+  vocabulary: readonly TableTagDefinition[]
 ): CustomSetDocument {
   const parsed = JSON.parse(value) as Partial<CustomSetDocument>;
   if (parsed.formatVersion !== 1 || !Array.isArray(parsed.tables)) throw new Error("Invalid custom table JSON.");
@@ -143,14 +148,4 @@ export function parseCustomSet(
     postamble: typeof parsed.postamble === "string" ? parsed.postamble : "",
     tables: normalizeCustomTables(parsed.tables, vocabulary)
   };
-}
-
-export function customSetDocument(
-  name: string,
-  tables: readonly unknown[],
-  vocabulary: readonly TableTagDefinition[] = [],
-  preamble = "",
-  postamble = ""
-): CustomSetDocument {
-  return { formatVersion: 1, setName: name, preamble, postamble, tables: normalizeCustomTables(tables, vocabulary) };
 }

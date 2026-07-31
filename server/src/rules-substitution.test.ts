@@ -16,7 +16,7 @@ describe("rules table substitution", () => {
 
   it("leaves priced reference tables alone when they are not catalogued", () => {
     const markdown = fs.readFileSync(projectFile("raw", "Monolith.md"), "utf8");
-    const tables = parseRollTables(markdown).slice(0, 1);
+    const tables = parseRollTables(markdown).filter((table) => table.name === "GROUP DEBT");
     const linked = substituteTableLinks(markdown, "system:monolith", tables);
     expect(linked).toContain("devils-table:system%3Amonolith/");
     expect(linked).toContain("| D6 | Old Crew Specialty |");

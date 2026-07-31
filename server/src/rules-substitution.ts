@@ -15,12 +15,12 @@ export function substituteTableLinks(markdown: string, setId: string, tables: re
   const parsed = new Map(parseRollTables(markdown).map((table) => [table.id, table]));
   const lines = markdown.split("\n");
   const edits: { start: number; end: number; replacement: string[] }[] = [];
-  for (const table of sourced) {
+  for (const [index, table] of sourced.entries()) {
     const source = table.source!;
     const actual = parsed.get(table.id);
     if (!actual?.source || actual.source.tableStart !== source.tableStart || actual.source.tableEnd !== source.tableEnd)
       throw new Error(`Rules table source drifted for "${table.name}".`);
-    edits.push({ start: source.tableStart, end: source.tableEnd, replacement: [links[sourced.indexOf(table)]] });
+    edits.push({ start: source.tableStart, end: source.tableEnd, replacement: [links[index]] });
     if (source.tagsLine !== null) edits.push({ start: source.tagsLine, end: source.tagsLine, replacement: [] });
   }
   edits.sort((left, right) => right.start - left.start);

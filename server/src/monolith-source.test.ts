@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseRollTables, unreachableRows } from "@devils-toys/shared";
+import { parseRollTables, rowForRoll, unreachableRows } from "@devils-toys/shared";
 import { systemMarkdown } from "./systems.js";
 
 describe("Monolith source tables", () => {
@@ -41,5 +41,8 @@ describe("Monolith source tables", () => {
     expect(hollowing).toMatchObject({ dice: "d30" });
     expect(hollowing?.rows).toHaveLength(30);
     expect(hollowing && unreachableRows(hollowing)).toBe(0);
+    expect(hollowing && Array.from({ length: 30 }, (_, index) => rowForRoll(hollowing, index + 1))).not.toContain(
+      undefined
+    );
   });
 });

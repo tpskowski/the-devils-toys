@@ -70,7 +70,8 @@ export function CalendarModal({
     if (advancing) return;
     setError("");
     const previous = calendar;
-    setCalendar(advanceCalendar(calendar));
+    const optimistic = advanceCalendar(calendar);
+    setCalendar(optimistic);
     setAdvancing(true);
     try {
       const result = await api<{ calendar: RoomCalendar }>(`/api/rooms/${roomId}/calendar/advance`, {
@@ -79,7 +80,7 @@ export function CalendarModal({
       setCalendar(result.calendar);
       onChanged(result.calendar);
     } catch (cause) {
-      setCalendar(previous);
+      setCalendar((current) => (current === optimistic ? previous : current));
       setError((cause as Error).message);
     } finally {
       setAdvancing(false);

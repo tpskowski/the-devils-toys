@@ -4,21 +4,16 @@ import { runSmoke } from "./harness.mjs";
 
 const password = "tables-editor-password";
 
-const starterTables = [
-  {
-    id: "rumours-in-the-market",
-    name: "Rumours in the market",
-    section: "",
-    category: "Rumours in the market",
-    dice: "d6",
-    columns: ["Rumour"],
-    tags: ["fantasy"],
-    rows: [
-      { label: "1-3", min: 1, max: 3, cells: ["The well has gone bitter."] },
-      { label: "4-6", min: 4, max: 6, cells: ["A stranger asks after the old road."] }
-    ]
-  }
-];
+const starterMarkdown = `# Market rumours
+
+## Rumours in the market
+
+<!-- tags: fantasy -->
+| d6 | Rumour |
+| --- | --- |
+| 1-3 | The well has gone bitter. |
+| 4-6 | A stranger asks after the old road. |
+`;
 
 const csv = `table,dice,tags,roll,Omen,Seen by
 Wilderness omens,d4,fantasy,1,Crows circling with nothing beneath them,A shepherd
@@ -97,7 +92,7 @@ await runSmoke(
       {
         method: "POST",
         headers: gm.headers,
-        body: JSON.stringify({ name: "Market rumours", tables: starterTables, tags: ["random-encounter"] })
+        body: JSON.stringify({ name: "Market rumours", markdown: starterMarkdown, tags: ["random-encounter"] })
       },
       201
     );
@@ -120,7 +115,7 @@ await runSmoke(
       {
         method: "PATCH",
         headers: gm.headers,
-        body: JSON.stringify({ name: "Market rumours", tables: starterTables, tags: ["nonesuch"] })
+        body: JSON.stringify({ name: "Market rumours", markdown: starterMarkdown, tags: ["nonesuch"] })
       },
       400
     );
@@ -155,7 +150,7 @@ await runSmoke(
     const afterCsv = await tablesJson(`/api/table-sets/${setId}`, { headers: gm.headers });
     assert.ok(afterCsv.body.set.tables.some((table) => table.name === "Wilderness omens"));
     const original = afterCsv.body.set.tables.find((table) => table.name === "Rumours in the market");
-    assert.deepEqual(original.tags, ["fantasy", "random-encounter"], "set and table tags are merged");
+    assert.deepEqual(original.tags, ["fantasy"], "the table keeps only its own source tags");
     assert.equal(original.rows[0].cells[0], "The well has gone bitter.", "the original rows were untouched");
 
     // The sample template is downloadable and reads as the shape it documents.
@@ -163,7 +158,7 @@ await runSmoke(
     assert.match(sample.response.headers.get("content-disposition") ?? "", /attachment; filename=/);
     assert.match(sample.bytes.toString("utf8"), /^table,dice,tags,roll,/);
 
-    // Artifact two: export, delete, import, and the JSON table document comes back exactly.
+    // Artifact two: export, delete, import, and the Markdown document comes back exactly.
     const exported = await tablesBytes("/api/table-export", { headers: { cookie: gm.cookie } });
     const archive = unzipSync(new Uint8Array(exported.bytes));
     const manifest = JSON.parse(strFromU8(archive["manifest.json"]));
@@ -176,7 +171,7 @@ await runSmoke(
       manifest.tags.some((tag) => tag.slug === "fantasy"),
       "table tags travel with the bundle"
     );
-    assert.ok(manifest.sets[0].file.endsWith(".json"));
+    assert.ok(manifest.sets[0].file.endsWith(".md"));
 
     await tablesJson(`/api/table-sets/${setId}`, { method: "DELETE", headers: gm.headers }, 204);
     const bundle = () => new Blob([exported.bytes], { type: "application/zip" });
@@ -255,7 +250,7 @@ await runSmoke(
       {
         method: "POST",
         headers: player.headers,
-        body: JSON.stringify({ name: "Not allowed", tables: starterTables, tags: [] })
+        body: JSON.stringify({ name: "Not allowed", markdown: starterMarkdown, tags: [] })
       },
       403
     );
@@ -264,7 +259,7 @@ await runSmoke(
       {
         method: "PATCH",
         headers: player.headers,
-        body: JSON.stringify({ name: "Not allowed", tables: starterTables, tags: [] })
+        body: JSON.stringify({ name: "Not allowed", markdown: starterMarkdown, tags: [] })
       },
       403
     );

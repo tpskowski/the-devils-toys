@@ -11,7 +11,7 @@
           "rowCount": 20,
           "columnCount": 4,
           "unreachableRows": 0,
-          "digest": "ec0aa19af2c15fb13d0338accd3e24ca812359f5c613cd4c5605f86bdf70b28f"
+          "digest": "818898e51acae702e4d263e352333c44fa61085714e9d9e1f39a51945355440e"
         },
         {
           "id": "cairn-character-creation-character-traits-d10",
@@ -19,7 +19,7 @@
           "rowCount": 10,
           "columnCount": 10,
           "unreachableRows": 0,
-          "digest": "1d7466b52a07065a32bb7d43f7475c5ecf4f7e3e90068eb7293ff2d6e722bba5"
+          "digest": "357f7a5e12e07c4b2d87278a9b244e0140333c6d02475375fd94b2c3646289ca"
         },
         {
           "id": "cairn-character-creation-starting-gear-d20-armor",
@@ -27,7 +27,7 @@
           "rowCount": 4,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "347c9c3a1dc4f9e7ea95c1085be54fc4fc4c33d2d7ba8097c4efb5675a581fcc"
+          "digest": "8fa596ea480e70c1c6bb4ab6bb6501c9e0f74dfb0148c6c6419fef0315bdf260"
         },
         {
           "id": "cairn-character-creation-starting-gear-d20-helmets-and-shields",
@@ -35,7 +35,7 @@
           "rowCount": 4,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "ce751868b8c89b51d4712668b891d349eeaa19a187f911c8710d3a571259643a"
+          "digest": "db4bc4c6c7a0bc666e3b1f9727e692f66fcb7c009b378b6b9cc9ab6dcc7c6e58"
         },
         {
           "id": "cairn-character-creation-starting-gear-d20-weapons",
@@ -43,7 +43,7 @@
           "rowCount": 4,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "40d1aff5760ffb2864776251596f737bdcc2b9120ddffeea813989ae66c38010"
+          "digest": "dc40bfe21ce4b5ea4f8077b95c1ec6f9964e8fa6e66b710a368178976b01f2ea"
         },
         {
           "id": "cairn-character-creation-starting-gear-d20-expeditionary-gear",
@@ -51,7 +51,7 @@
           "rowCount": 20,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "dbee49057f3e49a666d8092bbaf9da9a961ec928b0c3ba98ab1804d74744be1a"
+          "digest": "f43aba1f4397070af0967bf9abd17f67e424bba6fce73ec328f94d55681847e5"
         },
         {
           "id": "cairn-character-creation-starting-gear-d20-tools",
@@ -59,7 +59,7 @@
           "rowCount": 20,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "55acd81218a1e8e4bba2a87fbb0bf31523df61aee0cf179e79e6b9fd62818bdf"
+          "digest": "e912e3aac8d24e561a07eb403f835ae5f07d19043bcca3f28cb486c9413bdff7"
         },
         {
           "id": "cairn-character-creation-starting-gear-d20-trinkets",
@@ -67,7 +67,7 @@
           "rowCount": 20,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "409305ca6160d4d14067f0d2ec3924a251b1a5851c3724f581a0dfda3c66d4a7"
+          "digest": "5a347180efdc5cd2187bc9fa87ef661119e713253d5a432650663e5940d87e38"
         },
         {
           "id": "cairn-character-creation-starting-gear-d20-bonus-item",
@@ -75,7 +75,7 @@
           "rowCount": 4,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "f8769f755aa3ea11cbeb858d8215fab6924bc8a4210229227d8c83c9d0014c88"
+          "digest": "87d4583b1a58142521ad9e3b15cd9c7f9fe653a1505ad218c1ddbece93d45be5"
         },
         {
           "id": "cairn-character-creation-spellbooks-d100",
@@ -83,7 +83,7 @@
           "rowCount": 100,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "a48b48afad4b6357ca606e0b2eb196ad83f60fe46e80fd95e159644866d25d91"
+          "digest": "6219b543a54db454ae93dd78432545f967c440e941aef3b723f8934824745639"
         },
         {
           "id": "cairn-rules-npcs-reactions",
@@ -91,7 +91,7 @@
           "rowCount": 5,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "78bf35d0d54cda07ed729bf9743a409eb907ff1af06cccb945f2ead5e0b79328"
+          "digest": "e11d48597d528763e6de08ce456d0e2378127b481fd941888c2f6456cb26e457"
         }
       ]
     },
@@ -104,7 +104,7 @@
           "rowCount": 6,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "b26bf9b5cfb56e45308e36bb77d2909b18c19a6a51f6c928a45cdfa8467ce44d"
+          "digest": "22fd0c7bc0d4dd480f5fc9b5a29f34ce1960b40fab0aaa9367327ba8ca6748a7"
         },
         {
           "id": "backgrounds-01-mercenary-starting-gear-mercenary-old-crew-specialty",
@@ -112,7 +112,7 @@
           "rowCount": 6,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "2d9392cf59ecd25ec0a95e6f0fb4ceed4033cfcbb7e9bc4a3e4061705174381e"
+          "digest": "656274fa801cb3a6a34aae05b5071e4c587232b529e2987ea92332a468313f4e"
         },
         {
           "id": "backgrounds-01-mercenary-starting-gear-mercenary-what-happened",
@@ -120,7 +120,7 @@
           "rowCount": 6,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "350c16c63145b85bea31084dec167e34321f99e0435ee93844d27470677fabbb"
+          "digest": "260e3b6f4d7c3d90e727a630bd670b6b66ebd275e461315c436990b3fc950f3c"
         },
         {
           "id": "backgrounds-02-human-experiment-starting-gear-human-experiment-side-effects",
@@ -128,7 +128,7 @@
           "rowCount": 6,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "b2fae2a6f42acc237f67f932690e28c75b46b3e30d2a4206721f52a64d90967b"
+          "digest": "c95466bad09e5d9eff741924fccdcb75e4d569ea24b1f4166ba6de7e4fa0191f"
         },
         {
           "id": "backgrounds-02-human-experiment-starting-gear-human-experiment-type-of-experiment",
@@ -136,7 +136,7 @@
           "rowCount": 6,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "b91f0136425513c255a7389e0a44533d3c5e68344dff85a8c2d2c193d4b48909"
+          "digest": "38d5c7be32436e52540bf3ee9ee1be70ef377ac7a651bf05e726c1979a97f7a9"
         },
         {
           "id": "backgrounds-02-human-experiment-starting-gear-human-experiment-how-did-you-escape",
@@ -144,7 +144,7 @@
           "rowCount": 6,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "145bb3640e02876a77466654ca1a33346b37e5faace5a798c8da2b4966b00802"
+          "digest": "eab42f9a95ff554a8c8562f2a3ae551e7c5cc29f11faddaf3e1e9a11b885229d"
         },
         {
           "id": "backgrounds-03-engineer-starting-gear-engineer-pet-project",
@@ -152,7 +152,7 @@
           "rowCount": 6,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "9be0f99a624b3cdf1053acc189117e5c0d8d42b69b477379d9a2169df919de0e"
+          "digest": "ebea8fdf56dcece6eb7aa7937f00c836bef2db66aec74ff2ed758a78ffa55581"
         },
         {
           "id": "backgrounds-03-engineer-starting-gear-engineer-technical-expertise",
@@ -160,7 +160,7 @@
           "rowCount": 6,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "d08f081020888fec837822a06fdfc36a5f127afc67df22cc1a98b899e4220c28"
+          "digest": "7c92b937bd39f859a4abc094938abca0d131d45bbb71f108f6d0ea9747aa2a76"
         },
         {
           "id": "backgrounds-03-engineer-starting-gear-engineer-savant-specialty",
@@ -168,7 +168,7 @@
           "rowCount": 6,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "051395a2ac79c7faacab726a7ff0981841b5debf02de8a83c04499b47e16ca51"
+          "digest": "d026b39061fee226b663e4f35bfb51ea84d60fa20ed1bb008212112d7ca6449d"
         },
         {
           "id": "backgrounds-04-smuggler-starting-gear-smuggler-lucky-charm",
@@ -176,7 +176,7 @@
           "rowCount": 6,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "9b48b5ac844df82cdcd6a0ecca030ae878602ee1f82903d6b5a9bb8383b37ff9"
+          "digest": "c011e6aabf3014cf949f119a0d5edf3e2e66447fb5e8f1a2c1fe7a8c1988e747"
         },
         {
           "id": "backgrounds-04-smuggler-starting-gear-smuggler-recent-entanglements",
@@ -184,7 +184,7 @@
           "rowCount": 6,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "5d36af933debffdec79529a34a359d42c032a9d4f2de8cea023d307c3a618d1d"
+          "digest": "35ab144731cb2455cd294387cecb6bc022a3e5802f71660ac1c95afb123856c5"
         },
         {
           "id": "backgrounds-04-smuggler-starting-gear-smuggler-trick-up-your-sleeve",
@@ -192,7 +192,7 @@
           "rowCount": 6,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "6f19952f1384f5dbe991a505b21a19da11c041dc2f5ed933649213d01aef93dd"
+          "digest": "c1a2deaad52200f36a43f1e5e67b56b3c609358963c9fa9ed0611762c3469e9d"
         },
         {
           "id": "backgrounds-05-pilot-starting-gear-pilot-suited-up",
@@ -200,7 +200,7 @@
           "rowCount": 6,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "0226f194c3ff304f3193efeb06a90be3e46d158e5b883072583296be9072eacd"
+          "digest": "2515255c5cca846c698d770a287505ffa68fe2ce16b3687e5d3d9c10d69110fa"
         },
         {
           "id": "backgrounds-05-pilot-starting-gear-pilot-flying-expertise",
@@ -208,7 +208,7 @@
           "rowCount": 6,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "e302f3a5752925830242849edb2ab9dd977b9a21299e6ce3353d21095a179573"
+          "digest": "463c963a0384b22132b0bc3b80b5b97ccd3598d8251dba205cacf5e8efdef83a"
         },
         {
           "id": "backgrounds-05-pilot-starting-gear-pilot-other-talents",
@@ -216,7 +216,7 @@
           "rowCount": 6,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "18f2c879e5d917ecec2dfbc3fe4d7cb50fa8b84f3533d3a2256f59927456ad28"
+          "digest": "0aa98cf961fecd209adcac7821ab6b6ad992f8fed4ce9da07a15a2b8307eea2c"
         },
         {
           "id": "backgrounds-06-machine-starting-gear-machine-custom-hardware",
@@ -224,7 +224,7 @@
           "rowCount": 6,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "f5eba9e188b25590ef73328aed2e0ea61eb9212a02f3d75575ecba370455c480"
+          "digest": "53dc4e0f8a70f24dc59a2962c3eb6678b1a4e11fa1d10a78722dd28fb27b5456"
         },
         {
           "id": "backgrounds-06-machine-starting-gear-machine-model-type",
@@ -232,7 +232,7 @@
           "rowCount": 6,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "ce0b2bb92059618ba8e52bcd28b4b3b040ddb46b60a39dc0ad52b779cf9aa330"
+          "digest": "ada77fe1b9f07b07c868e4712c0c6f5f5fcf9a5c348aa1dced0932f283a24f0f"
         },
         {
           "id": "backgrounds-06-machine-starting-gear-machine-manufacturer",
@@ -240,7 +240,7 @@
           "rowCount": 6,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "f5df32780a5549c2c84675e1257171976f36ef116adac3911d0c571fd924a291"
+          "digest": "74c8e5dbf3e0bd35b5476adb185696249328953839e60a15b9efd4c9a2a4e5fe"
         },
         {
           "id": "backgrounds-07-underworld-starting-gear-underworld-what-keeps-you-safe-on-the-streets",
@@ -248,7 +248,7 @@
           "rowCount": 6,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "be1cb4312328df01bbfbe86ca5eb48ff85fa474dd966eabee57914b9ab3060db"
+          "digest": "077f09b47935078dd9e435b08387942cba71321ce0318851f6b2ff4d77738054"
         },
         {
           "id": "backgrounds-07-underworld-starting-gear-underworld-type-of-scum",
@@ -256,7 +256,7 @@
           "rowCount": 6,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "f0d6fbe338b08685b8305b13dfc10d7d4edd14d62114f89e539da10fe8796164"
+          "digest": "2602060669d02b8303423bd4ee3c4eafd81ad53543880f2a8ee14995bf1fe6e1"
         },
         {
           "id": "backgrounds-07-underworld-starting-gear-underworld-criminal-knack",
@@ -264,7 +264,7 @@
           "rowCount": 6,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "aba676a77cb030e6f305e9edaf1bff91277c3b6a1e610e8ef4bd254e4c23bdbd"
+          "digest": "733628777d9a32873db5df0cbce340ad049477ee80d1f93d523058f464ee604c"
         },
         {
           "id": "backgrounds-08-psionic-starting-gear-psionic-psionic-awakening",
@@ -272,7 +272,7 @@
           "rowCount": 6,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "4e25c2077aadf3a94e35d8011c7bcee2765dfac7032f3d6b4848f1edf7f6d86e"
+          "digest": "1471519a8f7b00d9cdc73253f23a9f6d5ca32e4d40df367f72e244f471c6429c"
         },
         {
           "id": "backgrounds-08-psionic-starting-gear-psionic-old-cover-identity",
@@ -280,7 +280,7 @@
           "rowCount": 6,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "d3aa41fe3225ea74323f692dd7c7d90137d535cfb6f9e15cb0a1fdd333a03a00"
+          "digest": "00a5ae5a94a3ce6fe22fe7935250ececcd3f40ec660e8a23f57c7bd64457b2b3"
         },
         {
           "id": "backgrounds-08-psionic-starting-gear-psionic-neural-ramifications",
@@ -288,7 +288,7 @@
           "rowCount": 6,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "6bd8b41b5bc49537b9295f4b3270869061f78aed6bbe4cd8525df7b5f283e09f"
+          "digest": "be1df0918b87d148258f0cf777dbefb3d4ddd20264f65c5c2dec3d3e90fe8f46"
         },
         {
           "id": "backgrounds-09-scientist-starting-gear-scientist-prized-lifetime-research",
@@ -296,7 +296,7 @@
           "rowCount": 6,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "42f09fdff59a443130f24b42c58452152fcb81ea9e1f31401856f41cba62cd96"
+          "digest": "b1b7114148ae79ab497833e82128c01691610514a60da70da2d38f9936a24573"
         },
         {
           "id": "backgrounds-09-scientist-starting-gear-scientist-field-of-expertise",
@@ -304,7 +304,7 @@
           "rowCount": 6,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "9774f2dc1d1da0f068ae009362294e71b0fc4b5fa61101dbb684a01315b115fa"
+          "digest": "b8a378230483ef12764120d59f00ecc9ff8234690653f95d55ccb72521fb86e5"
         },
         {
           "id": "backgrounds-09-scientist-starting-gear-scientist-why-you-left-science",
@@ -312,7 +312,7 @@
           "rowCount": 6,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "1370f3f72d22379308a61a52f1238c19cbf0dd853c24d42e728701ffda7c7b20"
+          "digest": "002343f3f7b319c4c4166811d1f4934b379cc9efb684a20462cccc2b50a3004b"
         },
         {
           "id": "backgrounds-10-soldier-starting-gear-soldier-special-issue-equipment",
@@ -320,7 +320,7 @@
           "rowCount": 6,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "494384dfa3e5bdf60aaafceed83a3e44113a0c1be105b7b684a6571cc1bb7c9a"
+          "digest": "573967f62833d29f260d85d11c4f60903dc1abc7095f94984879550db2825f29"
         },
         {
           "id": "backgrounds-10-soldier-starting-gear-soldier-spec-ops-team",
@@ -328,7 +328,7 @@
           "rowCount": 6,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "fb96ff04cb884186e45fdb1b5f608722072d1bbce3666ec00fe7297b69c2e6e2"
+          "digest": "2462992a3a661024f575f6bcee8f6f5ab29dfd99678407a0ded09e8137a9f2e4"
         },
         {
           "id": "backgrounds-10-soldier-starting-gear-soldier-squad-job",
@@ -336,7 +336,7 @@
           "rowCount": 6,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "e08c9c46ff3438817607ca941effd8ef30c7f051c4fd075ac89260211d4225ee"
+          "digest": "48ecdf0aae7f99fb296ed9503658818a67b7ad01d032501a6d51e3f2a506dd42"
         },
         {
           "id": "backgrounds-11-star-touched-starting-gear-star-touched-what-gift-did-the-stars-bring",
@@ -344,7 +344,7 @@
           "rowCount": 6,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "c1a0e62b11e395d7c75ba77866039d92acda7eedefcd22ac5f5399732a0018e3"
+          "digest": "d22c07cd5a978c37aac7f78a1b6df32095dceb8027b8553ebfce5e89aa2d0cbe"
         },
         {
           "id": "backgrounds-11-star-touched-starting-gear-star-touched-your-vision",
@@ -352,7 +352,7 @@
           "rowCount": 6,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "b1917e650d6fd11602f8cbbb710477baf3b6e7d18504543a6f2ff38adcbfbd29"
+          "digest": "6a5b5dcc7678145092e04246595ecc23c5f4febc841017bdc9d5ff8c97925e5a"
         },
         {
           "id": "backgrounds-11-star-touched-starting-gear-star-touched-what-was-taken",
@@ -360,7 +360,7 @@
           "rowCount": 6,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "e79ba4dcd8b7dc38ba115c0242e71a976d13da4b61cfe0e2c48eeccc1448ccae"
+          "digest": "d0944cc3194edce22c96b304d979035b9a9eaee403fab27ad750c4c083f38715"
         },
         {
           "id": "backgrounds-12-bounty-hunter-starting-gear-bounty-hunter-specialty-tool",
@@ -368,7 +368,7 @@
           "rowCount": 6,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "fcad8e3578dcdd66738912bc5cad772a981f43914c41e1ed9b4b1d67636b6cfc"
+          "digest": "0c63b926009811714d3b62b4e1757bd98cffc86bea950fd5e6250773848c4d25"
         },
         {
           "id": "backgrounds-12-bounty-hunter-starting-gear-bounty-hunter-how-did-you-hunt",
@@ -376,7 +376,7 @@
           "rowCount": 6,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "fe00b2f5399522a76ba8166570b3dc39b6ff90d8879d825ee2438f235161fe14"
+          "digest": "26249e79ad60c141f85e21e2341342db5ef3903029cb2e5e0df397f38ec4fa14"
         },
         {
           "id": "backgrounds-12-bounty-hunter-starting-gear-bounty-hunter-a-past-complication",
@@ -384,7 +384,7 @@
           "rowCount": 6,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "0e95c8ecb4e2530316834dda438642771dea2572f9c1b2415317d6bd272d5fd7"
+          "digest": "a6d6fe546071dbd03f60d56f1bf5fad8864fe4a15ad64c1d39676aacc70e9485"
         },
         {
           "id": "finishing-touches-physique",
@@ -392,7 +392,7 @@
           "rowCount": 10,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "fb2e6c3001406d60ef97fe78149464d7417ff1b08cf68d8bcc67cb4bd0f42bc2"
+          "digest": "aeb1255979c16421573441c764ba1cc2ef3a5ebe198504dd4f7cbb6efdd8f524"
         },
         {
           "id": "finishing-touches-hair",
@@ -400,7 +400,7 @@
           "rowCount": 10,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "390dfbfa64c437658808ba8c704aac51ffd8a98f6bc033c47b91cca1817ba3f0"
+          "digest": "16c1f67c8a6b800316800d0822591dd5acb43f62d0da6b89312a5c03aa2ecc43"
         },
         {
           "id": "finishing-touches-face",
@@ -408,7 +408,7 @@
           "rowCount": 10,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "7e60dae221846b3edaf2779b4fe3257ae56334660c81a6aefe75eb5d2f1cbc12"
+          "digest": "598f530b7c51bc388e1e32875d7a2d9975ae62e29d53caebc09fed14986f9873"
         },
         {
           "id": "finishing-touches-mannerisms",
@@ -416,7 +416,7 @@
           "rowCount": 10,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "a9849c26a54fa240409ec35c191f74e932ebfeabe2a558d9df2baab75ed2393a"
+          "digest": "8e36e4d421e1bf5e93ca11b325bf96dd0a0df2b01643fb81711f1adfe17cfe08"
         },
         {
           "id": "finishing-touches-clothing-style",
@@ -424,7 +424,7 @@
           "rowCount": 10,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "81fb18828b2c1686fcf2c4e664f48cb9ee15c49872d5cf0e264290ccbd0dd838"
+          "digest": "fd65b8a222ed6d9df4c12195f10fb0ece00a59652b814b1920348e55cc13225e"
         },
         {
           "id": "finishing-touches-male-names",
@@ -432,7 +432,7 @@
           "rowCount": 20,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "826ffa5307f2d36f2c604bc1b6d58c3c25d7cb4e4bd8e57312752475fc2a8cab"
+          "digest": "89b65ef76ec65b3281b4d84c1c0e51a6ae44a525b2ddecd4c1eb3072a9fda49a"
         },
         {
           "id": "finishing-touches-female-names",
@@ -440,7 +440,7 @@
           "rowCount": 20,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "e41249d3113eadab51523742d5a04989405d32a6fe390e30f8902d2aeb0a80bd"
+          "digest": "a606249979e183d320bd671f141a1c871ea570990c266f5f304768dc9bf80f8f"
         },
         {
           "id": "finishing-touches-ambiguous-names",
@@ -448,7 +448,7 @@
           "rowCount": 20,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "afdc59ea9735f1d2bfed65bd0d3adb3e27101edcd3573f82e96ebadc042a5199"
+          "digest": "f423d94f31ddfcfa62e5eecdcb2dcc68f2cab9a3560bc2aa8ae4c58ff90c6c4c"
         },
         {
           "id": "finishing-touches-last-names",
@@ -456,7 +456,7 @@
           "rowCount": 20,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "f27573cba75a7cafc9f84a41ab6f2f8f82a2e4389314eabee5b321a7b2c291f2"
+          "digest": "145604b1a5e5050145e6212564fb312983f8366a99bbaec0d297c92578436009"
         },
         {
           "id": "group-debt",
@@ -464,7 +464,7 @@
           "rowCount": 12,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "ba9a0c78ae807af45c86155e51142ed262656fba96922ce6806fea722b55c89c"
+          "digest": "b991e213302b926d967a75fd7694a6238970c7e2b6318b38f517b33bf9a4e98f"
         },
         {
           "id": "complications",
@@ -472,7 +472,7 @@
           "rowCount": 12,
           "columnCount": 3,
           "unreachableRows": 0,
-          "digest": "9f555ad0c75e42cad00bf527769f6c9be678b7f33c27db74876e7db5e948deaf"
+          "digest": "e0ff27f6c722114e398274d6931150c4b64513c5595bd9bf38cf03920e1e3a56"
         },
         {
           "id": "vices-ambition",
@@ -480,7 +480,7 @@
           "rowCount": 10,
           "columnCount": 3,
           "unreachableRows": 0,
-          "digest": "ffa167b50f48beb12862c56b30043df93802e004389fe3af9915450fc8ece35b"
+          "digest": "8b2587e73dfc953cdc620fb21970341cb02922ee2868b60567bb90ceb0a825e3"
         },
         {
           "id": "core-rules-npc-wants",
@@ -488,7 +488,7 @@
           "rowCount": 10,
           "columnCount": 2,
           "unreachableRows": 0,
-          "digest": "6dc35c2babdb067276b287889f25a4cc45457785fc5c7d7e48c940b3ae5013cc"
+          "digest": "534dd8addcc3d013a9116942165c87161be8bc29ed091de24f08a1410c0b1a2c"
         },
         {
           "id": "scars-scars-table",
@@ -496,7 +496,7 @@
           "rowCount": 12,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "ed66510d9c8e8e5178480d654a35e4207f5ae9eaa47a076c36ffb52dec88a5ac"
+          "digest": "48ad6297a1984aeedf44ce13bdc1cc9ffd5c975640b9b4cba5e957135c562d51"
         },
         {
           "id": "carousing-2d6-carousing-results",
@@ -504,7 +504,7 @@
           "rowCount": 3,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "c3265b64fcc101d5757cb8f8d0c1ca5e5d35dd8cf82957320c4671ae77cf3bf3"
+          "digest": "8ada8718f07ec5024baab4efb0d14aaadaf511aff3dd03be7d4dff58a9398dfa"
         },
         {
           "id": "carousing-mishaps",
@@ -512,7 +512,7 @@
           "rowCount": 12,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "4a13b4e4e4305967c96cf29d78e11dac586ea1df12df22d2182dba808a833c19"
+          "digest": "981032abd6491d073f47d0ff56b622e5f06637df94155507ded738ea56054188"
         },
         {
           "id": "carousing-fortunes",
@@ -520,7 +520,7 @@
           "rowCount": 12,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "577527a55b00d90376adcc9f856f0ee8c8396e4056582c7d726a01b12e58d23a"
+          "digest": "772485b10ffd42fd8a9d8e5f29f9d4c285ae31e3261ec60869c05f06e7ad11c4"
         },
         {
           "id": "pointcrawl-travel-encounters-01-04",
@@ -528,7 +528,7 @@
           "rowCount": 4,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "4e36fc31c76da1f33c8d702e02858a9e90e787138eec2e9a3c1a24ede903ac33"
+          "digest": "d0cb1521bf5e9b1f42d2b5b270c8e6419e65db013606a9baf0698ddffe5a2da4"
         },
         {
           "id": "psionics-d66-psionic-powers",
@@ -536,7 +536,7 @@
           "rowCount": 36,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "9f2863ca20353d2e161492e25ebaca42745c4ae8e91469a9990672fbb1faff49"
+          "digest": "fb0496930b4de4581379a1531d9ebc95db0ee4a038e9eddd627153a6e7efac4a"
         },
         {
           "id": "astromancy-d66-astromancies",
@@ -544,7 +544,7 @@
           "rowCount": 36,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "f635104d6224f5a3658e374ac0464ae5d478ffa69102a641bf4a7be7697ef15e"
+          "digest": "70c708c104e0b27a26e0ff4040aca51a7aa1f5036b53236de6b998bd71aac305"
         },
         {
           "id": "corruption-aspect-distortion-hollowing",
@@ -552,7 +552,7 @@
           "rowCount": 30,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "faffe6acddb173bb7656985e8242387ad00d57272b983b0fe9e3e15c8c8b5530"
+          "digest": "28dba4bbe957fc580fa17e1349b0624f0f933cd9d0cfdbf3a361335a8cd65d3e"
         },
         {
           "id": "corruption-aspect-distortion-sacred-geometry-aspects",
@@ -560,7 +560,7 @@
           "rowCount": 12,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "9d2f251c763f320c95c70191deaf50802f1c2934de9475e1b37b0a18d75d3f44"
+          "digest": "128e69843b336107aa1bec0b6939ac87310755cf892e99c4eb3eb6ed5204199d"
         },
         {
           "id": "corruption-aspect-distortion-entropy-aspects",
@@ -568,7 +568,7 @@
           "rowCount": 12,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "7afb7b31622fbd8bf80b7e34e63102bf382f422ee44e8f8996358af108fcc519"
+          "digest": "4e1776a24c70ada3fdd2bb18e1d69e39e30b22e195e5f5a4c256447c3b0c0b25"
         },
         {
           "id": "corruption-aspect-distortion-non-euclidean-aspects",
@@ -576,7 +576,7 @@
           "rowCount": 12,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "2d428a08cc6933d57d774520f417233ffa92de1ee80142d4e4da77e276c2ef65"
+          "digest": "7163b1665907ceee206c8e5e9be955c9493864f7acb334f358ef6638a69a4ec0"
         },
         {
           "id": "experimental-technology-d66-ex-tech",
@@ -584,7 +584,7 @@
           "rowCount": 36,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "4d25a41d71d5f5d8c63790068797a7b43e51c9232fcf0e798eca074ba168b2e4"
+          "digest": "7dedb3953e2dd61df99f170a97bda4656fa78e95c9a174756435898719c839cc"
         },
         {
           "id": "artifacts-d66-artifacts",
@@ -592,7 +592,7 @@
           "rowCount": 36,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "8a4fef54f1f3fad28851c82d509237cf65ff9b5c49c14729ae8a1da8fc467609"
+          "digest": "244bab5c0f1d9b41a0f040c92b70df81cceddc73ba214b82add1ac2cfbfd9f59"
         },
         {
           "id": "talents-acquiring-talents",
@@ -600,7 +600,7 @@
           "rowCount": 20,
           "columnCount": 2,
           "unreachableRows": 0,
-          "digest": "b2927b297b54adde10800372ac6aaeb53788af0629a3f528e956b26ccc651548"
+          "digest": "46016995333670c2793448a2b45d0052dd3925c81415e0b584c510678b957d97"
         },
         {
           "id": "planets-planet-attributes-temperature",
@@ -608,7 +608,7 @@
           "rowCount": 7,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "3bf7eba783f4009f3f452fed747eae430b2ac51b670bdf7fb1e02a89e2296c7a"
+          "digest": "05d3165b3c13bf9647d4966ab782ccb5e9234ffacb46de63c75ee0d6545a9bc5"
         },
         {
           "id": "planets-planet-attributes-atmosphere",
@@ -616,7 +616,7 @@
           "rowCount": 6,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "2b7eb36a080894a014050e5a507f06f6f1611251868dff87d5e7720af6da9ae6"
+          "digest": "bca44f086f52ad568ef69adb43599a46d644f826205024a381dc9645ee72b877"
         },
         {
           "id": "planets-planet-attributes-dominant-biome",
@@ -624,7 +624,7 @@
           "rowCount": 8,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "8f747bbb540f8633f1707d827f4042657b2661495fe04681aaf9e70b15e7fe23"
+          "digest": "d66d42296a3268e8e8ca9b8c2b0eb3869abecb4ace94d4cc24e3e76be530035d"
         },
         {
           "id": "planets-planet-attributes-tech-level",
@@ -632,7 +632,7 @@
           "rowCount": 7,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "4b973d6e18ec1f45fb19591cad9802a8f01af3aa41fa69b860b72967f70d075c"
+          "digest": "67bb828adc62da8d248a04193f9569f8991cf43f8ccbbba439c925c1d82be36f"
         },
         {
           "id": "planets-planet-attributes-law-level",
@@ -640,7 +640,7 @@
           "rowCount": 6,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "4eb96359a2ccca85e1eb4b7b1189fa3137986ad8b18a0bd6cddd9db71adc0916"
+          "digest": "18c2bd6496734a14e71336d8e05ae69ec1be0b8560b65ae9c8202527164b98b9"
         },
         {
           "id": "planets-planet-attributes-complications",
@@ -648,7 +648,7 @@
           "rowCount": 7,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "c86481c150e5a422fbeaedca5e097b59f10a45f753bc2421cbf156358d0eb4a0"
+          "digest": "1286dbf7dad0ae6cdc7dbfe0665837bf2c44ba3e8b9eb1dcfb863473f99a68da"
         },
         {
           "id": "planets-interpreting-results",
@@ -656,7 +656,7 @@
           "rowCount": 7,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "30d1303c57a27fd98939d9affbfb92a39c85cfb0868763ded484c39b60aaee5b"
+          "digest": "a3a412a25418586e431e883c2991c54c23eeace9c6136b0aacb172d2dabbd6d5"
         },
         {
           "id": "tables-generators-alien-species-generator-d44-quality",
@@ -664,7 +664,7 @@
           "rowCount": 16,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "2a8c3974121e3240255bcf31ad74e029f17d1940c3c83f674f2474841d28074b"
+          "digest": "74b602d55719bf0fcb6361268eaac39aa67696147c70e6ddfe9988a6a666f54b"
         },
         {
           "id": "tables-generators-alien-species-generator-d44-physical-trait",
@@ -672,7 +672,7 @@
           "rowCount": 16,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "cf0183db4f07af810fdd0c2b0f8966cbe534234107c6214ef77c967ef9ef9b8a"
+          "digest": "8b729019448d72b6e6580a98241154380ebef10917c9ecc91fd64d3d8c4dd4c9"
         },
         {
           "id": "tables-generators-alien-species-generator-d44-physiology",
@@ -680,7 +680,7 @@
           "rowCount": 16,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "513cd3f1b141f2b7966bad42dd53597a23a32812e861b2a731e606c854a3b632"
+          "digest": "06c97d2d8d490bd2ca8f7cfbe4c7e7d9954e87f5a0ae4cfdbd81425b3cc11d17"
         },
         {
           "id": "tables-generators-d44-mutations",
@@ -688,7 +688,7 @@
           "rowCount": 16,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "614c8b0b74810734844bcad458211c6078eb3073a1440835bde8e597cfe5f856"
+          "digest": "c27b3a1bc6a81fae330a76f40c61eca1595cb75caffdbd55f42c28178040a0a4"
         },
         {
           "id": "tables-generators-d8-drugs",
@@ -696,7 +696,7 @@
           "rowCount": 8,
           "columnCount": 2,
           "unreachableRows": 0,
-          "digest": "49fa9751471f9a1d38d2cf768e387837219a2931bb9e4e68b0e2a3eecf2daaf3"
+          "digest": "2b9a9c7b95ab34c19fe51a2e98ca8aa597097d1e4739ba1bed2e277d6fe00a95"
         }
       ]
     },
@@ -709,7 +709,7 @@
           "rowCount": 6,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "47e3c6ae134c566a65b1fc0ed8a5ee1f08d576558493c865ec0d8b6d5ee0f188"
+          "digest": "d696c06b0209929c46b6d80a74bad1adcc7200a46c247ba1bb9557708069110f"
         },
         {
           "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-bum-learning",
@@ -717,7 +717,7 @@
           "rowCount": 8,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "34566a9649ac99375ffcef5e137d0ab78bff037877049d4d23f98a33295f5a31"
+          "digest": "1c1e5091e2ccb87c9a6f1aacb7eea8f615477a7b31a84e2ac78dcbef24ea8f1b"
         },
         {
           "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-bureaucrat-growth",
@@ -725,7 +725,7 @@
           "rowCount": 6,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "80fe64dc64548323b01f3ae8cf8a32e257df948fa4c4d4e49d7e9dfe0deb7941"
+          "digest": "7806e85aad404f482941ac0cca0394e1bf0e16ea80a6e7cd04d8b7a2a05c3ae8"
         },
         {
           "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-bureaucrat-learning",
@@ -733,7 +733,7 @@
           "rowCount": 8,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "eb92524a415d70cf40b9be1ecb71d5b8c8df617bdc67217cdfe79d9153fca979"
+          "digest": "43cc788a782902092e56a858cf15c67dda362ee1182cf9f8879f8710d4b43c05"
         },
         {
           "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-clergy-growth",
@@ -741,7 +741,7 @@
           "rowCount": 6,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "c8c7db2699f8577d4c2669a884f762424b39ef9be93c348101cb12fe4a8daa4d"
+          "digest": "16357da43b6648b30429866de3eb8629e83787c1d4c8246a5cf6e46394dadf87"
         },
         {
           "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-clergy-learning",
@@ -749,7 +749,7 @@
           "rowCount": 8,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "bb9fc45c95e7c830a08e35c99abcb34c42695d25b963c1b669ef562786ea1199"
+          "digest": "a19c15d86f2fa21e82515bf6b6ac5476419ca0c1632dbfbe8a7d2e17e87d28c9"
         },
         {
           "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-coder-growth",
@@ -757,7 +757,7 @@
           "rowCount": 6,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "01b2bb4902d4ca931d768c4790b2351d3986aeecc8cfd1419066a25a46e2389f"
+          "digest": "04b3b76680253165a3ecaa617b3ad35be174266fd1911a384f96b04000cb5952"
         },
         {
           "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-coder-learning",
@@ -765,7 +765,7 @@
           "rowCount": 8,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "b4305927eaaa93c48e0d4bb22c5091ecdeed9e94857f7f1bec49b792001a0546"
+          "digest": "994fa34b7a91a60fae1a0ae5aa962e5eb05002d99531127b0b9d6434367d0dd3"
         },
         {
           "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-corp-security-growth",
@@ -773,7 +773,7 @@
           "rowCount": 6,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "fbc18e4d1952b4cab0e2471978b148c77aaa1682cc39717f9dbc6bb73189515d"
+          "digest": "092c1386282299430150615cbdc062ef7e5ee947e598e7ecb2554b71a90cada0"
         },
         {
           "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-corp-security-learning",
@@ -781,7 +781,7 @@
           "rowCount": 8,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "2005cbdafb7d88076c1cebaac7d9b44527e5dd040cd97876f260168a3225d531"
+          "digest": "90b6c04393d495d04cc45f9d5b5f1c6c05ce390391b58a2550c7e8f45db6c297"
         },
         {
           "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-corper-growth",
@@ -789,7 +789,7 @@
           "rowCount": 6,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "9bd3d01fdd7dffdc00152bb5e08e92173db09fbf91b5bbcde7a89a4901860ff0"
+          "digest": "14ed338bc93158fba9af262c57e283e9bfafb0961175f26a156a86cbd5e44769"
         },
         {
           "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-corper-learning",
@@ -797,7 +797,7 @@
           "rowCount": 8,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "aebe277aa9f3c48ae25231ddad0415cbfe1c29b9535ea680ce09356918ab3a4a"
+          "digest": "f7899ecbf89cb7e9c38b339c103f6838ff29b295a96bee71d23a43dc999fa8b8"
         },
         {
           "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-criminal-growth",
@@ -805,7 +805,7 @@
           "rowCount": 6,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "ab8ed5557f8742f544894c5a6a80ea34b3ce561a38534ed63a1ebd75029aaaa5"
+          "digest": "80255f35061307ca907e0afbefea18f5287845935d368c53465488e808b5223a"
         },
         {
           "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-criminal-learning",
@@ -813,7 +813,7 @@
           "rowCount": 8,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "fc4916936c537b8d820acbee672ec47c4b6934633116dfc46974e214a01670e2"
+          "digest": "25f835d1471d9614668bdac11cba35f0b69265de2d8bc93eefa48a27130e894f"
         },
         {
           "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-doctor-growth",
@@ -821,7 +821,7 @@
           "rowCount": 6,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "3f54b09a02e297e8261ec8d306866f64f8735801518378af3b23d4bdd14372df"
+          "digest": "d26cb38341e4520a0b2909f350a59373e4ec62200d1736f4faa759db7a2006e3"
         },
         {
           "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-doctor-learning",
@@ -829,7 +829,7 @@
           "rowCount": 8,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "acade31b947c297bf1fdf11ad9e9c3b598b651d1e07ca0a1b029ddb2f5c631fc"
+          "digest": "f43356181d79439eb67cdbeae571b7242751b23532802cb1fa489927de7be2f9"
         },
         {
           "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-drone-jockey-growth",
@@ -837,7 +837,7 @@
           "rowCount": 6,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "443b7c8e983b6664fef276d392ffc5956c948fc2e33c119859a21f4967903a41"
+          "digest": "f37c2efa2d07163aaf74b01c057b24554d36d67a457f7e9cce6206207061db2f"
         },
         {
           "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-drone-jockey-learning",
@@ -845,7 +845,7 @@
           "rowCount": 8,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "d2d259a0298e422501d97cae63c387415c0ba91ff49bbde6b932de6f039709c4"
+          "digest": "6aded0ac4d4073aff101809ac5bcea93c719ff173fb159eae365331877934a8b"
         },
         {
           "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-ganger-growth",
@@ -853,7 +853,7 @@
           "rowCount": 6,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "6f949f0169a2aeb61442d29282bfa515dc0bd16825e3343d0a15244c22d6139f"
+          "digest": "4ac6a607139d4e119896ce7ffc2beb709921ad16e808fed3c00bd65ecb1101d6"
         },
         {
           "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-ganger-learning",
@@ -861,7 +861,7 @@
           "rowCount": 8,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "c3cd6ff2bf4ef1c64a75104ce42115487c8e0dc7f1c56122f5a5127c8f7d1a57"
+          "digest": "b0ea9ace10c5113ec7221afe2b64a059ace8b376be42fbdfca578cf368a795fc"
         },
         {
           "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-laborer-growth",
@@ -869,7 +869,7 @@
           "rowCount": 6,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "3d1c886a1c6d3d13379149cf0bad86eac73f1aa8aaed5ab2e3a64990f796bb04"
+          "digest": "7803cfeb87cea6a3b4e9505e1b4dc2a1ecde346315d76d8caab558d82c5c903e"
         },
         {
           "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-laborer-learning",
@@ -877,7 +877,7 @@
           "rowCount": 8,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "e28c3bb2abd53525e35d4e0e798bef13dd0b2be3779c76a107bc34b910948564"
+          "digest": "c1c556490f432d91524a3daad31e085f89da8c903f6cafef108de93e94b066f8"
         },
         {
           "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-law-enforcement-growth",
@@ -885,7 +885,7 @@
           "rowCount": 6,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "6b55254f2a80fe03427fc229e6e5a4aba6f5f277497769871bd2af3933a5a422"
+          "digest": "496669b5079efef04d4a8b176c1ead6ed1e716e5d62beafccf363ff91f55ef72"
         },
         {
           "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-law-enforcement-learning",
@@ -893,7 +893,7 @@
           "rowCount": 8,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "51a16582d789798d17f5f834cc798b2aba8b2dc344626354fcc386278e8f5744"
+          "digest": "271e32d2dcbce6a1406c6d3f11293b76e10276fb7f8a1cbc18a5e0bf96e2aabd"
         },
         {
           "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-manager-growth",
@@ -901,7 +901,7 @@
           "rowCount": 6,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "8e192bb9a65fe3a392f2dfdd07017fcd4bfd9168e8b22b689a79756262ad9a5e"
+          "digest": "6ca721495944a777c682032a1fc060eba3e55e27f62b3cf155930124fa525264"
         },
         {
           "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-manager-learning",
@@ -909,7 +909,7 @@
           "rowCount": 8,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "63adbaec6613731cc35c1306025c49433a6389d5e4ad494b9eb6510e7b909712"
+          "digest": "e370e5e2852904aceba6ec3ec2088f28161c340c2990eeb387976c79c13ab22a"
         },
         {
           "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-outlander-growth",
@@ -917,7 +917,7 @@
           "rowCount": 6,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "d9dccf5bb31241e83eb97fb6927dad0a624bc23daabcd0145fbf88ae45a60379"
+          "digest": "936bc69cc1207762181039574d728455620331fa87ba8706c3b1810b470d750e"
         },
         {
           "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-outlander-learning",
@@ -925,7 +925,7 @@
           "rowCount": 8,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "39a238b32dc70eb39fe9a8957bb06ae5ef4a1fe89b4f143a0441d36de89c2fe8"
+          "digest": "4a83972897c2554dca9fc2766b6e709cd6bdd4bfd8b9c65949ffa2383cafc816"
         },
         {
           "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-performer-growth",
@@ -933,7 +933,7 @@
           "rowCount": 6,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "6ee5c9addec35aa10dd46ff7f6f17df89e3fa741af18cf4ef2bcb8739265a463"
+          "digest": "fc8eae83d6801d5f64d7a43fb08d9e6a87986c7236ba78a8e2af578c38498599"
         },
         {
           "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-performer-learning",
@@ -941,7 +941,7 @@
           "rowCount": 8,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "f79970dfabee23e4d2d4638cd6473c0b5673e1238219ad1ded4f5f1d535aea2e"
+          "digest": "3918d51984e133a398e810b0d774633de88f6aa920a1023f5d729f35606810f9"
         },
         {
           "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-soldier-growth",
@@ -949,7 +949,7 @@
           "rowCount": 6,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "db9243b40fb1980f80ca80545d244965d25cba67fd4451ddf8b8339f1da0677c"
+          "digest": "148e52655f10ed1ce3223525e332ccf563c8b50249c097d7c887c8f29f714335"
         },
         {
           "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-soldier-learning",
@@ -957,7 +957,7 @@
           "rowCount": 8,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "689b2bc90184d24abfdf2e81510afbcc1274f61f49424f04ece9bdb7649de192"
+          "digest": "8c236324efcd97b4d11b460d219489595058f245e1d41b176be3b0d457586d1b"
         },
         {
           "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-spy-growth",
@@ -965,7 +965,7 @@
           "rowCount": 6,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "0807d01670018c2b305cb838c2a0424204906e4b2a950ba8977e2ded9b16970c"
+          "digest": "a6fdd7111e18743b2d01225d2f82402cb6b710bfb7d76ad8ca32d00dbc09ecc8"
         },
         {
           "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-spy-learning",
@@ -973,7 +973,7 @@
           "rowCount": 8,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "63ec9ea51d2713e641f08a717d1f15e52aa35e6c65ecb99fe843f9d65b3a6a92"
+          "digest": "f6b408d8d3fd08f7a36150e6336974596c55d66a2ec6b8f81a4935d5b0c49057"
         },
         {
           "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-trader-growth",
@@ -981,7 +981,7 @@
           "rowCount": 6,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "c425ab24f87a828cfe09f1ddaa14c3a30fa174cdd6fecbaa9079f5f6f1fb0a4d"
+          "digest": "6d83fa73dc81ef37ce9f76d2f7966ece42b04b56ab6ac9d422a60125d2d6c117"
         },
         {
           "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-trader-learning",
@@ -989,7 +989,7 @@
           "rowCount": 8,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "a390ab6e63bb9a1627e94ee844812ef121ab22a9537caf50d10f0443bf1def7d"
+          "digest": "c9425b537941b1e1051eea16eb8cc889804c63e1923435bd875264c4be9ed6ff"
         },
         {
           "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-streetwalker-growth",
@@ -997,7 +997,7 @@
           "rowCount": 6,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "9d569d68a30af07ddf1b69c007a60551fbe8d3879920c57ffd06e7fa25378ecc"
+          "digest": "20c98f1aa3d0fd0d48477aeb84690064760592a75bfd84edde599e369503afc6"
         },
         {
           "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-streetwalker-learning",
@@ -1005,7 +1005,7 @@
           "rowCount": 8,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "6de6f5fdb8631ae92cf1c7fac367eaca5f8c0a32940d210c3040d73a2c4e69ab"
+          "digest": "57c902e4200f474d543b37097a42933f295fcad7df784db2b6b6e67e12aab002"
         },
         {
           "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-technician-growth",
@@ -1013,7 +1013,7 @@
           "rowCount": 6,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "489a8c88cb50f9eba22b4ac8f7cf81ea73a595e7f8a8b060c3339131348d61fb"
+          "digest": "79a304ab123c2508818349d3b55bad08acce57336efd83336c38e30ed5c510e0"
         },
         {
           "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-technician-learning",
@@ -1021,7 +1021,7 @@
           "rowCount": 8,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "4035db9bae7b8e3f5c38c004ca278f78fb7172b72e8ebb07cb46c8eccb809823"
+          "digest": "8cc120e0e6cff16eb6c716aa24acc317520de86eeac38f5b4abe96566b8b2b74"
         },
         {
           "id": "2-0-0-the-rules-of-the-game-2-5-0-injury-healing-and-system-strain-2-5-6-major-injuries",
@@ -1029,7 +1029,7 @@
           "rowCount": 11,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "5b64d05cef6fe7508ed04a74609cadbc3b74287f5e6cb4d4cf52a361a7629450"
+          "digest": "257dfba6101b5d9a4dd049dfa0c0fb203df8821bdfa299cea03065301b196d7a"
         },
         {
           "id": "3-0-0-gear-vehicles-and-cyberware-3-6-0-cyberware-3-6-1-installing-cyberware-3-6-1-1-implant-complications",
@@ -1037,7 +1037,7 @@
           "rowCount": 12,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "1a296656411d1b5b8bb905634d3b5e7c4ea7849da54a23c179bf6d84a8cb8c00"
+          "digest": "cc08fda4612047aedd00cb4cc3c649e7c33fe1a9f020aaa40613c71993cd5a2b"
         },
         {
           "id": "5-0-0-antagonists-and-npcs-5-1-0-reaction-rolls",
@@ -1045,7 +1045,7 @@
           "rowCount": 5,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "f08a8d6e43f97e71113f01d53dc14df2c1695206e5b174498007cddad903e536"
+          "digest": "2bb9014e6e71d51ed0ad3f31e565dea5c6a65bcac96e41fc88570596e509d0d1"
         },
         {
           "id": "6-0-0-magic-6-1-0-mages-and-spellcasting-6-1-3-spells-6-1-3-3-overcasting",
@@ -1053,7 +1053,7 @@
           "rowCount": 6,
           "columnCount": 1,
           "unreachableRows": 0,
-          "digest": "241851116bb2a6d23faffbae66e0cbc50eec106f7e497048e768c8cb1eb89a23"
+          "digest": "a0837c20414807dcc3f2842906b7cfe36ab6c7679903d7918587db473f8b8139"
         }
       ]
     }

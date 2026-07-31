@@ -27,7 +27,7 @@ describe("a portable bundle", () => {
   });
 
   it("reads back exactly what went in", () => {
-    const read = readBundle(buildBundle(sets, tags));
+    const read = readBundle(buildBundle(sets, tags), []);
     expect(read.sets).toEqual(sets);
     expect(read.tags).toEqual(tags);
     expect(parseRollTables(read.sets[0].markdown)[0].tags).toEqual(["fantasy"]);
@@ -39,23 +39,23 @@ describe("a portable bundle", () => {
   });
 
   it("refuses something that is not a zip", () => {
-    expect(() => readBundle(strToU8("not a zip"))).toThrow(/not a readable zip/);
+    expect(() => readBundle(strToU8("not a zip"), [])).toThrow(/not a readable zip/);
   });
 
   it("refuses a zip that is not a bundle", () => {
-    expect(() => readBundle(zipSync({ "readme.txt": strToU8("hello") }))).toThrow(/no manifest\.json/);
+    expect(() => readBundle(zipSync({ "readme.txt": strToU8("hello") }), [])).toThrow(/no manifest\.json/);
   });
 
   it("refuses a bundle from another application", () => {
     const archive = zipSync({ "manifest.json": strToU8('{"app":"something-else","sets":[]}') });
-    expect(() => readBundle(archive)).toThrow(/not written by The Devil's Tables/);
+    expect(() => readBundle(archive, [])).toThrow(/not written by The Devil's Tables/);
   });
 
   it("refuses a bundle from a newer version rather than guessing", () => {
     const archive = zipSync({
       "manifest.json": strToU8('{"app":"devils-tables","bundleVersion":99,"sets":[]}')
     });
-    expect(() => readBundle(archive)).toThrow(/newer version \(99\)/);
+    expect(() => readBundle(archive, [])).toThrow(/newer version \(99\)/);
   });
 
   it("refuses a manifest naming a file the archive does not hold", () => {
@@ -64,7 +64,25 @@ describe("a portable bundle", () => {
         '{"app":"devils-tables","bundleVersion":1,"sets":[{"file":"sets/gone.md","name":"Gone","tags":[]}]}'
       )
     });
-    expect(() => readBundle(archive)).toThrow(/does not contain it/);
+    expect(() => readBundle(archive, [])).toThrow(/does not contain it/);
+  });
+
+  it("refuses undeclared tags in a legacy JSON bundle", () => {
+    const table = parseRollTables(markdown)[0];
+    const { source: _source, ...stored } = { ...table, tags: ["undeclared"] };
+    const archive = zipSync({
+      "manifest.json": strToU8(
+        JSON.stringify({
+          app: "devils-tables",
+          bundleVersion: 2,
+          sets: [{ file: "sets/legacy.json", name: "Legacy", tags: [] }],
+          tags: []
+        })
+      ),
+      "sets/legacy.json": strToU8(JSON.stringify({ formatVersion: 1, tables: [stored] }))
+    });
+
+    expect(() => readBundle(archive, [])).toThrow(/table JSON.*could not be read/);
   });
 });
 

@@ -15,13 +15,18 @@ const calendarEventSchema = z.object({
  * day. Preserve that intent while moving the count into its own setting.
  */
 export function calendarInput(value: unknown) {
-  if (!value || typeof value !== "object" || Array.isArray(value) || "segmentsPerDay" in value) return value;
+  if (!value || typeof value !== "object" || Array.isArray(value)) return value;
   const record = value as Record<string, unknown>;
   const segmentNames = Array.isArray(record.segmentNames) ? record.segmentNames : [];
-  return { ...record, segmentsPerDay: Math.max(1, segmentNames.length) };
+  return {
+    ...record,
+    ...("segmentsPerDay" in record ? {} : { segmentsPerDay: Math.max(1, segmentNames.length) }),
+    ...("revision" in record ? {} : { revision: 0 })
+  };
 }
 
 export const calendarSchema = z.object({
+  revision: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER),
   year: z.number().int().min(-99999).max(99999),
   month: z.number().int().min(0).max(99),
   day: z.number().int().min(1).max(400),
@@ -37,6 +42,7 @@ export const calendarSchema = z.object({
 
 export function defaultCalendar(): RoomCalendar {
   return {
+    revision: 0,
     year: 1,
     month: 0,
     day: 1,

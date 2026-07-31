@@ -14,4 +14,15 @@ describe("Monolith character vices", () => {
         "Gamble with at least 10% of your personal wealth, wager a unique/ useful/powerful item, put other major stakes up."
     });
   });
+
+  it("reads Monolith's vice catalogue from generated table JSON", () => {
+    const vices = characterVicesFor("monolith");
+    expect(vices.length).toBeGreaterThan(0);
+    expect(vices).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: "Gambling" }),
+        expect.objectContaining({ name: "Ambition" })
+      ])
+    );
+  });
 });

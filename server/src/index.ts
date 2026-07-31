@@ -459,7 +459,12 @@ app.put("/api/rooms/:roomId/calendar", requireAuth, (req: AuthedRequest, res) =>
     return res.status(403).json({ error: "Only the room GM can configure the calendar." });
   const parsedCalendar = parse(calendarSchema, calendarInput(req.body), res);
   if (!parsedCalendar) return;
-  const calendar = normalizeCalendar(parsedCalendar);
+  const row = one<{ calendar_json: string | null }>("SELECT calendar_json FROM rooms WHERE id = ?", roomId);
+  if (!row) return res.status(404).json({ error: "Room not found." });
+  const current = readCalendar(row.calendar_json);
+  if (parsedCalendar.revision !== current.revision)
+    return res.status(409).json({ error: "The calendar changed while you were editing. Review the latest calendar and try again." });
+  const calendar = normalizeCalendar({ ...parsedCalendar, revision: current.revision + 1 });
   db.prepare("UPDATE rooms SET calendar_json = ? WHERE id = ?").run(JSON.stringify(calendar), roomId);
   broadcastRoom(roomId, { type: "calendar-updated", calendar });
   res.json({ calendar });
@@ -471,7 +476,8 @@ app.post("/api/rooms/:roomId/calendar/advance", requireAuth, (req: AuthedRequest
     return res.status(403).json({ error: "Only the room GM can advance time." });
   const row = one<{ calendar_json: string | null }>("SELECT calendar_json FROM rooms WHERE id = ?", roomId);
   if (!row) return res.status(404).json({ error: "Room not found." });
-  const calendar = advanceCalendar(readCalendar(row.calendar_json));
+  const current = readCalendar(row.calendar_json);
+  const calendar = { ...advanceCalendar(current), revision: current.revision + 1 };
   db.prepare("UPDATE rooms SET calendar_json = ? WHERE id = ?").run(JSON.stringify(calendar), roomId);
   const message = recordSystemMessage(roomId, req.account!.id, calendarNowMessage(calendar));
   broadcastRoom(roomId, { type: "calendar-updated", calendar });

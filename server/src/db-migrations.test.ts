@@ -77,6 +77,31 @@ function seedLegacyDatabase(directory: string) {
   legacy.close();
 }
 
+function seedJsonTableSetDatabase(directory: string) {
+  seedLegacyDatabase(directory);
+  const legacy = new DatabaseSync(path.join(directory, "devils-toys.sqlite"));
+  legacy.exec("PRAGMA foreign_keys = OFF");
+  legacy.exec(`
+    CREATE TABLE table_sets_json (
+      id INTEGER PRIMARY KEY,
+      name TEXT NOT NULL,
+      tables_json TEXT NOT NULL,
+      migration_markdown TEXT,
+      tags_json TEXT NOT NULL DEFAULT '[]',
+      created_by INTEGER NOT NULL REFERENCES accounts(id),
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+    INSERT INTO table_sets_json
+      (id, name, tables_json, migration_markdown, tags_json, created_by, created_at, updated_at)
+    SELECT id, name, '{"formatVersion":1,"tables":[]}', markdown, '[]', created_by, created_at, updated_at
+      FROM table_sets;
+    DROP TABLE table_sets;
+    ALTER TABLE table_sets_json RENAME TO table_sets;
+  `);
+  legacy.close();
+}
+
 /** Applies the real schema and migrations to `directory`, as a server start would. */
 async function openDatabase(directory: string) {
   process.env.DEVILS_TOYS_DATA_DIR = directory;
@@ -258,14 +283,24 @@ describe("database migrations", () => {
       { name: "Old tables", tags_json: "[]" }
     ]);
     const tableSetColumns = loaded.all<{ name: string }>("PRAGMA table_info(table_sets)").map((column) => column.name);
-    expect(tableSetColumns).toContain("tables_json");
-    expect(tableSetColumns).toContain("migration_markdown");
-    expect(tableSetColumns).not.toContain("markdown");
-    const migratedSet = loaded.all<{ tables_json: string; migration_markdown: string }>(
-      "SELECT tables_json, migration_markdown FROM table_sets WHERE id = 1"
-    )[0];
-    expect(JSON.parse(migratedSet.tables_json).formatVersion).toBe(1);
-    expect(migratedSet.migration_markdown).toBe("# Tables");
+    expect(tableSetColumns).toContain("markdown");
+    expect(tableSetColumns).not.toContain("tables_json");
+    expect(loaded.all<{ markdown: string }>("SELECT markdown FROM table_sets WHERE id = 1")[0].markdown).toBe(
+      "# Tables"
+    );
+  });
+
+  it("restores the exact Markdown backup from the short-lived JSON custom-set schema", async () => {
+    const directory = dataDir();
+    seedJsonTableSetDatabase(directory);
+    const loaded = await openDatabase(directory);
+
+    const columns = loaded.all<{ name: string }>("PRAGMA table_info(table_sets)").map((column) => column.name);
+    expect(columns).toContain("markdown");
+    expect(columns).not.toContain("tables_json");
+    expect(loaded.all<{ markdown: string }>("SELECT markdown FROM table_sets WHERE id = 1")).toEqual([
+      { markdown: "# Tables" }
+    ]);
   });
 
   it("seeds the tag vocabulary into a database that predates it", async () => {

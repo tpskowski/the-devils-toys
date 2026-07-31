@@ -73,7 +73,7 @@ export interface ReadBundle {
 }
 
 /** Reads a bundle, refusing anything that is not one rather than half-importing it. */
-export function readBundle(archive: Uint8Array): ReadBundle {
+export function readBundle(archive: Uint8Array, vocabulary: readonly TableTagDefinition[]): ReadBundle {
   let files: Record<string, Uint8Array>;
   try {
     files = unzipSync(archive);
@@ -95,6 +95,14 @@ export function readBundle(archive: Uint8Array): ReadBundle {
     throw new Error(`That bundle was written by a newer version (${manifest.bundleVersion}). Update this one first.`);
   if (!Array.isArray(manifest.sets)) throw new Error("The bundle's manifest lists no sets.");
 
+  const tags = Array.isArray(manifest.tags)
+    ? manifest.tags.filter((tag) => tag && typeof tag.slug === "string" && typeof tag.label === "string")
+    : [];
+  const effectiveVocabulary = [...vocabulary];
+  for (const tag of tags) {
+    if (!effectiveVocabulary.some((entry) => entry.slug === tag.slug)) effectiveVocabulary.push(tag);
+  }
+
   const sets: BundleSet[] = [];
   for (const entry of manifest.sets) {
     const file = files[entry.file];
@@ -105,17 +113,21 @@ export function readBundle(archive: Uint8Array): ReadBundle {
       sets.push({ name, markdown: strFromU8(file), tags });
     } else {
       try {
-        sets.push({ name, markdown: "", document: parseCustomSet(strFromU8(file), name), tags });
+        sets.push({ name, markdown: "", document: parseCustomSet(strFromU8(file), name, effectiveVocabulary), tags });
       } catch {
         throw new Error(`The bundle's table JSON for "${name}" could not be read.`);
       }
     }
   }
 
-  const tags = Array.isArray(manifest.tags)
-    ? manifest.tags.filter((tag) => tag && typeof tag.slug === "string" && typeof tag.label === "string")
-    : [];
   return { sets, tags };
+}
+
+/** Canonical Markdown for legacy JSON bundle inputs, which have no source ranges to preserve. */
+export function bundleSetMarkdown(set: BundleSet) {
+  if (!set.document) return set.markdown;
+  const body = serializeSet(set.document.tables, set.name).trim();
+  return [set.document.preamble.trim(), body, set.document.postamble.trim()].filter(Boolean).join("\n\n") + "\n";
 }
 
 /**
@@ -194,23 +206,17 @@ export type ImportStatus = "new" | "identical" | "conflict";
 
 export function compareToExisting(
   incoming: readonly BundleSet[],
-  existing: readonly { name: string; markdown?: string; tables_json?: string }[]
+  existing: readonly { name: string; markdown: string }[]
 ) {
   return incoming.map((set) => {
     const match = existing.find((entry) => entry.name.toLocaleLowerCase() === set.name.toLocaleLowerCase());
-    const incomingValue = set.document ? JSON.stringify(set.document) : set.markdown;
-    const existingValue = match?.tables_json ?? match?.markdown;
-    const status: ImportStatus = !match
-      ? "new"
-      : (set.document ? JSON.stringify(parseCustomSet(existingValue ?? "{}", set.name)) : existingValue) ===
-          incomingValue
-        ? "identical"
-        : "conflict";
+    const markdown = bundleSetMarkdown(set);
+    const status: ImportStatus = !match ? "new" : match.markdown === markdown ? "identical" : "conflict";
     return {
       name: set.name,
       tags: set.tags,
       status,
-      tables: set.document ? set.document.tables.length : parseRollTables(set.markdown).length
+      tables: parseRollTables(markdown).length
     };
   });
 }
