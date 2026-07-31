@@ -10,6 +10,7 @@ import type {
 } from "@devils-toys/shared";
 import { api } from "./api";
 import { parseGroupObligations, type GroupObligation } from "./group-obligations";
+import { parseGroupHirelings, type GroupHireling } from "./group-hirelings";
 import { parseGroupStarships, type GroupStarship } from "./group-starships";
 import { Modal } from "./Modal";
 import { otherPartyMembers } from "./party-members";
@@ -133,6 +134,7 @@ export function GroupPage({
   const [partyLoading, setPartyLoading] = useState(true);
   const [partyError, setPartyError] = useState("");
   const [expandedPartyMembers, setExpandedPartyMembers] = useState<ReadonlySet<number>>(new Set());
+  const [expandedHirelings, setExpandedHirelings] = useState<ReadonlySet<string>>(new Set());
   const [holdError, setHoldError] = useState("");
   const saveTimerRef = useRef<number | undefined>(undefined);
   const saveChainRef = useRef<Promise<void>>(Promise.resolve());
@@ -261,6 +263,40 @@ export function GroupPage({
 
   function removeObligation(id: string) {
     updateObligations((current) => current.filter((obligation) => obligation.id !== id));
+  }
+
+  function updateHirelings(updater: (current: GroupHireling[]) => GroupHireling[]) {
+    updateState((current) => ({ ...current, hirelings: updater(parseGroupHirelings(current)) }));
+  }
+
+  function addHireling() {
+    const id = globalThis.crypto?.randomUUID?.() ?? `hireling-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    updateHirelings((current) => [...current, { id, name: "" }]);
+    setExpandedHirelings((current) => new Set(current).add(id));
+  }
+
+  function setHirelingField(id: string, key: string, value: unknown) {
+    updateHirelings((current) => current.map((entry) => (entry.id === id ? { ...entry, [key]: value } : entry)));
+  }
+
+  function setHirelingListItem(id: string, key: string, index: number, value: string) {
+    updateHirelings((current) =>
+      current.map((entry) => {
+        if (entry.id !== id) return entry;
+        const list = Array.isArray(entry[key]) ? [...(entry[key] as unknown[])] : [];
+        list[index] = value;
+        return { ...entry, [key]: list };
+      })
+    );
+  }
+
+  function toggleHireling(id: string) {
+    setExpandedHirelings((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   }
 
   function updateStarships(updater: (current: GroupStarship[]) => GroupStarship[]) {
@@ -626,6 +662,7 @@ export function GroupPage({
   const partsList = definition.starshipSheet?.partsList;
   const isMonolith = system === "monolith";
   const obligations = parseGroupObligations(state);
+  const hirelings = parseGroupHirelings(state);
   const pageTitle =
     view === "party"
       ? "Party Members"
@@ -785,13 +822,145 @@ export function GroupPage({
         ))}
 
       {view !== "party" && (!isMonolith || view === "freelancers") && definition.hirelings && (
-        <section className="group-placeholder" aria-labelledby="group-hirelings-heading">
-          <UsersRound aria-hidden="true" />
-          <div>
-            <h3 id="group-hirelings-heading">{definition.hirelings.label}</h3>
-            <p>{definition.hirelings.placeholder}</p>
-          </div>
-          <span>Placeholder</span>
+        <section className="group-hirelings" aria-labelledby="group-hirelings-heading">
+          <header className="group-hirelings-toolbar">
+            <div>
+              <strong id="group-hirelings-heading">{definition.hirelings.label}</strong>
+              <span>
+                {hirelings.length === 1
+                  ? `1 ${definition.hirelings.singularLabel.toLowerCase()}`
+                  : `${hirelings.length} ${definition.hirelings.label.toLowerCase()}`}
+              </span>
+              {rulesLink(definition.hirelings.rulesQuery, "Creation rules")}
+            </div>
+            <button type="button" className="primary-button" onClick={addHireling}>
+              <Plus aria-hidden="true" /> Add {definition.hirelings.singularLabel}
+            </button>
+          </header>
+          {hirelings.length === 0 ? (
+            <p className="group-hirelings-empty">{definition.hirelings.creationHint}</p>
+          ) : (
+            <div className="group-hireling-list">
+              {hirelings.map((hireling, index) => {
+                const expanded = expandedHirelings.has(hireling.id);
+                const label = String(hireling.name).trim() || `${definition.hirelings!.singularLabel} ${index + 1}`;
+                return (
+                  <article className={`group-hireling-entry${expanded ? " expanded" : ""}`} key={hireling.id}>
+                    <header>
+                      <button
+                        type="button"
+                        className="group-hireling-toggle"
+                        onClick={() => toggleHireling(hireling.id)}
+                        aria-expanded={expanded}
+                        aria-controls={`group-hireling-${hireling.id}`}
+                      >
+                        <UsersRound aria-hidden="true" />
+                        <span>
+                          <strong>{label}</strong>
+                          <small>{fixedValue(hireling.weapon)}</small>
+                        </span>
+                        <ChevronDown aria-hidden="true" />
+                      </button>
+                      <button
+                        type="button"
+                        className="group-obligation-remove"
+                        onClick={() =>
+                          updateHirelings((current) => current.filter((entry) => entry.id !== hireling.id))
+                        }
+                        aria-label={`Remove ${label}`}
+                      >
+                        <Trash2 aria-hidden="true" /> Remove
+                      </button>
+                    </header>
+                    {expanded && (
+                      <div className="group-hireling-sheet" id={`group-hireling-${hireling.id}`}>
+                        {definition.hirelings!.sheet.sections.map((section) => (
+                          <fieldset key={section.id}>
+                            <legend>{section.label}</legend>
+                            {section.layout === "paired-current-max" ? (
+                              <div className="character-stat-table">
+                                <div className="character-stat-header">
+                                  <span aria-hidden="true" />
+                                  <span>Current</span>
+                                  <span>Max</span>
+                                </div>
+                                {pairedStatRows(section).map(({ label: statLabel, currentField, maximumField }) => (
+                                  <div
+                                    className="character-stat-row"
+                                    role="group"
+                                    aria-label={statLabel}
+                                    key={currentField.key}
+                                  >
+                                    <span className="character-stat-name">{statLabel}</span>
+                                    <div className="character-stat-values">
+                                      {[currentField, maximumField].map((field) => (
+                                        <input
+                                          key={field.key}
+                                          type="number"
+                                          aria-label={`${statLabel} ${field === currentField ? "current" : "maximum"}`}
+                                          value={String(hireling[field.key] ?? "")}
+                                          onChange={(event) =>
+                                            setHirelingField(
+                                              hireling.id,
+                                              field.key,
+                                              event.target.value === "" ? "" : Number(event.target.value)
+                                            )
+                                          }
+                                        />
+                                      ))}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <div className="character-sheet-fields">
+                                {section.fields.map((field) =>
+                                  renderField(
+                                    { ...section, id: `${hireling.id}-${section.id}` },
+                                    field,
+                                    hireling,
+                                    (key, value) => setHirelingField(hireling.id, key, value)
+                                  )
+                                )}
+                              </div>
+                            )}
+                          </fieldset>
+                        ))}
+                        {definition.hirelings!.sheet.lists.map((list) => (
+                          <fieldset key={list.key}>
+                            <legend>{list.label}</legend>
+                            <div className="group-hireling-inventory">
+                              {list.slots.map((slot, slotIndex) => (
+                                <label key={slot}>
+                                  <span>{slot}</span>
+                                  <input
+                                    value={String(
+                                      (Array.isArray(hireling[list.key])
+                                        ? (hireling[list.key] as unknown[])[slotIndex]
+                                        : "") ?? ""
+                                    )}
+                                    onChange={(event) =>
+                                      setHirelingListItem(hireling.id, list.key, slotIndex, event.target.value)
+                                    }
+                                  />
+                                </label>
+                              ))}
+                            </div>
+                          </fieldset>
+                        ))}
+                        <div className="group-hireling-level">
+                          <button type="button" disabled>
+                            Level up
+                          </button>
+                          <small>{definition.hirelings!.levelUpHint}</small>
+                        </div>
+                      </div>
+                    )}
+                  </article>
+                );
+              })}
+            </div>
+          )}
         </section>
       )}
 

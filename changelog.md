@@ -1,5 +1,7 @@
 # Changelog
 
+- Added shared, player-editable Freelancer sheets for Monolith and Hireling sheets for Cairn on the Group tab, including a disabled placeholder for future level-up support.
+
 ## 0.1.0 — In development
 
 - Added a Monolith character-sheet Vices section with rulebook-backed selection, random selection, and editable custom vices.
