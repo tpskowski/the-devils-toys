@@ -47,8 +47,10 @@ describe("character system definitions", () => {
     ).toHaveLength(4);
   });
 
-  it("enables the shared Group page for Cairn's hirelings placeholder", () => {
+  it("defines Cairn's shared hireling sheet", () => {
     expect(cairn.groupPage?.hirelings?.label).toBe("Hirelings");
+    expect(cairn.groupPage?.hirelings?.singularLabel).toBe("Hireling");
+    expect(cairn.groupPage?.hirelings?.sheet.lists[0]?.slots).toHaveLength(10);
     expect(cairn.groupPage?.starshipSheet).toBeUndefined();
   });
 
@@ -112,6 +114,10 @@ describe("character system definitions", () => {
       rulesQuery: "Group Debt"
     });
     expect(monolith.groupPage?.hirelings?.label).toBe("Freelancers");
+    expect(monolith.groupPage?.hirelings?.singularLabel).toBe("Freelancer");
+    expect(
+      monolith.groupPage?.hirelings?.sheet.sections.flatMap((section) => section.fields).map((field) => field.key)
+    ).toEqual(expect.arrayContaining(["name", "strCurrent", "dexCurrent", "wilCurrent", "hpCurrent", "weapon"]));
     expect(
       monolith.groupPage?.starshipSheet?.sections.flatMap((section) => section.fields).map((field) => field.key)
     ).toEqual(

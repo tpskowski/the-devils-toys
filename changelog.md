@@ -1,5 +1,7 @@
 # Changelog
 
+- Added shared, player-editable Freelancer sheets for Monolith and Hireling sheets for Cairn on the Group tab, including a disabled placeholder for future level-up support.
+
 ## 0.1.0 — In development
 
 - Established the TypeScript workspace and single-process application architecture.

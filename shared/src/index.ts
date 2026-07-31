@@ -192,7 +192,11 @@ export interface GroupPageDefinition {
   sections: readonly GroupSheetSection[];
   hirelings?: {
     label: string;
-    placeholder: string;
+    singularLabel: string;
+    rulesQuery: string;
+    creationHint: string;
+    sheet: CharacterSheetDefinition;
+    levelUpHint: string;
   };
   starshipSheet?: StarshipSheetDefinition;
 }

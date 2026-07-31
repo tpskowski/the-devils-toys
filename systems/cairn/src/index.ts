@@ -131,7 +131,35 @@ export const cairn: GameSystem = {
     sections: [],
     hirelings: {
       label: "Hirelings",
-      placeholder: "A shared hireling roster will live here."
+      singularLabel: "Hireling",
+      rulesQuery: "Hirelings",
+      creationHint:
+        "Roll 3d6 for each ability, 1d6 HP, add a simple d6 weapon, then use the Character Creation tables.",
+      levelUpHint: "Advancement support is not available in v1.",
+      sheet: {
+        sections: [
+          {
+            id: "identity",
+            label: "Identity",
+            fields: [
+              { key: "name", label: "Name", kind: "text" },
+              { key: "details", label: "Character details", kind: "textarea" }
+            ]
+          },
+          { id: "attributes", label: "Attributes", layout: "paired-current-max", fields: statFields },
+          {
+            id: "gear",
+            label: "Gear",
+            fields: [
+              { key: "weapon", label: "Simple weapon (d6)", kind: "text" },
+              { key: "notes", label: "Notes", kind: "textarea" }
+            ]
+          }
+        ],
+        lists: [
+          { key: "inventory", label: "Inventory", slots: Array.from({ length: 10 }, (_, index) => `Slot ${index + 1}`) }
+        ]
+      }
     }
   },
   characterWarnings(sheet) {
