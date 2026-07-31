@@ -102,6 +102,9 @@ describe("character system definitions", () => {
   });
 
   it("describes Monolith's source sheet and reports advisory constraints", () => {
+    expect(monolith.characterSheet.sections.find((section) => section.id === "vices")?.fields).toEqual([
+      { key: "vices", label: "Vices", kind: "vices" }
+    ]);
     const equipment = monolith.characterSheet.lists.find((list) => list.key === "equipment");
     expect(equipment?.slots).toHaveLength(10);
     expect(equipment?.slots.filter((slot) => slot.startsWith("Backpack"))).toHaveLength(6);

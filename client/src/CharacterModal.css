@@ -762,6 +762,62 @@
   height: 14px;
 }
 
+/* Vices keep the rulebook table's three useful columns together on small screens. */
+.character-vices {
+  display: grid;
+  gap: 10px;
+}
+
+.character-vice {
+  display: grid;
+  gap: 9px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--surface), var(--text) 2%);
+}
+
+.character-vice > select {
+  width: 100%;
+}
+
+.character-vice-heading {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.character-vice-heading strong,
+.character-vice-heading input {
+  flex: 1;
+  min-width: 0;
+}
+
+.character-vice dl {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+}
+.character-vice dl > div {
+  display: grid;
+  gap: 3px;
+}
+.character-vice dt {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.character-vice dd {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+}
+.character-vice textarea {
+  width: 100%;
+  min-height: 68px;
+}
+
 /* A confirmed entry reads as a note rather than a form. */
 .character-entry-locked {
   align-items: start;

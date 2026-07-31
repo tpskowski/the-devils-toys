@@ -13,7 +13,13 @@ import {
   UserRound,
   X
 } from "lucide-react";
-import type { CharacterEntry, CharacterItem, CharacterSheetDefinition, SystemId } from "@devils-toys/shared";
+import type {
+  CharacterEntry,
+  CharacterItem,
+  CharacterSheetDefinition,
+  CharacterVice,
+  SystemId
+} from "@devils-toys/shared";
 import { api } from "./api";
 import { CharacterItemEditor } from "./CharacterItemEditor";
 import { RulesMarkdown } from "./RulesMarkdown";
@@ -44,6 +50,7 @@ interface CharacterResponse {
   partyLabel: string;
   sheetDefinition: CharacterSheetDefinition;
   itemCatalogue: Record<string, CharacterItem[]>;
+  viceCatalogue: CharacterVice[];
 }
 
 interface ActiveRule {
@@ -100,7 +107,9 @@ function rulesQueryForList(list: CharacterSheetDefinition["lists"][number]) {
 }
 
 function isWideSection(section: CharacterSheetDefinition["sections"][number]) {
-  return section.fields.some((field) => field.kind === "textarea" || field.kind === "entries");
+  return section.fields.some(
+    (field) => field.kind === "textarea" || field.kind === "entries" || field.kind === "vices"
+  );
 }
 
 function fieldWidthClass(kind: CharacterSheetDefinition["sections"][number]["fields"][number]["kind"]) {
@@ -158,6 +167,7 @@ export function CharacterModal({
   const [openEntries, setOpenEntries] = useState<ReadonlySet<string>>(new Set());
   const [slotDialogKey, setSlotDialogKey] = useState<string>();
   const [itemCatalogue, setItemCatalogue] = useState<Record<string, CharacterItem[]>>({});
+  const [viceCatalogue, setViceCatalogue] = useState<CharacterVice[]>([]);
   const [editingSlot, setEditingSlot] = useState<{ listKey: string; index: number }>();
   /**
    * The room pane's entrance animation forms a stacking context for its duration,
@@ -202,6 +212,7 @@ export function CharacterModal({
     setActiveId(result.activeCharacterId);
     setPartyLabel(result.partyLabel);
     setItemCatalogue(result.itemCatalogue);
+    setViceCatalogue(result.viceCatalogue);
     setSelectedId((current) => {
       const desired = preferredId ?? current ?? result.activeCharacterId ?? undefined;
       return result.characters.some((character) => character.id === desired) ? desired : result.characters[0]?.id;
@@ -397,6 +408,134 @@ export function CharacterModal({
     const entries = readEntries(sheet[field.key]);
     setField(field.key, appendEntry(entries));
     openEntry(field.key, entries.length);
+  }
+
+  function readVices(value: unknown): CharacterVice[] {
+    if (!Array.isArray(value)) return [];
+    return value.filter(
+      (vice): vice is CharacterVice =>
+        Boolean(vice) && typeof vice === "object" && typeof (vice as CharacterVice).name === "string"
+    );
+  }
+
+  function setVice(fieldKey: string, index: number, vice: CharacterVice) {
+    const vices = readVices(sheet[fieldKey]);
+    setField(
+      fieldKey,
+      vices.map((current, position) => (position === index ? vice : current))
+    );
+  }
+
+  function renderVicesField(field: CharacterSheetDefinition["sections"][number]["fields"][number]) {
+    const vices = readVices(sheet[field.key]);
+    return (
+      <div className="character-vices wide-field" role="group" aria-label={field.label} key={field.key}>
+        {vices.map((vice, index) => (
+          <article className="character-vice" key={index}>
+            {canEdit && !vice.custom && (
+              <select
+                aria-label={`Vice ${index + 1}`}
+                value={viceCatalogue.some((option) => option.name === vice.name) ? vice.name : ""}
+                onChange={(event) => {
+                  if (event.target.value === "__random__") {
+                    const random = viceCatalogue[Math.floor(Math.random() * viceCatalogue.length)];
+                    if (random) setVice(field.key, index, random);
+                  } else if (event.target.value === "__custom__") {
+                    setVice(field.key, index, { ...vice, custom: true });
+                  } else {
+                    const selectedVice = viceCatalogue.find((option) => option.name === event.target.value);
+                    if (selectedVice) setVice(field.key, index, selectedVice);
+                  }
+                }}
+              >
+                <option value="__random__">Randomize</option>
+                <option value="" disabled>
+                  Select a vice…
+                </option>
+                {viceCatalogue.map((option) => (
+                  <option value={option.name} key={option.name}>
+                    {option.name}
+                  </option>
+                ))}
+                <option value="__custom__">Custom</option>
+              </select>
+            )}
+            <div className="character-vice-heading">
+              {vice.custom ? (
+                <input
+                  value={vice.name}
+                  onChange={(event) => setVice(field.key, index, { ...vice, name: event.target.value })}
+                  placeholder="Vice name"
+                  aria-label={`Vice ${index + 1} name`}
+                />
+              ) : (
+                <strong>{vice.name || "Choose a vice"}</strong>
+              )}
+              {canEdit && vice.name && !vice.custom && (
+                <button
+                  type="button"
+                  className="character-entry-edit"
+                  onClick={() => setVice(field.key, index, { ...vice, custom: true })}
+                  aria-label={`Edit ${vice.name}`}
+                >
+                  <Pencil aria-hidden="true" />
+                </button>
+              )}
+              {canEdit && (
+                <button
+                  type="button"
+                  className="character-entry-remove"
+                  onClick={() =>
+                    setField(
+                      field.key,
+                      vices.filter((_, position) => position !== index)
+                    )
+                  }
+                  aria-label={`Remove ${vice.name || "vice"}`}
+                >
+                  <Trash2 aria-hidden="true" />
+                </button>
+              )}
+            </div>
+            {(vice.name || vice.custom) && (
+              <dl>
+                <div>
+                  <dt>Triggers</dt>
+                  <dd>
+                    {vice.custom ? (
+                      <textarea
+                        value={vice.triggers}
+                        onChange={(event) => setVice(field.key, index, { ...vice, triggers: event.target.value })}
+                        aria-label={`${vice.name || "Vice"} triggers`}
+                      />
+                    ) : (
+                      vice.triggers
+                    )}
+                  </dd>
+                </div>
+                <div>
+                  <dt>Satisfying</dt>
+                  <dd>
+                    {vice.custom ? (
+                      <textarea
+                        value={vice.satisfying}
+                        onChange={(event) => setVice(field.key, index, { ...vice, satisfying: event.target.value })}
+                        aria-label={`${vice.name || "Vice"} satisfying`}
+                      />
+                    ) : (
+                      vice.satisfying
+                    )}
+                  </dd>
+                </div>
+              </dl>
+            )}
+          </article>
+        ))}
+        {vices.length === 0 && (
+          <p className="character-entries-empty">{canEdit ? "No vices yet." : "None recorded."}</p>
+        )}
+      </div>
+    );
   }
 
   function setListItem(key: string, index: number, value: string) {
@@ -729,7 +868,7 @@ export function CharacterModal({
 
   function renderSection(section: CharacterSheetDefinition["sections"][number]) {
     const editingMaxima = editingMaximumSectionId === section.id;
-    const entriesField = section.fields.find((field) => field.kind === "entries");
+    const entriesField = section.fields.find((field) => field.kind === "entries" || field.kind === "vices");
     return (
       <fieldset className="character-rule-fieldset" key={section.id}>
         <legend>
@@ -739,7 +878,14 @@ export function CharacterModal({
               <button
                 type="button"
                 className="character-legend-add"
-                onClick={() => addEntry(entriesField)}
+                onClick={() =>
+                  entriesField.kind === "vices"
+                    ? setField(entriesField.key, [
+                        ...readVices(sheet[entriesField.key]),
+                        { name: "", triggers: "", satisfying: "" }
+                      ])
+                    : addEntry(entriesField)
+                }
                 aria-label={`Add ${singularLabel(entriesField.label).toLocaleLowerCase()}`}
                 title={`Add ${singularLabel(entriesField.label).toLocaleLowerCase()}`}
               >
@@ -830,6 +976,7 @@ export function CharacterModal({
           <div className="character-sheet-fields">
             {section.fields.map((field) => {
               if (field.kind === "entries") return renderEntriesField(field);
+              if (field.kind === "vices") return renderVicesField(field);
               const fieldId = `character-field-${section.id}-${field.key}`;
               const fieldQuery = rulesQueryForField(field);
               return (

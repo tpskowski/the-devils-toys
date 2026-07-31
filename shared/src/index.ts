@@ -81,12 +81,20 @@ export interface PresenceMember {
   role: RoomRole;
   online: boolean;
 }
-export type CharacterFieldKind = "text" | "number" | "checkbox" | "textarea" | "entries";
+export type CharacterFieldKind = "text" | "number" | "checkbox" | "textarea" | "entries" | "vices";
 
 /** One item of an `entries` field: a short title and free-form rules text. */
 export interface CharacterEntry {
   title: string;
   text: string;
+}
+
+/** A Monolith vice, retaining each column of the authoritative VICES table. */
+export interface CharacterVice {
+  name: string;
+  triggers: string;
+  satisfying: string;
+  custom?: boolean;
 }
 
 export interface CharacterFieldDefinition {
