@@ -162,7 +162,7 @@ export function parseRollTables(markdown: string, exclude: readonly string[] = [
   // that title says nothing about where a table sits. Monolith instead uses top
   // level headings for its chapters, which are exactly the grouping wanted.
   const topLevel = lines.filter((line) => /^#\s+\S/.test(line));
-  const documentTitle = topLevel.length === 1 ? /^#\s+(.+?)\s*$/.exec(topLevel[0])![1].trim() : undefined;
+  const documentTitle = topLevel.length === 1 ? plainHeading(/^#\s+(.+?)\s*$/.exec(topLevel[0])![1].trim()) : undefined;
   const headings: { level: number; text: string; line: number }[] = [];
   const found: {
     path: string[];
@@ -265,11 +265,9 @@ export function parseRollTables(markdown: string, exclude: readonly string[] = [
     const owningHeading = displayPath[displayPath.length - 1] ?? "Table";
     const displaySubject = plainHeading(subject);
     const shared = (perHeading.get(path.join("/")) ?? 0) > 1;
-    const name =
-      shared && subject && subject.toLocaleLowerCase() !== "result" ? `${owningHeading} — ${subject}` : owningHeading;
     const plainName =
       shared && subject && subject.toLocaleLowerCase() !== "result"
-        ? name.replace(subject, displaySubject)
+        ? `${owningHeading} — ${displaySubject}`
         : owningHeading;
     const base = slug([...displayPath.slice(0, -1), plainName].join("-"));
     let id = base;

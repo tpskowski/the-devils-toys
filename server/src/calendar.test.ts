@@ -39,6 +39,7 @@ describe("room calendar day segments", () => {
   it("preserves segment behavior from calendars saved before the count setting existed", () => {
     const legacy = defaultCalendar() as unknown as Record<string, unknown>;
     delete legacy.segmentsPerDay;
+    delete legacy.revision;
     legacy.segmentNames = ["Morning", "Afternoon", "Night"];
 
     expect(readCalendar(JSON.stringify(legacy))).toMatchObject({

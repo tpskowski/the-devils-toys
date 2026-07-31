@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { parseRollTables, rowForRoll, rowText, tableSummary, unreachableRows } from "./roll-tables.js";
 
-const source = `# Rules
+const source = `# **Rules**
 
 ## Character Creation
 
