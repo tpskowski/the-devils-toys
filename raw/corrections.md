@@ -16,6 +16,24 @@ No wording has been changed. The repairs below are to table structure only.
 
 No table gained, lost, or altered a row.
 
+## Monolith — background table catalogue labels
+
+**Source:** `raw/Monolith.md`, the 36 tables under the twelve numbered BACKGROUNDS.
+
+**Original:** each table heading named only the detail being generated, such as
+`Signature Weapon` or `How Did You Escape?`.
+
+**Correction:** each heading is prefixed with its background, such as
+`Mercenary - Signature Weapon` and `Human Experiment - How Did You Escape?`.
+Each table also carries a `character-building` classification comment.
+
+**Reason:** background tables need to identify the character background they
+belong to when shown outside the rulebook hierarchy, and need to be discoverable
+with the other character-building tables. The comments are application metadata
+and do not alter the rendered rules text.
+
+No table gained, lost, or altered a row.
+
 ## Monolith — die values in background tables written as plain numbers
 
 **Source:** `raw/Monolith.md`, the die column of 12 background tables (72 rows).
