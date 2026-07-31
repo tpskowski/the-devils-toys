@@ -12,6 +12,7 @@ import {
   Archive,
   ArrowUpRight,
   BookOpen,
+  CalendarDays,
   ChevronDown,
   ChevronLeft,
   CircleUserRound,
@@ -20,9 +21,7 @@ import {
   DoorOpen,
   Eye,
   FileText,
-  KeyRound,
   LogOut,
-  Maximize2,
   Map,
   Menu,
   MessageSquare,
@@ -36,9 +35,7 @@ import {
   RotateCcw,
   Table2,
   Trash2,
-  UserMinus,
   UserPlus,
-  Users,
   Library,
   UsersRound,
   X
@@ -49,6 +46,7 @@ import type {
   DiceRules,
   PresenceMember,
   RoomSummary,
+  RoomCalendar,
   SystemId,
   ThemeId
 } from "@devils-toys/shared";
@@ -68,7 +66,6 @@ import { TableMediaViewer } from "./TableMediaViewer";
 import { AudioDock, AudioModal } from "./AudioPlayer";
 import { ManagementWorkspace } from "./ManagementWorkspace";
 import { defaultGroupView, GroupPage, groupViewsForSystem, type GroupView } from "./GroupPage";
-import { canShowPasswordReset } from "./member-permissions";
 
 import { AppearanceModal } from "./AppearanceModal";
 import { effectiveTheme, readPersonalTheme, writePersonalTheme } from "./personal-theme";
@@ -76,6 +73,7 @@ import { NpcModal } from "./NpcModal";
 import { TablesModal } from "./TablesModal";
 import { DiceModal as SystemDiceModal } from "./DiceModal";
 import type { SaveRollSetup } from "./save-roll";
+import { CalendarModal } from "./CalendarModal";
 interface SystemStatus {
   id: SystemId;
   name: string;
@@ -95,7 +93,7 @@ interface Status {
 }
 
 interface RoomDetail {
-  room: RoomSummary;
+  room: RoomSummary & { calendar: RoomCalendar };
   members: {
     accountId: number;
     username: string;
@@ -611,7 +609,7 @@ function TableRoom({
   const [detail, setDetail] = useState<RoomDetail>();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [presence, setPresence] = useState<PresenceMember[]>([]);
-  const [panel, setPanel] = useState<"scene" | "chat" | "rules" | "people">("chat");
+  const [panel, setPanel] = useState<"scene" | "chat">("chat");
   const [rulesFocus, setRulesFocus] = useState("");
   const [diceOpen, setDiceOpen] = useState(false);
   const [diceInitialSave, setDiceInitialSave] = useState<SaveRollSetup>();
@@ -619,7 +617,6 @@ function TableRoom({
   const [characterToOpen, setCharacterToOpen] = useState<number>();
   const [charactersRevision, setCharactersRevision] = useState(0);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [membersOpen, setMembersOpen] = useState(false);
   const [media, setMedia] = useState<RoomMediaState>({ map: null, scene: null, references: [] });
   const [mediaOpen, setMediaOpen] = useState(false);
   const [pings, setPings] = useState<ScenePing[]>([]);
@@ -638,9 +635,12 @@ function TableRoom({
   const [npcOpen, setNpcOpen] = useState(false);
   const [npcRevision, setNpcRevision] = useState(0);
   const [tablesOpen, setTablesOpen] = useState(false);
+  const [calendarOpen, setCalendarOpen] = useState(false);
   const [appearanceOpen, setAppearanceOpen] = useState(false);
   const [groupRevision, setGroupRevision] = useState(0);
+  const [mapNotationRevision, setMapNotationRevision] = useState(0);
   const [groupView, setGroupView] = useState<GroupView>(() => defaultGroupView(room.system));
+  const [rulesTabRevision, setRulesTabRevision] = useState(0);
 
   const socketRef = useRef<WebSocket | null>(null);
   // The dock owns the audio element; the playlist needs its live position so its
@@ -719,6 +719,7 @@ function TableRoom({
         if (data.type === "audio-playback") setAudio((current) => ({ ...current, playback: data.playback }));
         if (data.type === "npcs-updated") setNpcRevision((current) => current + 1);
         if (data.type === "group-updated") setGroupRevision((current) => current + 1);
+        if (data.type === "map-notations-updated") setMapNotationRevision((current) => current + 1);
         if (data.type === "scene-ping") {
           const ping = data.ping as ScenePing;
           setPings((current) => [...current, ping]);
@@ -784,6 +785,11 @@ function TableRoom({
               <Table2 />
             </button>
           )}
+          {detail.room.calendarEnabled && (
+            <button className="icon-button" onClick={() => setCalendarOpen(true)} title="Calendar">
+              <CalendarDays />
+            </button>
+          )}
           {detail.room.role === "gm" ? (
             <button className="icon-button" onClick={() => setSettingsOpen(true)} title="Room settings">
               <Settings2 />
@@ -798,8 +804,20 @@ function TableRoom({
       <div className="table-grid">
         <section className="scene-stage">
           <TableMediaViewer
+            roomId={room.id}
             media={media}
             isGm={detail.room.role === "gm"}
+            mapNotationEnabled={detail.room.mapNotationEnabled}
+            mapNotationRevision={mapNotationRevision}
+            requestedTab={rulesTabRevision ? { tab: "rules", revision: rulesTabRevision } : undefined}
+            rulesPage={
+              <Rules
+                roomId={room.id}
+                system={room.system}
+                focusQuery={rulesFocus}
+                onFocused={() => setRulesFocus("")}
+              />
+            }
             pings={pings}
             groupPage={
               hasGroupPage ? (
@@ -811,6 +829,7 @@ function TableRoom({
                   hidden={false}
                   viewerId={accountId}
                   view={groupView}
+                  presence={presence.length ? presence : detail.members.map((member) => ({ ...member, online: false }))}
                 />
               ) : undefined
             }
@@ -828,35 +847,8 @@ function TableRoom({
           />
         </section>
         <aside className={`context-panel panel-${panel}`}>
-          <div className="panel-tabs">
-            <button className={panel === "chat" ? "active" : ""} onClick={() => setPanel("chat")}>
-              <MessageSquare /> Chat
-            </button>
-            <button className={panel === "rules" ? "active" : ""} onClick={() => setPanel("rules")}>
-              <BookOpen /> Rules
-            </button>
-
-            <button className={panel === "people" ? "active" : ""} onClick={() => setPanel("people")}>
-              <Users /> People
-            </button>
-          </div>
           {panel === "chat" && (
             <Chat roomId={room.id} messages={messages} canClear={detail.room.role === "gm"} onDice={() => openDice()} />
-          )}
-          {panel === "rules" && (
-            <Rules roomId={room.id} system={room.system} focusQuery={rulesFocus} onFocused={() => setRulesFocus("")} />
-          )}
-
-          {panel === "people" && (
-            <People
-              members={presence.length ? presence : detail.members.map((member) => ({ ...member, online: false }))}
-              canManage={detail.room.role === "gm"}
-              onManage={() => setMembersOpen(true)}
-              onCharacter={(characterId) => {
-                setCharacterToOpen(characterId);
-                setCharactersOpen(true);
-              }}
-            />
           )}
         </aside>
       </div>
@@ -877,18 +869,9 @@ function TableRoom({
           <Dices />
           <span>Dice</span>
         </button>
-        <button className={panel === "rules" ? "active" : ""} onClick={() => setPanel("rules")}>
-          <BookOpen />
-          <span>Rules</span>
-        </button>
-
         <button onClick={() => setMediaOpen(true)}>
           <Eye />
           <span>Refs</span>
-        </button>
-        <button className={panel === "people" ? "active" : ""} onClick={() => setPanel("people")}>
-          <Users />
-          <span>People</span>
         </button>
       </nav>
       {charactersOpen && (
@@ -960,6 +943,15 @@ function TableRoom({
           onClose={() => setTablesOpen(false)}
         />
       )}
+      {calendarOpen && (
+        <CalendarModal
+          roomId={room.id}
+          calendar={detail.room.calendar}
+          isGm={detail.room.role === "gm"}
+          onChanged={load}
+          onClose={() => setCalendarOpen(false)}
+        />
+      )}
       {diceOpen && (
         <SystemDiceModal
           roomId={room.id}
@@ -981,18 +973,9 @@ function TableRoom({
           onRules={() => {
             closeDice();
             setRulesFocus(systemDefinition.rollRulesQuery);
-            setPanel("rules");
+            setRulesTabRevision((current) => current + 1);
           }}
           onClose={closeDice}
-        />
-      )}
-      {membersOpen && (
-        <ManageMembers
-          roomId={room.id}
-          members={detail.members}
-          isAdmin={isAdmin}
-          onChanged={load}
-          onClose={() => setMembersOpen(false)}
         />
       )}
       {settingsOpen && (
@@ -1143,7 +1126,6 @@ function Rules({
 }) {
   const [markdown, setMarkdown] = useState("");
   const [query, setQuery] = useState("");
-  const [expanded, setExpanded] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
   const rulesReading = useRef<HTMLDivElement>(null);
@@ -1169,7 +1151,6 @@ function Rules({
   useEffect(() => {
     if (!focusQuery) return;
     setQuery(focusQuery);
-    setExpanded(true);
     onFocused();
   }, [focusQuery, onFocused]);
   const filtered = filterRules(markdown, query);
@@ -1194,108 +1175,39 @@ function Rules({
           placeholder="Find in rules…"
           aria-label="Find in rules"
         />
-        <button type="button" onClick={() => setExpanded(true)} title="Open full rules reference">
-          <Maximize2 size={16} />
-        </button>
         <a href={rulesPath(system, roomId)} target="_blank" rel="noreferrer" title="Open rules in a new tab">
           <ArrowUpRight size={17} />
           <span className="sr-only">Open rules in a new tab</span>
         </a>
       </div>
-      <div className="markdown">{renderRulesContent("panel-rule")}</div>
-      {expanded && (
-        <Modal title="Rules reference" onClose={() => setExpanded(false)} wide className="rules-modal">
-          <div className="rules-reference">
-            <div className="rules-reference-toolbar">
-              <label className="rules-reference-search">
-                <BookOpen size={17} />
-                <input
-                  value={query}
-                  onChange={(event) => setQuery(event.target.value)}
-                  placeholder="Search the complete rules…"
-                  aria-label="Search the complete rules"
-                  autoFocus
-                />
-              </label>
-              <p className="modal-intro">
-                Search every role-appropriate section imported from the system’s authoritative Markdown source.
-              </p>
-            </div>
-            <div className="rules-reference-layout">
-              <nav className="rules-toc" aria-label="Rules headings">
-                <p className="rules-toc-label">On this page</p>
-                {headings.length > 0 ? (
-                  headings.map((heading) => (
-                    <button
-                      type="button"
-                      className={`rules-toc-level-${heading.level}`}
-                      key={`${heading.line}-${heading.id}`}
-                      onClick={() =>
-                        rulesReading.current
-                          ?.querySelector<HTMLElement>(`#rules-${heading.id}`)
-                          ?.scrollIntoView({ behavior: "smooth", block: "start" })
-                      }
-                    >
-                      {heading.text}
-                    </button>
-                  ))
-                ) : (
-                  <p className="rules-toc-empty">
-                    {loading ? "Loading headings…" : loadError ? "Rules unavailable." : "No headings to show."}
-                  </p>
-                )}
-              </nav>
-              <div className="rules-reading markdown" ref={rulesReading}>
-                {renderRulesContent("rules")}
-              </div>
-            </div>
-          </div>
-        </Modal>
-      )}
-    </div>
-  );
-}
-
-function People({
-  members,
-  canManage,
-  onManage,
-  onCharacter
-}: {
-  members: PresenceMember[];
-  canManage: boolean;
-  onManage: () => void;
-  onCharacter: (characterId: number) => void;
-}) {
-  return (
-    <div className="people-panel">
-      <div className="people-heading">
-        <p className="panel-kicker">At this table</p>
-        {canManage && (
-          <button className="panel-manage" onClick={onManage}>
-            Manage players
-          </button>
-        )}
-      </div>
-      {members.map((member) => (
-        <div className="person" key={member.accountId}>
-          <span className={`presence-dot ${member.online ? "online" : ""}`} />
-          <div>
-            {member.activeCharacterId ? (
+      <div className="rules-reference-layout">
+        <nav className="rules-toc" aria-label="Rules headings">
+          <p className="rules-toc-label">On this page</p>
+          {headings.length > 0 ? (
+            headings.map((heading) => (
               <button
-                className="person-character"
-                onClick={() => onCharacter(member.activeCharacterId!)}
-                title={`Open ${member.displayName}`}
+                type="button"
+                className={`rules-toc-level-${heading.level}`}
+                key={`${heading.line}-${heading.id}`}
+                onClick={() =>
+                  rulesReading.current
+                    ?.querySelector<HTMLElement>(`#center-rule-${heading.id}`)
+                    ?.scrollIntoView({ behavior: "smooth", block: "start" })
+                }
               >
-                <strong>{member.displayName}</strong>
+                {heading.text}
               </button>
-            ) : (
-              <strong>{member.displayName}</strong>
-            )}
-            <small>{member.role === "gm" ? "Game master" : member.online ? "Online" : "Offline"}</small>
-          </div>
+            ))
+          ) : (
+            <p className="rules-toc-empty">
+              {loading ? "Loading headings…" : loadError ? "Rules unavailable." : "No headings to show."}
+            </p>
+          )}
+        </nav>
+        <div className="rules-reading markdown" ref={rulesReading}>
+          {renderRulesContent("center-rule")}
         </div>
-      ))}
+      </div>
     </div>
   );
 }
@@ -1527,138 +1439,6 @@ function CreatePlayer({ roomId, onClose }: { roomId: number; onClose: () => void
   );
 }
 
-interface AccountOption {
-  id: number;
-  username: string;
-}
-
-function ManageMembers({
-  roomId,
-  members,
-  isAdmin,
-  onChanged,
-  onClose
-}: {
-  roomId: number;
-  members: RoomDetail["members"];
-  isAdmin: boolean;
-  onChanged: () => Promise<void>;
-  onClose: () => void;
-}) {
-  const [options, setOptions] = useState<AccountOption[]>([]);
-  const [selected, setSelected] = useState("");
-  const [error, setError] = useState("");
-  const [notice, setNotice] = useState("");
-
-  async function loadOptions() {
-    const result = await api<{ accounts: AccountOption[] }>(`/api/rooms/${roomId}/member-options`);
-    setOptions(result.accounts);
-    setSelected((current) =>
-      current && result.accounts.some((account) => String(account.id) === current)
-        ? current
-        : String(result.accounts[0]?.id ?? "")
-    );
-  }
-
-  useEffect(() => {
-    loadOptions().catch((cause: Error) => setError(cause.message));
-  }, [roomId]);
-
-  async function addPlayer() {
-    if (!selected) return;
-    setError("");
-    try {
-      await api(`/api/rooms/${roomId}/members`, {
-        method: "POST",
-        body: JSON.stringify({ accountId: Number(selected) })
-      });
-      await Promise.all([loadOptions(), onChanged()]);
-    } catch (cause) {
-      setError((cause as Error).message);
-    }
-  }
-
-  async function removePlayer(accountId: number) {
-    setError("");
-    try {
-      await api(`/api/rooms/${roomId}/members/${accountId}`, { method: "DELETE" });
-      await Promise.all([loadOptions(), onChanged()]);
-    } catch (cause) {
-      setError((cause as Error).message);
-    }
-  }
-
-  async function resetPassword(accountId: number, username: string) {
-    const password = window.prompt(`Set a new password for ${username} (minimum 8 characters):`);
-    if (password === null) return;
-    if (password.length < 8) return setError("The new password must be at least 8 characters.");
-    setError("");
-    setNotice("");
-    try {
-      await api(`/api/accounts/${accountId}/password`, {
-        method: "PATCH",
-        body: JSON.stringify({ password })
-      });
-      setNotice(`${username} can now sign in with the new password. Existing sessions were closed.`);
-    } catch (cause) {
-      setError((cause as Error).message);
-    }
-  }
-
-  const players = members.filter((member) => member.role === "player");
-  return (
-    <Modal title="Manage players" onClose={onClose}>
-      <div className="settings-list member-admin">
-        <p className="modal-intro">
-          Add an existing account to this room or remove a player’s ongoing access. Invitations are managed separately.
-        </p>
-        <div className="member-add">
-          <label>
-            Existing account
-            <select value={selected} onChange={(event) => setSelected(event.target.value)} disabled={!options.length}>
-              {options.length ? (
-                options.map((account) => (
-                  <option key={account.id} value={account.id}>
-                    {account.username}
-                  </option>
-                ))
-              ) : (
-                <option value="">No available accounts</option>
-              )}
-            </select>
-          </label>
-          <button className="primary-button" onClick={addPlayer} disabled={!selected}>
-            <UserPlus size={17} /> Add player
-          </button>
-        </div>
-        {error && <p className="form-error">{error}</p>}
-        {notice && <p className="form-success">{notice}</p>}
-        <section className="member-list" aria-label="Current players">
-          <p className="eyebrow">Current players</p>
-          {players.length ? (
-            players.map((member) => (
-              <div className="member-admin-row" key={member.accountId}>
-                <strong>{member.username}</strong>
-                <div className="member-row-actions">
-                  {canShowPasswordReset(isAdmin, member.isAdmin) && (
-                    <button type="button" onClick={() => resetPassword(member.accountId, member.username)}>
-                      <KeyRound size={15} /> Reset password
-                    </button>
-                  )}
-                  <button type="button" onClick={() => removePlayer(member.accountId)}>
-                    <UserMinus size={15} /> Remove
-                  </button>
-                </div>
-              </div>
-            ))
-          ) : (
-            <p className="empty-note">No player accounts are assigned to this room.</p>
-          )}
-        </section>
-      </div>
-    </Modal>
-  );
-}
 function RoomSettings({
   room,
   isAdmin,
@@ -1673,13 +1453,18 @@ function RoomSettings({
   onClose: () => void;
 }) {
   const [theme, setTheme] = useState(room.theme);
+  const [calendarEnabled, setCalendarEnabled] = useState(room.calendarEnabled);
+  const [mapNotationEnabled, setMapNotationEnabled] = useState(room.mapNotationEnabled);
   const [confirmName, setConfirmName] = useState("");
   const [error, setError] = useState("");
 
   async function save() {
     setError("");
     try {
-      await api(`/api/rooms/${room.id}`, { method: "PATCH", body: JSON.stringify({ theme }) });
+      await api(`/api/rooms/${room.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ theme, calendarEnabled, mapNotationEnabled })
+      });
       await onChanged();
       onClose();
     } catch (cause) {
@@ -1724,6 +1509,28 @@ function RoomSettings({
           </select>
         </label>
         <p className="modal-intro">The game system is fixed as {room.system}. Themes can change at any time.</p>
+        <label className="toggle-row">
+          <input
+            type="checkbox"
+            checked={calendarEnabled}
+            onChange={(event) => setCalendarEnabled(event.target.checked)}
+          />
+          <span>
+            <strong>Calendar</strong>
+            <small>Show the shared in-game calendar to everyone in this room.</small>
+          </span>
+        </label>
+        <label className="toggle-row">
+          <input
+            type="checkbox"
+            checked={mapNotationEnabled}
+            onChange={(event) => setMapNotationEnabled(event.target.checked)}
+          />
+          <span>
+            <strong>Map notation</strong>
+            <small>Let everyone draw, label, and mark up maps together.</small>
+          </span>
+        </label>
         {error && <p className="form-error">{error}</p>}
         <button className="primary-button" onClick={save}>
           Save changes

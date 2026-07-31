@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type PointerEvent } from "react";
 import { ArrowUpRight, Focus, ImagePlus, MapPin, Minus, Plus } from "lucide-react";
 import type { MediaAsset } from "@devils-toys/shared";
 import { mediaLabel } from "./media-label";
+import { MapNotationLayer } from "./MapNotationLayer";
 
 export interface ScenePing {
   id: number;
@@ -17,7 +18,8 @@ export function SceneViewer({
   isGm,
   pings,
   onManage,
-  onPing
+  onPing,
+  mapNotation
 }: {
   scene: MediaAsset | null;
   label?: "Map" | "Scene";
@@ -25,6 +27,7 @@ export function SceneViewer({
   pings: ScenePing[];
   onManage: () => void;
   onPing: (x: number, y: number) => void;
+  mapNotation?: { roomId: number; revision: number };
 }) {
   const [scale, setScale] = useState(1);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
@@ -151,6 +154,15 @@ export function SceneViewer({
           </span>
         ))}
       </div>
+      {mapNotation && (
+        <MapNotationLayer
+          roomId={mapNotation.roomId}
+          mediaId={scene.id}
+          isGm={isGm}
+          revision={mapNotation.revision}
+          transform={`translate(${offset.x}px, ${offset.y}px) scale(${scale})`}
+        />
+      )}
       <div
         className="scene-toolbar"
         onPointerDown={(event) => event.stopPropagation()}

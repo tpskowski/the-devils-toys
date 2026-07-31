@@ -15,3 +15,12 @@ export function otherPartyMembers<T extends PartyMemberCharacter>(
       character.ownerAccountId !== viewerId && character.activeBy.every((member) => member.accountId !== viewerId)
   );
 }
+
+/** A shared character is online while at least one account actively using it is connected. */
+export function partyMemberIsOnline(
+  character: Pick<RosterCharacter, "activeBy">,
+  presence: readonly { accountId: number; online: boolean }[]
+) {
+  const onlineAccounts = new Set(presence.filter((member) => member.online).map((member) => member.accountId));
+  return character.activeBy.some((member) => onlineAccounts.has(member.accountId));
+}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { otherPartyMembers } from "./party-members";
+import { otherPartyMembers, partyMemberIsOnline } from "./party-members";
 
 describe("other party members", () => {
   it("returns only other users' active characters", () => {
@@ -19,5 +19,21 @@ describe("other party members", () => {
     ];
 
     expect(otherPartyMembers(characters, 7, null).map((character) => character.id)).toEqual([5]);
+  });
+});
+
+describe("party member presence", () => {
+  it("marks a character online when any active user is connected", () => {
+    const character = { activeBy: [{ accountId: 8 }, { accountId: 9 }] };
+    expect(
+      partyMemberIsOnline(character, [
+        { accountId: 8, online: false },
+        { accountId: 9, online: true }
+      ])
+    ).toBe(true);
+  });
+
+  it("marks a character offline when none of its active users are connected", () => {
+    expect(partyMemberIsOnline({ activeBy: [{ accountId: 8 }] }, [{ accountId: 8, online: false }])).toBe(false);
   });
 });

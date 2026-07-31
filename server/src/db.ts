@@ -112,6 +112,14 @@ db.exec(`
     group_json TEXT NOT NULL DEFAULT '{}',
     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
   );
+  CREATE TABLE IF NOT EXISTS map_notations (
+    id INTEGER PRIMARY KEY,
+    room_id INTEGER NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
+    media_id INTEGER NOT NULL REFERENCES media(id) ON DELETE CASCADE,
+    notation_json TEXT NOT NULL,
+    created_by INTEGER REFERENCES accounts(id) ON DELETE SET NULL,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+  );
   CREATE TABLE IF NOT EXISTS starship_images (
     room_id INTEGER NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
     starship_id TEXT NOT NULL,
@@ -198,6 +206,16 @@ if (!hasColumn("accounts", "account_role")) {
     ) THEN 'gm'
     ELSE 'player'
   END`);
+}
+
+if (!hasColumn("rooms", "calendar_enabled")) {
+  db.exec("ALTER TABLE rooms ADD COLUMN calendar_enabled INTEGER NOT NULL DEFAULT 0");
+}
+if (!hasColumn("rooms", "calendar_json")) {
+  db.exec("ALTER TABLE rooms ADD COLUMN calendar_json TEXT");
+}
+if (!hasColumn("rooms", "map_notation_enabled")) {
+  db.exec("ALTER TABLE rooms ADD COLUMN map_notation_enabled INTEGER NOT NULL DEFAULT 0");
 }
 if (!hasColumn("accounts", "created_by"))
   db.exec("ALTER TABLE accounts ADD COLUMN created_by INTEGER REFERENCES accounts(id) ON DELETE SET NULL");

@@ -6,13 +6,14 @@ import type {
   CharacterSheetDefinition,
   GroupPageDefinition,
   GroupSheetSection,
+  PresenceMember,
   SystemId
 } from "@devils-toys/shared";
 import { api } from "./api";
 import { parseGroupObligations, type GroupObligation } from "./group-obligations";
 import { parseGroupStarships, type GroupStarship } from "./group-starships";
 import { Modal } from "./Modal";
-import { otherPartyMembers } from "./party-members";
+import { otherPartyMembers, partyMemberIsOnline } from "./party-members";
 import { ReadOnlyCharacterSheet, type ReadOnlyCharacter } from "./ReadOnlyCharacterSheet";
 import { headingSlug, rulesAnchorPath } from "./rules";
 import { readStarshipExpansion, writeStarshipExpansion } from "./starship-expansion";
@@ -105,6 +106,7 @@ export function GroupPage({
   characterRevision,
   hidden,
   viewerId,
+  presence,
   view = "group"
 }: {
   roomId: number;
@@ -113,6 +115,7 @@ export function GroupPage({
   characterRevision: number;
   hidden: boolean;
   viewerId: number;
+  presence: PresenceMember[];
   view?: GroupView;
 }) {
   const [definition, setDefinition] = useState<GroupPageDefinition>();
@@ -668,6 +671,7 @@ export function GroupPage({
               {partyCharacters.map((character) => {
                 const expanded = expandedPartyMembers.has(character.id);
                 const detailsId = `group-party-character-${character.id}`;
+                const online = partyMemberIsOnline(character, presence);
                 return (
                   <article className={`group-party-entry${expanded ? " expanded" : ""}`} key={character.id}>
                     <header>
@@ -686,6 +690,9 @@ export function GroupPage({
                               character.ownerUsername ||
                               "Unassigned"}
                           </small>
+                        </span>
+                        <span className={`group-party-presence ${online ? "online" : "offline"}`}>
+                          <i aria-hidden="true" /> {online ? "Online" : "Offline"}
                         </span>
                         <ChevronDown aria-hidden="true" />
                       </button>

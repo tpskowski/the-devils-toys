@@ -18,6 +18,8 @@
     "start": "npm run start --workspace @devils-toys/server",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
+    "test:e2e": "playwright test",
+    "playwright:install": "playwright install --with-deps chromium",
     "format:check": "prettier --check .",
     "smoke": "node scripts/smoke.mjs && node scripts/characters-smoke.mjs && node scripts/management-smoke.mjs && node scripts/capacity-smoke.mjs && node scripts/media-smoke.mjs && node scripts/audio-smoke.mjs && node scripts/npc-smoke.mjs && node scripts/dice-smoke.mjs && node scripts/tables-smoke.mjs && node scripts/tables-editor-smoke.mjs",
     "dev:tables-client": "npm run dev --workspace @devils-toys/tables-client",
@@ -26,6 +28,7 @@
     "start:tables": "npm run start:tables --workspace @devils-toys/server"
   },
   "devDependencies": {
+    "@playwright/test": "^1.62.1",
     "concurrently": "^9.2.0",
     "prettier": "^3.6.2",
     "typescript": "^5.8.3"
