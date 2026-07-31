@@ -4,6 +4,10 @@
 
 ## 0.1.0 — In development
 
+- Added an optional shared room calendar with custom years, months, weeks, day segments, holidays, recurring events, and GM time advancement.
+- Added optional persistent map notation with shared drawing, labels, shapes, colors, erasing, undo, and GM clearing tools.
+- Moved online and offline presence into the Group party roster and removed the duplicate People panel from the chat rail.
+- Moved Rules into the main table tabs with a persistent heading index while retaining the external reference pop-out.
 - Added a Monolith character-sheet Vices section with rulebook-backed selection, random selection, and editable custom vices.
 - Established the TypeScript workspace and single-process application architecture.
 - Added local setup, authentication, rooms, chat, dice, live presence, and five room themes.

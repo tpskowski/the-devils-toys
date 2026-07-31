@@ -4,6 +4,7 @@ import express from "express";
 import cookieParser from "cookie-parser";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
+import type { RoomCalendar } from "@devils-toys/shared";
 import type { AuthedRequest } from "./auth.js";
 import { authMiddleware, createSession, requireAuth, roomRole } from "./auth.js";
 import { all, db, one } from "./db.js";
@@ -26,6 +27,7 @@ import { tableSetRouter } from "./table-sets.js";
 import { tablesLinkRouter } from "./tables-link.js";
 import { asyncRoute, parse, publicAccount, sessionRouter } from "./session-routes.js";
 import { groupRouter } from "./group.js";
+import { mapNotationRouter } from "./map-notations.js";
 import { projectFile } from "./paths.js";
 import { rulesMarkdown, systems } from "./systems.js";
 import { SYSTEM_IDS, THEME_IDS, type AccountRole, type SystemId, type ThemeId } from "@devils-toys/shared";
@@ -49,6 +51,7 @@ app.use("/api", groupRouter);
 app.use("/api", roomAdminRouter);
 app.use("/api", managementRouter);
 app.use("/api", sessionRouter);
+app.use("/api", mapNotationRouter);
 function publicMessage(row: {
   id: number;
   room_id: number;
@@ -255,11 +258,18 @@ app.get("/api/rooms", requireAuth, (req: AuthedRequest, res) => {
     theme: ThemeId;
     role: "gm" | "player";
     archived: number;
+    calendar_enabled: number;
+    map_notation_enabled: number;
   }>(
-    `SELECT r.id, r.name, r.system, r.theme, m.role, r.archived FROM rooms r
+    `SELECT r.id, r.name, r.system, r.theme, m.role, r.archived, r.calendar_enabled, r.map_notation_enabled FROM rooms r
      JOIN memberships m ON m.room_id = r.id WHERE m.account_id = ? ORDER BY r.archived, r.name`,
     req.account!.id
-  ).map((room) => ({ ...room, archived: Boolean(room.archived) }));
+  ).map(({ calendar_enabled, map_notation_enabled, ...room }) => ({
+    ...room,
+    archived: Boolean(room.archived),
+    calendarEnabled: Boolean(calendar_enabled),
+    mapNotationEnabled: Boolean(map_notation_enabled)
+  }));
   res.json({ rooms });
 });
 
@@ -285,9 +295,18 @@ app.post("/api/rooms", requireAuth, (req: AuthedRequest, res) => {
     db.prepare("INSERT INTO memberships (room_id, account_id, role) VALUES (?, ?, 'gm')").run(roomId, req.account!.id);
     db.prepare("INSERT INTO room_state (room_id) VALUES (?)").run(roomId);
     db.exec("COMMIT");
-    res
-      .status(201)
-      .json({ room: { id: roomId, name: body.name, system: body.system, theme, role: "gm", archived: false } });
+    res.status(201).json({
+      room: {
+        id: roomId,
+        name: body.name,
+        system: body.system,
+        theme,
+        role: "gm",
+        archived: false,
+        calendarEnabled: false,
+        mapNotationEnabled: false
+      }
+    });
   } catch (error) {
     db.exec("ROLLBACK");
     throw error;
@@ -298,8 +317,17 @@ app.get("/api/rooms/:roomId", requireAuth, (req: AuthedRequest, res) => {
   const roomId = Number(req.params.roomId);
   const role = roomRole(req.account!.id, roomId);
   if (!role) return res.status(404).json({ error: "Room not found." });
-  const room = one<{ id: number; name: string; system: SystemId; theme: ThemeId; archived: number }>(
-    "SELECT id, name, system, theme, archived FROM rooms WHERE id = ?",
+  const room = one<{
+    id: number;
+    name: string;
+    system: SystemId;
+    theme: ThemeId;
+    archived: number;
+    calendar_enabled: number;
+    calendar_json: string | null;
+    map_notation_enabled: number;
+  }>(
+    "SELECT id, name, system, theme, archived, calendar_enabled, calendar_json, map_notation_enabled FROM rooms WHERE id = ?",
     roomId
   )!;
   const members = all<{
@@ -323,8 +351,77 @@ app.get("/api/rooms/:roomId", requireAuth, (req: AuthedRequest, res) => {
     role: member.role,
     isAdmin: Boolean(member.is_admin)
   }));
-  res.json({ room: { ...room, archived: Boolean(room.archived), role }, members });
+  const { calendar_enabled, calendar_json, map_notation_enabled, ...roomFields } = room;
+  res.json({
+    room: {
+      ...roomFields,
+      archived: Boolean(room.archived),
+      role,
+      calendarEnabled: Boolean(calendar_enabled),
+      calendar: readCalendar(calendar_json),
+      mapNotationEnabled: Boolean(map_notation_enabled)
+    },
+    members
+  });
 });
+
+const calendarEventSchema = z.object({
+  id: z.string().min(1).max(80),
+  name: z.string().trim().min(1).max(100),
+  cadence: z.enum(["holiday", "weekly", "biweekly", "monthly"]),
+  day: z.number().int().min(1).max(400),
+  month: z.number().int().min(0).max(99).optional()
+});
+const calendarSchema = z.object({
+  year: z.number().int().min(-99999).max(99999),
+  month: z.number().int().min(0).max(99),
+  day: z.number().int().min(1).max(400),
+  segment: z.number().int().min(0).max(99),
+  daysPerWeek: z.number().int().min(1).max(20),
+  daysPerMonth: z.number().int().min(1).max(400),
+  dayNames: z.array(z.string().trim().min(1).max(40)).min(1).max(20),
+  monthNames: z.array(z.string().trim().min(1).max(40)).min(1).max(100),
+  segmentNames: z.array(z.string().trim().min(1).max(40)).max(100),
+  events: z.array(calendarEventSchema).max(500)
+});
+
+function defaultCalendar(): RoomCalendar {
+  return {
+    year: 1,
+    month: 0,
+    day: 1,
+    segment: 0,
+    daysPerWeek: 7,
+    daysPerMonth: 30,
+    dayNames: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
+    monthNames: [
+      "January",
+      "February",
+      "March",
+      "April",
+      "May",
+      "June",
+      "July",
+      "August",
+      "September",
+      "October",
+      "November",
+      "December"
+    ],
+    segmentNames: [],
+    events: []
+  };
+}
+
+function readCalendar(value: string | null): RoomCalendar {
+  if (!value) return defaultCalendar();
+  try {
+    const parsed = calendarSchema.safeParse(JSON.parse(value));
+    return parsed.success ? parsed.data : defaultCalendar();
+  } catch {
+    return defaultCalendar();
+  }
+}
 
 app.patch("/api/rooms/:roomId", requireAuth, (req: AuthedRequest, res) => {
   const roomId = Number(req.params.roomId);
@@ -332,8 +429,19 @@ app.patch("/api/rooms/:roomId", requireAuth, (req: AuthedRequest, res) => {
     return res.status(403).json({ error: "Only the room GM can change room settings." });
   const body = parse(
     z
-      .object({ theme: z.enum(THEME_IDS).optional(), archived: z.boolean().optional() })
-      .refine((value) => value.theme !== undefined || value.archived !== undefined),
+      .object({
+        theme: z.enum(THEME_IDS).optional(),
+        archived: z.boolean().optional(),
+        calendarEnabled: z.boolean().optional(),
+        mapNotationEnabled: z.boolean().optional()
+      })
+      .refine(
+        (value) =>
+          value.theme !== undefined ||
+          value.archived !== undefined ||
+          value.calendarEnabled !== undefined ||
+          value.mapNotationEnabled !== undefined
+      ),
     req.body,
     res
   );
@@ -341,8 +449,51 @@ app.patch("/api/rooms/:roomId", requireAuth, (req: AuthedRequest, res) => {
   if (body.theme) db.prepare("UPDATE rooms SET theme = ? WHERE id = ?").run(body.theme, roomId);
   if (body.archived !== undefined)
     db.prepare("UPDATE rooms SET archived = ? WHERE id = ?").run(body.archived ? 1 : 0, roomId);
+  if (body.calendarEnabled !== undefined)
+    db.prepare("UPDATE rooms SET calendar_enabled = ? WHERE id = ?").run(body.calendarEnabled ? 1 : 0, roomId);
+  if (body.mapNotationEnabled !== undefined)
+    db.prepare("UPDATE rooms SET map_notation_enabled = ? WHERE id = ?").run(body.mapNotationEnabled ? 1 : 0, roomId);
   broadcastRoom(roomId, { type: "room-updated" });
   res.status(204).end();
+});
+
+app.put("/api/rooms/:roomId/calendar", requireAuth, (req: AuthedRequest, res) => {
+  const roomId = Number(req.params.roomId);
+  if (roomRole(req.account!.id, roomId) !== "gm")
+    return res.status(403).json({ error: "Only the room GM can configure the calendar." });
+  const calendar = parse(calendarSchema, req.body, res);
+  if (!calendar) return;
+  calendar.month %= calendar.monthNames.length;
+  calendar.day = Math.min(calendar.day, calendar.daysPerMonth);
+  calendar.segment = calendar.segmentNames.length ? calendar.segment % calendar.segmentNames.length : 0;
+  db.prepare("UPDATE rooms SET calendar_json = ? WHERE id = ?").run(JSON.stringify(calendar), roomId);
+  broadcastRoom(roomId, { type: "room-updated" });
+  res.json({ calendar });
+});
+
+app.post("/api/rooms/:roomId/calendar/advance", requireAuth, (req: AuthedRequest, res) => {
+  const roomId = Number(req.params.roomId);
+  if (roomRole(req.account!.id, roomId) !== "gm")
+    return res.status(403).json({ error: "Only the room GM can advance time." });
+  const row = one<{ calendar_json: string | null }>("SELECT calendar_json FROM rooms WHERE id = ?", roomId);
+  if (!row) return res.status(404).json({ error: "Room not found." });
+  const calendar = readCalendar(row.calendar_json);
+  if (calendar.segmentNames.length && calendar.segment + 1 < calendar.segmentNames.length) calendar.segment += 1;
+  else {
+    calendar.segment = 0;
+    calendar.day += 1;
+    if (calendar.day > calendar.daysPerMonth) {
+      calendar.day = 1;
+      calendar.month += 1;
+      if (calendar.month >= calendar.monthNames.length) {
+        calendar.month = 0;
+        calendar.year += 1;
+      }
+    }
+  }
+  db.prepare("UPDATE rooms SET calendar_json = ? WHERE id = ?").run(JSON.stringify(calendar), roomId);
+  broadcastRoom(roomId, { type: "room-updated" });
+  res.json({ calendar });
 });
 
 app.get("/api/rooms/:roomId/messages", requireAuth, (req: AuthedRequest, res) => {

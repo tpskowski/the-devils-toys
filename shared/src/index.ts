@@ -25,6 +25,51 @@ export interface RoomSummary {
   theme: ThemeId;
   role: RoomRole;
   archived: boolean;
+  calendarEnabled: boolean;
+  mapNotationEnabled: boolean;
+}
+
+export const MAP_NOTATION_COLORS = ["#e53935", "#ffb300", "#43a047", "#1e88e5", "#8e24aa", "#f5f5f5"] as const;
+export type MapNotationColor = (typeof MAP_NOTATION_COLORS)[number];
+
+interface MapNotationBase {
+  id: number;
+  color: MapNotationColor;
+}
+
+export type MapNotation =
+  | (MapNotationBase & { kind: "line"; points: { x: number; y: number }[] })
+  | (MapNotationBase & { kind: "label"; x: number; y: number; text: string; fontSize: number })
+  | (MapNotationBase & { kind: "box" | "circle"; x: number; y: number; width: number; height: number });
+
+export type NewMapNotation = MapNotation extends infer Notation
+  ? Notation extends MapNotation
+    ? Omit<Notation, "id">
+    : never
+  : never;
+
+export type CalendarEventCadence = "holiday" | "weekly" | "biweekly" | "monthly";
+
+export interface CalendarEvent {
+  id: string;
+  name: string;
+  cadence: CalendarEventCadence;
+  /** One-based day of the month for holidays/monthly events, or day of the week for weekly events. */
+  day: number;
+  month?: number;
+}
+
+export interface RoomCalendar {
+  year: number;
+  month: number;
+  day: number;
+  segment: number;
+  daysPerWeek: number;
+  daysPerMonth: number;
+  dayNames: string[];
+  monthNames: string[];
+  segmentNames: string[];
+  events: CalendarEvent[];
 }
 
 export type MediaKind = "map" | "scene" | "reference" | "audio";

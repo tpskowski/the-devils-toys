@@ -162,6 +162,29 @@ describe("database migrations", () => {
     ).toEqual([{ group_json: "{}", audio_json: '{"trackId":null}' }]);
   });
 
+  it("adds disabled calendar storage to rooms from an older build", async () => {
+    const directory = dataDir();
+    seedLegacyDatabase(directory);
+    const loaded = await openDatabase(directory);
+
+    expect(
+      loaded.all<{ calendar_enabled: number; calendar_json: string | null }>(
+        "SELECT calendar_enabled, calendar_json FROM rooms"
+      )
+    ).toEqual([{ calendar_enabled: 0, calendar_json: null }]);
+  });
+
+  it("adds disabled map notation and its persistent element table to older databases", async () => {
+    const directory = dataDir();
+    seedLegacyDatabase(directory);
+    const loaded = await openDatabase(directory);
+
+    expect(loaded.all<{ map_notation_enabled: number }>("SELECT map_notation_enabled FROM rooms")).toEqual([
+      { map_notation_enabled: 0 }
+    ]);
+    expect(tableNames(loaded)).toContain("map_notations");
+  });
+
   it("adds empty tag storage to existing custom table sets", async () => {
     const directory = dataDir();
     seedLegacyDatabase(directory);

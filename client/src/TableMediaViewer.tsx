@@ -6,6 +6,7 @@ import {
   Clapperboard,
   FileText,
   ImagePlus,
+  BookOpen,
   Map as MapIcon,
   Settings2,
   UsersRound
@@ -16,7 +17,7 @@ import { isMarkdownAsset, MediaContent } from "./MediaContent";
 import { mediaLabel } from "./media-label";
 import { SceneViewer, type ScenePing } from "./SceneViewer";
 
-type MediaTab = "map" | "scene" | "reference" | "group";
+type MediaTab = "map" | "scene" | "reference" | "group" | "rules";
 
 interface GroupPicker {
   options: readonly { id: string; label: string }[];
@@ -24,14 +25,20 @@ interface GroupPicker {
   onSelect: (id: string) => void;
 }
 export function TableMediaViewer({
+  roomId,
   media,
   isGm,
   pings,
   groupPage,
   groupPicker,
   onManage,
-  onPing
+  onPing,
+  mapNotationEnabled,
+  mapNotationRevision,
+  rulesPage,
+  requestedTab
 }: {
+  roomId: number;
   media: RoomMediaState;
   isGm: boolean;
   pings: ScenePing[];
@@ -39,6 +46,10 @@ export function TableMediaViewer({
   groupPicker?: GroupPicker;
   onManage: () => void;
   onPing: (x: number, y: number) => void;
+  mapNotationEnabled: boolean;
+  mapNotationRevision: number;
+  rulesPage: ReactNode;
+  requestedTab?: { tab: "rules"; revision: number };
 }) {
   const [tab, setTab] = useState<MediaTab>("scene");
   const [mapId, setMapId] = useState<number>();
@@ -69,6 +80,10 @@ export function TableMediaViewer({
   }, [Boolean(groupPage), tab]);
 
   useEffect(() => setPickerOpen(false), [tab]);
+
+  useEffect(() => {
+    if (requestedTab) setTab(requestedTab.tab);
+  }, [requestedTab?.revision]);
 
   useEffect(() => {
     if (!pickerOpen) return;
@@ -107,7 +122,9 @@ export function TableMediaViewer({
         ? scenes.map((item) => ({ id: String(item.id), label: mediaLabel(item) }))
         : tab === "reference"
           ? media.references.map((item) => ({ id: String(item.id), label: mediaLabel(item) }))
-          : (groupPicker?.options ?? []);
+          : tab === "group"
+            ? (groupPicker?.options ?? [])
+            : [];
   const selectedPickerId =
     tab === "map"
       ? selectedMap && String(selectedMap.id)
@@ -115,8 +132,19 @@ export function TableMediaViewer({
         ? selectedScene && String(selectedScene.id)
         : tab === "reference"
           ? selectedReference && String(selectedReference.id)
-          : groupPicker?.selected;
-  const tabLabel = tab === "map" ? "Map" : tab === "scene" ? "Scene" : tab === "reference" ? "Reference" : "Group view";
+          : tab === "group"
+            ? groupPicker?.selected
+            : undefined;
+  const tabLabel =
+    tab === "map"
+      ? "Map"
+      : tab === "scene"
+        ? "Scene"
+        : tab === "reference"
+          ? "Reference"
+          : tab === "group"
+            ? "Group view"
+            : "Rules";
 
   function choosePicker(value: string) {
     if (tab === "group") groupPicker?.onSelect(value);
@@ -238,6 +266,11 @@ export function TableMediaViewer({
             </button>
           </div>
         )}
+        <div className={`table-media-tab${tab === "rules" ? " active" : ""}`}>
+          <button className="table-media-tab-main" onClick={(event) => activateTab("rules", event)}>
+            <BookOpen /> Rules
+          </button>
+        </div>
         {isGm && (
           <button className="table-media-manage" onClick={onManage} title="Manage Library" aria-label="Manage Library">
             <Settings2 />
@@ -255,6 +288,7 @@ export function TableMediaViewer({
             pings={pings}
             onManage={onManage}
             onPing={onPing}
+            mapNotation={mapNotationEnabled ? { roomId, revision: mapNotationRevision } : undefined}
           />
         )}
         {tab === "scene" && (
@@ -269,6 +303,9 @@ export function TableMediaViewer({
         )}
         <div className="table-group-panel" hidden={tab !== "group"}>
           {groupPage}
+        </div>
+        <div className="table-rules-panel" hidden={tab !== "rules"}>
+          {rulesPage}
         </div>
         {tab === "reference" && (
           <div className="table-references">

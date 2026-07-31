@@ -488,11 +488,43 @@
   min-height: 68px;
   min-width: 0;
   display: grid;
-  grid-template-columns: 26px minmax(0, 1fr) 18px;
+  grid-template-columns: 26px minmax(0, 1fr) auto 18px;
   align-items: center;
   gap: 12px;
   padding: 10px 14px 10px 4px;
   text-align: left;
+}
+
+.group-party-presence {
+  display: inline-flex !important;
+  grid-auto-flow: column;
+  align-items: center;
+  justify-content: end;
+  gap: 6px !important;
+  color: var(--muted);
+  font:
+    500 9px "DM Mono",
+    monospace;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.group-party-presence i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--muted), transparent 45%);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--muted), transparent 88%);
+}
+
+.group-party-presence.online {
+  color: #2f9c63;
+}
+
+.group-party-presence.online i {
+  background: #36b875;
+  box-shadow: 0 0 0 3px color-mix(in srgb, #36b875, transparent 82%);
 }
 
 .group-starship-toggle > svg:first-child,

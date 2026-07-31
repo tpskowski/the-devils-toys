@@ -6,6 +6,8 @@ node_modules/
 **/dist/
 *.tsbuildinfo
 coverage/
+playwright-report/
+test-results/
 
 # Mutable application data: the database, uploads, and logs a table has added
 .data/
