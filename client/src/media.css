@@ -83,11 +83,55 @@
   position: absolute;
   z-index: 3;
   inset: 0;
+  pointer-events: none;
+}
+
+.map-notation-content {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   pointer-events: none;
   transform-origin: center;
   transition: transform 120ms ease-out;
+}
+
+.map-notation-labels {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  transform-origin: center;
+  transition: transform 120ms ease-out;
+}
+
+.map-notation-label {
+  position: absolute;
+  translate: 0 -100%;
+  font-family: "DM Mono", monospace;
+  font-weight: 500;
+  line-height: 1.1;
+  white-space: nowrap;
+  text-shadow:
+    0 1px 2px #000,
+    0 0 4px #000;
+}
+
+.map-notation-label-editor {
+  pointer-events: auto;
+  min-width: 6ch;
+  max-width: min(60ch, 80%);
+  padding: 1px 2px;
+  border: 0;
+  border-bottom: 1px dashed currentColor;
+  border-radius: 0;
+  outline: none;
+  background: #090909a6;
+  caret-color: currentColor;
+}
+
+.map-notation-label-editor::placeholder {
+  color: currentColor;
+  opacity: 0.55;
 }
 
 .map-notation-layer.active {
@@ -101,6 +145,29 @@
 
 .map-notation-layer.active [data-notation-id] {
   pointer-events: all;
+}
+
+.map-notation-layer.active .map-notation-label {
+  pointer-events: auto;
+}
+
+.map-notation-draft {
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.map-notation-error {
+  position: absolute;
+  z-index: 6;
+  top: 108px;
+  right: 14px;
+  max-width: min(360px, calc(100% - 28px));
+  margin: 0;
+  padding: 7px 9px;
+  border: 1px solid #e5393580;
+  background: #160909e8;
+  color: #ffb7b2;
+  font-size: 11px;
 }
 
 .map-notation-toolbar {

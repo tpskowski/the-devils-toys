@@ -2,6 +2,23 @@ import type { CharacterItem, CharacterSheetDefinition, SystemId } from "@devils-
 import { readPricedRows, splitPricedCell } from "./rules-tables.js";
 import { systemMarkdown } from "./systems.js";
 
+/** Reads socket names from parentheticals such as "2 Leg Sockets" or "Internal & Skin Sockets". */
+export function allowedSlotTypes(spec: string) {
+  const socketSpec = /^(?:\d+\s+)?(.+?)\s+Sockets?(?:\s*,|$)/i.exec(spec)?.[1];
+  if (!socketSpec) return;
+  const types = socketSpec
+    .split(/\s*(?:&|\band\b)\s*/i)
+    .map((type) =>
+      type
+        .trim()
+        .toLocaleLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-|-$/g, "")
+    )
+    .filter(Boolean);
+  return types.length ? types : undefined;
+}
+
 /**
  * The gear a character can be carrying, read out of the system's own tables. A
  * list names the headings that stock it, so weapons fill inventory slots while
@@ -24,6 +41,7 @@ export function parseCharacterItems(
       // Tables carry note rows and blank filler cells; only priced things are gear.
       if (!name || !row.cost) continue;
       const label = spec ? `${name} (${spec})` : name;
+      const slotTypes = allowedSlotTypes(spec);
       if (seen.has(label)) continue;
       seen.add(label);
       items.push({
@@ -33,6 +51,7 @@ export function parseCharacterItems(
         detail,
         cost: row.cost,
         bulky: /\bbulky\b/i.test(spec),
+        ...(slotTypes ? { allowedSlotTypes: slotTypes } : {}),
         label
       });
     }

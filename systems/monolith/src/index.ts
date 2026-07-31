@@ -143,18 +143,32 @@ export const monolith: GameSystem = {
         key: "augmentations",
         label: "Augmentation slots",
         slots: [
-          "Brain",
+          "Cerebral",
           "Eyes",
-          "Face",
-          "Body (any)",
-          "Left arm",
-          "Right arm",
-          "Left leg",
-          "Right leg",
-          "Body internal 1",
-          "Body internal 2",
-          "Body external 1",
-          "Body external 2"
+          "Lower Face",
+          "Skin",
+          "Left Arm",
+          "Right Arm",
+          "Left Leg",
+          "Right Leg",
+          "Internal 1",
+          "Internal 2",
+          "Torso 1",
+          "Torso 2"
+        ],
+        slotTypes: [
+          "neural",
+          "eyes",
+          "lower-face",
+          "skin",
+          "arm",
+          "arm",
+          "leg",
+          "leg",
+          "internal",
+          "internal",
+          "torso",
+          "torso"
         ],
         // Twelve sockets are mostly empty, so the sheet lists only the filled ones.
         editInDialog: true,
@@ -184,6 +198,21 @@ export const monolith: GameSystem = {
       rulesQuery: "Freelancers & Mercs",
       creationHint:
         "Roll 3D6 for each ability, 1D6 HP, add a standard D6 weapon, then use the Finishing Touches tables.",
+      creationRoll: {
+        abilities: [
+          { currentKey: "strCurrent", maximumKey: "strMax", dice: "3d6" },
+          { currentKey: "dexCurrent", maximumKey: "dexMax", dice: "3d6" },
+          { currentKey: "wilCurrent", maximumKey: "wilMax", dice: "3d6" }
+        ],
+        hitProtection: { currentKey: "hpCurrent", maximumKey: "hpMax", dice: "1d6" },
+        weapon: "Standard weapon (D6)",
+        finishingTouches: {
+          section: "FINISHING TOUCHES",
+          details: ["Physique", "Hair", "Face", "Mannerisms", "Clothing Style"],
+          firstNames: ["Male Names", "Female Names", "Ambiguous Names"],
+          lastName: "Last Names"
+        }
+      },
       levelUpHint: "Level-up automation for crew members is coming in a future update.",
       sheet: {
         sections: [

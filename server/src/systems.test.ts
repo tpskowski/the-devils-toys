@@ -111,13 +111,37 @@ describe("character system definitions", () => {
     expect(equipment?.slots).toHaveLength(10);
     expect(equipment?.slots.filter((slot) => slot.startsWith("Backpack"))).toHaveLength(6);
     expect(equipment?.groupStarts).toEqual([4]);
-    expect(monolith.characterSheet.lists.find((list) => list.key === "augmentations")?.slots).toHaveLength(12);
+    const augmentations = monolith.characterSheet.lists.find((list) => list.key === "augmentations");
+    expect(augmentations?.slots).toHaveLength(12);
+    expect(augmentations?.slotTypes).toEqual([
+      "neural",
+      "eyes",
+      "lower-face",
+      "skin",
+      "arm",
+      "arm",
+      "leg",
+      "leg",
+      "internal",
+      "internal",
+      "torso",
+      "torso"
+    ]);
     expect(monolith.groupPage?.sections[0]?.fields[0]).toMatchObject({
       key: "groupDebt",
       rulesQuery: "Group Debt"
     });
     expect(monolith.groupPage?.hirelings?.label).toBe("Freelancers");
     expect(monolith.groupPage?.hirelings?.singularLabel).toBe("Freelancer");
+    expect(monolith.groupPage?.hirelings?.creationRoll).toMatchObject({
+      abilities: [
+        { currentKey: "strCurrent", maximumKey: "strMax", dice: "3d6" },
+        { currentKey: "dexCurrent", maximumKey: "dexMax", dice: "3d6" },
+        { currentKey: "wilCurrent", maximumKey: "wilMax", dice: "3d6" }
+      ],
+      hitProtection: { currentKey: "hpCurrent", maximumKey: "hpMax", dice: "1d6" },
+      weapon: "Standard weapon (D6)"
+    });
     expect(
       monolith.groupPage?.hirelings?.sheet.sections.flatMap((section) => section.fields).map((field) => field.key)
     ).toEqual(expect.arrayContaining(["name", "strCurrent", "dexCurrent", "wilCurrent", "hpCurrent", "weapon"]));

@@ -1,7 +1,17 @@
-import type { RollTableSummary, TableRollVisibility, TableTag } from "@devils-toys/shared";
+import type { RollTableSummary, TableRollVisibility, TableTag, TableTagDefinition } from "@devils-toys/shared";
 
 export function filterTablesByTag(tables: readonly RollTableSummary[], tag: TableTag | "") {
   return tag ? tables.filter((table) => table.tags.includes(tag)) : [...tables];
+}
+
+/** Counts the current set's tables using the same effective tags the browser filters on. */
+export function countTablesByTag(tables: readonly RollTableSummary[], vocabulary: readonly TableTagDefinition[]) {
+  return vocabulary
+    .map(({ slug }) => ({
+      tag: slug,
+      count: tables.filter((table) => table.tags.includes(slug)).length
+    }))
+    .filter(({ count }) => count > 0);
 }
 
 /**
@@ -42,22 +52,11 @@ export function categoryOpensTable(category: TableCategory) {
   return category.tables.length === 1 && category.tables[0].name === category.name ? category.tables[0] : undefined;
 }
 
-/**
- * The three checkboxes are one choice: ticking one clears the others, and
- * unticking the current one returns the roll to the room's normal visibility.
- */
-export function toggleVisibility(
-  current: TableRollVisibility,
-  option: Exclude<TableRollVisibility, "public">
-): TableRollVisibility {
-  return current === option ? "public" : option;
-}
-
 export function visibilityNotice(visibility: TableRollVisibility) {
   if (visibility === "private") return "You see the result and the table text. Players are told a roll was made.";
   if (visibility === "invisible") return "Only you see the result. Players are told nothing.";
   if (visibility === "reveal") return "Everyone sees the table text for this result.";
-  return "Everyone sees the table and the number rolled, but not the text.";
+  return "You see the result and the table text. Players are told a roll was made.";
 }
 
 /** Keeps a keyboard-driven list selection inside its bounds. */

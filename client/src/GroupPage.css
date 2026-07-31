@@ -332,6 +332,16 @@
   padding: 0 14px;
 }
 
+.group-hirelings-toolbar .secondary-button {
+  min-height: 40px;
+  padding: 0 14px;
+}
+
+.group-hirelings-actions {
+  margin-left: auto;
+  justify-content: flex-end;
+}
+
 .group-hirelings-empty {
   margin: 0;
   padding: 26px 0;
@@ -402,6 +412,31 @@
   gap: 18px;
   padding: 18px;
   border-top: 1px solid var(--line);
+}
+
+.group-hireling-image-frame {
+  position: relative;
+  width: min(180px, 100%);
+  aspect-ratio: 4 / 5;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--surface), var(--text) 4%);
+  color: var(--muted);
+}
+
+.group-hireling-image-frame img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+
+.group-hireling-image-frame > svg {
+  width: 32%;
+  height: 32%;
+  stroke-width: 1.25;
 }
 
 .group-hireling-inventory {
@@ -744,7 +779,7 @@
   aspect-ratio: 16 / 9;
 }
 
-.group-starship-image-actions {
+.group-image-actions {
   position: absolute;
   inset: auto 0 0;
   display: flex;
@@ -755,24 +790,28 @@
   background: linear-gradient(transparent, #000000b0);
 }
 
-.group-starship-image-frame.has-image .group-starship-image-actions {
+.group-starship-image-frame.has-image .group-image-actions,
+.group-hireling-image-frame.has-image .group-image-actions {
   opacity: 0;
   transition: opacity 0.14s var(--ease);
 }
 
-.group-starship-image-frame.has-image:hover .group-starship-image-actions,
-.group-starship-image-frame.has-image .group-starship-image-actions:focus-within {
+.group-starship-image-frame.has-image:hover .group-image-actions,
+.group-starship-image-frame.has-image .group-image-actions:focus-within,
+.group-hireling-image-frame.has-image:hover .group-image-actions,
+.group-hireling-image-frame.has-image .group-image-actions:focus-within {
   opacity: 1;
 }
 
 @media (hover: none) {
-  .group-starship-image-frame.has-image .group-starship-image-actions {
+  .group-starship-image-frame.has-image .group-image-actions,
+  .group-hireling-image-frame.has-image .group-image-actions {
     opacity: 1;
   }
 }
 
-.group-starship-image-actions label,
-.group-starship-image-actions button {
+.group-image-actions label,
+.group-image-actions button {
   min-width: 0;
   min-height: 30px;
   display: inline-flex;
@@ -791,11 +830,11 @@
   text-transform: uppercase;
 }
 
-.group-starship-image-actions button {
+.group-image-actions button {
   padding: 0 8px;
 }
 
-.group-starship-image-actions input[type="file"] {
+.group-image-actions input[type="file"] {
   position: absolute;
   clip-path: inset(50%);
   width: 1px;
@@ -806,15 +845,15 @@
   overflow: hidden;
 }
 
-.group-starship-image-actions label:hover,
-.group-starship-image-actions button:hover,
-.group-starship-image-actions label:focus-within,
-.group-starship-image-actions button:focus-visible {
+.group-image-actions label:hover,
+.group-image-actions button:hover,
+.group-image-actions label:focus-within,
+.group-image-actions button:focus-visible {
   border-color: var(--accent);
   background: #000000d9;
 }
 
-.group-starship-image-actions svg {
+.group-image-actions svg {
   width: 14px;
   height: 14px;
 }
@@ -1023,7 +1062,13 @@
   .group-hirelings-toolbar {
     align-items: stretch;
   }
-  .group-hirelings-toolbar .primary-button {
+  .group-hirelings-actions {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .group-hirelings-toolbar .primary-button,
+  .group-hirelings-toolbar .secondary-button {
     width: 100%;
     justify-content: center;
   }

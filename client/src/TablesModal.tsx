@@ -14,11 +14,11 @@ import {
 import { api } from "./api";
 import {
   categoryOpensTable,
+  countTablesByTag,
   filterTables,
   filterTablesByTag,
   groupByCategory,
   moveHighlight,
-  toggleVisibility,
   visibilityNotice
 } from "./tables";
 
@@ -40,10 +40,12 @@ const sampleMarkdown = `### Rumours in the market (d6)
 
 export function TablesModal({
   roomId,
+  isGm,
   onRolled,
   onClose
 }: {
   roomId: number;
+  isGm: boolean;
   onRolled: (message: ChatMessage) => void;
   onClose: () => void;
 }) {
@@ -56,9 +58,12 @@ export function TablesModal({
   const [highlight, setHighlight] = useState(-1);
   const [selectedId, setSelectedId] = useState("");
   const [table, setTable] = useState<RollTable>();
-  const [visibility, setVisibility] = useState<TableRollVisibility>("public");
-  const [modifier, setModifier] = useState(0);
-  const [rolled, setRolled] = useState<{ total: number; text: string; label: string }>();
+  const [rolled, setRolled] = useState<{
+    total: number;
+    text: string;
+    label: string;
+    visibility: TableRollVisibility;
+  }>();
   const [error, setError] = useState("");
   const [category, setCategory] = useState("");
   const [managing, setManaging] = useState(false);
@@ -67,6 +72,7 @@ export function TablesModal({
 
   const activeSet = sets.find((entry) => entry.id === setId);
   const tables = activeSet?.tables ?? [];
+  const tagCounts = useMemo(() => countTablesByTag(tables, vocabulary), [tables, vocabulary]);
   const taggedTables = useMemo(() => filterTablesByTag(tables, tagFilter), [tables, tagFilter]);
   const matches = useMemo(() => filterTables(taggedTables, suggesting ? query : ""), [taggedTables, query, suggesting]);
   const categories = useMemo(() => groupByCategory(taggedTables), [taggedTables]);
@@ -97,7 +103,6 @@ export function TablesModal({
     setSelectedId("");
     setTable(undefined);
     setRolled(undefined);
-    setModifier(0);
     setQuery("");
     setHighlight(-1);
     setSuggesting(false);
@@ -155,7 +160,7 @@ export function TablesModal({
     }
   }
 
-  async function roll() {
+  async function roll(visibility: TableRollVisibility) {
     if (!table) return;
     setError("");
     try {
@@ -164,9 +169,14 @@ export function TablesModal({
         message: ChatMessage;
       }>(`/api/rooms/${roomId}/tables/roll`, {
         method: "POST",
-        body: JSON.stringify({ setId, tableId: table.id, modifier, visibility })
+        body: JSON.stringify({ setId, tableId: table.id, visibility })
       });
-      setRolled({ total: result.roll.total, text: result.roll.text, label: result.roll.row?.label ?? "" });
+      setRolled({
+        total: result.roll.total,
+        text: result.roll.text,
+        label: result.roll.row?.label ?? "",
+        visibility
+      });
       onRolled(result.message);
     } catch (cause) {
       setError((cause as Error).message);
@@ -344,17 +354,17 @@ export function TablesModal({
               aria-pressed={!tagFilter}
               onClick={() => setTagFilter("")}
             >
-              All
+              All <span>({tables.length})</span>
             </button>
-            {vocabulary.map(({ slug }) => (
+            {tagCounts.map(({ tag, count }) => (
               <button
                 type="button"
-                key={slug}
-                className={tagFilter === slug ? "active" : ""}
-                aria-pressed={tagFilter === slug}
-                onClick={() => setTagFilter((current) => (current === slug ? "" : slug))}
+                key={tag}
+                className={tagFilter === tag ? "active" : ""}
+                aria-pressed={tagFilter === tag}
+                onClick={() => setTagFilter((current) => (current === tag ? "" : tag))}
               >
-                {label(slug)}
+                {label(tag)} <span>({count})</span>
               </button>
             ))}
           </div>
@@ -506,32 +516,25 @@ export function TablesModal({
                   <ChevronLeft size={15} /> {skippedCategoryList || !category ? "All sections" : category}
                 </button>
                 <div className="tables-toolbar">
-                  <button className="tables-roll" onClick={roll} title={`Roll ${table.dice}`}>
-                    <Dices /> Roll {table.dice}
-                  </button>
-                  <label className="tables-modifier">
-                    Modifier
-                    <input
-                      type="number"
-                      min={-100}
-                      max={100}
-                      value={modifier}
-                      onChange={(event) => setModifier(Number(event.target.value))}
-                    />
-                  </label>
-                  <div className="tables-visibility">
-                    {(["private", "invisible", "reveal"] as const).map((option) => (
-                      <label key={option}>
-                        <input
-                          type="checkbox"
-                          checked={visibility === option}
-                          onChange={() => setVisibility((current) => toggleVisibility(current, option))}
-                        />
-                        {option === "reveal" ? "reveal result" : option}
-                      </label>
-                    ))}
-                  </div>
-                  <p className="tables-visibility-note">{visibilityNotice(visibility)}</p>
+                  {(
+                    [
+                      { visibility: "public", label: "Roll" },
+                      { visibility: "private", label: "Private" },
+                      ...(isGm ? [{ visibility: "invisible" as const, label: "Invisible" }] : []),
+                      { visibility: "reveal", label: "Reveal" }
+                    ] satisfies { visibility: TableRollVisibility; label: string }[]
+                  ).map((option) => (
+                    <button
+                      type="button"
+                      className={`tables-roll${option.visibility === "public" ? "" : " tables-roll-secondary"}`}
+                      key={option.visibility}
+                      title={visibilityNotice(option.visibility)}
+                      aria-label={`${option.label} ${table.dice}. ${visibilityNotice(option.visibility)}`}
+                      onClick={() => roll(option.visibility)}
+                    >
+                      <Dices aria-hidden="true" /> {option.label} {table.dice}
+                    </button>
+                  ))}
                 </div>
 
                 {rolled && (
@@ -541,11 +544,11 @@ export function TablesModal({
                       <strong>{rolled.text || `No entry for ${rolled.total}`}</strong>
                       <small>
                         {rollTableLabel(table.name, table.dice)}
-                        {visibility === "public"
-                          ? " · shown to the room"
-                          : visibility === "reveal"
+                        {rolled.visibility === "public"
+                          ? " · shown to GM; players told a roll was made"
+                          : rolled.visibility === "reveal"
                             ? " · revealed to the room"
-                            : visibility === "private"
+                            : rolled.visibility === "private"
                               ? " · players told a roll was made"
                               : " · hidden from players"}
                       </small>

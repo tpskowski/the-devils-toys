@@ -5,6 +5,9 @@
 ## 0.1.0 — In development
 
 - Added an optional shared room calendar with custom years, months, weeks, day segments, holidays, recurring events, and GM time advancement.
+- Fixed calendar advancement by giving GMs an explicit segments-per-day setting; one advances whole days, while larger values advance one segment per click.
+- Added calendar month/year browsing, theme-aware past and partial-day shading, and chat announcements whenever the GM advances time.
+- Added once-per-room easter eggs when the GM first enables the calendar or map notation.
 - Added optional persistent map notation with shared drawing, labels, shapes, colors, erasing, undo, and GM clearing tools.
 - Moved online and offline presence into the Group party roster and removed the duplicate People panel from the chat rail.
 - Moved Rules into the main table tabs with a persistent heading index while retaining the external reference pop-out.

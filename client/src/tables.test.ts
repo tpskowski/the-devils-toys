@@ -2,11 +2,11 @@ import { describe, expect, it } from "vitest";
 import { defaultTagLabel, rollTableLabel, tagLabel, type RollTableSummary } from "@devils-toys/shared";
 import {
   categoryOpensTable,
+  countTablesByTag,
   filterTables,
   filterTablesByTag,
   groupByCategory,
   moveHighlight,
-  toggleVisibility,
   visibilityNotice
 } from "./tables";
 
@@ -130,27 +130,12 @@ describe("naming a table", () => {
   });
 });
 
-describe("choosing how a roll is shared", () => {
-  it("moves from the room default to the ticked option", () => {
-    expect(toggleVisibility("public", "private")).toBe("private");
-    expect(toggleVisibility("public", "invisible")).toBe("invisible");
-    expect(toggleVisibility("public", "reveal")).toBe("reveal");
-  });
-
-  it("returns to the room default when the ticked option is cleared", () => {
-    expect(toggleVisibility("reveal", "reveal")).toBe("public");
-  });
-
-  it("replaces a conflicting choice rather than combining them", () => {
-    expect(toggleVisibility("private", "reveal")).toBe("reveal");
-    expect(toggleVisibility("invisible", "private")).toBe("private");
-  });
-
+describe("describing how a roll is shared", () => {
   it("describes each choice", () => {
     expect(visibilityNotice("private")).toMatch(/told a roll was made/);
     expect(visibilityNotice("invisible")).toMatch(/told nothing/);
     expect(visibilityNotice("reveal")).toMatch(/Everyone sees the table text/);
-    expect(visibilityNotice("public")).toMatch(/not the text/);
+    expect(visibilityNotice("public")).toMatch(/You see the result and the table text/);
   });
 });
 
@@ -171,6 +156,20 @@ describe("keyboard movement through the suggestions", () => {
 });
 
 describe("tagging tables", () => {
+  it("counts only tags carried by tables in the current set", () => {
+    const vocabulary = [
+      { slug: "fantasy", label: "Fantasy", builtin: true, sortOrder: 1 },
+      { slug: "scifi", label: "Sci-fi", builtin: true, sortOrder: 2 },
+      { slug: "gear", label: "Gear", builtin: true, sortOrder: 3 },
+      { slug: "loot", label: "Loot", builtin: true, sortOrder: 4 }
+    ] as const;
+    expect(countTablesByTag(tables, vocabulary)).toEqual([
+      { tag: "fantasy", count: 1 },
+      { tag: "scifi", count: 4 },
+      { tag: "gear", count: 1 }
+    ]);
+  });
+
   it("filters tables by one controlled tag", () => {
     expect(filterTablesByTag(tables, "gear").map((table) => table.id)).toEqual(["gear"]);
     expect(filterTablesByTag(tables, "character-building").map((table) => table.id)).toEqual(["specialty"]);

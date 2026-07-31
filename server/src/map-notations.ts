@@ -30,6 +30,10 @@ const notation = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("box"), color, x: coordinate, y: coordinate, width: coordinate, height: coordinate }),
   z.object({ kind: z.literal("circle"), color, x: coordinate, y: coordinate, width: coordinate, height: coordinate })
 ]);
+const createNotation = z.object({
+  notation,
+  clientMutationId: z.string().trim().min(1).max(120).optional()
+});
 
 function access(req: AuthedRequest, res: express.Response) {
   const roomId = Number(req.params.roomId);
@@ -71,10 +75,6 @@ function list(roomId: number, mediaId: number): MapNotation[] {
   });
 }
 
-function updated(roomId: number, mediaId: number) {
-  broadcastRoom(roomId, { type: "map-notations-updated", mediaId });
-}
-
 mapNotationRouter.get("/rooms/:roomId/maps/:mediaId/notations", requireAuth, (req: AuthedRequest, res) => {
   const allowed = access(req, res);
   if (!allowed) return;
@@ -84,13 +84,21 @@ mapNotationRouter.get("/rooms/:roomId/maps/:mediaId/notations", requireAuth, (re
 mapNotationRouter.post("/rooms/:roomId/maps/:mediaId/notations", requireAuth, (req: AuthedRequest, res) => {
   const allowed = access(req, res);
   if (!allowed) return;
-  const parsed = notation.safeParse(req.body);
+  // Accept the original direct notation body while clients transition to the
+  // mutation envelope used to reconcile optimistic strokes.
+  const body = req.body && typeof req.body === "object" && "notation" in req.body ? req.body : { notation: req.body };
+  const parsed = createNotation.safeParse(body);
   if (!parsed.success) return res.status(400).json({ error: "Invalid map notation." });
   const result = db
     .prepare("INSERT INTO map_notations (room_id, media_id, notation_json, created_by) VALUES (?, ?, ?, ?)")
-    .run(allowed.roomId, allowed.mediaId, JSON.stringify(parsed.data), req.account!.id);
-  const created = { id: Number(result.lastInsertRowid), ...parsed.data };
-  updated(allowed.roomId, allowed.mediaId);
+    .run(allowed.roomId, allowed.mediaId, JSON.stringify(parsed.data.notation), req.account!.id);
+  const created = { id: Number(result.lastInsertRowid), ...parsed.data.notation };
+  broadcastRoom(allowed.roomId, {
+    type: "map-notation-added",
+    mediaId: allowed.mediaId,
+    notation: created,
+    clientMutationId: parsed.data.clientMutationId
+  });
   res.status(201).json({ notation: created });
 });
 
@@ -100,12 +108,15 @@ mapNotationRouter.delete(
   (req: AuthedRequest, res) => {
     const allowed = access(req, res);
     if (!allowed) return;
-    db.prepare("DELETE FROM map_notations WHERE id = ? AND room_id = ? AND media_id = ?").run(
-      Number(req.params.notationId),
-      allowed.roomId,
-      allowed.mediaId
-    );
-    updated(allowed.roomId, allowed.mediaId);
+    const result = db
+      .prepare("DELETE FROM map_notations WHERE id = ? AND room_id = ? AND media_id = ?")
+      .run(Number(req.params.notationId), allowed.roomId, allowed.mediaId);
+    if (result.changes)
+      broadcastRoom(allowed.roomId, {
+        type: "map-notation-removed",
+        mediaId: allowed.mediaId,
+        notationId: Number(req.params.notationId)
+      });
     res.status(204).end();
   }
 );
@@ -113,13 +124,20 @@ mapNotationRouter.delete(
 mapNotationRouter.post("/rooms/:roomId/maps/:mediaId/notations/undo", requireAuth, (req: AuthedRequest, res) => {
   const allowed = access(req, res);
   if (!allowed) return;
-  db.prepare(
-    `DELETE FROM map_notations WHERE id = (
-    SELECT id FROM map_notations WHERE room_id = ? AND media_id = ? ORDER BY id DESC LIMIT 1
-  )`
-  ).run(allowed.roomId, allowed.mediaId);
-  updated(allowed.roomId, allowed.mediaId);
-  res.status(204).end();
+  const latest = one<{ id: number }>(
+    "SELECT id FROM map_notations WHERE room_id = ? AND media_id = ? ORDER BY id DESC LIMIT 1",
+    allowed.roomId,
+    allowed.mediaId
+  );
+  if (latest) {
+    db.prepare("DELETE FROM map_notations WHERE id = ?").run(latest.id);
+    broadcastRoom(allowed.roomId, {
+      type: "map-notation-removed",
+      mediaId: allowed.mediaId,
+      notationId: latest.id
+    });
+  }
+  res.json({ notationId: latest?.id ?? null });
 });
 
 mapNotationRouter.delete("/rooms/:roomId/maps/:mediaId/notations", requireAuth, (req: AuthedRequest, res) => {
@@ -127,6 +145,6 @@ mapNotationRouter.delete("/rooms/:roomId/maps/:mediaId/notations", requireAuth, 
   if (!allowed) return;
   if (allowed.role !== "gm") return res.status(403).json({ error: "Only the room GM can clear map notation." });
   db.prepare("DELETE FROM map_notations WHERE room_id = ? AND media_id = ?").run(allowed.roomId, allowed.mediaId);
-  updated(allowed.roomId, allowed.mediaId);
+  broadcastRoom(allowed.roomId, { type: "map-notations-cleared", mediaId: allowed.mediaId });
   res.status(204).end();
 });

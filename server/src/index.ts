@@ -4,7 +4,6 @@ import express from "express";
 import cookieParser from "cookie-parser";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
-import type { RoomCalendar } from "@devils-toys/shared";
 import type { AuthedRequest } from "./auth.js";
 import { authMiddleware, createSession, requireAuth, roomRole } from "./auth.js";
 import { all, db, one } from "./db.js";
@@ -21,7 +20,7 @@ import { mediaRouter } from "./media.js";
 import { audioRouter } from "./audio.js";
 import { attachRealtime, broadcastRoom, disconnectAccount, sendToRoomGms } from "./realtime.js";
 import { npcRouter } from "./npcs.js";
-import { tableRouter } from "./tables.js";
+import { DEFAULT_TABLE_ROLL_NOTICE, tableRouter } from "./tables.js";
 import { tagRouter } from "./table-tags.js";
 import { tableSetRouter } from "./table-sets.js";
 import { tablesLinkRouter } from "./tables-link.js";
@@ -30,7 +29,22 @@ import { groupRouter } from "./group.js";
 import { mapNotationRouter } from "./map-notations.js";
 import { projectFile } from "./paths.js";
 import { rulesMarkdown, systems } from "./systems.js";
-import { SYSTEM_IDS, THEME_IDS, type AccountRole, type SystemId, type ThemeId } from "@devils-toys/shared";
+import {
+  calendarNowMessage,
+  SYSTEM_IDS,
+  THEME_IDS,
+  type AccountRole,
+  type SystemId,
+  type ThemeId
+} from "@devils-toys/shared";
+import { advanceCalendar, calendarInput, calendarSchema, normalizeCalendar, readCalendar } from "./calendar.js";
+import {
+  CALENDAR_STRICT_TIME_EGG_ID,
+  CALENDAR_STRICT_TIME_EGG_MESSAGE,
+  MAP_NOTATION_ROAD_EGG_ID,
+  MAP_NOTATION_ROAD_EGG_MESSAGE,
+  claimRoomEasterEgg
+} from "./easter-eggs.js";
 
 const app = express();
 app.disable("x-powered-by");
@@ -76,6 +90,23 @@ function publicMessage(row: {
   };
 }
 
+function recordSystemMessage(roomId: number, accountId: number, body: string) {
+  const result = db
+    .prepare("INSERT INTO messages (room_id, account_id, kind, body) VALUES (?, ?, 'system', ?)")
+    .run(roomId, accountId, body);
+  return publicMessage(
+    one<any>(
+      `SELECT m.id, m.room_id, m.account_id, a.username, c.name AS character_name,
+              m.kind, m.body, m.detail, m.created_at
+       FROM messages m JOIN accounts a ON a.id = m.account_id
+       LEFT JOIN memberships rm ON rm.room_id = m.room_id AND rm.account_id = m.account_id
+       LEFT JOIN characters c ON c.id = rm.active_character_id
+       WHERE m.id = ?`,
+      Number(result.lastInsertRowid)
+    )!
+  );
+}
+
 /**
  * Records that the GM rolled without saying what it was, so the table knows a
  * roll happened. The expression is left out; only the fact is shared.
@@ -116,7 +147,11 @@ function privateRollMessage(row: {
   result: string;
   created_at: string;
 }) {
-  const result = JSON.parse(row.result) as { total: number; detail?: string };
+  const result = JSON.parse(row.result) as {
+    total: number;
+    detail?: string;
+    visibility?: "private" | "invisible";
+  };
   return {
     id: row.id,
     roomId: row.room_id,
@@ -127,6 +162,7 @@ function privateRollMessage(row: {
     body: `${row.expression} → ${result.total}`,
     detail: result.detail,
     private: true,
+    rollVisibility: result.visibility ?? "private",
     createdAt: row.created_at
   };
 }
@@ -365,64 +401,6 @@ app.get("/api/rooms/:roomId", requireAuth, (req: AuthedRequest, res) => {
   });
 });
 
-const calendarEventSchema = z.object({
-  id: z.string().min(1).max(80),
-  name: z.string().trim().min(1).max(100),
-  cadence: z.enum(["holiday", "weekly", "biweekly", "monthly"]),
-  day: z.number().int().min(1).max(400),
-  month: z.number().int().min(0).max(99).optional()
-});
-const calendarSchema = z.object({
-  year: z.number().int().min(-99999).max(99999),
-  month: z.number().int().min(0).max(99),
-  day: z.number().int().min(1).max(400),
-  segment: z.number().int().min(0).max(99),
-  daysPerWeek: z.number().int().min(1).max(20),
-  daysPerMonth: z.number().int().min(1).max(400),
-  dayNames: z.array(z.string().trim().min(1).max(40)).min(1).max(20),
-  monthNames: z.array(z.string().trim().min(1).max(40)).min(1).max(100),
-  segmentNames: z.array(z.string().trim().min(1).max(40)).max(100),
-  events: z.array(calendarEventSchema).max(500)
-});
-
-function defaultCalendar(): RoomCalendar {
-  return {
-    year: 1,
-    month: 0,
-    day: 1,
-    segment: 0,
-    daysPerWeek: 7,
-    daysPerMonth: 30,
-    dayNames: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
-    monthNames: [
-      "January",
-      "February",
-      "March",
-      "April",
-      "May",
-      "June",
-      "July",
-      "August",
-      "September",
-      "October",
-      "November",
-      "December"
-    ],
-    segmentNames: [],
-    events: []
-  };
-}
-
-function readCalendar(value: string | null): RoomCalendar {
-  if (!value) return defaultCalendar();
-  try {
-    const parsed = calendarSchema.safeParse(JSON.parse(value));
-    return parsed.success ? parsed.data : defaultCalendar();
-  } catch {
-    return defaultCalendar();
-  }
-}
-
 app.patch("/api/rooms/:roomId", requireAuth, (req: AuthedRequest, res) => {
   const roomId = Number(req.params.roomId);
   if (roomRole(req.account!.id, roomId) !== "gm")
@@ -446,6 +424,19 @@ app.patch("/api/rooms/:roomId", requireAuth, (req: AuthedRequest, res) => {
     res
   );
   if (!body) return;
+  const currentRoom = one<{ calendar_enabled: number; map_notation_enabled: number }>(
+    "SELECT calendar_enabled, map_notation_enabled FROM rooms WHERE id = ?",
+    roomId
+  );
+  if (!currentRoom) return res.status(404).json({ error: "Room not found." });
+  const firstCalendarEnable =
+    body.calendarEnabled === true &&
+    !currentRoom.calendar_enabled &&
+    claimRoomEasterEgg(roomId, CALENDAR_STRICT_TIME_EGG_ID);
+  const firstMapNotationEnable =
+    body.mapNotationEnabled === true &&
+    !currentRoom.map_notation_enabled &&
+    claimRoomEasterEgg(roomId, MAP_NOTATION_ROAD_EGG_ID);
   if (body.theme) db.prepare("UPDATE rooms SET theme = ? WHERE id = ?").run(body.theme, roomId);
   if (body.archived !== undefined)
     db.prepare("UPDATE rooms SET archived = ? WHERE id = ?").run(body.archived ? 1 : 0, roomId);
@@ -453,7 +444,12 @@ app.patch("/api/rooms/:roomId", requireAuth, (req: AuthedRequest, res) => {
     db.prepare("UPDATE rooms SET calendar_enabled = ? WHERE id = ?").run(body.calendarEnabled ? 1 : 0, roomId);
   if (body.mapNotationEnabled !== undefined)
     db.prepare("UPDATE rooms SET map_notation_enabled = ? WHERE id = ?").run(body.mapNotationEnabled ? 1 : 0, roomId);
+  const easterEggMessages = [
+    firstCalendarEnable ? recordSystemMessage(roomId, req.account!.id, CALENDAR_STRICT_TIME_EGG_MESSAGE) : undefined,
+    firstMapNotationEnable ? recordSystemMessage(roomId, req.account!.id, MAP_NOTATION_ROAD_EGG_MESSAGE) : undefined
+  ].filter((message) => message !== undefined);
   broadcastRoom(roomId, { type: "room-updated" });
+  for (const message of easterEggMessages) broadcastRoom(roomId, { type: "message", message });
   res.status(204).end();
 });
 
@@ -461,11 +457,9 @@ app.put("/api/rooms/:roomId/calendar", requireAuth, (req: AuthedRequest, res) =>
   const roomId = Number(req.params.roomId);
   if (roomRole(req.account!.id, roomId) !== "gm")
     return res.status(403).json({ error: "Only the room GM can configure the calendar." });
-  const calendar = parse(calendarSchema, req.body, res);
-  if (!calendar) return;
-  calendar.month %= calendar.monthNames.length;
-  calendar.day = Math.min(calendar.day, calendar.daysPerMonth);
-  calendar.segment = calendar.segmentNames.length ? calendar.segment % calendar.segmentNames.length : 0;
+  const parsedCalendar = parse(calendarSchema, calendarInput(req.body), res);
+  if (!parsedCalendar) return;
+  const calendar = normalizeCalendar(parsedCalendar);
   db.prepare("UPDATE rooms SET calendar_json = ? WHERE id = ?").run(JSON.stringify(calendar), roomId);
   broadcastRoom(roomId, { type: "room-updated" });
   res.json({ calendar });
@@ -477,23 +471,12 @@ app.post("/api/rooms/:roomId/calendar/advance", requireAuth, (req: AuthedRequest
     return res.status(403).json({ error: "Only the room GM can advance time." });
   const row = one<{ calendar_json: string | null }>("SELECT calendar_json FROM rooms WHERE id = ?", roomId);
   if (!row) return res.status(404).json({ error: "Room not found." });
-  const calendar = readCalendar(row.calendar_json);
-  if (calendar.segmentNames.length && calendar.segment + 1 < calendar.segmentNames.length) calendar.segment += 1;
-  else {
-    calendar.segment = 0;
-    calendar.day += 1;
-    if (calendar.day > calendar.daysPerMonth) {
-      calendar.day = 1;
-      calendar.month += 1;
-      if (calendar.month >= calendar.monthNames.length) {
-        calendar.month = 0;
-        calendar.year += 1;
-      }
-    }
-  }
+  const calendar = advanceCalendar(readCalendar(row.calendar_json));
   db.prepare("UPDATE rooms SET calendar_json = ? WHERE id = ?").run(JSON.stringify(calendar), roomId);
+  const message = recordSystemMessage(roomId, req.account!.id, calendarNowMessage(calendar));
   broadcastRoom(roomId, { type: "room-updated" });
-  res.json({ calendar });
+  broadcastRoom(roomId, { type: "message", message });
+  res.json({ calendar, message });
 });
 
 app.get("/api/rooms/:roomId/messages", requireAuth, (req: AuthedRequest, res) => {
@@ -510,7 +493,8 @@ app.get("/api/rooms/:roomId/messages", requireAuth, (req: AuthedRequest, res) =>
     roomId
   )
     .reverse()
-    .map(publicMessage);
+    .map(publicMessage)
+    .filter((message) => role !== "gm" || message.body !== DEFAULT_TABLE_ROLL_NOTICE);
   const privateMessages = all<{
     id: number;
     room_id: number;
@@ -654,9 +638,10 @@ app.post("/api/rooms/:roomId/rolls", requireAuth, (req: AuthedRequest, res) => {
       ? body.check.label
       : rolled.expression;
   if (hidden) {
+    const visibility = body.invisible ? "invisible" : "private";
     const result = db
       .prepare("INSERT INTO private_rolls (room_id, account_id, expression, result) VALUES (?, ?, ?, ?)")
-      .run(roomId, req.account!.id, rollLabel, JSON.stringify(rolled));
+      .run(roomId, req.account!.id, rollLabel, JSON.stringify({ ...rolled, visibility }));
     const row = one<{
       id: number;
       room_id: number;

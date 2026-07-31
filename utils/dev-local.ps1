@@ -39,7 +39,30 @@ function Stop-ProcessTree {
         return
     }
 
-    & taskkill.exe /PID $ProcessId /T /F 2>$null | Out-Null
+    try {
+        & taskkill.exe /PID $ProcessId /T /F 2>$null | Out-Null
+    }
+    catch {
+        # The wrapper can exit between the check above and taskkill. That is
+        # already the requested end state; preserve real failures such as an
+        # access-denied process that is still alive.
+        if (Get-Process -Id $ProcessId -ErrorAction SilentlyContinue) {
+            throw
+        }
+    }
+}
+
+function Read-SavedProcesses {
+    if (-not (Test-Path -LiteralPath $stateFile)) {
+        return @()
+    }
+
+    # Windows PowerShell preserves a top-level JSON array as one pipeline item.
+    # Send it through ForEach-Object so callers always receive one item per
+    # recorded process.
+    return @(Get-Content -LiteralPath $stateFile -Raw |
+        ConvertFrom-Json |
+        ForEach-Object { $_ })
 }
 
 function Stop-TrackedNpmServers {
@@ -47,7 +70,7 @@ function Stop-TrackedNpmServers {
 
     if (Test-Path -LiteralPath $stateFile) {
         try {
-            $savedProcesses = @(Get-Content -LiteralPath $stateFile -Raw | ConvertFrom-Json)
+            $savedProcesses = @(Read-SavedProcesses)
             foreach ($savedProcess in $savedProcesses) {
                 if ($null -ne $savedProcess.pid) {
                     [void]$processIds.Add([int]$savedProcess.pid)
@@ -140,26 +163,88 @@ function Start-NpmServer {
     $stdoutPath = Join-Path $stateDirectory "$Name.stdout.log"
     $stderrPath = Join-Path $stateDirectory "$Name.stderr.log"
 
-    $process = Start-Process `
-        -FilePath $npmCommand.Source `
-        -ArgumentList @("run", $Script) `
-        -WorkingDirectory $projectRoot `
-        -WindowStyle Hidden `
-        -RedirectStandardOutput $stdoutPath `
-        -RedirectStandardError $stderrPath `
-        -PassThru
+    # Windows PowerShell's Start-Process rebuilds the environment in a
+    # case-insensitive dictionary. Hosts that expose both Path and PATH make
+    # that rebuild fail before npm starts. ProcessStartInfo can inherit the
+    # environment block unchanged, while cmd handles durable log redirection
+    # after this launcher exits.
+    $commandLine = '""{0}" run "{1}" 1>"{2}" 2>"{3}""' -f `
+        $npmCommand.Source, $Script, $stdoutPath, $stderrPath
+    $startInfo = [System.Diagnostics.ProcessStartInfo]::new()
+    $startInfo.FileName = $env:ComSpec
+    $startInfo.Arguments = "/d /s /c $commandLine"
+    $startInfo.WorkingDirectory = $projectRoot
+    $startInfo.UseShellExecute = $false
+    $startInfo.CreateNoWindow = $true
+    $process = [System.Diagnostics.Process]::Start($startInfo)
 
     return [pscustomobject]@{
         name = $Name
         pid = $process.Id
+        startedAt = $process.StartTime.ToUniversalTime().ToString("o")
         stdout = $stdoutPath
         stderr = $stderrPath
     }
 }
 
+function Test-HttpEndpoint {
+    param(
+        [Parameter(Mandatory)]
+        [string]$Url
+    )
+
+    try {
+        $response = Invoke-WebRequest -Uri $Url -UseBasicParsing -TimeoutSec 2
+        return $response.StatusCode -ge 200 -and $response.StatusCode -lt 300
+    }
+    catch {
+        return $false
+    }
+}
+
+function Wait-NpmServers {
+    param(
+        [Parameter(Mandatory)]
+        [object[]]$Processes
+    )
+
+    $services = @(
+        [pscustomobject]@{ name = "Game"; url = "http://127.0.0.1:10666/api/status"; ready = $false }
+        [pscustomobject]@{ name = "Tables"; url = "http://127.0.0.1:10667/api/status"; ready = $false }
+    )
+    $deadline = [DateTime]::UtcNow.AddSeconds(20)
+
+    do {
+        foreach ($service in $services) {
+            if (-not $service.ready) {
+                $service.ready = Test-HttpEndpoint -Url $service.url
+            }
+        }
+
+        if (@($services | Where-Object { -not $_.ready }).Count -eq 0) {
+            return
+        }
+
+        $exited = @($Processes | Where-Object {
+                -not (Get-Process -Id $_.pid -ErrorAction SilentlyContinue)
+            })
+        if ($exited.Count -gt 0) {
+            $names = ($exited | Select-Object -ExpandProperty name) -join ", "
+            throw "Development server process exited before becoming ready: $names. Check the logs in $stateDirectory."
+        }
+
+        Start-Sleep -Milliseconds 250
+    } while ([DateTime]::UtcNow -lt $deadline)
+
+    $missing = @($services |
+        Where-Object { -not $_.ready } |
+        Select-Object -ExpandProperty name)
+    throw "Development servers did not become ready within 20 seconds: $($missing -join ', '). Check the logs in $stateDirectory."
+}
+
 function Start-NpmServers {
     if (Test-Path -LiteralPath $stateFile) {
-        $savedProcesses = @(Get-Content -LiteralPath $stateFile -Raw | ConvertFrom-Json)
+        $savedProcesses = @(Read-SavedProcesses)
         $runningProcesses = @($savedProcesses |
             Where-Object { $null -ne $_.pid -and (Get-Process -Id $_.pid -ErrorAction SilentlyContinue) })
 
@@ -175,15 +260,19 @@ function Start-NpmServers {
         $startedProcesses += Start-NpmServer -Name "game" -Script "dev"
         $startedProcesses += Start-NpmServer -Name "tables" -Script "dev:tables"
         $startedProcesses | ConvertTo-Json | Set-Content -LiteralPath $stateFile -Encoding UTF8
+        Wait-NpmServers -Processes $startedProcesses
     }
     catch {
         foreach ($startedProcess in $startedProcesses) {
             Stop-ProcessTree -ProcessId $startedProcess.pid
         }
+        if (Test-Path -LiteralPath $stateFile) {
+            Remove-Item -LiteralPath $stateFile -Force
+        }
         throw
     }
 
-    Write-Host "Started the npm development servers."
+    Write-Host "The npm development servers are ready."
     Write-Host "Game:   http://localhost:10666"
     Write-Host "Tables: http://localhost:10667"
     Write-Host "Logs:   $stateDirectory"
@@ -210,8 +299,12 @@ function Start-WslcContainer {
 }
 
 if ($Kill) {
-    Stop-TrackedNpmServers
-    Stop-WslcContainer -Name $ContainerName
+    if ($Runtime -eq "Wslc") {
+        Stop-WslcContainer -Name $ContainerName
+    }
+    else {
+        Stop-TrackedNpmServers
+    }
     exit 0
 }
 

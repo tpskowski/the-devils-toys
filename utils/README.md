@@ -16,6 +16,7 @@ mode:
 .\utils\dev-local.ps1
 .\utils\dev-local.ps1 -Runtime Wslc
 .\utils\dev-local.ps1 -Kill
+.\utils\dev-local.ps1 -Kill -Runtime Wslc
 ```
 
 To keep a personal root-level copy:

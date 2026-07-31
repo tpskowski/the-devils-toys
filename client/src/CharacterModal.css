@@ -776,8 +776,52 @@
   background: color-mix(in srgb, var(--surface), var(--text) 2%);
 }
 
-.character-vice > select {
+.character-vice-picker {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 42px;
+  gap: 8px;
+}
+
+.character-vice-picker select {
   width: 100%;
+  min-width: 0;
+  height: 42px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 0;
+  background: var(--surface);
+  color: var(--text);
+  font:
+    500 14px Inter,
+    sans-serif;
+}
+
+.character-vice-picker select option {
+  background: var(--surface);
+  color: var(--text);
+}
+
+.character-vice-roll {
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--muted);
+}
+
+.character-vice-roll:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.character-vice-roll svg {
+  width: 18px;
+  height: 18px;
 }
 
 .character-vice-heading {

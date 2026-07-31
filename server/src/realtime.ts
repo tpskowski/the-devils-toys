@@ -94,6 +94,12 @@ export function sendToRoomGms(roomId: number, event: unknown) {
     if (client.roomId === roomId && roomRole(client.accountId, roomId) === "gm") send(client, event);
 }
 
+/** Sends an event to players without exposing it to the room's GMs. */
+export function sendToRoomPlayers(roomId: number, event: unknown) {
+  for (const client of clients)
+    if (client.roomId === roomId && roomRole(client.accountId, roomId) === "player") send(client, event);
+}
+
 export function refreshRoomPresence(roomId: number) {
   publishPresence(roomId);
 }
