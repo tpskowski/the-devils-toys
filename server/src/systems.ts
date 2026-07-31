@@ -42,7 +42,11 @@ const linkedRules = new Map<SystemId, string>();
 export function rulesMarkdown(system: SystemId, role: "gm" | "player") {
   let linked = linkedRules.get(system);
   if (!linked) {
-    linked = substituteTableLinks(systemMarkdown(system), `system:${system}`, tablesForSetJson(systemTablesFile(system)));
+    linked = substituteTableLinks(
+      systemMarkdown(system),
+      `system:${system}`,
+      tablesForSetJson(systemTablesFile(system))
+    );
     linkedRules.set(system, linked);
   }
   return role === "gm" ? linked : filterPlayerRules(linked, systems[system].gmOnlyHeadings);

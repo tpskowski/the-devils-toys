@@ -1,6 +1,12 @@
 import express from "express";
 import { z } from "zod";
-import { parseRollTables, spliceTable, TABLE_TAG_SLUG, type TableTag, type TableTagDefinition } from "@devils-toys/shared";
+import {
+  parseRollTables,
+  spliceTable,
+  TABLE_TAG_SLUG,
+  type TableTag,
+  type TableTagDefinition
+} from "@devils-toys/shared";
 import type { AuthedRequest } from "./auth.js";
 import { requireAuth } from "./auth.js";
 import { all, db, one } from "./db.js";
@@ -98,7 +104,9 @@ export function tagUsage(slug: string) {
  * rename would leave sets pointing at a tag that no longer exists.
  */
 function rewriteSlug(from: string, to: string | null) {
-  const rows = all<{ id: number; tags_json: string; markdown: string }>("SELECT id, tags_json, markdown FROM table_sets");
+  const rows = all<{ id: number; tags_json: string; markdown: string }>(
+    "SELECT id, tags_json, markdown FROM table_sets"
+  );
   const updateSet = db.prepare("UPDATE table_sets SET tags_json = ?, markdown = ? WHERE id = ?");
 
   db.exec("BEGIN IMMEDIATE");
@@ -123,10 +131,7 @@ function rewriteSlug(from: string, to: string | null) {
       let markdown = row.markdown;
       for (const table of changedTables) markdown = spliceTable(markdown, table);
 
-      if (
-        changedTables.length ||
-        JSON.stringify(nextTags) !== JSON.stringify(tags)
-      ) {
+      if (changedTables.length || JSON.stringify(nextTags) !== JSON.stringify(tags)) {
         updateSet.run(JSON.stringify(nextTags), markdown, row.id);
       }
     }

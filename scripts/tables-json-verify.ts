@@ -75,10 +75,16 @@ function verifyPhysicalSource(table: any) {
     throw new Error(`Table ${table.id} has no valid source boundaries.`);
   if (origin.tableStart < 0 || origin.tableEnd < origin.tableStart + 2 || origin.tableEnd >= lines.length)
     throw new Error(`Table ${table.id} has source boundaries outside the Markdown document.`);
-  if (origin.heading && (!Number.isInteger(origin.heading.line) || origin.heading.line < 0 || origin.heading.line >= origin.tableStart))
+  if (
+    origin.heading &&
+    (!Number.isInteger(origin.heading.line) || origin.heading.line < 0 || origin.heading.line >= origin.tableStart)
+  )
     throw new Error(`Table ${table.id} has an invalid heading origin.`);
-  if (origin.tagsLine !== null && origin.tagsLine !== undefined &&
-      (!Number.isInteger(origin.tagsLine) || origin.tagsLine < 0 || origin.tagsLine >= origin.tableStart))
+  if (
+    origin.tagsLine !== null &&
+    origin.tagsLine !== undefined &&
+    (!Number.isInteger(origin.tagsLine) || origin.tagsLine < 0 || origin.tagsLine >= origin.tableStart)
+  )
     throw new Error(`Table ${table.id} has an invalid tags origin.`);
   if (!/^\d*d(?:100|66|44|30|20|12|10|8|6|4)$/.test(String(table.dice)))
     throw new Error(`Table ${table.id} has an invalid die expression.`);

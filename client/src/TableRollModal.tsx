@@ -73,19 +73,17 @@ export function TableRollModal({
           <div className="tables-workspace">
             {isGm && (
               <div className="tables-toolbar">
-                {(["public", "private", "invisible", "reveal"] as TableRollVisibility[]).map(
-                  (visibility) => (
-                    <button
-                      type="button"
-                      className={`tables-roll${visibility === "public" ? "" : " tables-roll-secondary"}`}
-                      key={visibility}
-                      title={visibilityNotice(visibility)}
-                      onClick={() => roll(visibility)}
-                    >
-                      <Dices aria-hidden="true" /> {visibility[0].toUpperCase() + visibility.slice(1)} {table.dice}
-                    </button>
-                  )
-                )}
+                {(["public", "private", "invisible", "reveal"] as TableRollVisibility[]).map((visibility) => (
+                  <button
+                    type="button"
+                    className={`tables-roll${visibility === "public" ? "" : " tables-roll-secondary"}`}
+                    key={visibility}
+                    title={visibilityNotice(visibility)}
+                    onClick={() => roll(visibility)}
+                  >
+                    <Dices aria-hidden="true" /> {visibility[0].toUpperCase() + visibility.slice(1)} {table.dice}
+                  </button>
+                ))}
               </div>
             )}
             {result && (

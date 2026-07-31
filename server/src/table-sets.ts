@@ -223,9 +223,7 @@ tableSetRouter.patch("/table-sets/:setId", requireAuth, (req: AuthedRequest, res
     return res.status(400).json({ error: error instanceof Error ? error.message : "Invalid table data." });
   }
   const result = db
-    .prepare(
-      "UPDATE table_sets SET name = ?, markdown = ?, tags_json = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?"
-    )
+    .prepare("UPDATE table_sets SET name = ?, markdown = ?, tags_json = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?")
     .run(parsed.data.name, parsed.data.markdown, JSON.stringify(tags), Number(req.params.setId));
   if (!result.changes) return res.status(404).json({ error: "Table set not found." });
   res.status(204).end();
@@ -249,12 +247,7 @@ tableSetRouter.post("/table-sets/:setId/duplicate", requireAuth, (req: AuthedReq
 
   const result = db
     .prepare("INSERT INTO table_sets (name, markdown, tags_json, created_by) VALUES (?, ?, ?, ?)")
-    .run(
-      `${found.set.name} copy`,
-      markdown,
-      JSON.stringify(tags),
-      req.account!.id
-    );
+    .run(`${found.set.name} copy`, markdown, JSON.stringify(tags), req.account!.id);
   res.status(201).json({ set: { id: `custom:${Number(result.lastInsertRowid)}` } });
 });
 

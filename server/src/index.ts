@@ -463,7 +463,9 @@ app.put("/api/rooms/:roomId/calendar", requireAuth, (req: AuthedRequest, res) =>
   if (!row) return res.status(404).json({ error: "Room not found." });
   const current = readCalendar(row.calendar_json);
   if (parsedCalendar.revision !== current.revision)
-    return res.status(409).json({ error: "The calendar changed while you were editing. Review the latest calendar and try again." });
+    return res
+      .status(409)
+      .json({ error: "The calendar changed while you were editing. Review the latest calendar and try again." });
   const calendar = normalizeCalendar({ ...parsedCalendar, revision: current.revision + 1 });
   db.prepare("UPDATE rooms SET calendar_json = ? WHERE id = ?").run(JSON.stringify(calendar), roomId);
   broadcastRoom(roomId, { type: "calendar-updated", calendar });

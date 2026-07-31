@@ -268,7 +268,9 @@ export function parseRollTables(markdown: string, exclude: readonly string[] = [
     const name =
       shared && subject && subject.toLocaleLowerCase() !== "result" ? `${owningHeading} — ${subject}` : owningHeading;
     const plainName =
-      shared && subject && subject.toLocaleLowerCase() !== "result" ? name.replace(subject, displaySubject) : owningHeading;
+      shared && subject && subject.toLocaleLowerCase() !== "result"
+        ? name.replace(subject, displaySubject)
+        : owningHeading;
     const base = slug([...displayPath.slice(0, -1), plainName].join("-"));
     let id = base;
     for (let suffix = 2; usedIds.has(id); suffix += 1) id = `${base}-${suffix}`;
@@ -276,7 +278,9 @@ export function parseRollTables(markdown: string, exclude: readonly string[] = [
 
     // A table with no heading above it is its own part of the book, the way
     // Monolith's one-table GROUP DEBT chapter is.
-    const ancestors = displayPath.slice(0, -1).filter((entry, position) => !(position === 0 && entry === documentTitle));
+    const ancestors = displayPath
+      .slice(0, -1)
+      .filter((entry, position) => !(position === 0 && entry === documentTitle));
     return {
       id,
       name: plainName,

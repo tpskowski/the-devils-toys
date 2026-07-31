@@ -34,8 +34,7 @@ export const mapNotationSchema = z
     z.object({ kind: z.literal("circle"), color, x: coordinate, y: coordinate, width: coordinate, height: coordinate })
   ])
   .refine(
-    (notation) =>
-      notation.kind !== "label" || (notation.width === undefined) === (notation.height === undefined),
+    (notation) => notation.kind !== "label" || (notation.width === undefined) === (notation.height === undefined),
     "A label needs both width and height."
   );
 const createNotation = z.object({

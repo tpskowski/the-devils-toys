@@ -289,15 +289,7 @@ if (hasColumn("table_sets", "tables_json")) {
         const document = JSON.parse(row.tables_json) as { tables?: Parameters<typeof serializeSet>[0] };
         markdown = serializeSet(document.tables ?? [], row.name);
       }
-      insert.run(
-        row.id,
-        row.name,
-        markdown,
-        row.tags_json,
-        row.created_by,
-        row.created_at,
-        row.updated_at
-      );
+      insert.run(row.id, row.name, markdown, row.tags_json, row.created_by, row.created_at, row.updated_at);
     }
     db.exec("DROP TABLE table_sets");
     db.exec("ALTER TABLE table_sets_rebuilt RENAME TO table_sets");
