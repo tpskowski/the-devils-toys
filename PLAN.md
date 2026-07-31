@@ -181,7 +181,7 @@ This project is a custom virtual tabletop for Cairn and Monolith. They share a c
   - Clearing deletes the messages rather than archiving or hiding them.
 - [x] **Prevent player message editing and deletion in the first release.**
 - [x] **Add the dice modal.**
-  - Offer d4, d6, d8, d10, d12, d20, and d100.
+  - Offer d4, d6, d8, d10, d12, d20, d30, d44, d66, and d100.
   - Default to one die and permit multiple dice.
   - Post public roll results to room chat.
 - [x] **Add typed dice commands.**

@@ -432,11 +432,17 @@ code {
   margin-top: 16px;
 }
 .set-editor-list {
+  position: sticky;
+  top: 16px;
   border: 1px solid var(--line);
   border-radius: 11px;
   background: var(--surface);
   padding: 10px;
   align-self: start;
+  max-height: calc(100svh - 32px);
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  scrollbar-gutter: stable;
 }
 .set-editor-list-head {
   display: flex;
@@ -578,6 +584,20 @@ table.grid td input {
 table.grid th input {
   font-weight: 600;
 }
+.table-grid-readonly {
+  display: block;
+  min-width: 90px;
+  padding: 7px 9px;
+  white-space: pre-wrap;
+}
+.inline-markdown a {
+  color: var(--accent);
+  text-underline-offset: 2px;
+}
+.inline-markdown code {
+  font-family: "DM Mono", ui-monospace, monospace;
+  font-size: 0.92em;
+}
 table.grid th:has(input) {
   display: table-cell;
 }
@@ -676,6 +696,12 @@ table.grid th:has(input) {
 @media (max-width: 860px) {
   .set-editor-body {
     grid-template-columns: minmax(0, 1fr);
+  }
+  .set-editor-list {
+    position: static;
+    max-height: none;
+    overflow-y: visible;
+    scrollbar-gutter: auto;
   }
   .tables-account {
     margin-left: 0;

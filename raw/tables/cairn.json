@@ -1,0 +1,2228 @@
+{
+  "formatVersion": 1,
+  "setName": "Cairn tables",
+  "sourceDocument": "Cairn.md",
+  "tables": [
+    {
+      "id": "cairn-character-creation-name-background-d20",
+      "name": "Name & Background (d20)",
+      "section": "Character Creation",
+      "category": "Character Creation",
+      "dice": "d20",
+      "columns": [
+        "Female Name",
+        "Male Name",
+        "Surname",
+        "Background"
+      ],
+      "tags": [],
+      "rows": [
+        {
+          "label": "1",
+          "min": 1,
+          "max": 1,
+          "cells": [
+            "Agune",
+            "Arwel",
+            "Abernathy",
+            "Alchemist"
+          ]
+        },
+        {
+          "label": "2",
+          "min": 2,
+          "max": 2,
+          "cells": [
+            "Beatrice",
+            "Bevan",
+            "Addercap",
+            "Blacksmith"
+          ]
+        },
+        {
+          "label": "3",
+          "min": 3,
+          "max": 3,
+          "cells": [
+            "Breagan",
+            "Boroth",
+            "Burl",
+            "Butcher"
+          ]
+        },
+        {
+          "label": "4",
+          "min": 4,
+          "max": 4,
+          "cells": [
+            "Bronwyn",
+            "Borrid",
+            "Candlewick",
+            "Burglar"
+          ]
+        },
+        {
+          "label": "5",
+          "min": 5,
+          "max": 5,
+          "cells": [
+            "Cannora",
+            "Breagle",
+            "Cormick",
+            "Carpenter"
+          ]
+        },
+        {
+          "label": "6",
+          "min": 6,
+          "max": 6,
+          "cells": [
+            "Drelil",
+            "Breglor",
+            "Crumwaller",
+            "Cleric"
+          ]
+        },
+        {
+          "label": "7",
+          "min": 7,
+          "max": 7,
+          "cells": [
+            "Elgile",
+            "Canhoreal",
+            "Dunswallow",
+            "Gambler"
+          ]
+        },
+        {
+          "label": "8",
+          "min": 8,
+          "max": 8,
+          "cells": [
+            "Esme",
+            "Emrys",
+            "Getri",
+            "Gravedigger"
+          ]
+        },
+        {
+          "label": "9",
+          "min": 9,
+          "max": 9,
+          "cells": [
+            "Groua",
+            "Ethex",
+            "Glass",
+            "Herbalist"
+          ]
+        },
+        {
+          "label": "10",
+          "min": 10,
+          "max": 10,
+          "cells": [
+            "Henaine",
+            "Gringle",
+            "Harkness",
+            "Hunter"
+          ]
+        },
+        {
+          "label": "11",
+          "min": 11,
+          "max": 11,
+          "cells": [
+            "Lirann",
+            "Grinwit",
+            "Harper",
+            "Magician"
+          ]
+        },
+        {
+          "label": "12",
+          "min": 12,
+          "max": 12,
+          "cells": [
+            "Lirathil",
+            "Gruwid",
+            "Loomer",
+            "Mercenary"
+          ]
+        },
+        {
+          "label": "13",
+          "min": 13,
+          "max": 13,
+          "cells": [
+            "Lisabeth",
+            "Gruwth",
+            "Malksmilk",
+            "Merchant"
+          ]
+        },
+        {
+          "label": "14",
+          "min": 14,
+          "max": 14,
+          "cells": [
+            "Moralil",
+            "Gwestin",
+            "Smythe",
+            "Miner"
+          ]
+        },
+        {
+          "label": "15",
+          "min": 15,
+          "max": 15,
+          "cells": [
+            "Morgwen",
+            "Mannog",
+            "Sunderman",
+            "Outlaw"
+          ]
+        },
+        {
+          "label": "16",
+          "min": 16,
+          "max": 16,
+          "cells": [
+            "Sybil",
+            "Melnax",
+            "Swinney",
+            "Performer"
+          ]
+        },
+        {
+          "label": "17",
+          "min": 17,
+          "max": 17,
+          "cells": [
+            "Theune",
+            "Orthax",
+            "Thatcher",
+            "Pickpocket"
+          ]
+        },
+        {
+          "label": "18",
+          "min": 18,
+          "max": 18,
+          "cells": [
+            "Wenlan",
+            "Triunein",
+            "Tolmen",
+            "Smuggler"
+          ]
+        },
+        {
+          "label": "19",
+          "min": 19,
+          "max": 19,
+          "cells": [
+            "Ygwal",
+            "Wenlan",
+            "Weaver",
+            "Servant"
+          ]
+        },
+        {
+          "label": "20",
+          "min": 20,
+          "max": 20,
+          "cells": [
+            "Yslen",
+            "Yirmeor",
+            "Wolder",
+            "Ranger"
+          ]
+        }
+      ],
+      "classification": "player",
+      "origin": {
+        "heading": {
+          "line": 207,
+          "level": 3,
+          "text": "Name & Background (d20)"
+        },
+        "headingPath": [
+          "Cairn",
+          "Character Creation",
+          "Name & Background (d20)"
+        ],
+        "tagsLine": null,
+        "tableStart": 209,
+        "tableEnd": 230,
+        "dieColumn": "d20",
+        "dice": "d20",
+        "soleTable": true,
+        "markdownFile": "Cairn.md"
+      }
+    },
+    {
+      "id": "cairn-character-creation-character-traits-d10",
+      "name": "Character Traits (d10)",
+      "section": "Character Creation",
+      "category": "Character Creation",
+      "dice": "d10",
+      "columns": [
+        "Physique",
+        "Skin",
+        "Hair",
+        "Face",
+        "Speech",
+        "Clothing",
+        "Virtue",
+        "Vice",
+        "Reputation",
+        "Misfortune"
+      ],
+      "tags": [],
+      "rows": [
+        {
+          "label": "1",
+          "min": 1,
+          "max": 1,
+          "cells": [
+            "Athletic",
+            "Birthmark",
+            "Bald",
+            "Bony",
+            "Blunt",
+            "Antique",
+            "Ambitious",
+            "Aggressive",
+            "Ambitious",
+            "Abandoned"
+          ]
+        },
+        {
+          "label": "2",
+          "min": 2,
+          "max": 2,
+          "cells": [
+            "Brawny",
+            "Dark",
+            "Braided",
+            "Broken",
+            "Booming",
+            "Bloody",
+            "Cautious",
+            "Bitter",
+            "Boor",
+            "Addicted"
+          ]
+        },
+        {
+          "label": "3",
+          "min": 3,
+          "max": 3,
+          "cells": [
+            "Flabby",
+            "Elongated",
+            "Curly",
+            "Chiseled",
+            "Cryptic",
+            "Elegant",
+            "Courageous",
+            "Craven",
+            "Dangerous",
+            "Blackmailed"
+          ]
+        },
+        {
+          "label": "4",
+          "min": 4,
+          "max": 4,
+          "cells": [
+            "Lanky",
+            "Pockmarked",
+            "Filthy",
+            "Elongated",
+            "Droning",
+            "Filthy",
+            "Disciplined",
+            "Deceitful",
+            "Entertainer",
+            "Condemned"
+          ]
+        },
+        {
+          "label": "5",
+          "min": 5,
+          "max": 5,
+          "cells": [
+            "Rugged",
+            "Rosy",
+            "Frizzy",
+            "Pale",
+            "Formal",
+            "Foreign",
+            "Gregarious",
+            "Greedy",
+            "Honest",
+            "Cursed"
+          ]
+        },
+        {
+          "label": "6",
+          "min": 6,
+          "max": 6,
+          "cells": [
+            "Scrawny",
+            "Round",
+            "Long",
+            "Perfect",
+            "Gravelly",
+            "Frayed",
+            "Honorable",
+            "Lazy",
+            "Loafer",
+            "Defrauded"
+          ]
+        },
+        {
+          "label": "7",
+          "min": 7,
+          "max": 7,
+          "cells": [
+            "Short",
+            "Soft",
+            "Luxurious",
+            "Rat-like",
+            "Precise",
+            "Frumpy",
+            "Humble",
+            "Nervous",
+            "Oddball",
+            "Demoted"
+          ]
+        },
+        {
+          "label": "8",
+          "min": 8,
+          "max": 8,
+          "cells": [
+            "Statuesque",
+            "Tanned",
+            "Oily",
+            "Sharp",
+            "Squeaky",
+            "Livery",
+            "Merciful",
+            "Rude",
+            "Repulsive",
+            "Discredited"
+          ]
+        },
+        {
+          "label": "9",
+          "min": 9,
+          "max": 9,
+          "cells": [
+            "Stout",
+            "Tattooed",
+            "Wavy",
+            "Square",
+            "Stuttering",
+            "Rancid",
+            "Serene",
+            "Vain",
+            "Respected",
+            "Disowned"
+          ]
+        },
+        {
+          "label": "10",
+          "min": 10,
+          "max": 10,
+          "cells": [
+            "Towering",
+            "Weathered",
+            "Wispy",
+            "Sunken",
+            "Whispery",
+            "Soiled",
+            "Tolerant",
+            "Vengeful",
+            "Wise",
+            "Exiled"
+          ]
+        }
+      ],
+      "classification": "player",
+      "origin": {
+        "heading": {
+          "line": 232,
+          "level": 3,
+          "text": "Character Traits (d10)"
+        },
+        "headingPath": [
+          "Cairn",
+          "Character Creation",
+          "Character Traits (d10)"
+        ],
+        "tagsLine": null,
+        "tableStart": 234,
+        "tableEnd": 245,
+        "dieColumn": "d10",
+        "dice": "d10",
+        "soleTable": true,
+        "markdownFile": "Cairn.md"
+      }
+    },
+    {
+      "id": "cairn-character-creation-starting-gear-d20-armor",
+      "name": "Armor",
+      "section": "Character Creation · Starting Gear (d20)",
+      "category": "Character Creation",
+      "dice": "d20",
+      "columns": [
+        "Armor"
+      ],
+      "tags": [],
+      "rows": [
+        {
+          "label": "1-3",
+          "min": 1,
+          "max": 3,
+          "cells": [
+            "None"
+          ]
+        },
+        {
+          "label": "4-14",
+          "min": 4,
+          "max": 14,
+          "cells": [
+            "Brigandine"
+          ]
+        },
+        {
+          "label": "15-19",
+          "min": 15,
+          "max": 19,
+          "cells": [
+            "Chainmail"
+          ]
+        },
+        {
+          "label": "20",
+          "min": 20,
+          "max": 20,
+          "cells": [
+            "Plate"
+          ]
+        }
+      ],
+      "classification": "player",
+      "origin": {
+        "heading": {
+          "line": 249,
+          "level": 4,
+          "text": "Armor"
+        },
+        "headingPath": [
+          "Cairn",
+          "Character Creation",
+          "Starting Gear (d20)",
+          "Armor"
+        ],
+        "tagsLine": null,
+        "tableStart": 251,
+        "tableEnd": 256,
+        "dieColumn": "Roll",
+        "dice": "d20",
+        "soleTable": true,
+        "markdownFile": "Cairn.md"
+      }
+    },
+    {
+      "id": "cairn-character-creation-starting-gear-d20-helmets-and-shields",
+      "name": "Helmets and Shields",
+      "section": "Character Creation · Starting Gear (d20)",
+      "category": "Character Creation",
+      "dice": "d20",
+      "columns": [
+        "Result"
+      ],
+      "tags": [],
+      "rows": [
+        {
+          "label": "1-13",
+          "min": 1,
+          "max": 13,
+          "cells": [
+            "None"
+          ]
+        },
+        {
+          "label": "14-16",
+          "min": 14,
+          "max": 16,
+          "cells": [
+            "Helmet"
+          ]
+        },
+        {
+          "label": "17-19",
+          "min": 17,
+          "max": 19,
+          "cells": [
+            "Shield"
+          ]
+        },
+        {
+          "label": "20",
+          "min": 20,
+          "max": 20,
+          "cells": [
+            "Helmet & Shield"
+          ]
+        }
+      ],
+      "classification": "player",
+      "origin": {
+        "heading": {
+          "line": 258,
+          "level": 4,
+          "text": "Helmets and Shields"
+        },
+        "headingPath": [
+          "Cairn",
+          "Character Creation",
+          "Starting Gear (d20)",
+          "Helmets and Shields"
+        ],
+        "tagsLine": null,
+        "tableStart": 260,
+        "tableEnd": 265,
+        "dieColumn": "Roll",
+        "dice": "d20",
+        "soleTable": true,
+        "markdownFile": "Cairn.md"
+      }
+    },
+    {
+      "id": "cairn-character-creation-starting-gear-d20-weapons",
+      "name": "Weapons",
+      "section": "Character Creation · Starting Gear (d20)",
+      "category": "Character Creation",
+      "dice": "d20",
+      "columns": [
+        "Weapon"
+      ],
+      "tags": [],
+      "rows": [
+        {
+          "label": "1-5",
+          "min": 1,
+          "max": 5,
+          "cells": [
+            "Dagger, Cudgel, or Staff"
+          ]
+        },
+        {
+          "label": "6-14",
+          "min": 6,
+          "max": 14,
+          "cells": [
+            "Sword, Mace, or Axe"
+          ]
+        },
+        {
+          "label": "15-19",
+          "min": 15,
+          "max": 19,
+          "cells": [
+            "Longbow, Crossbow, or Sling"
+          ]
+        },
+        {
+          "label": "20",
+          "min": 20,
+          "max": 20,
+          "cells": [
+            "Halberd, War Hammer, or Battleaxe"
+          ]
+        }
+      ],
+      "classification": "player",
+      "origin": {
+        "heading": {
+          "line": 267,
+          "level": 4,
+          "text": "Weapons"
+        },
+        "headingPath": [
+          "Cairn",
+          "Character Creation",
+          "Starting Gear (d20)",
+          "Weapons"
+        ],
+        "tagsLine": null,
+        "tableStart": 269,
+        "tableEnd": 274,
+        "dieColumn": "Roll",
+        "dice": "d20",
+        "soleTable": true,
+        "markdownFile": "Cairn.md"
+      }
+    },
+    {
+      "id": "cairn-character-creation-starting-gear-d20-expeditionary-gear",
+      "name": "Expeditionary Gear",
+      "section": "Character Creation · Starting Gear (d20)",
+      "category": "Character Creation",
+      "dice": "d20",
+      "columns": [
+        "Item"
+      ],
+      "tags": [],
+      "rows": [
+        {
+          "label": "1",
+          "min": 1,
+          "max": 1,
+          "cells": [
+            "Air Bladder"
+          ]
+        },
+        {
+          "label": "2",
+          "min": 2,
+          "max": 2,
+          "cells": [
+            "Antitoxin"
+          ]
+        },
+        {
+          "label": "3",
+          "min": 3,
+          "max": 3,
+          "cells": [
+            "Cart (+4 slots, bulky)"
+          ]
+        },
+        {
+          "label": "4",
+          "min": 4,
+          "max": 4,
+          "cells": [
+            "Chain (10ft)"
+          ]
+        },
+        {
+          "label": "5",
+          "min": 5,
+          "max": 5,
+          "cells": [
+            "Dowsing Rod"
+          ]
+        },
+        {
+          "label": "6",
+          "min": 6,
+          "max": 6,
+          "cells": [
+            "Fire Oil"
+          ]
+        },
+        {
+          "label": "7",
+          "min": 7,
+          "max": 7,
+          "cells": [
+            "Grappling Hook"
+          ]
+        },
+        {
+          "label": "8",
+          "min": 8,
+          "max": 8,
+          "cells": [
+            "Large Sack"
+          ]
+        },
+        {
+          "label": "9",
+          "min": 9,
+          "max": 9,
+          "cells": [
+            "Large Trap"
+          ]
+        },
+        {
+          "label": "10",
+          "min": 10,
+          "max": 10,
+          "cells": [
+            "Lockpicks"
+          ]
+        },
+        {
+          "label": "11",
+          "min": 11,
+          "max": 11,
+          "cells": [
+            "Manacles"
+          ]
+        },
+        {
+          "label": "12",
+          "min": 12,
+          "max": 12,
+          "cells": [
+            "Pick"
+          ]
+        },
+        {
+          "label": "13",
+          "min": 13,
+          "max": 13,
+          "cells": [
+            "Pole (10ft)"
+          ]
+        },
+        {
+          "label": "14",
+          "min": 14,
+          "max": 14,
+          "cells": [
+            "Pulley"
+          ]
+        },
+        {
+          "label": "15",
+          "min": 15,
+          "max": 15,
+          "cells": [
+            "Repellent"
+          ]
+        },
+        {
+          "label": "16",
+          "min": 16,
+          "max": 16,
+          "cells": [
+            "Rope (25ft)"
+          ]
+        },
+        {
+          "label": "17",
+          "min": 17,
+          "max": 17,
+          "cells": [
+            "Spirit Ward"
+          ]
+        },
+        {
+          "label": "18",
+          "min": 18,
+          "max": 18,
+          "cells": [
+            "Spyglass"
+          ]
+        },
+        {
+          "label": "19",
+          "min": 19,
+          "max": 19,
+          "cells": [
+            "Tinderbox"
+          ]
+        },
+        {
+          "label": "20",
+          "min": 20,
+          "max": 20,
+          "cells": [
+            "Wolfsbane"
+          ]
+        }
+      ],
+      "classification": "player",
+      "origin": {
+        "heading": {
+          "line": 276,
+          "level": 4,
+          "text": "Expeditionary Gear"
+        },
+        "headingPath": [
+          "Cairn",
+          "Character Creation",
+          "Starting Gear (d20)",
+          "Expeditionary Gear"
+        ],
+        "tagsLine": null,
+        "tableStart": 278,
+        "tableEnd": 299,
+        "dieColumn": "d20",
+        "dice": "d20",
+        "soleTable": true,
+        "markdownFile": "Cairn.md"
+      }
+    },
+    {
+      "id": "cairn-character-creation-starting-gear-d20-tools",
+      "name": "Tools",
+      "section": "Character Creation · Starting Gear (d20)",
+      "category": "Character Creation",
+      "dice": "d20",
+      "columns": [
+        "Item"
+      ],
+      "tags": [],
+      "rows": [
+        {
+          "label": "1",
+          "min": 1,
+          "max": 1,
+          "cells": [
+            "Bellows"
+          ]
+        },
+        {
+          "label": "2",
+          "min": 2,
+          "max": 2,
+          "cells": [
+            "Bucket"
+          ]
+        },
+        {
+          "label": "3",
+          "min": 3,
+          "max": 3,
+          "cells": [
+            "Caltrops"
+          ]
+        },
+        {
+          "label": "4",
+          "min": 4,
+          "max": 4,
+          "cells": [
+            "Chalk"
+          ]
+        },
+        {
+          "label": "5",
+          "min": 5,
+          "max": 5,
+          "cells": [
+            "Chisel"
+          ]
+        },
+        {
+          "label": "6",
+          "min": 6,
+          "max": 6,
+          "cells": [
+            "Cook Pots"
+          ]
+        },
+        {
+          "label": "7",
+          "min": 7,
+          "max": 7,
+          "cells": [
+            "Crowbar"
+          ]
+        },
+        {
+          "label": "8",
+          "min": 8,
+          "max": 8,
+          "cells": [
+            "Drill"
+          ]
+        },
+        {
+          "label": "9",
+          "min": 9,
+          "max": 9,
+          "cells": [
+            "Fishing Rod"
+          ]
+        },
+        {
+          "label": "10",
+          "min": 10,
+          "max": 10,
+          "cells": [
+            "Glue"
+          ]
+        },
+        {
+          "label": "11",
+          "min": 11,
+          "max": 11,
+          "cells": [
+            "Grease"
+          ]
+        },
+        {
+          "label": "12",
+          "min": 12,
+          "max": 12,
+          "cells": [
+            "Hammer"
+          ]
+        },
+        {
+          "label": "13",
+          "min": 13,
+          "max": 13,
+          "cells": [
+            "Hourglass"
+          ]
+        },
+        {
+          "label": "14",
+          "min": 14,
+          "max": 14,
+          "cells": [
+            "Metal File"
+          ]
+        },
+        {
+          "label": "15",
+          "min": 15,
+          "max": 15,
+          "cells": [
+            "Nails"
+          ]
+        },
+        {
+          "label": "16",
+          "min": 16,
+          "max": 16,
+          "cells": [
+            "Net"
+          ]
+        },
+        {
+          "label": "17",
+          "min": 17,
+          "max": 17,
+          "cells": [
+            "Saw"
+          ]
+        },
+        {
+          "label": "18",
+          "min": 18,
+          "max": 18,
+          "cells": [
+            "Sealant"
+          ]
+        },
+        {
+          "label": "19",
+          "min": 19,
+          "max": 19,
+          "cells": [
+            "Shovel"
+          ]
+        },
+        {
+          "label": "20",
+          "min": 20,
+          "max": 20,
+          "cells": [
+            "Tongs"
+          ]
+        }
+      ],
+      "classification": "player",
+      "origin": {
+        "heading": {
+          "line": 301,
+          "level": 4,
+          "text": "Tools"
+        },
+        "headingPath": [
+          "Cairn",
+          "Character Creation",
+          "Starting Gear (d20)",
+          "Tools"
+        ],
+        "tagsLine": null,
+        "tableStart": 303,
+        "tableEnd": 324,
+        "dieColumn": "d20",
+        "dice": "d20",
+        "soleTable": true,
+        "markdownFile": "Cairn.md"
+      }
+    },
+    {
+      "id": "cairn-character-creation-starting-gear-d20-trinkets",
+      "name": "Trinkets",
+      "section": "Character Creation · Starting Gear (d20)",
+      "category": "Character Creation",
+      "dice": "d20",
+      "columns": [
+        "Item"
+      ],
+      "tags": [],
+      "rows": [
+        {
+          "label": "1",
+          "min": 1,
+          "max": 1,
+          "cells": [
+            "Bottle"
+          ]
+        },
+        {
+          "label": "2",
+          "min": 2,
+          "max": 2,
+          "cells": [
+            "Card Deck"
+          ]
+        },
+        {
+          "label": "3",
+          "min": 3,
+          "max": 3,
+          "cells": [
+            "Dice Set"
+          ]
+        },
+        {
+          "label": "4",
+          "min": 4,
+          "max": 4,
+          "cells": [
+            "Face Paint"
+          ]
+        },
+        {
+          "label": "5",
+          "min": 5,
+          "max": 5,
+          "cells": [
+            "Fake Jewels"
+          ]
+        },
+        {
+          "label": "6",
+          "min": 6,
+          "max": 6,
+          "cells": [
+            "Horn"
+          ]
+        },
+        {
+          "label": "7",
+          "min": 7,
+          "max": 7,
+          "cells": [
+            "Incense"
+          ]
+        },
+        {
+          "label": "8",
+          "min": 8,
+          "max": 8,
+          "cells": [
+            "Instrument"
+          ]
+        },
+        {
+          "label": "9",
+          "min": 9,
+          "max": 9,
+          "cells": [
+            "Lens"
+          ]
+        },
+        {
+          "label": "10",
+          "min": 10,
+          "max": 10,
+          "cells": [
+            "Marbles"
+          ]
+        },
+        {
+          "label": "11",
+          "min": 11,
+          "max": 11,
+          "cells": [
+            "Mirror"
+          ]
+        },
+        {
+          "label": "12",
+          "min": 12,
+          "max": 12,
+          "cells": [
+            "Perfume"
+          ]
+        },
+        {
+          "label": "13",
+          "min": 13,
+          "max": 13,
+          "cells": [
+            "Quill & Ink"
+          ]
+        },
+        {
+          "label": "14",
+          "min": 14,
+          "max": 14,
+          "cells": [
+            "Salt Pack"
+          ]
+        },
+        {
+          "label": "15",
+          "min": 15,
+          "max": 15,
+          "cells": [
+            "Small Bell"
+          ]
+        },
+        {
+          "label": "16",
+          "min": 16,
+          "max": 16,
+          "cells": [
+            "Soap"
+          ]
+        },
+        {
+          "label": "17",
+          "min": 17,
+          "max": 17,
+          "cells": [
+            "Sponge"
+          ]
+        },
+        {
+          "label": "18",
+          "min": 18,
+          "max": 18,
+          "cells": [
+            "Tar Pot"
+          ]
+        },
+        {
+          "label": "19",
+          "min": 19,
+          "max": 19,
+          "cells": [
+            "Twine"
+          ]
+        },
+        {
+          "label": "20",
+          "min": 20,
+          "max": 20,
+          "cells": [
+            "Whistle"
+          ]
+        }
+      ],
+      "classification": "player",
+      "origin": {
+        "heading": {
+          "line": 326,
+          "level": 4,
+          "text": "Trinkets"
+        },
+        "headingPath": [
+          "Cairn",
+          "Character Creation",
+          "Starting Gear (d20)",
+          "Trinkets"
+        ],
+        "tagsLine": null,
+        "tableStart": 328,
+        "tableEnd": 349,
+        "dieColumn": "d20",
+        "dice": "d20",
+        "soleTable": true,
+        "markdownFile": "Cairn.md"
+      }
+    },
+    {
+      "id": "cairn-character-creation-starting-gear-d20-bonus-item",
+      "name": "Bonus Item",
+      "section": "Character Creation · Starting Gear (d20)",
+      "category": "Character Creation",
+      "dice": "d20",
+      "columns": [
+        "Table"
+      ],
+      "tags": [],
+      "rows": [
+        {
+          "label": "1-5",
+          "min": 1,
+          "max": 5,
+          "cells": [
+            "Tool or Trinket"
+          ]
+        },
+        {
+          "label": "6-13",
+          "min": 6,
+          "max": 13,
+          "cells": [
+            "Expeditionary Gear"
+          ]
+        },
+        {
+          "label": "14-17",
+          "min": 14,
+          "max": 17,
+          "cells": [
+            "Armor or Weapon"
+          ]
+        },
+        {
+          "label": "18-20",
+          "min": 18,
+          "max": 20,
+          "cells": [
+            "Spellbook"
+          ]
+        }
+      ],
+      "classification": "player",
+      "origin": {
+        "heading": {
+          "line": 351,
+          "level": 4,
+          "text": "Bonus Item"
+        },
+        "headingPath": [
+          "Cairn",
+          "Character Creation",
+          "Starting Gear (d20)",
+          "Bonus Item"
+        ],
+        "tagsLine": null,
+        "tableStart": 353,
+        "tableEnd": 358,
+        "dieColumn": "Roll",
+        "dice": "d20",
+        "soleTable": true,
+        "markdownFile": "Cairn.md"
+      }
+    },
+    {
+      "id": "cairn-character-creation-spellbooks-d100",
+      "name": "Spellbooks (d100)",
+      "section": "Character Creation",
+      "category": "Character Creation",
+      "dice": "d100",
+      "columns": [
+        "Spell"
+      ],
+      "tags": [],
+      "rows": [
+        {
+          "label": "1",
+          "min": 1,
+          "max": 1,
+          "cells": [
+            "Adhere"
+          ]
+        },
+        {
+          "label": "2",
+          "min": 2,
+          "max": 2,
+          "cells": [
+            "Anchor"
+          ]
+        },
+        {
+          "label": "3",
+          "min": 3,
+          "max": 3,
+          "cells": [
+            "Animate Object"
+          ]
+        },
+        {
+          "label": "4",
+          "min": 4,
+          "max": 4,
+          "cells": [
+            "Anthropomorphize"
+          ]
+        },
+        {
+          "label": "5",
+          "min": 5,
+          "max": 5,
+          "cells": [
+            "Arcane Eye"
+          ]
+        },
+        {
+          "label": "6",
+          "min": 6,
+          "max": 6,
+          "cells": [
+            "Astral Prison"
+          ]
+        },
+        {
+          "label": "7",
+          "min": 7,
+          "max": 7,
+          "cells": [
+            "Attract"
+          ]
+        },
+        {
+          "label": "8",
+          "min": 8,
+          "max": 8,
+          "cells": [
+            "Auditory Illusion"
+          ]
+        },
+        {
+          "label": "9",
+          "min": 9,
+          "max": 9,
+          "cells": [
+            "Babble"
+          ]
+        },
+        {
+          "label": "10",
+          "min": 10,
+          "max": 10,
+          "cells": [
+            "Bait Flower"
+          ]
+        },
+        {
+          "label": "11",
+          "min": 11,
+          "max": 11,
+          "cells": [
+            "Beast Form"
+          ]
+        },
+        {
+          "label": "12",
+          "min": 12,
+          "max": 12,
+          "cells": [
+            "Befuddle"
+          ]
+        },
+        {
+          "label": "13",
+          "min": 13,
+          "max": 13,
+          "cells": [
+            "Body Swap"
+          ]
+        },
+        {
+          "label": "14",
+          "min": 14,
+          "max": 14,
+          "cells": [
+            "Charm"
+          ]
+        },
+        {
+          "label": "15",
+          "min": 15,
+          "max": 15,
+          "cells": [
+            "Command"
+          ]
+        },
+        {
+          "label": "16",
+          "min": 16,
+          "max": 16,
+          "cells": [
+            "Comprehend"
+          ]
+        },
+        {
+          "label": "17",
+          "min": 17,
+          "max": 17,
+          "cells": [
+            "Cone of Foam"
+          ]
+        },
+        {
+          "label": "18",
+          "min": 18,
+          "max": 18,
+          "cells": [
+            "Control Plants"
+          ]
+        },
+        {
+          "label": "19",
+          "min": 19,
+          "max": 19,
+          "cells": [
+            "Control Weather"
+          ]
+        },
+        {
+          "label": "20",
+          "min": 20,
+          "max": 20,
+          "cells": [
+            "Cure Wounds"
+          ]
+        },
+        {
+          "label": "21",
+          "min": 21,
+          "max": 21,
+          "cells": [
+            "Deafen"
+          ]
+        },
+        {
+          "label": "22",
+          "min": 22,
+          "max": 22,
+          "cells": [
+            "Detect Magic"
+          ]
+        },
+        {
+          "label": "23",
+          "min": 23,
+          "max": 23,
+          "cells": [
+            "Disassemble"
+          ]
+        },
+        {
+          "label": "24",
+          "min": 24,
+          "max": 24,
+          "cells": [
+            "Disguise"
+          ]
+        },
+        {
+          "label": "25",
+          "min": 25,
+          "max": 25,
+          "cells": [
+            "Displace"
+          ]
+        },
+        {
+          "label": "26",
+          "min": 26,
+          "max": 26,
+          "cells": [
+            "Earthquake"
+          ]
+        },
+        {
+          "label": "27",
+          "min": 27,
+          "max": 27,
+          "cells": [
+            "Elasticity"
+          ]
+        },
+        {
+          "label": "28",
+          "min": 28,
+          "max": 28,
+          "cells": [
+            "Elemental Wall"
+          ]
+        },
+        {
+          "label": "29",
+          "min": 29,
+          "max": 29,
+          "cells": [
+            "Filch"
+          ]
+        },
+        {
+          "label": "30",
+          "min": 30,
+          "max": 30,
+          "cells": [
+            "Flare"
+          ]
+        },
+        {
+          "label": "31",
+          "min": 31,
+          "max": 31,
+          "cells": [
+            "Fog Cloud"
+          ]
+        },
+        {
+          "label": "32",
+          "min": 32,
+          "max": 32,
+          "cells": [
+            "Frenzy"
+          ]
+        },
+        {
+          "label": "33",
+          "min": 33,
+          "max": 33,
+          "cells": [
+            "Gate"
+          ]
+        },
+        {
+          "label": "34",
+          "min": 34,
+          "max": 34,
+          "cells": [
+            "Gravity Shift"
+          ]
+        },
+        {
+          "label": "35",
+          "min": 35,
+          "max": 35,
+          "cells": [
+            "Greed"
+          ]
+        },
+        {
+          "label": "36",
+          "min": 36,
+          "max": 36,
+          "cells": [
+            "Haste"
+          ]
+        },
+        {
+          "label": "37",
+          "min": 37,
+          "max": 37,
+          "cells": [
+            "Hatred"
+          ]
+        },
+        {
+          "label": "38",
+          "min": 38,
+          "max": 38,
+          "cells": [
+            "Hear Whispers"
+          ]
+        },
+        {
+          "label": "39",
+          "min": 39,
+          "max": 39,
+          "cells": [
+            "Hover"
+          ]
+        },
+        {
+          "label": "40",
+          "min": 40,
+          "max": 40,
+          "cells": [
+            "Hypnotize"
+          ]
+        },
+        {
+          "label": "41",
+          "min": 41,
+          "max": 41,
+          "cells": [
+            "Icy Touch"
+          ]
+        },
+        {
+          "label": "42",
+          "min": 42,
+          "max": 42,
+          "cells": [
+            "Identify Owner"
+          ]
+        },
+        {
+          "label": "43",
+          "min": 43,
+          "max": 43,
+          "cells": [
+            "Illuminate"
+          ]
+        },
+        {
+          "label": "44",
+          "min": 44,
+          "max": 44,
+          "cells": [
+            "Invisible Tether"
+          ]
+        },
+        {
+          "label": "45",
+          "min": 45,
+          "max": 45,
+          "cells": [
+            "Knock"
+          ]
+        },
+        {
+          "label": "46",
+          "min": 46,
+          "max": 46,
+          "cells": [
+            "Leap"
+          ]
+        },
+        {
+          "label": "47",
+          "min": 47,
+          "max": 47,
+          "cells": [
+            "Liquid Air"
+          ]
+        },
+        {
+          "label": "48",
+          "min": 48,
+          "max": 48,
+          "cells": [
+            "Magic Dampener"
+          ]
+        },
+        {
+          "label": "49",
+          "min": 49,
+          "max": 49,
+          "cells": [
+            "Manse"
+          ]
+        },
+        {
+          "label": "50",
+          "min": 50,
+          "max": 50,
+          "cells": [
+            "Marble Craze"
+          ]
+        },
+        {
+          "label": "51",
+          "min": 51,
+          "max": 51,
+          "cells": [
+            "Masquerade"
+          ]
+        },
+        {
+          "label": "52",
+          "min": 52,
+          "max": 52,
+          "cells": [
+            "Miniaturize"
+          ]
+        },
+        {
+          "label": "53",
+          "min": 53,
+          "max": 53,
+          "cells": [
+            "Mirror Image"
+          ]
+        },
+        {
+          "label": "54",
+          "min": 54,
+          "max": 54,
+          "cells": [
+            "Mirrorwalk"
+          ]
+        },
+        {
+          "label": "55",
+          "min": 55,
+          "max": 55,
+          "cells": [
+            "Multiarm"
+          ]
+        },
+        {
+          "label": "56",
+          "min": 56,
+          "max": 56,
+          "cells": [
+            "Night Sphere"
+          ]
+        },
+        {
+          "label": "57",
+          "min": 57,
+          "max": 57,
+          "cells": [
+            "Objectify"
+          ]
+        },
+        {
+          "label": "58",
+          "min": 58,
+          "max": 58,
+          "cells": [
+            "Ooze Form"
+          ]
+        },
+        {
+          "label": "59",
+          "min": 59,
+          "max": 59,
+          "cells": [
+            "Pacify"
+          ]
+        },
+        {
+          "label": "60",
+          "min": 60,
+          "max": 60,
+          "cells": [
+            "Phobia"
+          ]
+        },
+        {
+          "label": "61",
+          "min": 61,
+          "max": 61,
+          "cells": [
+            "Pit"
+          ]
+        },
+        {
+          "label": "62",
+          "min": 62,
+          "max": 62,
+          "cells": [
+            "Primal Surge"
+          ]
+        },
+        {
+          "label": "63",
+          "min": 63,
+          "max": 63,
+          "cells": [
+            "Push/Pull"
+          ]
+        },
+        {
+          "label": "64",
+          "min": 64,
+          "max": 64,
+          "cells": [
+            "Raise Dead"
+          ]
+        },
+        {
+          "label": "65",
+          "min": 65,
+          "max": 65,
+          "cells": [
+            "Raise Spirit"
+          ]
+        },
+        {
+          "label": "66",
+          "min": 66,
+          "max": 66,
+          "cells": [
+            "Read Mind"
+          ]
+        },
+        {
+          "label": "67",
+          "min": 67,
+          "max": 67,
+          "cells": [
+            "Repel"
+          ]
+        },
+        {
+          "label": "68",
+          "min": 68,
+          "max": 68,
+          "cells": [
+            "Scry"
+          ]
+        },
+        {
+          "label": "69",
+          "min": 69,
+          "max": 69,
+          "cells": [
+            "Sculpt Elements"
+          ]
+        },
+        {
+          "label": "70",
+          "min": 70,
+          "max": 70,
+          "cells": [
+            "Sense"
+          ]
+        },
+        {
+          "label": "71",
+          "min": 71,
+          "max": 71,
+          "cells": [
+            "Shield"
+          ]
+        },
+        {
+          "label": "72",
+          "min": 72,
+          "max": 72,
+          "cells": [
+            "Shroud"
+          ]
+        },
+        {
+          "label": "73",
+          "min": 73,
+          "max": 73,
+          "cells": [
+            "Shuffle"
+          ]
+        },
+        {
+          "label": "74",
+          "min": 74,
+          "max": 74,
+          "cells": [
+            "Sleep"
+          ]
+        },
+        {
+          "label": "75",
+          "min": 75,
+          "max": 75,
+          "cells": [
+            "Slick"
+          ]
+        },
+        {
+          "label": "76",
+          "min": 76,
+          "max": 76,
+          "cells": [
+            "Smoke Form"
+          ]
+        },
+        {
+          "label": "77",
+          "min": 77,
+          "max": 77,
+          "cells": [
+            "Sniff"
+          ]
+        },
+        {
+          "label": "78",
+          "min": 78,
+          "max": 78,
+          "cells": [
+            "Snuff"
+          ]
+        },
+        {
+          "label": "79",
+          "min": 79,
+          "max": 79,
+          "cells": [
+            "Sort"
+          ]
+        },
+        {
+          "label": "80",
+          "min": 80,
+          "max": 80,
+          "cells": [
+            "Spectacle"
+          ]
+        },
+        {
+          "label": "81",
+          "min": 81,
+          "max": 81,
+          "cells": [
+            "Spellsaw"
+          ]
+        },
+        {
+          "label": "82",
+          "min": 82,
+          "max": 82,
+          "cells": [
+            "Spider Climb"
+          ]
+        },
+        {
+          "label": "83",
+          "min": 83,
+          "max": 83,
+          "cells": [
+            "Summon Cube"
+          ]
+        },
+        {
+          "label": "84",
+          "min": 84,
+          "max": 84,
+          "cells": [
+            "Swarm"
+          ]
+        },
+        {
+          "label": "85",
+          "min": 85,
+          "max": 85,
+          "cells": [
+            "Telekinesis"
+          ]
+        },
+        {
+          "label": "86",
+          "min": 86,
+          "max": 86,
+          "cells": [
+            "Telepathy"
+          ]
+        },
+        {
+          "label": "87",
+          "min": 87,
+          "max": 87,
+          "cells": [
+            "Teleport"
+          ]
+        },
+        {
+          "label": "88",
+          "min": 88,
+          "max": 88,
+          "cells": [
+            "Target Lure"
+          ]
+        },
+        {
+          "label": "89",
+          "min": 89,
+          "max": 89,
+          "cells": [
+            "Thicket"
+          ]
+        },
+        {
+          "label": "90",
+          "min": 90,
+          "max": 90,
+          "cells": [
+            "Summon Idol"
+          ]
+        },
+        {
+          "label": "91",
+          "min": 91,
+          "max": 91,
+          "cells": [
+            "Time Control"
+          ]
+        },
+        {
+          "label": "92",
+          "min": 92,
+          "max": 92,
+          "cells": [
+            "True Sight"
+          ]
+        },
+        {
+          "label": "93",
+          "min": 93,
+          "max": 93,
+          "cells": [
+            "Upwell"
+          ]
+        },
+        {
+          "label": "94",
+          "min": 94,
+          "max": 94,
+          "cells": [
+            "Vision"
+          ]
+        },
+        {
+          "label": "95",
+          "min": 95,
+          "max": 95,
+          "cells": [
+            "Visual Illusion"
+          ]
+        },
+        {
+          "label": "96",
+          "min": 96,
+          "max": 96,
+          "cells": [
+            "Ward"
+          ]
+        },
+        {
+          "label": "97",
+          "min": 97,
+          "max": 97,
+          "cells": [
+            "Web"
+          ]
+        },
+        {
+          "label": "98",
+          "min": 98,
+          "max": 98,
+          "cells": [
+            "Widget"
+          ]
+        },
+        {
+          "label": "99",
+          "min": 99,
+          "max": 99,
+          "cells": [
+            "Wizard Mark"
+          ]
+        },
+        {
+          "label": "100",
+          "min": 100,
+          "max": 100,
+          "cells": [
+            "X-Ray Vision"
+          ]
+        }
+      ],
+      "classification": "player",
+      "origin": {
+        "heading": {
+          "line": 360,
+          "level": 3,
+          "text": "Spellbooks (d100)"
+        },
+        "headingPath": [
+          "Cairn",
+          "Character Creation",
+          "Spellbooks (d100)"
+        ],
+        "tagsLine": null,
+        "tableStart": 362,
+        "tableEnd": 463,
+        "dieColumn": "d100",
+        "dice": "d100",
+        "soleTable": true,
+        "markdownFile": "Cairn.md"
+      }
+    },
+    {
+      "id": "cairn-rules-npcs-reactions",
+      "name": "Reactions",
+      "section": "Rules · NPCs",
+      "category": "Rules",
+      "dice": "2d6",
+      "columns": [
+        "Reaction"
+      ],
+      "tags": [],
+      "rows": [
+        {
+          "label": "2",
+          "min": 2,
+          "max": 2,
+          "cells": [
+            "Hostile"
+          ]
+        },
+        {
+          "label": "3-5",
+          "min": 3,
+          "max": 5,
+          "cells": [
+            "Wary"
+          ]
+        },
+        {
+          "label": "6-8",
+          "min": 6,
+          "max": 8,
+          "cells": [
+            "Curious"
+          ]
+        },
+        {
+          "label": "9-11",
+          "min": 9,
+          "max": 11,
+          "cells": [
+            "Kind"
+          ]
+        },
+        {
+          "label": "12",
+          "min": 12,
+          "max": 12,
+          "cells": [
+            "Helpful"
+          ]
+        }
+      ],
+      "classification": "player",
+      "origin": {
+        "heading": {
+          "line": 680,
+          "level": 4,
+          "text": "Reactions"
+        },
+        "headingPath": [
+          "Cairn",
+          "Rules",
+          "NPCs",
+          "Reactions"
+        ],
+        "tagsLine": null,
+        "tableStart": 684,
+        "tableEnd": 690,
+        "dieColumn": "2d6",
+        "dice": "2d6",
+        "soleTable": true,
+        "markdownFile": "Cairn.md"
+      }
+    }
+  ]
+}

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { parseRollTables, rowForRoll, rowText, tableSummary, unreachableRows } from "./roll-tables.js";
 
-const source = `# Rules
+const source = `# **Rules**
 
 ## Character Creation
 
@@ -103,6 +103,40 @@ describe("finding rollable tables in system Markdown", () => {
 
   it("infers a plain die from a full 1-to-sides range", () => {
     expect(tables[3].dice).toBe("d4");
+  });
+
+  it("recognises and resolves d30 tables", () => {
+    const [table] = parseRollTables(`### Omens
+
+| D30 | Result |
+| --- | --- |
+| 1 | The first omen |
+| 30 | The final omen |
+`);
+    expect(table.dice).toBe("d30");
+    expect(rowForRoll(table, 30)?.cells).toEqual(["The final omen"]);
+    expect(unreachableRows(table)).toBe(0);
+  });
+
+  it("infers d30 from a heading marker when the die column only says Roll", () => {
+    const [table] = parseRollTables(`### Omens (d30)
+
+| Roll | Result |
+| --- | --- |
+| 1 | The first omen |
+| 30 | The final omen |
+`);
+    expect(table.dice).toBe("d30");
+  });
+
+  it("drops surrounding emphasis from a table's derived display name", () => {
+    const [table] = parseRollTables(`#### *3.6.1.1 Implant Complications*
+
+| d6 | Result |
+| --- | --- |
+| 1 | A complication |
+`);
+    expect(table.name).toBe("3.6.1.1 Implant Complications");
   });
 
   it("flattens compact repeated Roll and Result pairs", () => {

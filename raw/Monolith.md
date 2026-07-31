@@ -2215,9 +2215,9 @@ Attempts to manipulate such forces require a WIL Save vs Corruption. Upon failur
 
 ### HOLLOWING
 
-Roll a D20 + current corruption on the Hollowing table to see how you are altered.
+Roll a D30 on the Hollowing table to see how you are altered.
 
-**Example:** You’ve failed two saves vs. corruption in the past, so your current corruption is 2. You again fail a save and roll a D20 for hollowing. Your result is a 7 and you add +2 for the result #9. Finally, add another point to your corruption total, which is now 3.
+**Example:** You’ve failed two saves vs. corruption in the past, so your current corruption is 2. You again fail a save and roll a D30 for hollowing. Your result is a 9. Finally, add another point to your corruption total, which is now 3.
 
 ### THE THREE ASPECTS
 
@@ -2239,7 +2239,7 @@ Entropy Your mortal shell is claimed as an agent of destruction. Your body becom
 
 Non-Euclidean You explode into a mass of writhing shapes and angles that drive others to madness. All who behold your transformation must save vs WIL or be rendered insane for 1d10 hours. You now only exist for your own inscrutable machinations as an impossible being of mind-boggling contradictions.
 
-| D20 | HOLLOWING |
+| D30 | HOLLOWING |
 | --- | --- |
 | 1 | Your fingertips turn pitch black. |
 | 2 | Peculiar symbols begin to appear on your body. Overtime they spread. |

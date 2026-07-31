@@ -16,7 +16,8 @@ import { requireAuth } from "./auth.js";
 import { all, db, one } from "./db.js";
 import { knownTags, tagVocabulary } from "./table-tags.js";
 import { requireTableEdit, requireTableRead } from "./table-permissions.js";
-import { systemMarkdown, systems } from "./systems.js";
+import { systems } from "./systems.js";
+import { tablesForSetJson, type CatalogRollTable } from "./table-json.js";
 
 /**
  * The table catalogue itself: what sets exist, and how a set is created, edited,
@@ -34,12 +35,14 @@ export interface TableSetRow {
 }
 
 /** Parsed system tables, kept because the raw Markdown cannot change at runtime. */
-const systemTables = new Map<SystemId, RollTable[]>();
+const systemTables = new Map<SystemId, CatalogRollTable[]>();
 
-function tablesForSystem(system: SystemId) {
+export function tablesForSystem(system: SystemId) {
   const cached = systemTables.get(system);
   if (cached) return cached;
-  const parsed = parseRollTables(systemMarkdown(system), systems[system].tableCatalog.exclude).map((table) => ({
+  const source = systems[system].sourceDocuments[0];
+  if (!source?.tablesFile) throw new Error(`${systems[system].name} has no sourceDocument.tablesFile.`);
+  const parsed = tablesForSetJson(source.tablesFile).map((table) => ({
     ...table,
     tags: mergeTags(systems[system].tableCatalog.tags, table.tags, tagVocabulary())
   }));
@@ -91,7 +94,7 @@ export function availableSets(): { set: RollTableSet; tables: RollTable[] }[] {
   });
   const custom = customSets().map((row) => {
     const tags = storedTags(row.tags_json, vocabulary);
-    const tables = parseRollTables(row.markdown).map((table) => ({
+    const customTables = parseRollTables(row.markdown).map((table) => ({
       ...table,
       tags: mergeTags(tags, table.tags, vocabulary)
     }));
@@ -100,9 +103,9 @@ export function availableSets(): { set: RollTableSet; tables: RollTable[] }[] {
         id: `custom:${row.id}`,
         name: row.name,
         origin: "custom" as const,
-        tables: tables.map(tableSummary)
+        tables: customTables.map(tableSummary)
       },
-      tables
+      tables: customTables
     };
   });
   return [...system, ...custom];
@@ -128,9 +131,16 @@ export function resolveTags(input: readonly string[], res: express.Response): Ta
 
 const setBody = z.object({
   name: z.string().trim().min(2).max(80),
-  markdown: z.string().max(200_000),
+  markdown: z.string().max(500_000),
   tags: z.array(z.string().trim().toLowerCase().regex(TABLE_TAG_SLUG).max(40)).max(64).default([])
 });
+
+function validateTableTags(markdown: string, vocabulary: readonly TableTagDefinition[]) {
+  for (const table of parseRollTables(markdown)) {
+    const unknown = table.tags.find((tag) => !vocabulary.some((entry) => entry.slug === tag));
+    if (unknown) throw new Error(`This instance has no tag called "${unknown}".`);
+  }
+}
 
 /** The whole catalogue with its summaries, for an editor rather than a room. */
 tableSetRouter.get("/table-sets", requireAuth, (req: AuthedRequest, res) => {
@@ -154,7 +164,7 @@ tableSetRouter.get("/table-sets/:setId", requireAuth, (req: AuthedRequest, res) 
       set: {
         id: setId,
         name: system.tableCatalog.label,
-        markdown: systemMarkdown(system.id),
+        tables: tablesForSystem(system.id),
         tags: knownTags(system.tableCatalog.tags),
         updatedAt: null,
         readOnly: true
@@ -168,12 +178,15 @@ tableSetRouter.get("/table-sets/:setId", requireAuth, (req: AuthedRequest, res) 
     numericId
   );
   if (!row) return res.status(404).json({ error: "Table set not found." });
+  const tags = storedTags(row.tags_json);
+  const tables = parseRollTables(row.markdown);
   res.json({
     set: {
       id: row.id,
       name: row.name,
       markdown: row.markdown,
-      tags: storedTags(row.tags_json),
+      tables,
+      tags,
       updatedAt: row.updated_at,
       readOnly: false
     }
@@ -183,10 +196,14 @@ tableSetRouter.get("/table-sets/:setId", requireAuth, (req: AuthedRequest, res) 
 tableSetRouter.post("/table-sets", requireAuth, (req: AuthedRequest, res) => {
   if (!requireTableEdit(req, res)) return;
   const parsed = setBody.safeParse(req.body);
-  if (!parsed.success)
-    return res.status(400).json({ error: "Give the set a name, valid tags, and valid Markdown tables." });
+  if (!parsed.success) return res.status(400).json({ error: "Give the set a name, valid tags, and valid table data." });
   const tags = resolveTags(parsed.data.tags, res);
   if (!tags) return;
+  try {
+    validateTableTags(parsed.data.markdown, tagVocabulary());
+  } catch (error) {
+    return res.status(400).json({ error: error instanceof Error ? error.message : "Invalid table data." });
+  }
   const result = db
     .prepare("INSERT INTO table_sets (name, markdown, tags_json, created_by) VALUES (?, ?, ?, ?)")
     .run(parsed.data.name, parsed.data.markdown, JSON.stringify(tags), req.account!.id);
@@ -197,10 +214,14 @@ tableSetRouter.post("/table-sets", requireAuth, (req: AuthedRequest, res) => {
 tableSetRouter.patch("/table-sets/:setId", requireAuth, (req: AuthedRequest, res) => {
   if (!requireTableEdit(req, res)) return;
   const parsed = setBody.safeParse(req.body);
-  if (!parsed.success)
-    return res.status(400).json({ error: "Give the set a name, valid tags, and valid Markdown tables." });
+  if (!parsed.success) return res.status(400).json({ error: "Give the set a name, valid tags, and valid table data." });
   const tags = resolveTags(parsed.data.tags, res);
   if (!tags) return;
+  try {
+    validateTableTags(parsed.data.markdown, tagVocabulary());
+  } catch (error) {
+    return res.status(400).json({ error: error instanceof Error ? error.message : "Invalid table data." });
+  }
   const result = db
     .prepare("UPDATE table_sets SET name = ?, markdown = ?, tags_json = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?")
     .run(parsed.data.name, parsed.data.markdown, JSON.stringify(tags), Number(req.params.setId));
@@ -221,8 +242,6 @@ tableSetRouter.post("/table-sets/:setId/duplicate", requireAuth, (req: AuthedReq
           Number(found.set.id.replace("custom:", ""))
         )
       : undefined;
-  // A system catalogue has no stored Markdown to copy, so it is written out from
-  // what was parsed; a custom set is copied exactly as the GM wrote it.
   const markdown = source ? source.markdown : serializeSet(found.tables, found.set.name);
   const tags = source ? storedTags(source.tags_json) : knownTags(found.tables.flatMap((table) => table.tags));
 

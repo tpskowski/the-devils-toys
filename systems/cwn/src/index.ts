@@ -252,6 +252,7 @@ export const cwn: GameSystem = {
     {
       id: "cwn-srd-1.0",
       markdownFile: "CitiesWithoutNumberSRDv1.0.md",
+      tablesFile: "cwn.json",
       canonicalFile: "CitiesWithoutNumberSRDv1.0.html",
       correctionsFile: "citieswithoutnumber-corrections.md",
       license: "CC0 1.0"

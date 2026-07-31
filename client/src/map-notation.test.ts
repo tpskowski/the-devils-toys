@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { MapNotation } from "@devils-toys/shared";
-import { appendNotationPoint, applyMapNotationEvent, notationPoint } from "./map-notation";
+import { appendNotationPoint, applyMapNotationEvent, labelArea, notationArea, notationPoint } from "./map-notation";
 
 const line = (id: number): MapNotation => ({
   id,
@@ -31,6 +31,23 @@ describe("map notation gestures", () => {
     expect(appendNotationPoint(points, { x: 0.101, y: 0.1 })).toBe(false);
     expect(appendNotationPoint(points, { x: 0.104, y: 0.1 })).toBe(true);
     expect(points).toHaveLength(2);
+  });
+
+  it("normalizes text boxes dragged in any direction", () => {
+    const area = notationArea({ x: 0.8, y: 0.7 }, { x: 0.2, y: 0.3 });
+    expect(area.x).toBe(0.2);
+    expect(area.y).toBe(0.3);
+    expect(area.width).toBeCloseTo(0.6);
+    expect(area.height).toBeCloseTo(0.4);
+  });
+
+  it("gives a click-sized text gesture a useful box that stays on the map", () => {
+    expect(labelArea({ x: 0.95, y: 0.96 }, { x: 0.95, y: 0.96 })).toEqual({
+      x: 0.76,
+      y: 0.9,
+      width: 0.24,
+      height: 0.1
+    });
   });
 });
 

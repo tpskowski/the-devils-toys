@@ -116,17 +116,34 @@
     0 0 4px #000;
 }
 
+.map-notation-label-box {
+  display: block;
+  translate: 0;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.map-notation-label-draft {
+  position: absolute;
+  box-sizing: border-box;
+  border: 1px dashed currentcolor;
+  background: color-mix(in srgb, currentcolor, transparent 88%);
+  pointer-events: none;
+}
+
 .map-notation-label-editor {
   pointer-events: auto;
-  min-width: 6ch;
-  max-width: min(60ch, 80%);
-  padding: 1px 2px;
-  border: 0;
-  border-bottom: 1px dashed currentColor;
+  box-sizing: border-box;
+  min-width: 36px;
+  min-height: 28px;
+  padding: 5px 7px;
+  resize: none;
+  border: 1px dashed currentcolor;
   border-radius: 0;
-  outline: none;
   background: #090909a6;
-  caret-color: currentColor;
+  caret-color: currentcolor;
+  line-height: 1.25;
+  text-shadow: none;
 }
 
 .map-notation-label-editor::placeholder {
@@ -205,12 +222,23 @@
 }
 
 .map-notation-toolbar select {
-  width: 58px;
+  width: 68px;
+  min-width: 0;
   height: 30px;
   margin: 3px;
-  border-color: #ffffff3b;
-  background: #171717;
-  color: #fff;
+  padding: 0 8px;
+  border: 1px solid var(--line);
+  border-radius: 0;
+  background: var(--surface);
+  color: var(--text);
+  font:
+    400 12px Inter,
+    sans-serif;
+}
+
+.map-notation-toolbar select option {
+  background: var(--surface);
+  color: var(--text);
 }
 
 .notation-colors {

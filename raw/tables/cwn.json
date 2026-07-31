@@ -1,0 +1,4134 @@
+{
+  "formatVersion": 1,
+  "setName": "Cities Without Number tables",
+  "sourceDocument": "CitiesWithoutNumberSRDv1.0.md",
+  "tables": [
+    {
+      "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-bum-growth",
+      "name": "Growth",
+      "section": "1.0.0 Character Creation · 1.3.0 Backgrounds · 1.3.3 Background List · Bum",
+      "category": "1.0.0 Character Creation",
+      "dice": "d6",
+      "columns": [
+        "Growth"
+      ],
+      "tags": [
+        "character-building"
+      ],
+      "rows": [
+        {
+          "label": "1",
+          "min": 1,
+          "max": 1,
+          "cells": [
+            "+1 Any Stat"
+          ]
+        },
+        {
+          "label": "2",
+          "min": 2,
+          "max": 2,
+          "cells": [
+            "+2 Physical"
+          ]
+        },
+        {
+          "label": "3",
+          "min": 3,
+          "max": 3,
+          "cells": [
+            "+2 Physical"
+          ]
+        },
+        {
+          "label": "4",
+          "min": 4,
+          "max": 4,
+          "cells": [
+            "+2 Mental"
+          ]
+        },
+        {
+          "label": "5",
+          "min": 5,
+          "max": 5,
+          "cells": [
+            "Survive"
+          ]
+        },
+        {
+          "label": "6",
+          "min": 6,
+          "max": 6,
+          "cells": [
+            "Any Skill"
+          ]
+        }
+      ],
+      "classification": "player",
+      "origin": {
+        "heading": {
+          "line": 141,
+          "level": 5,
+          "text": "Growth"
+        },
+        "headingPath": [
+          "1.0.0 Character Creation",
+          "1.3.0 Backgrounds",
+          "1.3.3 Background List",
+          "Bum",
+          "Growth"
+        ],
+        "tagsLine": 143,
+        "tableStart": 145,
+        "tableEnd": 152,
+        "dieColumn": "d6",
+        "dice": "d6",
+        "soleTable": true,
+        "markdownFile": "CitiesWithoutNumberSRDv1.0.md"
+      }
+    },
+    {
+      "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-bum-learning",
+      "name": "Learning",
+      "section": "1.0.0 Character Creation · 1.3.0 Backgrounds · 1.3.3 Background List · Bum",
+      "category": "1.0.0 Character Creation",
+      "dice": "d8",
+      "columns": [
+        "Learning"
+      ],
+      "tags": [
+        "character-building"
+      ],
+      "rows": [
+        {
+          "label": "1",
+          "min": 1,
+          "max": 1,
+          "cells": [
+            "Any Combat"
+          ]
+        },
+        {
+          "label": "2",
+          "min": 2,
+          "max": 2,
+          "cells": [
+            "Survive"
+          ]
+        },
+        {
+          "label": "3",
+          "min": 3,
+          "max": 3,
+          "cells": [
+            "Connect"
+          ]
+        },
+        {
+          "label": "4",
+          "min": 4,
+          "max": 4,
+          "cells": [
+            "Sneak"
+          ]
+        },
+        {
+          "label": "5",
+          "min": 5,
+          "max": 5,
+          "cells": [
+            "Notice"
+          ]
+        },
+        {
+          "label": "6",
+          "min": 6,
+          "max": 6,
+          "cells": [
+            "Talk"
+          ]
+        },
+        {
+          "label": "7",
+          "min": 7,
+          "max": 7,
+          "cells": [
+            "Fix"
+          ]
+        },
+        {
+          "label": "8",
+          "min": 8,
+          "max": 8,
+          "cells": [
+            "Trade"
+          ]
+        }
+      ],
+      "classification": "player",
+      "origin": {
+        "heading": {
+          "line": 154,
+          "level": 5,
+          "text": "Learning"
+        },
+        "headingPath": [
+          "1.0.0 Character Creation",
+          "1.3.0 Backgrounds",
+          "1.3.3 Background List",
+          "Bum",
+          "Learning"
+        ],
+        "tagsLine": 156,
+        "tableStart": 158,
+        "tableEnd": 167,
+        "dieColumn": "d8",
+        "dice": "d8",
+        "soleTable": true,
+        "markdownFile": "CitiesWithoutNumberSRDv1.0.md"
+      }
+    },
+    {
+      "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-bureaucrat-growth",
+      "name": "Growth",
+      "section": "1.0.0 Character Creation · 1.3.0 Backgrounds · 1.3.3 Background List · Bureaucrat",
+      "category": "1.0.0 Character Creation",
+      "dice": "d6",
+      "columns": [
+        "Growth"
+      ],
+      "tags": [
+        "character-building"
+      ],
+      "rows": [
+        {
+          "label": "1",
+          "min": 1,
+          "max": 1,
+          "cells": [
+            "+1 Any Stat"
+          ]
+        },
+        {
+          "label": "2",
+          "min": 2,
+          "max": 2,
+          "cells": [
+            "+2 Mental"
+          ]
+        },
+        {
+          "label": "3",
+          "min": 3,
+          "max": 3,
+          "cells": [
+            "+2 Mental"
+          ]
+        },
+        {
+          "label": "4",
+          "min": 4,
+          "max": 4,
+          "cells": [
+            "+2 Mental"
+          ]
+        },
+        {
+          "label": "5",
+          "min": 5,
+          "max": 5,
+          "cells": [
+            "Administer"
+          ]
+        },
+        {
+          "label": "6",
+          "min": 6,
+          "max": 6,
+          "cells": [
+            "Any Skill"
+          ]
+        }
+      ],
+      "classification": "player",
+      "origin": {
+        "heading": {
+          "line": 173,
+          "level": 5,
+          "text": "Growth"
+        },
+        "headingPath": [
+          "1.0.0 Character Creation",
+          "1.3.0 Backgrounds",
+          "1.3.3 Background List",
+          "Bureaucrat",
+          "Growth"
+        ],
+        "tagsLine": 175,
+        "tableStart": 177,
+        "tableEnd": 184,
+        "dieColumn": "d6",
+        "dice": "d6",
+        "soleTable": true,
+        "markdownFile": "CitiesWithoutNumberSRDv1.0.md"
+      }
+    },
+    {
+      "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-bureaucrat-learning",
+      "name": "Learning",
+      "section": "1.0.0 Character Creation · 1.3.0 Backgrounds · 1.3.3 Background List · Bureaucrat",
+      "category": "1.0.0 Character Creation",
+      "dice": "d8",
+      "columns": [
+        "Learning"
+      ],
+      "tags": [
+        "character-building"
+      ],
+      "rows": [
+        {
+          "label": "1",
+          "min": 1,
+          "max": 1,
+          "cells": [
+            "Administer"
+          ]
+        },
+        {
+          "label": "2",
+          "min": 2,
+          "max": 2,
+          "cells": [
+            "Know"
+          ]
+        },
+        {
+          "label": "3",
+          "min": 3,
+          "max": 3,
+          "cells": [
+            "Talk"
+          ]
+        },
+        {
+          "label": "4",
+          "min": 4,
+          "max": 4,
+          "cells": [
+            "Program"
+          ]
+        },
+        {
+          "label": "5",
+          "min": 5,
+          "max": 5,
+          "cells": [
+            "Lead"
+          ]
+        },
+        {
+          "label": "6",
+          "min": 6,
+          "max": 6,
+          "cells": [
+            "Trade"
+          ]
+        },
+        {
+          "label": "7",
+          "min": 7,
+          "max": 7,
+          "cells": [
+            "Notice"
+          ]
+        },
+        {
+          "label": "8",
+          "min": 8,
+          "max": 8,
+          "cells": [
+            "Any Skill"
+          ]
+        }
+      ],
+      "classification": "player",
+      "origin": {
+        "heading": {
+          "line": 186,
+          "level": 5,
+          "text": "Learning"
+        },
+        "headingPath": [
+          "1.0.0 Character Creation",
+          "1.3.0 Backgrounds",
+          "1.3.3 Background List",
+          "Bureaucrat",
+          "Learning"
+        ],
+        "tagsLine": 188,
+        "tableStart": 190,
+        "tableEnd": 199,
+        "dieColumn": "d8",
+        "dice": "d8",
+        "soleTable": true,
+        "markdownFile": "CitiesWithoutNumberSRDv1.0.md"
+      }
+    },
+    {
+      "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-clergy-growth",
+      "name": "Growth",
+      "section": "1.0.0 Character Creation · 1.3.0 Backgrounds · 1.3.3 Background List · Clergy",
+      "category": "1.0.0 Character Creation",
+      "dice": "d6",
+      "columns": [
+        "Growth"
+      ],
+      "tags": [
+        "character-building"
+      ],
+      "rows": [
+        {
+          "label": "1",
+          "min": 1,
+          "max": 1,
+          "cells": [
+            "+1 Any Stat"
+          ]
+        },
+        {
+          "label": "2",
+          "min": 2,
+          "max": 2,
+          "cells": [
+            "+2 Mental"
+          ]
+        },
+        {
+          "label": "3",
+          "min": 3,
+          "max": 3,
+          "cells": [
+            "+2 Mental"
+          ]
+        },
+        {
+          "label": "4",
+          "min": 4,
+          "max": 4,
+          "cells": [
+            "+2 Mental"
+          ]
+        },
+        {
+          "label": "5",
+          "min": 5,
+          "max": 5,
+          "cells": [
+            "Connect"
+          ]
+        },
+        {
+          "label": "6",
+          "min": 6,
+          "max": 6,
+          "cells": [
+            "Any Skill"
+          ]
+        }
+      ],
+      "classification": "player",
+      "origin": {
+        "heading": {
+          "line": 205,
+          "level": 5,
+          "text": "Growth"
+        },
+        "headingPath": [
+          "1.0.0 Character Creation",
+          "1.3.0 Backgrounds",
+          "1.3.3 Background List",
+          "Clergy",
+          "Growth"
+        ],
+        "tagsLine": 207,
+        "tableStart": 209,
+        "tableEnd": 216,
+        "dieColumn": "d6",
+        "dice": "d6",
+        "soleTable": true,
+        "markdownFile": "CitiesWithoutNumberSRDv1.0.md"
+      }
+    },
+    {
+      "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-clergy-learning",
+      "name": "Learning",
+      "section": "1.0.0 Character Creation · 1.3.0 Backgrounds · 1.3.3 Background List · Clergy",
+      "category": "1.0.0 Character Creation",
+      "dice": "d8",
+      "columns": [
+        "Learning"
+      ],
+      "tags": [
+        "character-building"
+      ],
+      "rows": [
+        {
+          "label": "1",
+          "min": 1,
+          "max": 1,
+          "cells": [
+            "Lead"
+          ]
+        },
+        {
+          "label": "2",
+          "min": 2,
+          "max": 2,
+          "cells": [
+            "Talk"
+          ]
+        },
+        {
+          "label": "3",
+          "min": 3,
+          "max": 3,
+          "cells": [
+            "Connect"
+          ]
+        },
+        {
+          "label": "4",
+          "min": 4,
+          "max": 4,
+          "cells": [
+            "Perform"
+          ]
+        },
+        {
+          "label": "5",
+          "min": 5,
+          "max": 5,
+          "cells": [
+            "Know"
+          ]
+        },
+        {
+          "label": "6",
+          "min": 6,
+          "max": 6,
+          "cells": [
+            "Heal"
+          ]
+        },
+        {
+          "label": "7",
+          "min": 7,
+          "max": 7,
+          "cells": [
+            "Notice"
+          ]
+        },
+        {
+          "label": "8",
+          "min": 8,
+          "max": 8,
+          "cells": [
+            "Any Skill"
+          ]
+        }
+      ],
+      "classification": "player",
+      "origin": {
+        "heading": {
+          "line": 218,
+          "level": 5,
+          "text": "Learning"
+        },
+        "headingPath": [
+          "1.0.0 Character Creation",
+          "1.3.0 Backgrounds",
+          "1.3.3 Background List",
+          "Clergy",
+          "Learning"
+        ],
+        "tagsLine": 220,
+        "tableStart": 222,
+        "tableEnd": 231,
+        "dieColumn": "d8",
+        "dice": "d8",
+        "soleTable": true,
+        "markdownFile": "CitiesWithoutNumberSRDv1.0.md"
+      }
+    },
+    {
+      "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-coder-growth",
+      "name": "Growth",
+      "section": "1.0.0 Character Creation · 1.3.0 Backgrounds · 1.3.3 Background List · Coder",
+      "category": "1.0.0 Character Creation",
+      "dice": "d6",
+      "columns": [
+        "Growth"
+      ],
+      "tags": [
+        "character-building"
+      ],
+      "rows": [
+        {
+          "label": "1",
+          "min": 1,
+          "max": 1,
+          "cells": [
+            "+1 Any Stat"
+          ]
+        },
+        {
+          "label": "2",
+          "min": 2,
+          "max": 2,
+          "cells": [
+            "+2 Mental"
+          ]
+        },
+        {
+          "label": "3",
+          "min": 3,
+          "max": 3,
+          "cells": [
+            "+2 Mental"
+          ]
+        },
+        {
+          "label": "4",
+          "min": 4,
+          "max": 4,
+          "cells": [
+            "+2 Mental"
+          ]
+        },
+        {
+          "label": "5",
+          "min": 5,
+          "max": 5,
+          "cells": [
+            "Program"
+          ]
+        },
+        {
+          "label": "6",
+          "min": 6,
+          "max": 6,
+          "cells": [
+            "Any Skill"
+          ]
+        }
+      ],
+      "classification": "player",
+      "origin": {
+        "heading": {
+          "line": 237,
+          "level": 5,
+          "text": "Growth"
+        },
+        "headingPath": [
+          "1.0.0 Character Creation",
+          "1.3.0 Backgrounds",
+          "1.3.3 Background List",
+          "Coder",
+          "Growth"
+        ],
+        "tagsLine": 239,
+        "tableStart": 241,
+        "tableEnd": 248,
+        "dieColumn": "d6",
+        "dice": "d6",
+        "soleTable": true,
+        "markdownFile": "CitiesWithoutNumberSRDv1.0.md"
+      }
+    },
+    {
+      "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-coder-learning",
+      "name": "Learning",
+      "section": "1.0.0 Character Creation · 1.3.0 Backgrounds · 1.3.3 Background List · Coder",
+      "category": "1.0.0 Character Creation",
+      "dice": "d8",
+      "columns": [
+        "Learning"
+      ],
+      "tags": [
+        "character-building"
+      ],
+      "rows": [
+        {
+          "label": "1",
+          "min": 1,
+          "max": 1,
+          "cells": [
+            "Program"
+          ]
+        },
+        {
+          "label": "2",
+          "min": 2,
+          "max": 2,
+          "cells": [
+            "Administer"
+          ]
+        },
+        {
+          "label": "3",
+          "min": 3,
+          "max": 3,
+          "cells": [
+            "Fix"
+          ]
+        },
+        {
+          "label": "4",
+          "min": 4,
+          "max": 4,
+          "cells": [
+            "Talk"
+          ]
+        },
+        {
+          "label": "5",
+          "min": 5,
+          "max": 5,
+          "cells": [
+            "Connect"
+          ]
+        },
+        {
+          "label": "6",
+          "min": 6,
+          "max": 6,
+          "cells": [
+            "Know"
+          ]
+        },
+        {
+          "label": "7",
+          "min": 7,
+          "max": 7,
+          "cells": [
+            "Notice"
+          ]
+        },
+        {
+          "label": "8",
+          "min": 8,
+          "max": 8,
+          "cells": [
+            "Any Skill"
+          ]
+        }
+      ],
+      "classification": "player",
+      "origin": {
+        "heading": {
+          "line": 250,
+          "level": 5,
+          "text": "Learning"
+        },
+        "headingPath": [
+          "1.0.0 Character Creation",
+          "1.3.0 Backgrounds",
+          "1.3.3 Background List",
+          "Coder",
+          "Learning"
+        ],
+        "tagsLine": 252,
+        "tableStart": 254,
+        "tableEnd": 263,
+        "dieColumn": "d8",
+        "dice": "d8",
+        "soleTable": true,
+        "markdownFile": "CitiesWithoutNumberSRDv1.0.md"
+      }
+    },
+    {
+      "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-corp-security-growth",
+      "name": "Growth",
+      "section": "1.0.0 Character Creation · 1.3.0 Backgrounds · 1.3.3 Background List · Corp Security",
+      "category": "1.0.0 Character Creation",
+      "dice": "d6",
+      "columns": [
+        "Growth"
+      ],
+      "tags": [
+        "character-building"
+      ],
+      "rows": [
+        {
+          "label": "1",
+          "min": 1,
+          "max": 1,
+          "cells": [
+            "+1 Any Stat"
+          ]
+        },
+        {
+          "label": "2",
+          "min": 2,
+          "max": 2,
+          "cells": [
+            "+2 Physical"
+          ]
+        },
+        {
+          "label": "3",
+          "min": 3,
+          "max": 3,
+          "cells": [
+            "+2 Physical"
+          ]
+        },
+        {
+          "label": "4",
+          "min": 4,
+          "max": 4,
+          "cells": [
+            "+2 Physical"
+          ]
+        },
+        {
+          "label": "5",
+          "min": 5,
+          "max": 5,
+          "cells": [
+            "Any Combat"
+          ]
+        },
+        {
+          "label": "6",
+          "min": 6,
+          "max": 6,
+          "cells": [
+            "Any Skill"
+          ]
+        }
+      ],
+      "classification": "player",
+      "origin": {
+        "heading": {
+          "line": 269,
+          "level": 5,
+          "text": "Growth"
+        },
+        "headingPath": [
+          "1.0.0 Character Creation",
+          "1.3.0 Backgrounds",
+          "1.3.3 Background List",
+          "Corp Security",
+          "Growth"
+        ],
+        "tagsLine": 271,
+        "tableStart": 273,
+        "tableEnd": 280,
+        "dieColumn": "d6",
+        "dice": "d6",
+        "soleTable": true,
+        "markdownFile": "CitiesWithoutNumberSRDv1.0.md"
+      }
+    },
+    {
+      "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-corp-security-learning",
+      "name": "Learning",
+      "section": "1.0.0 Character Creation · 1.3.0 Backgrounds · 1.3.3 Background List · Corp Security",
+      "category": "1.0.0 Character Creation",
+      "dice": "d8",
+      "columns": [
+        "Learning"
+      ],
+      "tags": [
+        "character-building"
+      ],
+      "rows": [
+        {
+          "label": "1",
+          "min": 1,
+          "max": 1,
+          "cells": [
+            "Any Combat"
+          ]
+        },
+        {
+          "label": "2",
+          "min": 2,
+          "max": 2,
+          "cells": [
+            "Administer"
+          ]
+        },
+        {
+          "label": "3",
+          "min": 3,
+          "max": 3,
+          "cells": [
+            "Connect"
+          ]
+        },
+        {
+          "label": "4",
+          "min": 4,
+          "max": 4,
+          "cells": [
+            "Notice"
+          ]
+        },
+        {
+          "label": "5",
+          "min": 5,
+          "max": 5,
+          "cells": [
+            "Exert"
+          ]
+        },
+        {
+          "label": "6",
+          "min": 6,
+          "max": 6,
+          "cells": [
+            "Heal"
+          ]
+        },
+        {
+          "label": "7",
+          "min": 7,
+          "max": 7,
+          "cells": [
+            "Sneak"
+          ]
+        },
+        {
+          "label": "8",
+          "min": 8,
+          "max": 8,
+          "cells": [
+            "Lead"
+          ]
+        }
+      ],
+      "classification": "player",
+      "origin": {
+        "heading": {
+          "line": 282,
+          "level": 5,
+          "text": "Learning"
+        },
+        "headingPath": [
+          "1.0.0 Character Creation",
+          "1.3.0 Backgrounds",
+          "1.3.3 Background List",
+          "Corp Security",
+          "Learning"
+        ],
+        "tagsLine": 284,
+        "tableStart": 286,
+        "tableEnd": 295,
+        "dieColumn": "d8",
+        "dice": "d8",
+        "soleTable": true,
+        "markdownFile": "CitiesWithoutNumberSRDv1.0.md"
+      }
+    },
+    {
+      "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-corper-growth",
+      "name": "Growth",
+      "section": "1.0.0 Character Creation · 1.3.0 Backgrounds · 1.3.3 Background List · Corper",
+      "category": "1.0.0 Character Creation",
+      "dice": "d6",
+      "columns": [
+        "Growth"
+      ],
+      "tags": [
+        "character-building"
+      ],
+      "rows": [
+        {
+          "label": "1",
+          "min": 1,
+          "max": 1,
+          "cells": [
+            "+1 Any Stat"
+          ]
+        },
+        {
+          "label": "2",
+          "min": 2,
+          "max": 2,
+          "cells": [
+            "+1 Any Stat"
+          ]
+        },
+        {
+          "label": "3",
+          "min": 3,
+          "max": 3,
+          "cells": [
+            "+2 Physical"
+          ]
+        },
+        {
+          "label": "4",
+          "min": 4,
+          "max": 4,
+          "cells": [
+            "+2 Mental"
+          ]
+        },
+        {
+          "label": "5",
+          "min": 5,
+          "max": 5,
+          "cells": [
+            "Any Skill"
+          ]
+        },
+        {
+          "label": "6",
+          "min": 6,
+          "max": 6,
+          "cells": [
+            "Any Skill"
+          ]
+        }
+      ],
+      "classification": "player",
+      "origin": {
+        "heading": {
+          "line": 301,
+          "level": 5,
+          "text": "Growth"
+        },
+        "headingPath": [
+          "1.0.0 Character Creation",
+          "1.3.0 Backgrounds",
+          "1.3.3 Background List",
+          "Corper",
+          "Growth"
+        ],
+        "tagsLine": 303,
+        "tableStart": 305,
+        "tableEnd": 312,
+        "dieColumn": "d6",
+        "dice": "d6",
+        "soleTable": true,
+        "markdownFile": "CitiesWithoutNumberSRDv1.0.md"
+      }
+    },
+    {
+      "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-corper-learning",
+      "name": "Learning",
+      "section": "1.0.0 Character Creation · 1.3.0 Backgrounds · 1.3.3 Background List · Corper",
+      "category": "1.0.0 Character Creation",
+      "dice": "d8",
+      "columns": [
+        "Learning"
+      ],
+      "tags": [
+        "character-building"
+      ],
+      "rows": [
+        {
+          "label": "1",
+          "min": 1,
+          "max": 1,
+          "cells": [
+            "Work"
+          ]
+        },
+        {
+          "label": "2",
+          "min": 2,
+          "max": 2,
+          "cells": [
+            "Talk"
+          ]
+        },
+        {
+          "label": "3",
+          "min": 3,
+          "max": 3,
+          "cells": [
+            "Connect"
+          ]
+        },
+        {
+          "label": "4",
+          "min": 4,
+          "max": 4,
+          "cells": [
+            "Any Combat"
+          ]
+        },
+        {
+          "label": "5",
+          "min": 5,
+          "max": 5,
+          "cells": [
+            "Notice"
+          ]
+        },
+        {
+          "label": "6",
+          "min": 6,
+          "max": 6,
+          "cells": [
+            "Sneak"
+          ]
+        },
+        {
+          "label": "7",
+          "min": 7,
+          "max": 7,
+          "cells": [
+            "Fix"
+          ]
+        },
+        {
+          "label": "8",
+          "min": 8,
+          "max": 8,
+          "cells": [
+            "Any Skill"
+          ]
+        }
+      ],
+      "classification": "player",
+      "origin": {
+        "heading": {
+          "line": 314,
+          "level": 5,
+          "text": "Learning"
+        },
+        "headingPath": [
+          "1.0.0 Character Creation",
+          "1.3.0 Backgrounds",
+          "1.3.3 Background List",
+          "Corper",
+          "Learning"
+        ],
+        "tagsLine": 316,
+        "tableStart": 318,
+        "tableEnd": 327,
+        "dieColumn": "d8",
+        "dice": "d8",
+        "soleTable": true,
+        "markdownFile": "CitiesWithoutNumberSRDv1.0.md"
+      }
+    },
+    {
+      "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-criminal-growth",
+      "name": "Growth",
+      "section": "1.0.0 Character Creation · 1.3.0 Backgrounds · 1.3.3 Background List · Criminal",
+      "category": "1.0.0 Character Creation",
+      "dice": "d6",
+      "columns": [
+        "Growth"
+      ],
+      "tags": [
+        "character-building"
+      ],
+      "rows": [
+        {
+          "label": "1",
+          "min": 1,
+          "max": 1,
+          "cells": [
+            "+1 Any Stat"
+          ]
+        },
+        {
+          "label": "2",
+          "min": 2,
+          "max": 2,
+          "cells": [
+            "+1 Any Stat"
+          ]
+        },
+        {
+          "label": "3",
+          "min": 3,
+          "max": 3,
+          "cells": [
+            "+2 Physical"
+          ]
+        },
+        {
+          "label": "4",
+          "min": 4,
+          "max": 4,
+          "cells": [
+            "+2 Mental"
+          ]
+        },
+        {
+          "label": "5",
+          "min": 5,
+          "max": 5,
+          "cells": [
+            "Sneak"
+          ]
+        },
+        {
+          "label": "6",
+          "min": 6,
+          "max": 6,
+          "cells": [
+            "Any Skill"
+          ]
+        }
+      ],
+      "classification": "player",
+      "origin": {
+        "heading": {
+          "line": 333,
+          "level": 5,
+          "text": "Growth"
+        },
+        "headingPath": [
+          "1.0.0 Character Creation",
+          "1.3.0 Backgrounds",
+          "1.3.3 Background List",
+          "Criminal",
+          "Growth"
+        ],
+        "tagsLine": 335,
+        "tableStart": 337,
+        "tableEnd": 344,
+        "dieColumn": "d6",
+        "dice": "d6",
+        "soleTable": true,
+        "markdownFile": "CitiesWithoutNumberSRDv1.0.md"
+      }
+    },
+    {
+      "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-criminal-learning",
+      "name": "Learning",
+      "section": "1.0.0 Character Creation · 1.3.0 Backgrounds · 1.3.3 Background List · Criminal",
+      "category": "1.0.0 Character Creation",
+      "dice": "d8",
+      "columns": [
+        "Learning"
+      ],
+      "tags": [
+        "character-building"
+      ],
+      "rows": [
+        {
+          "label": "1",
+          "min": 1,
+          "max": 1,
+          "cells": [
+            "Any Combat"
+          ]
+        },
+        {
+          "label": "2",
+          "min": 2,
+          "max": 2,
+          "cells": [
+            "Sneak"
+          ]
+        },
+        {
+          "label": "3",
+          "min": 3,
+          "max": 3,
+          "cells": [
+            "Notice"
+          ]
+        },
+        {
+          "label": "4",
+          "min": 4,
+          "max": 4,
+          "cells": [
+            "Connect"
+          ]
+        },
+        {
+          "label": "5",
+          "min": 5,
+          "max": 5,
+          "cells": [
+            "Talk"
+          ]
+        },
+        {
+          "label": "6",
+          "min": 6,
+          "max": 6,
+          "cells": [
+            "Survive"
+          ]
+        },
+        {
+          "label": "7",
+          "min": 7,
+          "max": 7,
+          "cells": [
+            "Exert"
+          ]
+        },
+        {
+          "label": "8",
+          "min": 8,
+          "max": 8,
+          "cells": [
+            "Lead"
+          ]
+        }
+      ],
+      "classification": "player",
+      "origin": {
+        "heading": {
+          "line": 346,
+          "level": 5,
+          "text": "Learning"
+        },
+        "headingPath": [
+          "1.0.0 Character Creation",
+          "1.3.0 Backgrounds",
+          "1.3.3 Background List",
+          "Criminal",
+          "Learning"
+        ],
+        "tagsLine": 348,
+        "tableStart": 350,
+        "tableEnd": 359,
+        "dieColumn": "d8",
+        "dice": "d8",
+        "soleTable": true,
+        "markdownFile": "CitiesWithoutNumberSRDv1.0.md"
+      }
+    },
+    {
+      "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-doctor-growth",
+      "name": "Growth",
+      "section": "1.0.0 Character Creation · 1.3.0 Backgrounds · 1.3.3 Background List · Doctor",
+      "category": "1.0.0 Character Creation",
+      "dice": "d6",
+      "columns": [
+        "Growth"
+      ],
+      "tags": [
+        "character-building"
+      ],
+      "rows": [
+        {
+          "label": "1",
+          "min": 1,
+          "max": 1,
+          "cells": [
+            "+1 Any Stat"
+          ]
+        },
+        {
+          "label": "2",
+          "min": 2,
+          "max": 2,
+          "cells": [
+            "+2 Physical"
+          ]
+        },
+        {
+          "label": "3",
+          "min": 3,
+          "max": 3,
+          "cells": [
+            "+2 Mental"
+          ]
+        },
+        {
+          "label": "4",
+          "min": 4,
+          "max": 4,
+          "cells": [
+            "+2 Mental"
+          ]
+        },
+        {
+          "label": "5",
+          "min": 5,
+          "max": 5,
+          "cells": [
+            "Heal"
+          ]
+        },
+        {
+          "label": "6",
+          "min": 6,
+          "max": 6,
+          "cells": [
+            "Any Skill"
+          ]
+        }
+      ],
+      "classification": "player",
+      "origin": {
+        "heading": {
+          "line": 365,
+          "level": 5,
+          "text": "Growth"
+        },
+        "headingPath": [
+          "1.0.0 Character Creation",
+          "1.3.0 Backgrounds",
+          "1.3.3 Background List",
+          "Doctor",
+          "Growth"
+        ],
+        "tagsLine": 367,
+        "tableStart": 369,
+        "tableEnd": 376,
+        "dieColumn": "d6",
+        "dice": "d6",
+        "soleTable": true,
+        "markdownFile": "CitiesWithoutNumberSRDv1.0.md"
+      }
+    },
+    {
+      "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-doctor-learning",
+      "name": "Learning",
+      "section": "1.0.0 Character Creation · 1.3.0 Backgrounds · 1.3.3 Background List · Doctor",
+      "category": "1.0.0 Character Creation",
+      "dice": "d8",
+      "columns": [
+        "Learning"
+      ],
+      "tags": [
+        "character-building"
+      ],
+      "rows": [
+        {
+          "label": "1",
+          "min": 1,
+          "max": 1,
+          "cells": [
+            "Heal"
+          ]
+        },
+        {
+          "label": "2",
+          "min": 2,
+          "max": 2,
+          "cells": [
+            "Notice"
+          ]
+        },
+        {
+          "label": "3",
+          "min": 3,
+          "max": 3,
+          "cells": [
+            "Know"
+          ]
+        },
+        {
+          "label": "4",
+          "min": 4,
+          "max": 4,
+          "cells": [
+            "Talk"
+          ]
+        },
+        {
+          "label": "5",
+          "min": 5,
+          "max": 5,
+          "cells": [
+            "Administer"
+          ]
+        },
+        {
+          "label": "6",
+          "min": 6,
+          "max": 6,
+          "cells": [
+            "Connect"
+          ]
+        },
+        {
+          "label": "7",
+          "min": 7,
+          "max": 7,
+          "cells": [
+            "Fix"
+          ]
+        },
+        {
+          "label": "8",
+          "min": 8,
+          "max": 8,
+          "cells": [
+            "Any Skill"
+          ]
+        }
+      ],
+      "classification": "player",
+      "origin": {
+        "heading": {
+          "line": 378,
+          "level": 5,
+          "text": "Learning"
+        },
+        "headingPath": [
+          "1.0.0 Character Creation",
+          "1.3.0 Backgrounds",
+          "1.3.3 Background List",
+          "Doctor",
+          "Learning"
+        ],
+        "tagsLine": 380,
+        "tableStart": 382,
+        "tableEnd": 391,
+        "dieColumn": "d8",
+        "dice": "d8",
+        "soleTable": true,
+        "markdownFile": "CitiesWithoutNumberSRDv1.0.md"
+      }
+    },
+    {
+      "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-drone-jockey-growth",
+      "name": "Growth",
+      "section": "1.0.0 Character Creation · 1.3.0 Backgrounds · 1.3.3 Background List · Drone Jockey",
+      "category": "1.0.0 Character Creation",
+      "dice": "d6",
+      "columns": [
+        "Growth"
+      ],
+      "tags": [
+        "character-building"
+      ],
+      "rows": [
+        {
+          "label": "1",
+          "min": 1,
+          "max": 1,
+          "cells": [
+            "+1 Any Stat"
+          ]
+        },
+        {
+          "label": "2",
+          "min": 2,
+          "max": 2,
+          "cells": [
+            "+2 Physical"
+          ]
+        },
+        {
+          "label": "3",
+          "min": 3,
+          "max": 3,
+          "cells": [
+            "+2 Physical"
+          ]
+        },
+        {
+          "label": "4",
+          "min": 4,
+          "max": 4,
+          "cells": [
+            "+2 Mental"
+          ]
+        },
+        {
+          "label": "5",
+          "min": 5,
+          "max": 5,
+          "cells": [
+            "Drive"
+          ]
+        },
+        {
+          "label": "6",
+          "min": 6,
+          "max": 6,
+          "cells": [
+            "Any Skill"
+          ]
+        }
+      ],
+      "classification": "player",
+      "origin": {
+        "heading": {
+          "line": 397,
+          "level": 5,
+          "text": "Growth"
+        },
+        "headingPath": [
+          "1.0.0 Character Creation",
+          "1.3.0 Backgrounds",
+          "1.3.3 Background List",
+          "Drone Jockey",
+          "Growth"
+        ],
+        "tagsLine": 399,
+        "tableStart": 401,
+        "tableEnd": 408,
+        "dieColumn": "d6",
+        "dice": "d6",
+        "soleTable": true,
+        "markdownFile": "CitiesWithoutNumberSRDv1.0.md"
+      }
+    },
+    {
+      "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-drone-jockey-learning",
+      "name": "Learning",
+      "section": "1.0.0 Character Creation · 1.3.0 Backgrounds · 1.3.3 Background List · Drone Jockey",
+      "category": "1.0.0 Character Creation",
+      "dice": "d8",
+      "columns": [
+        "Learning"
+      ],
+      "tags": [
+        "character-building"
+      ],
+      "rows": [
+        {
+          "label": "1",
+          "min": 1,
+          "max": 1,
+          "cells": [
+            "Drive"
+          ]
+        },
+        {
+          "label": "2",
+          "min": 2,
+          "max": 2,
+          "cells": [
+            "Fix"
+          ]
+        },
+        {
+          "label": "3",
+          "min": 3,
+          "max": 3,
+          "cells": [
+            "Shoot"
+          ]
+        },
+        {
+          "label": "4",
+          "min": 4,
+          "max": 4,
+          "cells": [
+            "Notice"
+          ]
+        },
+        {
+          "label": "5",
+          "min": 5,
+          "max": 5,
+          "cells": [
+            "Sneak"
+          ]
+        },
+        {
+          "label": "6",
+          "min": 6,
+          "max": 6,
+          "cells": [
+            "Exert"
+          ]
+        },
+        {
+          "label": "7",
+          "min": 7,
+          "max": 7,
+          "cells": [
+            "Program"
+          ]
+        },
+        {
+          "label": "8",
+          "min": 8,
+          "max": 8,
+          "cells": [
+            "Any Skill"
+          ]
+        }
+      ],
+      "classification": "player",
+      "origin": {
+        "heading": {
+          "line": 410,
+          "level": 5,
+          "text": "Learning"
+        },
+        "headingPath": [
+          "1.0.0 Character Creation",
+          "1.3.0 Backgrounds",
+          "1.3.3 Background List",
+          "Drone Jockey",
+          "Learning"
+        ],
+        "tagsLine": 412,
+        "tableStart": 414,
+        "tableEnd": 423,
+        "dieColumn": "d8",
+        "dice": "d8",
+        "soleTable": true,
+        "markdownFile": "CitiesWithoutNumberSRDv1.0.md"
+      }
+    },
+    {
+      "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-ganger-growth",
+      "name": "Growth",
+      "section": "1.0.0 Character Creation · 1.3.0 Backgrounds · 1.3.3 Background List · Ganger",
+      "category": "1.0.0 Character Creation",
+      "dice": "d6",
+      "columns": [
+        "Growth"
+      ],
+      "tags": [
+        "character-building"
+      ],
+      "rows": [
+        {
+          "label": "1",
+          "min": 1,
+          "max": 1,
+          "cells": [
+            "+1 Any Stat"
+          ]
+        },
+        {
+          "label": "2",
+          "min": 2,
+          "max": 2,
+          "cells": [
+            "+2 Physical"
+          ]
+        },
+        {
+          "label": "3",
+          "min": 3,
+          "max": 3,
+          "cells": [
+            "+2 Physical"
+          ]
+        },
+        {
+          "label": "4",
+          "min": 4,
+          "max": 4,
+          "cells": [
+            "+2 Mental"
+          ]
+        },
+        {
+          "label": "5",
+          "min": 5,
+          "max": 5,
+          "cells": [
+            "Any Combat"
+          ]
+        },
+        {
+          "label": "6",
+          "min": 6,
+          "max": 6,
+          "cells": [
+            "Any Skill"
+          ]
+        }
+      ],
+      "classification": "player",
+      "origin": {
+        "heading": {
+          "line": 429,
+          "level": 5,
+          "text": "Growth"
+        },
+        "headingPath": [
+          "1.0.0 Character Creation",
+          "1.3.0 Backgrounds",
+          "1.3.3 Background List",
+          "Ganger",
+          "Growth"
+        ],
+        "tagsLine": 431,
+        "tableStart": 433,
+        "tableEnd": 440,
+        "dieColumn": "d6",
+        "dice": "d6",
+        "soleTable": true,
+        "markdownFile": "CitiesWithoutNumberSRDv1.0.md"
+      }
+    },
+    {
+      "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-ganger-learning",
+      "name": "Learning",
+      "section": "1.0.0 Character Creation · 1.3.0 Backgrounds · 1.3.3 Background List · Ganger",
+      "category": "1.0.0 Character Creation",
+      "dice": "d8",
+      "columns": [
+        "Learning"
+      ],
+      "tags": [
+        "character-building"
+      ],
+      "rows": [
+        {
+          "label": "1",
+          "min": 1,
+          "max": 1,
+          "cells": [
+            "Any Combat"
+          ]
+        },
+        {
+          "label": "2",
+          "min": 2,
+          "max": 2,
+          "cells": [
+            "Connect"
+          ]
+        },
+        {
+          "label": "3",
+          "min": 3,
+          "max": 3,
+          "cells": [
+            "Survive"
+          ]
+        },
+        {
+          "label": "4",
+          "min": 4,
+          "max": 4,
+          "cells": [
+            "Notice"
+          ]
+        },
+        {
+          "label": "5",
+          "min": 5,
+          "max": 5,
+          "cells": [
+            "Sneak"
+          ]
+        },
+        {
+          "label": "6",
+          "min": 6,
+          "max": 6,
+          "cells": [
+            "Talk"
+          ]
+        },
+        {
+          "label": "7",
+          "min": 7,
+          "max": 7,
+          "cells": [
+            "Fix"
+          ]
+        },
+        {
+          "label": "8",
+          "min": 8,
+          "max": 8,
+          "cells": [
+            "Any Skill"
+          ]
+        }
+      ],
+      "classification": "player",
+      "origin": {
+        "heading": {
+          "line": 442,
+          "level": 5,
+          "text": "Learning"
+        },
+        "headingPath": [
+          "1.0.0 Character Creation",
+          "1.3.0 Backgrounds",
+          "1.3.3 Background List",
+          "Ganger",
+          "Learning"
+        ],
+        "tagsLine": 444,
+        "tableStart": 446,
+        "tableEnd": 455,
+        "dieColumn": "d8",
+        "dice": "d8",
+        "soleTable": true,
+        "markdownFile": "CitiesWithoutNumberSRDv1.0.md"
+      }
+    },
+    {
+      "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-laborer-growth",
+      "name": "Growth",
+      "section": "1.0.0 Character Creation · 1.3.0 Backgrounds · 1.3.3 Background List · Laborer",
+      "category": "1.0.0 Character Creation",
+      "dice": "d6",
+      "columns": [
+        "Growth"
+      ],
+      "tags": [
+        "character-building"
+      ],
+      "rows": [
+        {
+          "label": "1",
+          "min": 1,
+          "max": 1,
+          "cells": [
+            "+1 Any Stat"
+          ]
+        },
+        {
+          "label": "2",
+          "min": 2,
+          "max": 2,
+          "cells": [
+            "+2 Physical"
+          ]
+        },
+        {
+          "label": "3",
+          "min": 3,
+          "max": 3,
+          "cells": [
+            "+2 Physical"
+          ]
+        },
+        {
+          "label": "4",
+          "min": 4,
+          "max": 4,
+          "cells": [
+            "+2 Physical"
+          ]
+        },
+        {
+          "label": "5",
+          "min": 5,
+          "max": 5,
+          "cells": [
+            "Exert"
+          ]
+        },
+        {
+          "label": "6",
+          "min": 6,
+          "max": 6,
+          "cells": [
+            "Any Skill"
+          ]
+        }
+      ],
+      "classification": "player",
+      "origin": {
+        "heading": {
+          "line": 461,
+          "level": 5,
+          "text": "Growth"
+        },
+        "headingPath": [
+          "1.0.0 Character Creation",
+          "1.3.0 Backgrounds",
+          "1.3.3 Background List",
+          "Laborer",
+          "Growth"
+        ],
+        "tagsLine": 463,
+        "tableStart": 465,
+        "tableEnd": 472,
+        "dieColumn": "d6",
+        "dice": "d6",
+        "soleTable": true,
+        "markdownFile": "CitiesWithoutNumberSRDv1.0.md"
+      }
+    },
+    {
+      "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-laborer-learning",
+      "name": "Learning",
+      "section": "1.0.0 Character Creation · 1.3.0 Backgrounds · 1.3.3 Background List · Laborer",
+      "category": "1.0.0 Character Creation",
+      "dice": "d8",
+      "columns": [
+        "Learning"
+      ],
+      "tags": [
+        "character-building"
+      ],
+      "rows": [
+        {
+          "label": "1",
+          "min": 1,
+          "max": 1,
+          "cells": [
+            "Exert"
+          ]
+        },
+        {
+          "label": "2",
+          "min": 2,
+          "max": 2,
+          "cells": [
+            "Work"
+          ]
+        },
+        {
+          "label": "3",
+          "min": 3,
+          "max": 3,
+          "cells": [
+            "Sneak"
+          ]
+        },
+        {
+          "label": "4",
+          "min": 4,
+          "max": 4,
+          "cells": [
+            "Trade"
+          ]
+        },
+        {
+          "label": "5",
+          "min": 5,
+          "max": 5,
+          "cells": [
+            "Survive"
+          ]
+        },
+        {
+          "label": "6",
+          "min": 6,
+          "max": 6,
+          "cells": [
+            "Fix"
+          ]
+        },
+        {
+          "label": "7",
+          "min": 7,
+          "max": 7,
+          "cells": [
+            "Any Combat"
+          ]
+        },
+        {
+          "label": "8",
+          "min": 8,
+          "max": 8,
+          "cells": [
+            "Any Skill"
+          ]
+        }
+      ],
+      "classification": "player",
+      "origin": {
+        "heading": {
+          "line": 474,
+          "level": 5,
+          "text": "Learning"
+        },
+        "headingPath": [
+          "1.0.0 Character Creation",
+          "1.3.0 Backgrounds",
+          "1.3.3 Background List",
+          "Laborer",
+          "Learning"
+        ],
+        "tagsLine": 476,
+        "tableStart": 478,
+        "tableEnd": 487,
+        "dieColumn": "d8",
+        "dice": "d8",
+        "soleTable": true,
+        "markdownFile": "CitiesWithoutNumberSRDv1.0.md"
+      }
+    },
+    {
+      "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-law-enforcement-growth",
+      "name": "Growth",
+      "section": "1.0.0 Character Creation · 1.3.0 Backgrounds · 1.3.3 Background List · Law Enforcement",
+      "category": "1.0.0 Character Creation",
+      "dice": "d6",
+      "columns": [
+        "Growth"
+      ],
+      "tags": [
+        "character-building"
+      ],
+      "rows": [
+        {
+          "label": "1",
+          "min": 1,
+          "max": 1,
+          "cells": [
+            "+1 Any Stat"
+          ]
+        },
+        {
+          "label": "2",
+          "min": 2,
+          "max": 2,
+          "cells": [
+            "+2 Physical"
+          ]
+        },
+        {
+          "label": "3",
+          "min": 3,
+          "max": 3,
+          "cells": [
+            "+2 Physical"
+          ]
+        },
+        {
+          "label": "4",
+          "min": 4,
+          "max": 4,
+          "cells": [
+            "+2 Mental"
+          ]
+        },
+        {
+          "label": "5",
+          "min": 5,
+          "max": 5,
+          "cells": [
+            "Administer"
+          ]
+        },
+        {
+          "label": "6",
+          "min": 6,
+          "max": 6,
+          "cells": [
+            "Any Skill"
+          ]
+        }
+      ],
+      "classification": "player",
+      "origin": {
+        "heading": {
+          "line": 493,
+          "level": 5,
+          "text": "Growth"
+        },
+        "headingPath": [
+          "1.0.0 Character Creation",
+          "1.3.0 Backgrounds",
+          "1.3.3 Background List",
+          "Law Enforcement",
+          "Growth"
+        ],
+        "tagsLine": 495,
+        "tableStart": 497,
+        "tableEnd": 504,
+        "dieColumn": "d6",
+        "dice": "d6",
+        "soleTable": true,
+        "markdownFile": "CitiesWithoutNumberSRDv1.0.md"
+      }
+    },
+    {
+      "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-law-enforcement-learning",
+      "name": "Learning",
+      "section": "1.0.0 Character Creation · 1.3.0 Backgrounds · 1.3.3 Background List · Law Enforcement",
+      "category": "1.0.0 Character Creation",
+      "dice": "d8",
+      "columns": [
+        "Learning"
+      ],
+      "tags": [
+        "character-building"
+      ],
+      "rows": [
+        {
+          "label": "1",
+          "min": 1,
+          "max": 1,
+          "cells": [
+            "Administer"
+          ]
+        },
+        {
+          "label": "2",
+          "min": 2,
+          "max": 2,
+          "cells": [
+            "Any Combat"
+          ]
+        },
+        {
+          "label": "3",
+          "min": 3,
+          "max": 3,
+          "cells": [
+            "Notice"
+          ]
+        },
+        {
+          "label": "4",
+          "min": 4,
+          "max": 4,
+          "cells": [
+            "Sneak"
+          ]
+        },
+        {
+          "label": "5",
+          "min": 5,
+          "max": 5,
+          "cells": [
+            "Talk"
+          ]
+        },
+        {
+          "label": "6",
+          "min": 6,
+          "max": 6,
+          "cells": [
+            "Connect"
+          ]
+        },
+        {
+          "label": "7",
+          "min": 7,
+          "max": 7,
+          "cells": [
+            "Heal"
+          ]
+        },
+        {
+          "label": "8",
+          "min": 8,
+          "max": 8,
+          "cells": [
+            "Any Skill"
+          ]
+        }
+      ],
+      "classification": "player",
+      "origin": {
+        "heading": {
+          "line": 506,
+          "level": 5,
+          "text": "Learning"
+        },
+        "headingPath": [
+          "1.0.0 Character Creation",
+          "1.3.0 Backgrounds",
+          "1.3.3 Background List",
+          "Law Enforcement",
+          "Learning"
+        ],
+        "tagsLine": 508,
+        "tableStart": 510,
+        "tableEnd": 519,
+        "dieColumn": "d8",
+        "dice": "d8",
+        "soleTable": true,
+        "markdownFile": "CitiesWithoutNumberSRDv1.0.md"
+      }
+    },
+    {
+      "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-manager-growth",
+      "name": "Growth",
+      "section": "1.0.0 Character Creation · 1.3.0 Backgrounds · 1.3.3 Background List · Manager",
+      "category": "1.0.0 Character Creation",
+      "dice": "d6",
+      "columns": [
+        "Growth"
+      ],
+      "tags": [
+        "character-building"
+      ],
+      "rows": [
+        {
+          "label": "1",
+          "min": 1,
+          "max": 1,
+          "cells": [
+            "+1 Any Stat"
+          ]
+        },
+        {
+          "label": "2",
+          "min": 2,
+          "max": 2,
+          "cells": [
+            "+2 Mental"
+          ]
+        },
+        {
+          "label": "3",
+          "min": 3,
+          "max": 3,
+          "cells": [
+            "+2 Mental"
+          ]
+        },
+        {
+          "label": "4",
+          "min": 4,
+          "max": 4,
+          "cells": [
+            "+2 Mental"
+          ]
+        },
+        {
+          "label": "5",
+          "min": 5,
+          "max": 5,
+          "cells": [
+            "Administer"
+          ]
+        },
+        {
+          "label": "6",
+          "min": 6,
+          "max": 6,
+          "cells": [
+            "Any Skill"
+          ]
+        }
+      ],
+      "classification": "player",
+      "origin": {
+        "heading": {
+          "line": 525,
+          "level": 5,
+          "text": "Growth"
+        },
+        "headingPath": [
+          "1.0.0 Character Creation",
+          "1.3.0 Backgrounds",
+          "1.3.3 Background List",
+          "Manager",
+          "Growth"
+        ],
+        "tagsLine": 527,
+        "tableStart": 529,
+        "tableEnd": 536,
+        "dieColumn": "d6",
+        "dice": "d6",
+        "soleTable": true,
+        "markdownFile": "CitiesWithoutNumberSRDv1.0.md"
+      }
+    },
+    {
+      "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-manager-learning",
+      "name": "Learning",
+      "section": "1.0.0 Character Creation · 1.3.0 Backgrounds · 1.3.3 Background List · Manager",
+      "category": "1.0.0 Character Creation",
+      "dice": "d8",
+      "columns": [
+        "Learning"
+      ],
+      "tags": [
+        "character-building"
+      ],
+      "rows": [
+        {
+          "label": "1",
+          "min": 1,
+          "max": 1,
+          "cells": [
+            "Administer"
+          ]
+        },
+        {
+          "label": "2",
+          "min": 2,
+          "max": 2,
+          "cells": [
+            "Talk"
+          ]
+        },
+        {
+          "label": "3",
+          "min": 3,
+          "max": 3,
+          "cells": [
+            "Trade"
+          ]
+        },
+        {
+          "label": "4",
+          "min": 4,
+          "max": 4,
+          "cells": [
+            "Connect"
+          ]
+        },
+        {
+          "label": "5",
+          "min": 5,
+          "max": 5,
+          "cells": [
+            "Notice"
+          ]
+        },
+        {
+          "label": "6",
+          "min": 6,
+          "max": 6,
+          "cells": [
+            "Lead"
+          ]
+        },
+        {
+          "label": "7",
+          "min": 7,
+          "max": 7,
+          "cells": [
+            "Program"
+          ]
+        },
+        {
+          "label": "8",
+          "min": 8,
+          "max": 8,
+          "cells": [
+            "Any Skill"
+          ]
+        }
+      ],
+      "classification": "player",
+      "origin": {
+        "heading": {
+          "line": 538,
+          "level": 5,
+          "text": "Learning"
+        },
+        "headingPath": [
+          "1.0.0 Character Creation",
+          "1.3.0 Backgrounds",
+          "1.3.3 Background List",
+          "Manager",
+          "Learning"
+        ],
+        "tagsLine": 540,
+        "tableStart": 542,
+        "tableEnd": 551,
+        "dieColumn": "d8",
+        "dice": "d8",
+        "soleTable": true,
+        "markdownFile": "CitiesWithoutNumberSRDv1.0.md"
+      }
+    },
+    {
+      "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-outlander-growth",
+      "name": "Growth",
+      "section": "1.0.0 Character Creation · 1.3.0 Backgrounds · 1.3.3 Background List · Outlander",
+      "category": "1.0.0 Character Creation",
+      "dice": "d6",
+      "columns": [
+        "Growth"
+      ],
+      "tags": [
+        "character-building"
+      ],
+      "rows": [
+        {
+          "label": "1",
+          "min": 1,
+          "max": 1,
+          "cells": [
+            "+1 Any Stat"
+          ]
+        },
+        {
+          "label": "2",
+          "min": 2,
+          "max": 2,
+          "cells": [
+            "+2 Mental"
+          ]
+        },
+        {
+          "label": "3",
+          "min": 3,
+          "max": 3,
+          "cells": [
+            "+2 Physical"
+          ]
+        },
+        {
+          "label": "4",
+          "min": 4,
+          "max": 4,
+          "cells": [
+            "+2 Physical"
+          ]
+        },
+        {
+          "label": "5",
+          "min": 5,
+          "max": 5,
+          "cells": [
+            "Survive"
+          ]
+        },
+        {
+          "label": "6",
+          "min": 6,
+          "max": 6,
+          "cells": [
+            "Any Skill"
+          ]
+        }
+      ],
+      "classification": "player",
+      "origin": {
+        "heading": {
+          "line": 557,
+          "level": 5,
+          "text": "Growth"
+        },
+        "headingPath": [
+          "1.0.0 Character Creation",
+          "1.3.0 Backgrounds",
+          "1.3.3 Background List",
+          "Outlander",
+          "Growth"
+        ],
+        "tagsLine": 559,
+        "tableStart": 561,
+        "tableEnd": 568,
+        "dieColumn": "d6",
+        "dice": "d6",
+        "soleTable": true,
+        "markdownFile": "CitiesWithoutNumberSRDv1.0.md"
+      }
+    },
+    {
+      "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-outlander-learning",
+      "name": "Learning",
+      "section": "1.0.0 Character Creation · 1.3.0 Backgrounds · 1.3.3 Background List · Outlander",
+      "category": "1.0.0 Character Creation",
+      "dice": "d8",
+      "columns": [
+        "Learning"
+      ],
+      "tags": [
+        "character-building"
+      ],
+      "rows": [
+        {
+          "label": "1",
+          "min": 1,
+          "max": 1,
+          "cells": [
+            "Survive"
+          ]
+        },
+        {
+          "label": "2",
+          "min": 2,
+          "max": 2,
+          "cells": [
+            "Drive"
+          ]
+        },
+        {
+          "label": "3",
+          "min": 3,
+          "max": 3,
+          "cells": [
+            "Fix"
+          ]
+        },
+        {
+          "label": "4",
+          "min": 4,
+          "max": 4,
+          "cells": [
+            "Trade"
+          ]
+        },
+        {
+          "label": "5",
+          "min": 5,
+          "max": 5,
+          "cells": [
+            "Sneak"
+          ]
+        },
+        {
+          "label": "6",
+          "min": 6,
+          "max": 6,
+          "cells": [
+            "Connect"
+          ]
+        },
+        {
+          "label": "7",
+          "min": 7,
+          "max": 7,
+          "cells": [
+            "Any Combat"
+          ]
+        },
+        {
+          "label": "8",
+          "min": 8,
+          "max": 8,
+          "cells": [
+            "Any Skill"
+          ]
+        }
+      ],
+      "classification": "player",
+      "origin": {
+        "heading": {
+          "line": 570,
+          "level": 5,
+          "text": "Learning"
+        },
+        "headingPath": [
+          "1.0.0 Character Creation",
+          "1.3.0 Backgrounds",
+          "1.3.3 Background List",
+          "Outlander",
+          "Learning"
+        ],
+        "tagsLine": 572,
+        "tableStart": 574,
+        "tableEnd": 583,
+        "dieColumn": "d8",
+        "dice": "d8",
+        "soleTable": true,
+        "markdownFile": "CitiesWithoutNumberSRDv1.0.md"
+      }
+    },
+    {
+      "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-performer-growth",
+      "name": "Growth",
+      "section": "1.0.0 Character Creation · 1.3.0 Backgrounds · 1.3.3 Background List · Performer",
+      "category": "1.0.0 Character Creation",
+      "dice": "d6",
+      "columns": [
+        "Growth"
+      ],
+      "tags": [
+        "character-building"
+      ],
+      "rows": [
+        {
+          "label": "1",
+          "min": 1,
+          "max": 1,
+          "cells": [
+            "+1 Any Stat"
+          ]
+        },
+        {
+          "label": "2",
+          "min": 2,
+          "max": 2,
+          "cells": [
+            "+1 Any Stat"
+          ]
+        },
+        {
+          "label": "3",
+          "min": 3,
+          "max": 3,
+          "cells": [
+            "+2 Mental"
+          ]
+        },
+        {
+          "label": "4",
+          "min": 4,
+          "max": 4,
+          "cells": [
+            "+2 Physical"
+          ]
+        },
+        {
+          "label": "5",
+          "min": 5,
+          "max": 5,
+          "cells": [
+            "Perform"
+          ]
+        },
+        {
+          "label": "6",
+          "min": 6,
+          "max": 6,
+          "cells": [
+            "Any Skill"
+          ]
+        }
+      ],
+      "classification": "player",
+      "origin": {
+        "heading": {
+          "line": 589,
+          "level": 5,
+          "text": "Growth"
+        },
+        "headingPath": [
+          "1.0.0 Character Creation",
+          "1.3.0 Backgrounds",
+          "1.3.3 Background List",
+          "Performer",
+          "Growth"
+        ],
+        "tagsLine": 591,
+        "tableStart": 593,
+        "tableEnd": 600,
+        "dieColumn": "d6",
+        "dice": "d6",
+        "soleTable": true,
+        "markdownFile": "CitiesWithoutNumberSRDv1.0.md"
+      }
+    },
+    {
+      "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-performer-learning",
+      "name": "Learning",
+      "section": "1.0.0 Character Creation · 1.3.0 Backgrounds · 1.3.3 Background List · Performer",
+      "category": "1.0.0 Character Creation",
+      "dice": "d8",
+      "columns": [
+        "Learning"
+      ],
+      "tags": [
+        "character-building"
+      ],
+      "rows": [
+        {
+          "label": "1",
+          "min": 1,
+          "max": 1,
+          "cells": [
+            "Perform"
+          ]
+        },
+        {
+          "label": "2",
+          "min": 2,
+          "max": 2,
+          "cells": [
+            "Lead"
+          ]
+        },
+        {
+          "label": "3",
+          "min": 3,
+          "max": 3,
+          "cells": [
+            "Connect"
+          ]
+        },
+        {
+          "label": "4",
+          "min": 4,
+          "max": 4,
+          "cells": [
+            "Talk"
+          ]
+        },
+        {
+          "label": "5",
+          "min": 5,
+          "max": 5,
+          "cells": [
+            "Trade"
+          ]
+        },
+        {
+          "label": "6",
+          "min": 6,
+          "max": 6,
+          "cells": [
+            "Sneak"
+          ]
+        },
+        {
+          "label": "7",
+          "min": 7,
+          "max": 7,
+          "cells": [
+            "Any Combat"
+          ]
+        },
+        {
+          "label": "8",
+          "min": 8,
+          "max": 8,
+          "cells": [
+            "Any Skill"
+          ]
+        }
+      ],
+      "classification": "player",
+      "origin": {
+        "heading": {
+          "line": 602,
+          "level": 5,
+          "text": "Learning"
+        },
+        "headingPath": [
+          "1.0.0 Character Creation",
+          "1.3.0 Backgrounds",
+          "1.3.3 Background List",
+          "Performer",
+          "Learning"
+        ],
+        "tagsLine": 604,
+        "tableStart": 606,
+        "tableEnd": 615,
+        "dieColumn": "d8",
+        "dice": "d8",
+        "soleTable": true,
+        "markdownFile": "CitiesWithoutNumberSRDv1.0.md"
+      }
+    },
+    {
+      "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-soldier-growth",
+      "name": "Growth",
+      "section": "1.0.0 Character Creation · 1.3.0 Backgrounds · 1.3.3 Background List · Soldier",
+      "category": "1.0.0 Character Creation",
+      "dice": "d6",
+      "columns": [
+        "Growth"
+      ],
+      "tags": [
+        "character-building"
+      ],
+      "rows": [
+        {
+          "label": "1",
+          "min": 1,
+          "max": 1,
+          "cells": [
+            "+1 Any Stat"
+          ]
+        },
+        {
+          "label": "2",
+          "min": 2,
+          "max": 2,
+          "cells": [
+            "+2 Mental"
+          ]
+        },
+        {
+          "label": "3",
+          "min": 3,
+          "max": 3,
+          "cells": [
+            "+2 Physical"
+          ]
+        },
+        {
+          "label": "4",
+          "min": 4,
+          "max": 4,
+          "cells": [
+            "+2 Physical"
+          ]
+        },
+        {
+          "label": "5",
+          "min": 5,
+          "max": 5,
+          "cells": [
+            "Any Combat"
+          ]
+        },
+        {
+          "label": "6",
+          "min": 6,
+          "max": 6,
+          "cells": [
+            "Any Skill"
+          ]
+        }
+      ],
+      "classification": "player",
+      "origin": {
+        "heading": {
+          "line": 621,
+          "level": 5,
+          "text": "Growth"
+        },
+        "headingPath": [
+          "1.0.0 Character Creation",
+          "1.3.0 Backgrounds",
+          "1.3.3 Background List",
+          "Soldier",
+          "Growth"
+        ],
+        "tagsLine": 623,
+        "tableStart": 625,
+        "tableEnd": 632,
+        "dieColumn": "d6",
+        "dice": "d6",
+        "soleTable": true,
+        "markdownFile": "CitiesWithoutNumberSRDv1.0.md"
+      }
+    },
+    {
+      "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-soldier-learning",
+      "name": "Learning",
+      "section": "1.0.0 Character Creation · 1.3.0 Backgrounds · 1.3.3 Background List · Soldier",
+      "category": "1.0.0 Character Creation",
+      "dice": "d8",
+      "columns": [
+        "Learning"
+      ],
+      "tags": [
+        "character-building"
+      ],
+      "rows": [
+        {
+          "label": "1",
+          "min": 1,
+          "max": 1,
+          "cells": [
+            "Any Combat"
+          ]
+        },
+        {
+          "label": "2",
+          "min": 2,
+          "max": 2,
+          "cells": [
+            "Exert"
+          ]
+        },
+        {
+          "label": "3",
+          "min": 3,
+          "max": 3,
+          "cells": [
+            "Lead"
+          ]
+        },
+        {
+          "label": "4",
+          "min": 4,
+          "max": 4,
+          "cells": [
+            "Notice"
+          ]
+        },
+        {
+          "label": "5",
+          "min": 5,
+          "max": 5,
+          "cells": [
+            "Survive"
+          ]
+        },
+        {
+          "label": "6",
+          "min": 6,
+          "max": 6,
+          "cells": [
+            "Heal"
+          ]
+        },
+        {
+          "label": "7",
+          "min": 7,
+          "max": 7,
+          "cells": [
+            "Administer"
+          ]
+        },
+        {
+          "label": "8",
+          "min": 8,
+          "max": 8,
+          "cells": [
+            "Any Skill"
+          ]
+        }
+      ],
+      "classification": "player",
+      "origin": {
+        "heading": {
+          "line": 634,
+          "level": 5,
+          "text": "Learning"
+        },
+        "headingPath": [
+          "1.0.0 Character Creation",
+          "1.3.0 Backgrounds",
+          "1.3.3 Background List",
+          "Soldier",
+          "Learning"
+        ],
+        "tagsLine": 636,
+        "tableStart": 638,
+        "tableEnd": 647,
+        "dieColumn": "d8",
+        "dice": "d8",
+        "soleTable": true,
+        "markdownFile": "CitiesWithoutNumberSRDv1.0.md"
+      }
+    },
+    {
+      "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-spy-growth",
+      "name": "Growth",
+      "section": "1.0.0 Character Creation · 1.3.0 Backgrounds · 1.3.3 Background List · Spy",
+      "category": "1.0.0 Character Creation",
+      "dice": "d6",
+      "columns": [
+        "Growth"
+      ],
+      "tags": [
+        "character-building"
+      ],
+      "rows": [
+        {
+          "label": "1",
+          "min": 1,
+          "max": 1,
+          "cells": [
+            "+1 Any Stat"
+          ]
+        },
+        {
+          "label": "2",
+          "min": 2,
+          "max": 2,
+          "cells": [
+            "+1 Any Stat"
+          ]
+        },
+        {
+          "label": "3",
+          "min": 3,
+          "max": 3,
+          "cells": [
+            "+2 Mental"
+          ]
+        },
+        {
+          "label": "4",
+          "min": 4,
+          "max": 4,
+          "cells": [
+            "+2 Physical"
+          ]
+        },
+        {
+          "label": "5",
+          "min": 5,
+          "max": 5,
+          "cells": [
+            "Sneak"
+          ]
+        },
+        {
+          "label": "6",
+          "min": 6,
+          "max": 6,
+          "cells": [
+            "Any Skill"
+          ]
+        }
+      ],
+      "classification": "player",
+      "origin": {
+        "heading": {
+          "line": 653,
+          "level": 5,
+          "text": "Growth"
+        },
+        "headingPath": [
+          "1.0.0 Character Creation",
+          "1.3.0 Backgrounds",
+          "1.3.3 Background List",
+          "Spy",
+          "Growth"
+        ],
+        "tagsLine": 655,
+        "tableStart": 657,
+        "tableEnd": 664,
+        "dieColumn": "d6",
+        "dice": "d6",
+        "soleTable": true,
+        "markdownFile": "CitiesWithoutNumberSRDv1.0.md"
+      }
+    },
+    {
+      "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-spy-learning",
+      "name": "Learning",
+      "section": "1.0.0 Character Creation · 1.3.0 Backgrounds · 1.3.3 Background List · Spy",
+      "category": "1.0.0 Character Creation",
+      "dice": "d8",
+      "columns": [
+        "Learning"
+      ],
+      "tags": [
+        "character-building"
+      ],
+      "rows": [
+        {
+          "label": "1",
+          "min": 1,
+          "max": 1,
+          "cells": [
+            "Sneak"
+          ]
+        },
+        {
+          "label": "2",
+          "min": 2,
+          "max": 2,
+          "cells": [
+            "Notice"
+          ]
+        },
+        {
+          "label": "3",
+          "min": 3,
+          "max": 3,
+          "cells": [
+            "Talk"
+          ]
+        },
+        {
+          "label": "4",
+          "min": 4,
+          "max": 4,
+          "cells": [
+            "Connect"
+          ]
+        },
+        {
+          "label": "5",
+          "min": 5,
+          "max": 5,
+          "cells": [
+            "Program"
+          ]
+        },
+        {
+          "label": "6",
+          "min": 6,
+          "max": 6,
+          "cells": [
+            "Exert"
+          ]
+        },
+        {
+          "label": "7",
+          "min": 7,
+          "max": 7,
+          "cells": [
+            "Any Combat"
+          ]
+        },
+        {
+          "label": "8",
+          "min": 8,
+          "max": 8,
+          "cells": [
+            "Any Skill"
+          ]
+        }
+      ],
+      "classification": "player",
+      "origin": {
+        "heading": {
+          "line": 666,
+          "level": 5,
+          "text": "Learning"
+        },
+        "headingPath": [
+          "1.0.0 Character Creation",
+          "1.3.0 Backgrounds",
+          "1.3.3 Background List",
+          "Spy",
+          "Learning"
+        ],
+        "tagsLine": 668,
+        "tableStart": 670,
+        "tableEnd": 679,
+        "dieColumn": "d8",
+        "dice": "d8",
+        "soleTable": true,
+        "markdownFile": "CitiesWithoutNumberSRDv1.0.md"
+      }
+    },
+    {
+      "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-trader-growth",
+      "name": "Growth",
+      "section": "1.0.0 Character Creation · 1.3.0 Backgrounds · 1.3.3 Background List · Trader",
+      "category": "1.0.0 Character Creation",
+      "dice": "d6",
+      "columns": [
+        "Growth"
+      ],
+      "tags": [
+        "character-building"
+      ],
+      "rows": [
+        {
+          "label": "1",
+          "min": 1,
+          "max": 1,
+          "cells": [
+            "+1 Any Stat"
+          ]
+        },
+        {
+          "label": "2",
+          "min": 2,
+          "max": 2,
+          "cells": [
+            "+2 Mental"
+          ]
+        },
+        {
+          "label": "3",
+          "min": 3,
+          "max": 3,
+          "cells": [
+            "+2 Mental"
+          ]
+        },
+        {
+          "label": "4",
+          "min": 4,
+          "max": 4,
+          "cells": [
+            "+2 Physical"
+          ]
+        },
+        {
+          "label": "5",
+          "min": 5,
+          "max": 5,
+          "cells": [
+            "Trade"
+          ]
+        },
+        {
+          "label": "6",
+          "min": 6,
+          "max": 6,
+          "cells": [
+            "Any Skill"
+          ]
+        }
+      ],
+      "classification": "player",
+      "origin": {
+        "heading": {
+          "line": 685,
+          "level": 5,
+          "text": "Growth"
+        },
+        "headingPath": [
+          "1.0.0 Character Creation",
+          "1.3.0 Backgrounds",
+          "1.3.3 Background List",
+          "Trader",
+          "Growth"
+        ],
+        "tagsLine": 687,
+        "tableStart": 689,
+        "tableEnd": 696,
+        "dieColumn": "d6",
+        "dice": "d6",
+        "soleTable": true,
+        "markdownFile": "CitiesWithoutNumberSRDv1.0.md"
+      }
+    },
+    {
+      "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-trader-learning",
+      "name": "Learning",
+      "section": "1.0.0 Character Creation · 1.3.0 Backgrounds · 1.3.3 Background List · Trader",
+      "category": "1.0.0 Character Creation",
+      "dice": "d8",
+      "columns": [
+        "Learning"
+      ],
+      "tags": [
+        "character-building"
+      ],
+      "rows": [
+        {
+          "label": "1",
+          "min": 1,
+          "max": 1,
+          "cells": [
+            "Trade"
+          ]
+        },
+        {
+          "label": "2",
+          "min": 2,
+          "max": 2,
+          "cells": [
+            "Notice"
+          ]
+        },
+        {
+          "label": "3",
+          "min": 3,
+          "max": 3,
+          "cells": [
+            "Connect"
+          ]
+        },
+        {
+          "label": "4",
+          "min": 4,
+          "max": 4,
+          "cells": [
+            "Fix"
+          ]
+        },
+        {
+          "label": "5",
+          "min": 5,
+          "max": 5,
+          "cells": [
+            "Talk"
+          ]
+        },
+        {
+          "label": "6",
+          "min": 6,
+          "max": 6,
+          "cells": [
+            "Administer"
+          ]
+        },
+        {
+          "label": "7",
+          "min": 7,
+          "max": 7,
+          "cells": [
+            "Any Combat"
+          ]
+        },
+        {
+          "label": "8",
+          "min": 8,
+          "max": 8,
+          "cells": [
+            "Any Skill"
+          ]
+        }
+      ],
+      "classification": "player",
+      "origin": {
+        "heading": {
+          "line": 698,
+          "level": 5,
+          "text": "Learning"
+        },
+        "headingPath": [
+          "1.0.0 Character Creation",
+          "1.3.0 Backgrounds",
+          "1.3.3 Background List",
+          "Trader",
+          "Learning"
+        ],
+        "tagsLine": 700,
+        "tableStart": 702,
+        "tableEnd": 711,
+        "dieColumn": "d8",
+        "dice": "d8",
+        "soleTable": true,
+        "markdownFile": "CitiesWithoutNumberSRDv1.0.md"
+      }
+    },
+    {
+      "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-streetwalker-growth",
+      "name": "Growth",
+      "section": "1.0.0 Character Creation · 1.3.0 Backgrounds · 1.3.3 Background List · Streetwalker",
+      "category": "1.0.0 Character Creation",
+      "dice": "d6",
+      "columns": [
+        "Growth"
+      ],
+      "tags": [
+        "character-building"
+      ],
+      "rows": [
+        {
+          "label": "1",
+          "min": 1,
+          "max": 1,
+          "cells": [
+            "+1 Any Stat"
+          ]
+        },
+        {
+          "label": "2",
+          "min": 2,
+          "max": 2,
+          "cells": [
+            "+1 Any Stat"
+          ]
+        },
+        {
+          "label": "3",
+          "min": 3,
+          "max": 3,
+          "cells": [
+            "+2 Physical"
+          ]
+        },
+        {
+          "label": "4",
+          "min": 4,
+          "max": 4,
+          "cells": [
+            "+2 Mental"
+          ]
+        },
+        {
+          "label": "5",
+          "min": 5,
+          "max": 5,
+          "cells": [
+            "Talk"
+          ]
+        },
+        {
+          "label": "6",
+          "min": 6,
+          "max": 6,
+          "cells": [
+            "Any Skill"
+          ]
+        }
+      ],
+      "classification": "player",
+      "origin": {
+        "heading": {
+          "line": 717,
+          "level": 5,
+          "text": "Growth"
+        },
+        "headingPath": [
+          "1.0.0 Character Creation",
+          "1.3.0 Backgrounds",
+          "1.3.3 Background List",
+          "Streetwalker",
+          "Growth"
+        ],
+        "tagsLine": 719,
+        "tableStart": 721,
+        "tableEnd": 728,
+        "dieColumn": "d6",
+        "dice": "d6",
+        "soleTable": true,
+        "markdownFile": "CitiesWithoutNumberSRDv1.0.md"
+      }
+    },
+    {
+      "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-streetwalker-learning",
+      "name": "Learning",
+      "section": "1.0.0 Character Creation · 1.3.0 Backgrounds · 1.3.3 Background List · Streetwalker",
+      "category": "1.0.0 Character Creation",
+      "dice": "d8",
+      "columns": [
+        "Learning"
+      ],
+      "tags": [
+        "character-building"
+      ],
+      "rows": [
+        {
+          "label": "1",
+          "min": 1,
+          "max": 1,
+          "cells": [
+            "Talk"
+          ]
+        },
+        {
+          "label": "2",
+          "min": 2,
+          "max": 2,
+          "cells": [
+            "Perform"
+          ]
+        },
+        {
+          "label": "3",
+          "min": 3,
+          "max": 3,
+          "cells": [
+            "Connect"
+          ]
+        },
+        {
+          "label": "4",
+          "min": 4,
+          "max": 4,
+          "cells": [
+            "Trade"
+          ]
+        },
+        {
+          "label": "5",
+          "min": 5,
+          "max": 5,
+          "cells": [
+            "Sneak"
+          ]
+        },
+        {
+          "label": "6",
+          "min": 6,
+          "max": 6,
+          "cells": [
+            "Notice"
+          ]
+        },
+        {
+          "label": "7",
+          "min": 7,
+          "max": 7,
+          "cells": [
+            "Heal"
+          ]
+        },
+        {
+          "label": "8",
+          "min": 8,
+          "max": 8,
+          "cells": [
+            "Any Skill"
+          ]
+        }
+      ],
+      "classification": "player",
+      "origin": {
+        "heading": {
+          "line": 730,
+          "level": 5,
+          "text": "Learning"
+        },
+        "headingPath": [
+          "1.0.0 Character Creation",
+          "1.3.0 Backgrounds",
+          "1.3.3 Background List",
+          "Streetwalker",
+          "Learning"
+        ],
+        "tagsLine": 732,
+        "tableStart": 734,
+        "tableEnd": 743,
+        "dieColumn": "d8",
+        "dice": "d8",
+        "soleTable": true,
+        "markdownFile": "CitiesWithoutNumberSRDv1.0.md"
+      }
+    },
+    {
+      "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-technician-growth",
+      "name": "Growth",
+      "section": "1.0.0 Character Creation · 1.3.0 Backgrounds · 1.3.3 Background List · Technician",
+      "category": "1.0.0 Character Creation",
+      "dice": "d6",
+      "columns": [
+        "Growth"
+      ],
+      "tags": [
+        "character-building"
+      ],
+      "rows": [
+        {
+          "label": "1",
+          "min": 1,
+          "max": 1,
+          "cells": [
+            "+1 Any Stat"
+          ]
+        },
+        {
+          "label": "2",
+          "min": 2,
+          "max": 2,
+          "cells": [
+            "+2 Physical"
+          ]
+        },
+        {
+          "label": "3",
+          "min": 3,
+          "max": 3,
+          "cells": [
+            "+2 Mental"
+          ]
+        },
+        {
+          "label": "4",
+          "min": 4,
+          "max": 4,
+          "cells": [
+            "+2 Mental"
+          ]
+        },
+        {
+          "label": "5",
+          "min": 5,
+          "max": 5,
+          "cells": [
+            "Fix"
+          ]
+        },
+        {
+          "label": "6",
+          "min": 6,
+          "max": 6,
+          "cells": [
+            "Any Skill"
+          ]
+        }
+      ],
+      "classification": "player",
+      "origin": {
+        "heading": {
+          "line": 749,
+          "level": 5,
+          "text": "Growth"
+        },
+        "headingPath": [
+          "1.0.0 Character Creation",
+          "1.3.0 Backgrounds",
+          "1.3.3 Background List",
+          "Technician",
+          "Growth"
+        ],
+        "tagsLine": 751,
+        "tableStart": 753,
+        "tableEnd": 760,
+        "dieColumn": "d6",
+        "dice": "d6",
+        "soleTable": true,
+        "markdownFile": "CitiesWithoutNumberSRDv1.0.md"
+      }
+    },
+    {
+      "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-technician-learning",
+      "name": "Learning",
+      "section": "1.0.0 Character Creation · 1.3.0 Backgrounds · 1.3.3 Background List · Technician",
+      "category": "1.0.0 Character Creation",
+      "dice": "d8",
+      "columns": [
+        "Learning"
+      ],
+      "tags": [
+        "character-building"
+      ],
+      "rows": [
+        {
+          "label": "1",
+          "min": 1,
+          "max": 1,
+          "cells": [
+            "Fix"
+          ]
+        },
+        {
+          "label": "2",
+          "min": 2,
+          "max": 2,
+          "cells": [
+            "Program"
+          ]
+        },
+        {
+          "label": "3",
+          "min": 3,
+          "max": 3,
+          "cells": [
+            "Exert"
+          ]
+        },
+        {
+          "label": "4",
+          "min": 4,
+          "max": 4,
+          "cells": [
+            "Trade"
+          ]
+        },
+        {
+          "label": "5",
+          "min": 5,
+          "max": 5,
+          "cells": [
+            "Notice"
+          ]
+        },
+        {
+          "label": "6",
+          "min": 6,
+          "max": 6,
+          "cells": [
+            "Connect"
+          ]
+        },
+        {
+          "label": "7",
+          "min": 7,
+          "max": 7,
+          "cells": [
+            "Drive"
+          ]
+        },
+        {
+          "label": "8",
+          "min": 8,
+          "max": 8,
+          "cells": [
+            "Any Skill"
+          ]
+        }
+      ],
+      "classification": "player",
+      "origin": {
+        "heading": {
+          "line": 762,
+          "level": 5,
+          "text": "Learning"
+        },
+        "headingPath": [
+          "1.0.0 Character Creation",
+          "1.3.0 Backgrounds",
+          "1.3.3 Background List",
+          "Technician",
+          "Learning"
+        ],
+        "tagsLine": 764,
+        "tableStart": 766,
+        "tableEnd": 775,
+        "dieColumn": "d8",
+        "dice": "d8",
+        "soleTable": true,
+        "markdownFile": "CitiesWithoutNumberSRDv1.0.md"
+      }
+    },
+    {
+      "id": "2-0-0-the-rules-of-the-game-2-5-0-injury-healing-and-system-strain-2-5-6-major-injuries",
+      "name": "2.5.6 Major Injuries",
+      "section": "2.0.0 The Rules of the Game · 2.5.0 Injury, Healing, and System Strain",
+      "category": "2.0.0 The Rules of the Game",
+      "dice": "d12",
+      "columns": [
+        "Major Injury"
+      ],
+      "tags": [],
+      "rows": [
+        {
+          "label": "1",
+          "min": 1,
+          "max": 1,
+          "cells": [
+            "Instant Death: Wrong place, wrong time. You're not coming back from this."
+          ]
+        },
+        {
+          "label": "2",
+          "min": 2,
+          "max": 2,
+          "cells": [
+            "Internal Damage: You're dead in an hour if you don’t get to a street doc's clinic. You're in a coma until you install a Prosthetic Cyber implant. Any Body or Nerves location cyber you have is critically damaged."
+          ]
+        },
+        {
+          "label": "3",
+          "min": 3,
+          "max": 3,
+          "cells": [
+            "Brain Damage: You're in a coma until you install a Prosthetic Cyber implant. Any Head or Nerves location cyber you have is critically damaged."
+          ]
+        },
+        {
+          "label": "4",
+          "min": 4,
+          "max": 4,
+          "cells": [
+            "Eye Damage: You're blind until you get a pair of cybereyes. If you already have cybereyes, they and any implants in them are critically damaged."
+          ]
+        },
+        {
+          "label": "5",
+          "min": 5,
+          "max": 5,
+          "cells": [
+            "Gut Wound: If you don't get to a street doc's clinic in an hour, you suffer a -1 penalty to your Con modifier until you get a Prosthetic Cyber implant."
+          ]
+        },
+        {
+          "label": "6",
+          "min": 6,
+          "max": 6,
+          "cells": [
+            "Right Leg Ruined*: You can crawl at best once stabilized."
+          ]
+        },
+        {
+          "label": "7",
+          "min": 7,
+          "max": 7,
+          "cells": [
+            "Left Leg Ruined*: As above, but for your left leg."
+          ]
+        },
+        {
+          "label": "8",
+          "min": 8,
+          "max": 8,
+          "cells": [
+            "Right Arm Ruined*: You've only got one functional hand."
+          ]
+        },
+        {
+          "label": "9",
+          "min": 9,
+          "max": 9,
+          "cells": [
+            "Left Arm Ruined*: As above, but for your left arm."
+          ]
+        },
+        {
+          "label": "10",
+          "min": 10,
+          "max": 10,
+          "cells": [
+            "System Damage: Your most System Strain-expensive implant has been critically damaged. If several tie, the GM picks one."
+          ]
+        },
+        {
+          "label": "11-12",
+          "min": 11,
+          "max": 12,
+          "cells": [
+            "Just a Flesh Wound: It's not that bad of a hit after all."
+          ]
+        }
+      ],
+      "classification": "player",
+      "origin": {
+        "heading": {
+          "line": 1509,
+          "level": 3,
+          "text": "2.5.6 Major Injuries"
+        },
+        "headingPath": [
+          "2.0.0 The Rules of the Game",
+          "2.5.0 Injury, Healing, and System Strain",
+          "2.5.6 Major Injuries"
+        ],
+        "tagsLine": null,
+        "tableStart": 1517,
+        "tableEnd": 1530,
+        "dieColumn": "d12",
+        "dice": "d12",
+        "soleTable": true,
+        "markdownFile": "CitiesWithoutNumberSRDv1.0.md"
+      }
+    },
+    {
+      "id": "3-0-0-gear-vehicles-and-cyberware-3-6-0-cyberware-3-6-1-installing-cyberware-3-6-1-1-implant-complications",
+      "name": "3.6.1.1 Implant Complications",
+      "section": "3.0.0 Gear, Vehicles, and Cyberware · 3.6.0 Cyberware · 3.6.1 Installing Cyberware",
+      "category": "3.0.0 Gear, Vehicles, and Cyberware",
+      "dice": "d12",
+      "columns": [
+        "Complication"
+      ],
+      "tags": [],
+      "rows": [
+        {
+          "label": "1",
+          "min": 1,
+          "max": 1,
+          "cells": [
+            "Unreliable: The first time each day that it's important that the system function, roll 1d6; on a 1, it's nonfunctional until it receives maintenance."
+          ]
+        },
+        {
+          "label": "2",
+          "min": 2,
+          "max": 2,
+          "cells": [
+            "Inefficient: The ware incurs an additional 0.5 System Strain cost."
+          ]
+        },
+        {
+          "label": "3",
+          "min": 3,
+          "max": 3,
+          "cells": [
+            "Loud: When the system is operating, it's loud enough to be heard clearly five meters away, making stealth impossible. Systems that are always on make this noise constantly."
+          ]
+        },
+        {
+          "label": "4",
+          "min": 4,
+          "max": 4,
+          "cells": [
+            "Fussy: The required interval between maintenance is halved."
+          ]
+        },
+        {
+          "label": "5",
+          "min": 5,
+          "max": 5,
+          "cells": [
+            "Bad Connection: Each time the cyberware is triggered, there's a 1 in 6 chance it fails to activate and the action is wasted. Cyberware that is always on is not hindered by this."
+          ]
+        },
+        {
+          "label": "6",
+          "min": 6,
+          "max": 6,
+          "cells": [
+            "Blatant: Cyberware that normally requires Medical or Touch detection now becomes obvious on sight, perhaps due to excessive scarring or required surface-mount support."
+          ]
+        },
+        {
+          "label": "7",
+          "min": 7,
+          "max": 7,
+          "cells": [
+            "Debilitating: Pick an attribute in some way relevant to the cyber. The attribute suffers a 1d2 point penalty to its base score that persists as long as the system remains implanted."
+          ]
+        },
+        {
+          "label": "8",
+          "min": 8,
+          "max": 8,
+          "cells": [
+            "Uncooperative: Add 1 System Strain if this isn’t the only implant of the same category, such as Limb/Nerve/Body."
+          ]
+        },
+        {
+          "label": "9",
+          "min": 9,
+          "max": 9,
+          "cells": [
+            "Complicated: The complexity of the installation increases the minimum skill level required to maintain it to either Fix-1 or Heal-1."
+          ]
+        },
+        {
+          "label": "10",
+          "min": 10,
+          "max": 10,
+          "cells": [
+            "Exhausting: Maintenance on the system is exceptionally taxing. After it's done, the user needs to spend 24 hours of downtime resting; if they omit this, they gain 2 System Strain immediately."
+          ]
+        },
+        {
+          "label": "11",
+          "min": 11,
+          "max": 11,
+          "cells": [
+            "Power Hungry: The user needs to supplement the system by plugging into an urban power grid or vehicle power port for a half-hour each day. Without this, the system goes inert until re-powered."
+          ]
+        },
+        {
+          "label": "12",
+          "min": 12,
+          "max": 12,
+          "cells": [
+            "Petty Annoyance: It has some small quirk or deficiency of fit that causes no real problem in its functionality."
+          ]
+        }
+      ],
+      "classification": "player",
+      "origin": {
+        "heading": {
+          "line": 2524,
+          "level": 4,
+          "text": "*3.6.1.1 Implant Complications*"
+        },
+        "headingPath": [
+          "3.0.0 Gear, Vehicles, and Cyberware",
+          "3.6.0 Cyberware",
+          "3.6.1 Installing Cyberware",
+          "*3.6.1.1 Implant Complications*"
+        ],
+        "tagsLine": null,
+        "tableStart": 2529,
+        "tableEnd": 2542,
+        "dieColumn": "d12",
+        "dice": "d12",
+        "soleTable": true,
+        "markdownFile": "CitiesWithoutNumberSRDv1.0.md"
+      }
+    },
+    {
+      "id": "5-0-0-antagonists-and-npcs-5-1-0-reaction-rolls",
+      "name": "5.1.0 Reaction Rolls",
+      "section": "5.0.0 Antagonists and NPCs",
+      "category": "5.0.0 Antagonists and NPCs",
+      "dice": "2d6",
+      "columns": [
+        "Reaction"
+      ],
+      "tags": [
+        "random-encounter"
+      ],
+      "rows": [
+        {
+          "label": "2-",
+          "min": -1000,
+          "max": 2,
+          "cells": [
+            "As hostile and violent as is plausible"
+          ]
+        },
+        {
+          "label": "3-5",
+          "min": 3,
+          "max": 5,
+          "cells": [
+            "Hostile and unfriendly to the PCs"
+          ]
+        },
+        {
+          "label": "6-8",
+          "min": 6,
+          "max": 8,
+          "cells": [
+            "A neutral or expected reaction from them"
+          ]
+        },
+        {
+          "label": "9-11",
+          "min": 9,
+          "max": 11,
+          "cells": [
+            "Unusually friendly or cooperative"
+          ]
+        },
+        {
+          "label": "12+",
+          "min": 12,
+          "max": 1000,
+          "cells": [
+            "As friendly and helpful as is plausible"
+          ]
+        }
+      ],
+      "classification": "gm",
+      "origin": {
+        "heading": {
+          "line": 4233,
+          "level": 2,
+          "text": "5.1.0 Reaction Rolls"
+        },
+        "headingPath": [
+          "5.0.0 Antagonists and NPCs",
+          "5.1.0 Reaction Rolls"
+        ],
+        "tagsLine": 4237,
+        "tableStart": 4239,
+        "tableEnd": 4245,
+        "dieColumn": "2d6",
+        "dice": "2d6",
+        "soleTable": true,
+        "markdownFile": "CitiesWithoutNumberSRDv1.0.md"
+      }
+    },
+    {
+      "id": "6-0-0-magic-6-1-0-mages-and-spellcasting-6-1-3-spells-6-1-3-3-overcasting",
+      "name": "6.1.3.3 Overcasting",
+      "section": "6.0.0 Magic · 6.1.0 Mages and Spellcasting · 6.1.3 Spells",
+      "category": "6.0.0 Magic",
+      "dice": "d20",
+      "columns": [
+        "Overcasting Consequence"
+      ],
+      "tags": [],
+      "rows": [
+        {
+          "label": "1-",
+          "min": -1000,
+          "max": 1,
+          "cells": [
+            "Instant and unavoidable death"
+          ]
+        },
+        {
+          "label": "2-4",
+          "min": 2,
+          "max": 4,
+          "cells": [
+            "Mortally wounded and at zero HP"
+          ]
+        },
+        {
+          "label": "5-8",
+          "min": 5,
+          "max": 8,
+          "cells": [
+            "Gain 4 System Strain, fall unconscious for one minute"
+          ]
+        },
+        {
+          "label": "9-15",
+          "min": 9,
+          "max": 15,
+          "cells": [
+            "Gain 2 System Strain, stunned and unable to act for the next round"
+          ]
+        },
+        {
+          "label": "16-19",
+          "min": 16,
+          "max": 19,
+          "cells": [
+            "Gain 1 System Strain, lose your next round’s Main Action"
+          ]
+        },
+        {
+          "label": "20+",
+          "min": 20,
+          "max": 1000,
+          "cells": [
+            "Gain 1 System Strain"
+          ]
+        }
+      ],
+      "classification": "player",
+      "origin": {
+        "heading": {
+          "line": 5034,
+          "level": 4,
+          "text": "*6.1.3.3 Overcasting*"
+        },
+        "headingPath": [
+          "6.0.0 Magic",
+          "6.1.0 Mages and Spellcasting",
+          "6.1.3 Spells",
+          "*6.1.3.3 Overcasting*"
+        ],
+        "tagsLine": null,
+        "tableStart": 5041,
+        "tableEnd": 5048,
+        "dieColumn": "D20",
+        "dice": "d20",
+        "soleTable": true,
+        "markdownFile": "CitiesWithoutNumberSRDv1.0.md"
+      }
+    }
+  ]
+}

@@ -128,7 +128,12 @@ export function RulesReferencePage({ system }: { system: SystemId }) {
                 <a href="/">Return to the tables or sign in</a>
               </div>
             ) : filtered ? (
-              <RulesMarkdown markdown={filtered} idPrefix={standaloneRuleIdPrefix} />
+              <RulesMarkdown
+                markdown={filtered}
+                idPrefix={standaloneRuleIdPrefix}
+                roomId={room?.id}
+                isGm={room?.role === "gm"}
+              />
             ) : (
               <p className="rules-status">{query ? "No matching sections." : "This rules reference is empty."}</p>
             )}

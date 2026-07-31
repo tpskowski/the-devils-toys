@@ -1,20 +1,19 @@
 import express from "express";
 import multer from "multer";
 import { z } from "zod";
-import {
-  appendTable,
-  parseRollTables,
-  SAMPLE_CSV,
-  serializeSet,
-  tablesFromCsv,
-  tableToCsv,
-  type RollTable
-} from "@devils-toys/shared";
+import { appendTable, parseRollTables, SAMPLE_CSV, serializeSet, tablesFromCsv, tableToCsv } from "@devils-toys/shared";
 import type { AuthedRequest } from "./auth.js";
 import { requireAuth } from "./auth.js";
 import { all, db, one } from "./db.js";
 import { requireTableAdmin, requireTableEdit, requireTableRead } from "./table-permissions.js";
-import { buildBundle, buildRepoBundle, compareToExisting, readBundle, type BundleSet } from "./table-bundles.js";
+import {
+  buildBundle,
+  buildRepoBundle,
+  bundleSetMarkdown,
+  compareToExisting,
+  readBundle,
+  type BundleSet
+} from "./table-bundles.js";
 import { customSets, findSet, storedTags, type TableSetRow } from "./table-sets.js";
 import { knownTags, tagVocabulary } from "./table-tags.js";
 
@@ -88,20 +87,17 @@ tableEditorRouter.post(
 
     if (!tables.length) return res.status(400).json({ error: "Nothing in that file could be read as a table." });
 
-    // A tag the CSV names but this instance has never heard of is dropped rather
-    // than invented, and the response says which.
     const vocabulary = tagVocabulary();
-    const dropped = [...new Set(tables.flatMap((table) => table.tags))].filter(
+    const unknownTags = [...new Set(tables.flatMap((table) => table.tags))].filter(
       (tag) => !vocabulary.some((entry) => entry.slug === tag)
     );
+    if (unknownTags.length) return res.status(400).json({ error: `Unknown table tag "${unknownTags[0]}".` });
     const cleaned = tables.map((table) => ({ ...table, tags: knownTags(table.tags, vocabulary) }));
 
-    const markdown = replace
-      ? serializeSet(cleaned, row.name)
-      : cleaned.reduce((document: string, table: RollTable) => appendTable(document, table), row.markdown);
-
+    let markdown = replace ? serializeSet(cleaned, row.name) : row.markdown;
+    if (!replace) for (const table of cleaned) markdown = appendTable(markdown, table);
     db.prepare("UPDATE table_sets SET markdown = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(markdown, row.id);
-    res.status(201).json({ imported: cleaned.length, problems, droppedTags: dropped });
+    res.status(201).json({ imported: cleaned.length, problems });
   }
 );
 
@@ -121,16 +117,16 @@ tableEditorRouter.get("/table-export", requireAuth, (req: AuthedRequest, res) =>
     markdown: row.markdown,
     tags: storedTags(row.tags_json)
   }));
-  const used = new Set(sets.flatMap((set) => set.tags).concat(sets.flatMap((set) => tagsInMarkdown(set.markdown))));
+  const used = new Set(
+    sets
+      .flatMap((set) => set.tags)
+      .concat(sets.flatMap((set) => parseRollTables(set.markdown).flatMap((table) => table.tags)))
+  );
   const tags = tagVocabulary().filter((tag) => used.has(tag.slug));
 
   attachment(res, "application/zip", `devils-tables-${new Date().toISOString().slice(0, 10)}.zip`);
   res.send(Buffer.from(buildBundle(sets, tags)));
 });
-
-function tagsInMarkdown(markdown: string) {
-  return parseRollTables(markdown).flatMap((table) => table.tags);
-}
 
 tableEditorRouter.post("/table-import", requireAuth, upload.single("file"), (req: AuthedRequest, res) => {
   if (!requireTableEdit(req, res)) return;
@@ -138,7 +134,7 @@ tableEditorRouter.post("/table-import", requireAuth, upload.single("file"), (req
 
   let bundle;
   try {
-    bundle = readBundle(new Uint8Array(req.file.buffer));
+    bundle = readBundle(new Uint8Array(req.file.buffer), tagVocabulary());
   } catch (error) {
     return res.status(400).json({ error: error instanceof Error ? error.message : "That bundle could not be read." });
   }
@@ -180,11 +176,17 @@ tableEditorRouter.post("/table-import", requireAuth, upload.single("file"), (req
       }
       const tags = JSON.stringify(knownTags(set.tags, known));
       const clash = existing.find((entry) => entry.name.toLocaleLowerCase() === set.name.toLocaleLowerCase());
+      const markdown = bundleSetMarkdown(set);
+      const unknown = parseRollTables(markdown)
+        .flatMap((table) => table.tags)
+        .find((tag) => !known.some((entry) => entry.slug === tag));
+      if (unknown) throw new Error(`Unknown table tag "${unknown}".`);
       if (clash && action === "overwrite") {
-        updateSet.run(set.markdown, tags, clash.name);
+        updateSet.run(markdown, tags, clash.name);
         overwritten += 1;
       } else {
-        insertSet.run(clash ? `${set.name} (imported)` : set.name, set.markdown, tags, req.account!.id);
+        const name = clash ? `${set.name} (imported)` : set.name;
+        insertSet.run(name, markdown, tags, req.account!.id);
         created += 1;
       }
     }

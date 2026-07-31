@@ -3,7 +3,9 @@
  * set in the browser with exactly the parser the roller uses. This re-export
  * keeps the server's existing imports pointing somewhere sensible.
  */
-import { parseRollTables } from "@devils-toys/shared";
+import { parseRollTables, type SystemId } from "@devils-toys/shared";
+import { systemTablesFile } from "./systems.js";
+import { tablesForSetJson, type CatalogRollTable } from "./table-json.js";
 
 export {
   diceMaximum,
@@ -27,8 +29,16 @@ export interface CompactRollTable {
  * character generation and the table UI on the same authoritative parse.
  */
 export function parseCompactRollTables(markdown: string, section: string): CompactRollTable[] {
+  return compactTablesFromTables(parseRollTables(markdown), section);
+}
+
+export function compactTables(system: SystemId, section: string): CompactRollTable[] {
+  return compactTablesFromTables(tablesForSetJson(systemTablesFile(system)), section);
+}
+
+function compactTablesFromTables(tables: readonly CatalogRollTable[], section: string): CompactRollTable[] {
   const wanted = section.trim().toLocaleLowerCase();
-  return parseRollTables(markdown)
+  return tables
     .filter(
       (table) =>
         table.category.trim().toLocaleLowerCase() === wanted ||

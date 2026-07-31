@@ -11,7 +11,8 @@ import type { AuthedRequest } from "./auth.js";
 import { requireAuth } from "./auth.js";
 import { all, db, one } from "./db.js";
 import { requireTableAdmin, requireTableEdit, requireTableRead } from "./table-permissions.js";
-import { systemMarkdown, systems } from "./systems.js";
+import { systems } from "./systems.js";
+import { tablesForSetJson } from "./table-json.js";
 
 export const tagRouter = express.Router();
 
@@ -62,8 +63,8 @@ function allTagUsage() {
   const includeSet = (tags: readonly string[]) => {
     for (const slug of new Set(tags)) counts(slug).sets += 1;
   };
-  const includeTables = (markdown: string, inherited: readonly string[], exclude: readonly string[] = []) => {
-    for (const table of parseRollTables(markdown, exclude)) {
+  const includeTables = (tables: readonly { tags: readonly string[] }[], inherited: readonly string[]) => {
+    for (const table of tables) {
       for (const slug of new Set([...inherited, ...table.tags])) counts(slug).tables += 1;
     }
   };
@@ -77,12 +78,16 @@ function allTagUsage() {
       // Unreadable set tags do not hide valid tags carried by its tables.
     }
     includeSet(inherited);
-    includeTables(row.markdown, inherited);
+    includeTables(parseRollTables(row.markdown), inherited);
   }
 
   for (const system of Object.values(systems)) {
     includeSet(system.tableCatalog.tags);
-    includeTables(systemMarkdown(system.id), system.tableCatalog.tags, system.tableCatalog.exclude);
+    const source = system.sourceDocuments[0];
+    if (!source?.tablesFile) continue;
+    for (const table of tablesForSetJson(source.tablesFile)) {
+      for (const slug of new Set([...system.tableCatalog.tags, ...table.tags])) counts(slug).tables += 1;
+    }
   }
 
   return usage;
@@ -116,16 +121,17 @@ function rewriteSlug(from: string, to: string | null) {
       }
       const nextTags = [...new Set(tags.flatMap((tag) => (tag === from ? (to ? [to] : []) : [tag])))];
 
+      const changedTables = parseRollTables(row.markdown)
+        .filter((table) => table.tags.includes(from))
+        .map((table) => ({
+          ...table,
+          tags: [...new Set(table.tags.flatMap((tag) => (tag === from ? (to ? [to] : []) : [tag])))]
+        }))
+        .sort((left, right) => right.source!.tableStart - left.source!.tableStart);
       let markdown = row.markdown;
-      // Splicing shifts nothing here — a tags comment is replaced in place or
-      // dropped — but working from the end keeps that true if it ever does.
-      const affected = parseRollTables(markdown).filter((table) => table.tags.includes(from));
-      for (const table of affected.reverse()) {
-        const tags = [...new Set(table.tags.flatMap((tag) => (tag === from ? (to ? [to] : []) : [tag])))];
-        markdown = spliceTable(markdown, { ...table, tags });
-      }
+      for (const table of changedTables) markdown = spliceTable(markdown, table);
 
-      if (markdown !== row.markdown || JSON.stringify(nextTags) !== JSON.stringify(tags)) {
+      if (changedTables.length || JSON.stringify(nextTags) !== JSON.stringify(tags)) {
         updateSet.run(JSON.stringify(nextTags), markdown, row.id);
       }
     }

@@ -186,7 +186,7 @@ groupRouter.post("/rooms/:roomId/group/hirelings/roll", requireAuth, (req: Authe
   if (!context || !creationRoll) return res.status(404).json({ error: "Hireling creation is not available." });
 
   try {
-    res.json({ hireling: rollHirelingCreation(creationRoll, systemMarkdown(context.system)) });
+    res.json({ hireling: rollHirelingCreation(creationRoll, context.system) });
   } catch (cause) {
     res.status(500).json({ error: cause instanceof Error ? cause.message : "Hireling creation failed." });
   }

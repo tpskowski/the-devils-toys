@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import { BUILTIN_TABLE_TAGS, defaultTagLabel, SYSTEM_IDS, THEME_IDS } from "@devils-toys/shared";
+import { BUILTIN_TABLE_TAGS, defaultTagLabel, serializeSet, SYSTEM_IDS, THEME_IDS } from "@devils-toys/shared";
 import { config } from "./config.js";
 
 fs.mkdirSync(config.dataDir, { recursive: true });
@@ -249,6 +249,58 @@ if (!hasColumn("media", "artist")) db.exec("ALTER TABLE media ADD COLUMN artist 
 if (!hasColumn("media", "title")) db.exec("ALTER TABLE media ADD COLUMN title TEXT");
 if (!hasColumn("table_sets", "tags_json"))
   db.exec("ALTER TABLE table_sets ADD COLUMN tags_json TEXT NOT NULL DEFAULT '[]'");
+// A short-lived JSON migration stored the original Markdown alongside its JSON.
+// Restore that exact source where possible; JSON-only rows are serialized once
+// so Markdown remains the sole active custom-table format from this point on.
+if (hasColumn("table_sets", "tables_json")) {
+  const hasBackup = hasColumn("table_sets", "migration_markdown");
+  const oldRows = db
+    .prepare(
+      `SELECT id, name, tables_json, ${hasBackup ? "migration_markdown" : "NULL AS migration_markdown"}, tags_json, created_by, created_at, updated_at FROM table_sets`
+    )
+    .all() as {
+    id: number;
+    name: string;
+    tables_json: string;
+    migration_markdown: string | null;
+    tags_json: string;
+    created_by: number;
+    created_at: string;
+    updated_at: string;
+  }[];
+  db.exec("PRAGMA foreign_keys = OFF");
+  db.exec("BEGIN IMMEDIATE");
+  try {
+    db.exec(`CREATE TABLE table_sets_rebuilt (
+      id INTEGER PRIMARY KEY,
+      name TEXT NOT NULL,
+      markdown TEXT NOT NULL,
+      tags_json TEXT NOT NULL DEFAULT '[]',
+      created_by INTEGER NOT NULL REFERENCES accounts(id),
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )`);
+    const insert = db.prepare(
+      "INSERT INTO table_sets_rebuilt (id, name, markdown, tags_json, created_by, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)"
+    );
+    for (const row of oldRows) {
+      let markdown = row.migration_markdown;
+      if (markdown === null) {
+        const document = JSON.parse(row.tables_json) as { tables?: Parameters<typeof serializeSet>[0] };
+        markdown = serializeSet(document.tables ?? [], row.name);
+      }
+      insert.run(row.id, row.name, markdown, row.tags_json, row.created_by, row.created_at, row.updated_at);
+    }
+    db.exec("DROP TABLE table_sets");
+    db.exec("ALTER TABLE table_sets_rebuilt RENAME TO table_sets");
+    db.exec("COMMIT");
+  } catch (cause) {
+    db.exec("ROLLBACK");
+    throw cause;
+  } finally {
+    db.exec("PRAGMA foreign_keys = ON");
+  }
+}
 if (!hasColumn("media", "metadata_loaded"))
   db.exec("ALTER TABLE media ADD COLUMN metadata_loaded INTEGER NOT NULL DEFAULT 0");
 if (!hasColumn("media", "visible")) {

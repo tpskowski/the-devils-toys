@@ -4,6 +4,8 @@ import { cwn } from "@devils-toys/system-cwn";
 import { monolith } from "@devils-toys/system-monolith";
 import type { SystemId } from "@devils-toys/shared";
 import { projectFile } from "./paths.js";
+import { tablesForSetJson } from "./table-json.js";
+import { substituteTableLinks } from "./rules-substitution.js";
 
 export const systems = { cairn, monolith, cwn } as const;
 
@@ -29,7 +31,23 @@ export function systemMarkdown(system: SystemId) {
   return fs.readFileSync(projectFile("raw", source.markdownFile), "utf8");
 }
 
+export function systemTablesFile(system: SystemId) {
+  const source = systems[system].sourceDocuments[0];
+  if (!source?.tablesFile) throw new Error(`${systems[system].name} has no sourceDocument.tablesFile.`);
+  return source.tablesFile;
+}
+
+const linkedRules = new Map<SystemId, string>();
+
 export function rulesMarkdown(system: SystemId, role: "gm" | "player") {
-  const markdown = systemMarkdown(system);
-  return role === "gm" ? markdown : filterPlayerRules(markdown, systems[system].gmOnlyHeadings);
+  let linked = linkedRules.get(system);
+  if (!linked) {
+    linked = substituteTableLinks(
+      systemMarkdown(system),
+      `system:${system}`,
+      tablesForSetJson(systemTablesFile(system))
+    );
+    linkedRules.set(system, linked);
+  }
+  return role === "gm" ? linked : filterPlayerRules(linked, systems[system].gmOnlyHeadings);
 }
