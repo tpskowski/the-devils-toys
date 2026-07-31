@@ -106,6 +106,11 @@ export const monolith: GameSystem = {
         label: "Talents",
         // Stored under the original `abilities` key so existing sheets keep their text.
         fields: [{ key: "abilities", label: "Talents", kind: "entries" }]
+      },
+      {
+        id: "vices",
+        label: "Vices",
+        fields: [{ key: "vices", label: "Vices", kind: "vices" }]
       }
     ],
     lists: [

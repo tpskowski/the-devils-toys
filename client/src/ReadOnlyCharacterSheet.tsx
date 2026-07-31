@@ -1,5 +1,5 @@
 import { UserRound } from "lucide-react";
-import type { CharacterSheetDefinition, SystemId } from "@devils-toys/shared";
+import type { CharacterSheetDefinition, CharacterVice, SystemId } from "@devils-toys/shared";
 import { entryName, readEntries, singularLabel } from "./character-entries";
 import "./ReadOnlyCharacterSheet.css";
 
@@ -31,7 +31,9 @@ function pairedStatRows(section: CharacterSheetDefinition["sections"][number]) {
 }
 
 function wideSection(section: CharacterSheetDefinition["sections"][number]) {
-  return section.fields.some((field) => field.kind === "textarea" || field.kind === "entries");
+  return section.fields.some(
+    (field) => field.kind === "textarea" || field.kind === "entries" || field.kind === "vices"
+  );
 }
 
 export function ReadOnlyCharacterSheet({
@@ -79,6 +81,32 @@ export function ReadOnlyCharacterSheet({
                             </article>
                           ))}
                         </div>
+                      ) : (
+                        <span className="party-sheet-empty">None recorded.</span>
+                      )}
+                    </dd>
+                  </div>
+                );
+              }
+              if (field.kind === "vices") {
+                const vices = Array.isArray(character.sheet[field.key])
+                  ? (character.sheet[field.key] as CharacterVice[]).filter((vice) => vice?.name)
+                  : [];
+                return (
+                  <div className="wide party-sheet-entry-field" key={field.key}>
+                    <dd>
+                      {vices.length ? (
+                        vices.map((vice, index) => (
+                          <article className="party-sheet-vice" key={index}>
+                            <strong>{vice.name}</strong>
+                            <p>
+                              <b>Triggers:</b> {vice.triggers || "—"}
+                            </p>
+                            <p>
+                              <b>Satisfying:</b> {vice.satisfying || "—"}
+                            </p>
+                          </article>
+                        ))
                       ) : (
                         <span className="party-sheet-empty">None recorded.</span>
                       )}

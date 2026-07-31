@@ -2,6 +2,7 @@
 
 ## 0.1.0 — In development
 
+- Added a Monolith character-sheet Vices section with rulebook-backed selection, random selection, and editable custom vices.
 - Established the TypeScript workspace and single-process application architecture.
 - Added local setup, authentication, rooms, chat, dice, live presence, and five room themes.
 - Added Cities Without Number as the third compiled-in system, with its character sheet, roll-over saves, 2d6 skill checks, rules, antagonist catalog, and random tables.

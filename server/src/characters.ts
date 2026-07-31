@@ -18,7 +18,8 @@ import {
   validPortraitFile
 } from "./portrait-files.js";
 import { broadcastRoom, refreshRoomPresence } from "./realtime.js";
-import { systems } from "./systems.js";
+import { systemMarkdown, systems } from "./systems.js";
+import { characterVicesFor } from "./character-vices.js";
 
 export const characterRouter = express.Router();
 
@@ -191,7 +192,8 @@ characterRouter.get("/rooms/:roomId/characters", requireAuth, (req: AuthedReques
     activeCharacterId: activeCharacterId ?? null,
     partyLabel: systems[context.system].partyLabel,
     sheetDefinition: systems[context.system].characterSheet,
-    itemCatalogue: characterItemsFor(context.system, systems[context.system].characterSheet)
+    itemCatalogue: characterItemsFor(context.system, systems[context.system].characterSheet),
+    viceCatalogue: context.system === "monolith" ? characterVicesFor(systemMarkdown("monolith")) : []
   });
 });
 
