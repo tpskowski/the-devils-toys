@@ -1,5 +1,17 @@
 import { useEffect, useRef, useState } from "react";
-import { ArrowUpRight, ChevronDown, ImagePlus, Pencil, Plus, Rocket, Trash2, UsersRound } from "lucide-react";
+import {
+  ArrowUpRight,
+  Check,
+  ChevronDown,
+  Dices,
+  ImagePlus,
+  Pencil,
+  Plus,
+  Rocket,
+  Trash2,
+  UserRound,
+  UsersRound
+} from "lucide-react";
 import type {
   CharacterFieldDefinition,
   CharacterListDefinition,
@@ -26,11 +38,18 @@ interface GroupResponse {
   state: Record<string, unknown>;
   definition: GroupPageDefinition;
   images?: StarshipImage[];
+  hirelingImages?: HirelingImage[];
   updatedAt: string | null;
 }
 
 interface StarshipImage {
   starshipId: string;
+  url: string;
+  filename: string;
+}
+
+interface HirelingImage {
+  hirelingId: string;
   url: string;
   filename: string;
 }
@@ -43,8 +62,8 @@ interface PartyCharacterResponse {
 }
 
 type SaveStatus = "Saved" | "Unsaved" | "Saving…";
-const starshipImageLimitBytes = 5 * 1024 * 1024;
-const starshipImageTypes = new Set(["image/png", "image/jpeg", "image/webp"]);
+const groupImageLimitBytes = 5 * 1024 * 1024;
+const groupImageTypes = new Set(["image/png", "image/jpeg", "image/webp"]);
 
 function pairedStatRows(section: CharacterSheetDefinition["sections"][number]) {
   return section.fields.flatMap((currentField) => {
@@ -69,15 +88,15 @@ function fixedValue(value: unknown) {
 }
 
 export const MONOLITH_GROUP_VIEWS = [
-  { id: "obligations", label: "Group Obligations" },
+  { id: "party", label: "Party Members" },
   { id: "freelancers", label: "Freelancers" },
-  { id: "starship", label: "Starship" },
-  { id: "party", label: "Party Members" }
+  { id: "obligations", label: "Group Obligations" },
+  { id: "starship", label: "Starship" }
 ] as const;
 
 export const STANDARD_GROUP_VIEWS = [
-  { id: "group", label: "Group" },
-  { id: "party", label: "Party Members" }
+  { id: "party", label: "Party Members" },
+  { id: "group", label: "Hirelings" }
 ] as const;
 
 export type GroupView = "group" | (typeof MONOLITH_GROUP_VIEWS)[number]["id"];
@@ -87,7 +106,7 @@ export function groupViewsForSystem(system: SystemId) {
 }
 
 export function defaultGroupView(system: SystemId): GroupView {
-  return system === "monolith" ? "obligations" : "group";
+  return "party";
 }
 
 type GroupObligationField = Exclude<keyof GroupObligation, "id">;
@@ -138,6 +157,10 @@ export function GroupPage({
   const [partyError, setPartyError] = useState("");
   const [expandedPartyMembers, setExpandedPartyMembers] = useState<ReadonlySet<number>>(new Set());
   const [expandedHirelings, setExpandedHirelings] = useState<ReadonlySet<string>>(new Set());
+  const [editingHirelingMaximums, setEditingHirelingMaximums] = useState<string>();
+  const [hirelingImages, setHirelingImages] = useState<HirelingImage[]>([]);
+  const [busyHirelingImageId, setBusyHirelingImageId] = useState<string>();
+  const [rollingHireling, setRollingHireling] = useState(false);
   const [holdError, setHoldError] = useState("");
   const saveTimerRef = useRef<number | undefined>(undefined);
   const saveChainRef = useRef<Promise<void>>(Promise.resolve());
@@ -150,6 +173,7 @@ export function GroupPage({
     setDefinition(response.definition);
     setState(response.state);
     setStarshipImages(response.images ?? []);
+    setHirelingImages(response.hirelingImages ?? []);
     latestStateRef.current = response.state;
     dirtyRef.current = false;
     setStatus("Saved");
@@ -278,6 +302,26 @@ export function GroupPage({
     setExpandedHirelings((current) => new Set(current).add(id));
   }
 
+  async function rollHireling() {
+    setRollingHireling(true);
+    setError("");
+    try {
+      const response = await api<{ hireling: Record<string, unknown> }>(`/api/rooms/${roomId}/group/hirelings/roll`, {
+        method: "POST"
+      });
+      const id = globalThis.crypto?.randomUUID?.() ?? `hireling-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      updateHirelings((current) => [
+        ...current,
+        { ...response.hireling, id, name: String(response.hireling.name ?? "") }
+      ]);
+      setExpandedHirelings((current) => new Set(current).add(id));
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Freelancer creation failed.");
+    } finally {
+      setRollingHireling(false);
+    }
+  }
+
   function setHirelingField(id: string, key: string, value: unknown) {
     updateHirelings((current) => current.map((entry) => (entry.id === id ? { ...entry, [key]: value } : entry)));
   }
@@ -300,6 +344,55 @@ export function GroupPage({
       else next.add(id);
       return next;
     });
+  }
+
+  async function uploadHirelingImage(hirelingId: string, file?: File) {
+    if (!file) return;
+    if (file.size > groupImageLimitBytes) {
+      setError("Freelancer images may be at most 5 MB.");
+      return;
+    }
+    if (!groupImageTypes.has(file.type)) {
+      setError("Choose a PNG, JPEG, or WebP image.");
+      return;
+    }
+
+    setBusyHirelingImageId(hirelingId);
+    setError("");
+    try {
+      const body = new FormData();
+      body.append("file", file);
+      const result = await api<{ image: HirelingImage }>(
+        `/api/rooms/${roomId}/group/hirelings/${encodeURIComponent(hirelingId)}/image`,
+        { method: "POST", body }
+      );
+      setHirelingImages((current) => [...current.filter((image) => image.hirelingId !== hirelingId), result.image]);
+    } catch (cause) {
+      setError((cause as Error).message);
+    } finally {
+      setBusyHirelingImageId(undefined);
+    }
+  }
+
+  async function removeHirelingImage(hirelingId: string) {
+    setBusyHirelingImageId(hirelingId);
+    setError("");
+    try {
+      await api<void>(`/api/rooms/${roomId}/group/hirelings/${encodeURIComponent(hirelingId)}/image`, {
+        method: "DELETE"
+      });
+      setHirelingImages((current) => current.filter((image) => image.hirelingId !== hirelingId));
+    } catch (cause) {
+      setError((cause as Error).message);
+    } finally {
+      setBusyHirelingImageId(undefined);
+    }
+  }
+
+  function removeHireling(hirelingId: string) {
+    setHirelingImages((current) => current.filter((image) => image.hirelingId !== hirelingId));
+    setEditingHirelingMaximums((current) => (current?.startsWith(`${hirelingId}:`) ? undefined : current));
+    updateHirelings((current) => current.filter((entry) => entry.id !== hirelingId));
   }
 
   function updateStarships(updater: (current: GroupStarship[]) => GroupStarship[]) {
@@ -360,11 +453,11 @@ export function GroupPage({
 
   async function uploadStarshipImage(shipId: string, file?: File) {
     if (!file) return;
-    if (file.size > starshipImageLimitBytes) {
+    if (file.size > groupImageLimitBytes) {
       setError("Starship images may be at most 5 MB.");
       return;
     }
-    if (!starshipImageTypes.has(file.type)) {
+    if (!groupImageTypes.has(file.type)) {
       setError("Choose a PNG, JPEG, or WebP image.");
       return;
     }
@@ -671,7 +764,7 @@ export function GroupPage({
       ? "Party Members"
       : isMonolith
         ? (MONOLITH_GROUP_VIEWS.find((option) => option.id === view)?.label ?? "Group Obligations")
-        : "Group";
+        : (definition.hirelings?.label ?? "Group");
 
   return (
     <div className="group-page character-sheet" hidden={hidden}>
@@ -840,9 +933,21 @@ export function GroupPage({
               </span>
               {rulesLink(definition.hirelings.rulesQuery, "Creation rules")}
             </div>
-            <button type="button" className="primary-button" onClick={addHireling}>
-              <Plus aria-hidden="true" /> Add {definition.hirelings.singularLabel}
-            </button>
+            <div className="group-hirelings-actions">
+              {isMonolith && (
+                <button
+                  type="button"
+                  className="secondary-button"
+                  onClick={() => void rollHireling()}
+                  disabled={rollingHireling}
+                >
+                  <Dices aria-hidden="true" /> {rollingHireling ? "Rollingâ€¦" : "Roll freelancer"}
+                </button>
+              )}
+              <button type="button" className="primary-button" onClick={addHireling}>
+                <Plus aria-hidden="true" /> Add {definition.hirelings.singularLabel}
+              </button>
+            </div>
           </header>
           {hirelings.length === 0 ? (
             <p className="group-hirelings-empty">{definition.hirelings.creationHint}</p>
@@ -851,6 +956,7 @@ export function GroupPage({
               {hirelings.map((hireling, index) => {
                 const expanded = expandedHirelings.has(hireling.id);
                 const label = String(hireling.name).trim() || `${definition.hirelings!.singularLabel} ${index + 1}`;
+                const image = hirelingImages.find((candidate) => candidate.hirelingId === hireling.id);
                 return (
                   <article className={`group-hireling-entry${expanded ? " expanded" : ""}`} key={hireling.id}>
                     <header>
@@ -871,9 +977,8 @@ export function GroupPage({
                       <button
                         type="button"
                         className="group-obligation-remove"
-                        onClick={() =>
-                          updateHirelings((current) => current.filter((entry) => entry.id !== hireling.id))
-                        }
+                        onClick={() => removeHireling(hireling.id)}
+                        disabled={busyHirelingImageId === hireling.id}
                         aria-label={`Remove ${label}`}
                       >
                         <Trash2 aria-hidden="true" /> Remove
@@ -881,58 +986,121 @@ export function GroupPage({
                     </header>
                     {expanded && (
                       <div className="group-hireling-sheet" id={`group-hireling-${hireling.id}`}>
-                        {definition.hirelings!.sheet.sections.map((section) => (
-                          <fieldset key={section.id}>
-                            <legend>{section.label}</legend>
-                            {section.layout === "paired-current-max" ? (
-                              <div className="character-stat-table">
-                                <div className="character-stat-header">
-                                  <span aria-hidden="true" />
-                                  <span>Current</span>
-                                  <span>Max</span>
-                                </div>
-                                {pairedStatRows(section).map(({ label: statLabel, currentField, maximumField }) => (
-                                  <div
-                                    className="character-stat-row"
-                                    role="group"
-                                    aria-label={statLabel}
-                                    key={currentField.key}
-                                  >
-                                    <span className="character-stat-name">{statLabel}</span>
-                                    <div className="character-stat-values">
-                                      {[currentField, maximumField].map((field) => (
+                        <div className={`group-hireling-image-frame${image ? " has-image" : ""}`}>
+                          {image ? <img src={image.url} alt={`${label} portrait`} /> : <UserRound aria-hidden="true" />}
+                          <div className="group-image-actions">
+                            <label title={image ? `Replace ${label} portrait` : `Upload ${label} portrait`}>
+                              <ImagePlus aria-hidden="true" />
+                              <span>{image ? "Replace" : "Upload image"}</span>
+                              <input
+                                type="file"
+                                accept="image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp"
+                                disabled={busyHirelingImageId === hireling.id}
+                                onChange={(event) => {
+                                  const file = event.target.files?.[0];
+                                  event.target.value = "";
+                                  void uploadHirelingImage(hireling.id, file);
+                                }}
+                              />
+                            </label>
+                            {image && (
+                              <button
+                                type="button"
+                                onClick={() => void removeHirelingImage(hireling.id)}
+                                disabled={busyHirelingImageId === hireling.id}
+                                aria-label={`Remove ${label} portrait`}
+                                title="Remove portrait"
+                              >
+                                <Trash2 aria-hidden="true" />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                        {definition.hirelings!.sheet.sections.map((section) => {
+                          const maximumEditKey = `${hireling.id}:${section.id}`;
+                          const editingMaxima = editingHirelingMaximums === maximumEditKey;
+                          return (
+                            <fieldset key={section.id}>
+                              <legend>{section.label}</legend>
+                              {section.layout === "paired-current-max" ? (
+                                <div className="character-stat-table">
+                                  <div className="character-stat-header">
+                                    <span aria-hidden="true" />
+                                    <span aria-hidden="true">Current</span>
+                                    <span className="character-stat-max-header">
+                                      <span aria-hidden="true">Max</span>
+                                      <button
+                                        type="button"
+                                        className="character-stat-max-toggle"
+                                        aria-pressed={editingMaxima}
+                                        aria-label={
+                                          editingMaxima
+                                            ? `Finish editing ${section.label} maximums`
+                                            : `Edit ${section.label} maximums`
+                                        }
+                                        title={editingMaxima ? "Done editing maximums" : "Edit maximums"}
+                                        onClick={() =>
+                                          setEditingHirelingMaximums(editingMaxima ? undefined : maximumEditKey)
+                                        }
+                                      >
+                                        {editingMaxima ? <Check aria-hidden="true" /> : <Pencil aria-hidden="true" />}
+                                      </button>
+                                    </span>
+                                  </div>
+                                  {pairedStatRows(section).map(({ label: statLabel, currentField, maximumField }) => (
+                                    <div
+                                      className="character-stat-row"
+                                      role="group"
+                                      aria-label={statLabel}
+                                      key={currentField.key}
+                                    >
+                                      <span className="character-stat-name">{statLabel}</span>
+                                      <div className="character-stat-values">
                                         <input
-                                          key={field.key}
                                           type="number"
-                                          aria-label={`${statLabel} ${field === currentField ? "current" : "maximum"}`}
-                                          value={String(hireling[field.key] ?? "")}
+                                          aria-label={`${statLabel} current`}
+                                          value={String(hireling[currentField.key] ?? "")}
                                           onChange={(event) =>
                                             setHirelingField(
                                               hireling.id,
-                                              field.key,
+                                              currentField.key,
                                               event.target.value === "" ? "" : Number(event.target.value)
                                             )
                                           }
                                         />
-                                      ))}
+                                        <input
+                                          type="number"
+                                          className="character-stat-max"
+                                          aria-label={`${statLabel} maximum`}
+                                          value={String(hireling[maximumField.key] ?? "")}
+                                          onChange={(event) =>
+                                            setHirelingField(
+                                              hireling.id,
+                                              maximumField.key,
+                                              event.target.value === "" ? "" : Number(event.target.value)
+                                            )
+                                          }
+                                          readOnly={!editingMaxima}
+                                        />
+                                      </div>
                                     </div>
-                                  </div>
-                                ))}
-                              </div>
-                            ) : (
-                              <div className="character-sheet-fields">
-                                {section.fields.map((field) =>
-                                  renderField(
-                                    { ...section, id: `${hireling.id}-${section.id}` },
-                                    field,
-                                    hireling,
-                                    (key, value) => setHirelingField(hireling.id, key, value)
-                                  )
-                                )}
-                              </div>
-                            )}
-                          </fieldset>
-                        ))}
+                                  ))}
+                                </div>
+                              ) : (
+                                <div className="character-sheet-fields">
+                                  {section.fields.map((field) =>
+                                    renderField(
+                                      { ...section, id: `${hireling.id}-${section.id}` },
+                                      field,
+                                      hireling,
+                                      (key, value) => setHirelingField(hireling.id, key, value)
+                                    )
+                                  )}
+                                </div>
+                              )}
+                            </fieldset>
+                          );
+                        })}
                         {definition.hirelings!.sheet.lists.map((list) => (
                           <fieldset key={list.key}>
                             <legend>{list.label}</legend>
@@ -1040,7 +1208,7 @@ export function GroupPage({
               ) : (
                 <Rocket aria-hidden="true" />
               )}
-              <div className="group-starship-image-actions">
+              <div className="group-image-actions">
                 <label title={editingStarshipImage ? "Replace starship image" : "Upload starship image"}>
                   <ImagePlus aria-hidden="true" />
                   <span>{editingStarshipImage ? "Replace" : "Upload"}</span>

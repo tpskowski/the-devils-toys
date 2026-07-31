@@ -303,9 +303,11 @@ characterRouter.post(
       one<{ size: number }>("SELECT COALESCE(SUM(portrait_size), 0) AS size FROM characters")?.size ?? 0;
     const starshipBytes =
       one<{ size: number }>("SELECT COALESCE(SUM(size), 0) AS size FROM starship_images")?.size ?? 0;
+    const hirelingBytes =
+      one<{ size: number }>("SELECT COALESCE(SUM(size), 0) AS size FROM hireling_images")?.size ?? 0;
     const replacedBytes = accessible.row.portrait_size ?? 0;
     if (
-      mediaBytes + portraitBytes + starshipBytes - replacedBytes + req.file.size >
+      mediaBytes + portraitBytes + starshipBytes + hirelingBytes - replacedBytes + req.file.size >
       config.uploadLimitMb * 1024 * 1024
     ) {
       removeUploadedPortrait(req.file);

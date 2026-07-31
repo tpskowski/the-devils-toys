@@ -22,4 +22,10 @@ describe("group state", () => {
       one<{ sql: string }>("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'starship_images'")?.sql
     ).toContain("PRIMARY KEY(room_id, starship_id)");
   });
+
+  it("creates storage for one uploaded image per hireling", () => {
+    expect(
+      one<{ sql: string }>("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'hireling_images'")?.sql
+    ).toContain("PRIMARY KEY(room_id, hireling_id)");
+  });
 });

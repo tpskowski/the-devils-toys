@@ -11,7 +11,7 @@ fs.mkdirSync(path.join(config.dataDir, "logs"), { recursive: true });
 export const db = new DatabaseSync(path.join(config.dataDir, "devils-toys.sqlite"));
 // The Devil's Tables runs as its own process against this same file, so a writer
 // waits its turn instead of failing the request outright.
-db.exec("PRAGMA foreign_keys = ON; PRAGMA journal_mode = WAL; PRAGMA busy_timeout = 5000;");
+db.exec("PRAGMA busy_timeout = 5000; PRAGMA foreign_keys = ON; PRAGMA journal_mode = WAL;");
 
 const systemCheckList = SYSTEM_IDS.map((system) => `'${system}'`).join(",");
 const themeCheckList = THEME_IDS.map((theme) => `'${theme}'`).join(",");
@@ -69,6 +69,12 @@ db.exec(`
     body TEXT NOT NULL,
     detail TEXT,
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+  );
+  CREATE TABLE IF NOT EXISTS room_easter_eggs (
+    room_id INTEGER NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
+    egg_id TEXT NOT NULL,
+    shown_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY(room_id, egg_id)
   );
   CREATE TABLE IF NOT EXISTS private_rolls (
     id INTEGER PRIMARY KEY,
@@ -129,6 +135,16 @@ db.exec(`
     size INTEGER NOT NULL,
     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY(room_id, starship_id)
+  );
+  CREATE TABLE IF NOT EXISTS hireling_images (
+    room_id INTEGER NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
+    hireling_id TEXT NOT NULL,
+    filename TEXT NOT NULL,
+    stored_name TEXT NOT NULL,
+    mime_type TEXT NOT NULL,
+    size INTEGER NOT NULL,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY(room_id, hireling_id)
   );
   CREATE TABLE IF NOT EXISTS revealed_references (
     room_id INTEGER NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,

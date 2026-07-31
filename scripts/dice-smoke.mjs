@@ -38,6 +38,7 @@ await runSmoke("System-defined dice smoke test", async ({ json, setup, redeem, c
     201
   );
   assert.equal(privateRoll.body.message.private, true);
+  assert.equal(privateRoll.body.message.rollVisibility, "private");
   assert.equal(privateRoll.body.message.kind, "roll");
   assert.ok(privateRoll.body.message.body.startsWith("1d66 "));
 
@@ -68,17 +69,22 @@ await runSmoke("System-defined dice smoke test", async ({ json, setup, redeem, c
 
   const announced = await hiddenRoll({ private: true });
   assert.equal(announced.private, true);
+  assert.equal(announced.message.rollVisibility, "private");
   assert.equal(announced.broadcasts.length, 1);
   assert.equal(announced.broadcasts[0].message.body, "Rolled privately");
   assert.ok(!announced.broadcasts[0].message.detail, "The notice carries no detail.");
-  assert.ok(
-    !JSON.stringify(announced.broadcasts[0].message).includes(String(announced.roll.total)),
-    "The notice must not carry the result."
+  assert.equal(
+    ["expression", "result", "roll", "rolls", "keptRolls", "droppedRolls", "total", "outcome"].some((field) =>
+      Object.hasOwn(announced.broadcasts[0].message, field)
+    ),
+    false,
+    "The notice must not carry result fields."
   );
 
   // An invisible roll leaves the table nothing at all.
   const unseen = await hiddenRoll({ invisible: true });
   assert.equal(unseen.private, true);
+  assert.equal(unseen.message.rollVisibility, "invisible");
   assert.ok(unseen.message.body.startsWith("1d20 "));
   assert.equal(unseen.broadcasts.length, 0, "An invisible roll tells players nothing.");
 
@@ -118,6 +124,12 @@ await runSmoke("System-defined dice smoke test", async ({ json, setup, redeem, c
       (message) => message.private && message.id === playerPrivate.body.message.id && message.body.startsWith("1d20 ")
     ),
     "A player's private roll is in the GM's history."
+  );
+  assert.ok(
+    gmAfterPlayer.body.messages.some(
+      (message) => message.private && message.rollVisibility === "invisible" && message.id === unseen.message.id
+    ),
+    "An invisible GM roll keeps its visibility tag in chat history."
   );
   const gmRollLog = await json(`/api/rooms/${cairn.body.room.id}/private-rolls`, { headers });
   assert.ok(
@@ -164,7 +176,7 @@ await runSmoke("System-defined dice smoke test", async ({ json, setup, redeem, c
       body: JSON.stringify({
         expression: "1d20",
         private: false,
-        save: { ability: "STR", target: 10, position: "advantage" }
+        save: { label: "STR", target: 10, position: "advantage" }
       })
     },
     400
@@ -182,7 +194,7 @@ await runSmoke("System-defined dice smoke test", async ({ json, setup, redeem, c
         body: JSON.stringify({
           expression: "9d100+99",
           private: false,
-          save: { ability: "WIL", target: 10, position }
+          save: { label: "WIL", target: 10, position }
         })
       },
       201

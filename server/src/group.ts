@@ -16,13 +16,23 @@ import {
 } from "./portrait-files.js";
 import { broadcastRoom } from "./realtime.js";
 import { starshipPartsFor } from "./starship-parts.js";
-import { systems } from "./systems.js";
+import { rollHirelingCreation } from "./hireling-creation.js";
+import { systemMarkdown, systems } from "./systems.js";
 
 export const groupRouter = express.Router();
 
 interface StarshipImageRow {
   room_id: number;
   starship_id: string;
+  filename: string;
+  stored_name: string;
+  mime_type: string;
+  size: number;
+}
+
+interface HirelingImageRow {
+  room_id: number;
+  hireling_id: string;
   filename: string;
   stored_name: string;
   mime_type: string;
@@ -39,7 +49,8 @@ const starshipIdSchema = z
   .min(1)
   .max(120)
   .regex(/^[A-Za-z0-9_-]+$/);
-const starshipImageUpload = multer({
+const hirelingIdSchema = starshipIdSchema;
+const groupImageUpload = multer({
   storage: multer.diskStorage({
     destination: uploadsDir,
     filename(_req, file, callback) {
@@ -49,7 +60,7 @@ const starshipImageUpload = multer({
   limits: { fileSize: PORTRAIT_UPLOAD_LIMIT_BYTES, files: 1 },
   fileFilter(_req, file, callback) {
     if (portraitImageTypes.has(file.mimetype)) callback(null, true);
-    else callback(new Error("Only PNG, JPEG, and WebP starship images are supported."));
+    else callback(new Error("Only PNG, JPEG, and WebP group images are supported."));
   }
 });
 
@@ -85,12 +96,31 @@ function publicStarshipImage(row: StarshipImageRow) {
   };
 }
 
+function publicHirelingImage(row: HirelingImageRow) {
+  return {
+    hirelingId: row.hireling_id,
+    url: `/api/rooms/${row.room_id}/group/hirelings/${encodeURIComponent(row.hireling_id)}/image?v=${encodeURIComponent(row.stored_name)}`,
+    filename: row.filename
+  };
+}
+
 function starshipImage(accountId: number, roomId: number, rawStarshipId: string) {
   if (!groupContext(accountId, roomId)) return;
   const parsedId = starshipIdSchema.safeParse(rawStarshipId);
   if (!parsedId.success) return;
   return one<StarshipImageRow>(
     "SELECT * FROM starship_images WHERE room_id = ? AND starship_id = ?",
+    roomId,
+    parsedId.data
+  );
+}
+
+function hirelingImage(accountId: number, roomId: number, rawHirelingId: string) {
+  if (!groupContext(accountId, roomId)) return;
+  const parsedId = hirelingIdSchema.safeParse(rawHirelingId);
+  if (!parsedId.success) return;
+  return one<HirelingImageRow>(
+    "SELECT * FROM hireling_images WHERE room_id = ? AND hireling_id = ?",
     roomId,
     parsedId.data
   );
@@ -110,6 +140,10 @@ groupRouter.get("/rooms/:roomId/group", requireAuth, (req: AuthedRequest, res) =
     images: all<StarshipImageRow>("SELECT * FROM starship_images WHERE room_id = ? ORDER BY updated_at", roomId).map(
       publicStarshipImage
     ),
+    hirelingImages: all<HirelingImageRow>(
+      "SELECT * FROM hireling_images WHERE room_id = ? ORDER BY updated_at",
+      roomId
+    ).map(publicHirelingImage),
     updatedAt: row?.updated_at ?? null
   });
 });
@@ -125,12 +159,127 @@ groupRouter.patch("/rooms/:roomId/group", requireAuth, (req: AuthedRequest, res)
     `INSERT INTO room_state (room_id, group_json, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)
      ON CONFLICT(room_id) DO UPDATE SET group_json = excluded.group_json, updated_at = CURRENT_TIMESTAMP`
   ).run(roomId, groupJson);
+  const hirelingIds = new Set(
+    (Array.isArray(parsed.data.state.hirelings) ? parsed.data.state.hirelings : []).flatMap((hireling) => {
+      if (!hireling || typeof hireling !== "object" || Array.isArray(hireling)) return [];
+      const parsedId = hirelingIdSchema.safeParse((hireling as Record<string, unknown>).id);
+      return parsedId.success ? [parsedId.data] : [];
+    })
+  );
+  for (const image of all<HirelingImageRow>("SELECT * FROM hireling_images WHERE room_id = ?", roomId)) {
+    if (hirelingIds.has(image.hireling_id)) continue;
+    db.prepare("DELETE FROM hireling_images WHERE room_id = ? AND hireling_id = ?").run(roomId, image.hireling_id);
+    removeStoredPortrait(image.stored_name);
+  }
   const updatedAt = one<{ updated_at: string }>(
     "SELECT updated_at FROM room_state WHERE room_id = ?",
     roomId
   )!.updated_at;
   broadcastRoom(roomId, { type: "group-updated" });
   res.json({ state: parsed.data.state, updatedAt });
+});
+
+groupRouter.post("/rooms/:roomId/group/hirelings/roll", requireAuth, (req: AuthedRequest, res) => {
+  const roomId = Number(req.params.roomId);
+  const context = groupContext(req.account!.id, roomId);
+  const creationRoll = context?.definition.hirelings?.creationRoll;
+  if (!context || !creationRoll) return res.status(404).json({ error: "Hireling creation is not available." });
+
+  try {
+    res.json({ hireling: rollHirelingCreation(creationRoll, systemMarkdown(context.system)) });
+  } catch (cause) {
+    res.status(500).json({ error: cause instanceof Error ? cause.message : "Hireling creation failed." });
+  }
+});
+
+groupRouter.get("/rooms/:roomId/group/hirelings/:hirelingId/image", requireAuth, (req: AuthedRequest, res) => {
+  const roomId = Number(req.params.roomId);
+  const image = hirelingImage(req.account!.id, roomId, String(req.params.hirelingId));
+  if (!image || path.basename(image.stored_name) !== image.stored_name)
+    return res.status(404).json({ error: "Hireling image not found." });
+  res.type(image.mime_type);
+  res.setHeader("Cache-Control", "private, max-age=31536000, immutable");
+  res.setHeader("Content-Disposition", `inline; filename*=UTF-8''${encodeURIComponent(image.filename)}`);
+  res.sendFile(image.stored_name, { root: uploadsDir });
+});
+
+groupRouter.post(
+  "/rooms/:roomId/group/hirelings/:hirelingId/image",
+  requireAuth,
+  groupImageUpload.single("file"),
+  (req: AuthedRequest, res) => {
+    const roomId = Number(req.params.roomId);
+    const context = groupContext(req.account!.id, roomId);
+    const parsedId = hirelingIdSchema.safeParse(req.params.hirelingId);
+    if (!context || !parsedId.success) {
+      removeUploadedPortrait(req.file);
+      return res.status(404).json({ error: "Hireling not found." });
+    }
+    if (!req.file) return res.status(400).json({ error: "Choose a PNG, JPEG, or WebP image." });
+    if (!validPortraitFile(req.file)) {
+      removeUploadedPortrait(req.file);
+      return res.status(415).json({ error: "The file contents do not match a supported image format." });
+    }
+
+    const mediaBytes = one<{ size: number }>("SELECT COALESCE(SUM(size), 0) AS size FROM media")?.size ?? 0;
+    const portraitBytes =
+      one<{ size: number }>("SELECT COALESCE(SUM(portrait_size), 0) AS size FROM characters")?.size ?? 0;
+    const starshipBytes =
+      one<{ size: number }>("SELECT COALESCE(SUM(size), 0) AS size FROM starship_images")?.size ?? 0;
+    const hirelingBytes =
+      one<{ size: number }>("SELECT COALESCE(SUM(size), 0) AS size FROM hireling_images")?.size ?? 0;
+    const previous = one<HirelingImageRow>(
+      "SELECT * FROM hireling_images WHERE room_id = ? AND hireling_id = ?",
+      roomId,
+      parsedId.data
+    );
+    if (
+      mediaBytes + portraitBytes + starshipBytes + hirelingBytes - (previous?.size ?? 0) + req.file.size >
+      config.uploadLimitMb * 1024 * 1024
+    ) {
+      removeUploadedPortrait(req.file);
+      return res.status(413).json({ error: "The server upload-storage allowance has been reached." });
+    }
+
+    try {
+      db.prepare(
+        `INSERT INTO hireling_images
+           (room_id, hireling_id, filename, stored_name, mime_type, size, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+         ON CONFLICT(room_id, hireling_id) DO UPDATE SET
+           filename = excluded.filename, stored_name = excluded.stored_name,
+           mime_type = excluded.mime_type, size = excluded.size, updated_at = CURRENT_TIMESTAMP`
+      ).run(
+        roomId,
+        parsedId.data,
+        path.basename(req.file.originalname).slice(0, 200) || `hireling${portraitImageTypes.get(req.file.mimetype)}`,
+        req.file.filename,
+        req.file.mimetype,
+        req.file.size
+      );
+    } catch (error) {
+      removeUploadedPortrait(req.file);
+      throw error;
+    }
+    if (previous?.stored_name !== req.file.filename) removeStoredPortrait(previous?.stored_name);
+    const image = one<HirelingImageRow>(
+      "SELECT * FROM hireling_images WHERE room_id = ? AND hireling_id = ?",
+      roomId,
+      parsedId.data
+    )!;
+    broadcastRoom(roomId, { type: "group-updated" });
+    res.status(201).json({ image: publicHirelingImage(image) });
+  }
+);
+
+groupRouter.delete("/rooms/:roomId/group/hirelings/:hirelingId/image", requireAuth, (req: AuthedRequest, res) => {
+  const roomId = Number(req.params.roomId);
+  const image = hirelingImage(req.account!.id, roomId, String(req.params.hirelingId));
+  if (!image) return res.status(404).json({ error: "Hireling image not found." });
+  db.prepare("DELETE FROM hireling_images WHERE room_id = ? AND hireling_id = ?").run(roomId, image.hireling_id);
+  removeStoredPortrait(image.stored_name);
+  broadcastRoom(roomId, { type: "group-updated" });
+  res.status(204).end();
 });
 
 groupRouter.get("/rooms/:roomId/group/starships/:starshipId/image", requireAuth, (req: AuthedRequest, res) => {
@@ -147,7 +296,7 @@ groupRouter.get("/rooms/:roomId/group/starships/:starshipId/image", requireAuth,
 groupRouter.post(
   "/rooms/:roomId/group/starships/:starshipId/image",
   requireAuth,
-  starshipImageUpload.single("file"),
+  groupImageUpload.single("file"),
   (req: AuthedRequest, res) => {
     const roomId = Number(req.params.roomId);
     const context = groupContext(req.account!.id, roomId);
@@ -167,13 +316,15 @@ groupRouter.post(
       one<{ size: number }>("SELECT COALESCE(SUM(portrait_size), 0) AS size FROM characters")?.size ?? 0;
     const starshipBytes =
       one<{ size: number }>("SELECT COALESCE(SUM(size), 0) AS size FROM starship_images")?.size ?? 0;
+    const hirelingBytes =
+      one<{ size: number }>("SELECT COALESCE(SUM(size), 0) AS size FROM hireling_images")?.size ?? 0;
     const previous = one<StarshipImageRow>(
       "SELECT * FROM starship_images WHERE room_id = ? AND starship_id = ?",
       roomId,
       parsedId.data
     );
     if (
-      mediaBytes + portraitBytes + starshipBytes - (previous?.size ?? 0) + req.file.size >
+      mediaBytes + portraitBytes + starshipBytes + hirelingBytes - (previous?.size ?? 0) + req.file.size >
       config.uploadLimitMb * 1024 * 1024
     ) {
       removeUploadedPortrait(req.file);
@@ -224,10 +375,10 @@ groupRouter.delete("/rooms/:roomId/group/starships/:starshipId/image", requireAu
 groupRouter.use((error: unknown, _req: express.Request, res: express.Response, next: express.NextFunction) => {
   if (error instanceof multer.MulterError) {
     return res.status(error.code === "LIMIT_FILE_SIZE" ? 413 : 400).json({
-      error: error.code === "LIMIT_FILE_SIZE" ? "Starship images may be at most 5 MB." : error.message
+      error: error.code === "LIMIT_FILE_SIZE" ? "Group images may be at most 5 MB." : error.message
     });
   }
-  if (error instanceof Error && error.message.includes("PNG, JPEG, and WebP starship images"))
+  if (error instanceof Error && error.message.includes("PNG, JPEG, and WebP group images"))
     return res.status(415).json({ error: error.message });
   next(error);
 });

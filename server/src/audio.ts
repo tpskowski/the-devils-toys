@@ -169,7 +169,9 @@ audioRouter.post(
       one<{ size: number }>("SELECT COALESCE(SUM(portrait_size), 0) AS size FROM characters")?.size ?? 0;
     const starshipBytes =
       one<{ size: number }>("SELECT COALESCE(SUM(size), 0) AS size FROM starship_images")?.size ?? 0;
-    const used = mediaBytes + portraitBytes + starshipBytes;
+    const hirelingBytes =
+      one<{ size: number }>("SELECT COALESCE(SUM(size), 0) AS size FROM hireling_images")?.size ?? 0;
+    const used = mediaBytes + portraitBytes + starshipBytes + hirelingBytes;
     if (used + req.file.size > config.uploadLimitMb * 1024 * 1024) {
       removeUpload(req.file);
       return res.status(413).json({ error: "The server upload-storage allowance has been reached." });

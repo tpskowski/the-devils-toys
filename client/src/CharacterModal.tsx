@@ -24,6 +24,7 @@ import { api } from "./api";
 import { CharacterItemEditor } from "./CharacterItemEditor";
 import { RulesMarkdown } from "./RulesMarkdown";
 import { appendEntry, entryName, readEntries, removeEntry, singularLabel, updateEntry } from "./character-entries";
+import { characterItemsForSlot } from "./character-items";
 import { groupRoster } from "./character-roster";
 import { currentsToBackfill } from "./character-stats";
 import { saveSetupForField, type SaveRollSetup } from "./save-roll";
@@ -426,39 +427,52 @@ export function CharacterModal({
     );
   }
 
+  function rollVice(fieldKey: string, index: number) {
+    const vice = viceCatalogue[Math.floor(Math.random() * viceCatalogue.length)];
+    if (vice) setVice(fieldKey, index, vice);
+  }
+
   function renderVicesField(field: CharacterSheetDefinition["sections"][number]["fields"][number]) {
     const vices = readVices(sheet[field.key]);
     return (
       <div className="character-vices wide-field" role="group" aria-label={field.label} key={field.key}>
         {vices.map((vice, index) => (
           <article className="character-vice" key={index}>
-            {canEdit && !vice.custom && (
-              <select
-                aria-label={`Vice ${index + 1}`}
-                value={viceCatalogue.some((option) => option.name === vice.name) ? vice.name : ""}
-                onChange={(event) => {
-                  if (event.target.value === "__random__") {
-                    const random = viceCatalogue[Math.floor(Math.random() * viceCatalogue.length)];
-                    if (random) setVice(field.key, index, random);
-                  } else if (event.target.value === "__custom__") {
-                    setVice(field.key, index, { ...vice, custom: true });
-                  } else {
-                    const selectedVice = viceCatalogue.find((option) => option.name === event.target.value);
-                    if (selectedVice) setVice(field.key, index, selectedVice);
-                  }
-                }}
-              >
-                <option value="__random__">Randomize</option>
-                <option value="" disabled>
-                  Select a vice…
-                </option>
-                {viceCatalogue.map((option) => (
-                  <option value={option.name} key={option.name}>
-                    {option.name}
+            {canEdit && !vice.name && !vice.custom && (
+              <div className="character-vice-picker">
+                <select
+                  aria-label={`Vice ${index + 1}`}
+                  value={viceCatalogue.some((option) => option.name === vice.name) ? vice.name : ""}
+                  onChange={(event) => {
+                    if (event.target.value === "__custom__") {
+                      setVice(field.key, index, { ...vice, custom: true });
+                    } else {
+                      const selectedVice = viceCatalogue.find((option) => option.name === event.target.value);
+                      if (selectedVice) setVice(field.key, index, selectedVice);
+                    }
+                  }}
+                >
+                  <option value="" disabled>
+                    Select a vice…
                   </option>
-                ))}
-                <option value="__custom__">Custom</option>
-              </select>
+                  {viceCatalogue.map((option) => (
+                    <option value={option.name} key={option.name}>
+                      {option.name}
+                    </option>
+                  ))}
+                  <option value="__custom__">Custom</option>
+                </select>
+                <button
+                  type="button"
+                  className="character-vice-roll"
+                  aria-label={`Roll vice ${index + 1}`}
+                  title="Roll on the vice table"
+                  disabled={viceCatalogue.length === 0}
+                  onClick={() => rollVice(field.key, index)}
+                >
+                  <Dices aria-hidden="true" />
+                </button>
+              </div>
             )}
             <div className="character-vice-heading">
               {vice.custom ? (
@@ -1063,7 +1077,7 @@ export function CharacterModal({
   }
 
   function renderSlotInput(list: CharacterSheetDefinition["lists"][number], slot: string, index: number) {
-    const stock = itemCatalogue[list.key] ?? [];
+    const stock = characterItemsForSlot(itemCatalogue[list.key] ?? [], list, index);
     return (
       <div
         className={`character-slot ${index > 0 && list.groupStarts?.includes(index) ? "character-list-group-start" : ""}`}
@@ -1094,13 +1108,14 @@ export function CharacterModal({
 
   function renderSlotEditor(list: CharacterSheetDefinition["lists"][number]) {
     if (editingSlot?.listKey !== list.key) return null;
+    const stock = characterItemsForSlot(itemCatalogue[list.key] ?? [], list, editingSlot.index);
     return (
       <CharacterItemEditor
         // Keyed by slot so picking a second pencil starts that slot's editor
         // fresh instead of carrying the first slot's typed value across.
         key={`${list.key}-${editingSlot.index}`}
         slotName={list.slots[editingSlot.index] ?? `Slot ${editingSlot.index + 1}`}
-        items={itemCatalogue[list.key] ?? []}
+        items={stock}
         current={slotValue(list, editingSlot.index)}
         onCancel={() => setEditingSlot(undefined)}
         onSubmit={(value) => {
@@ -1337,7 +1352,9 @@ export function CharacterModal({
                     </div>
                     <div className="character-layout-main">
                       {sections
-                        .filter((section) => section.id !== "identity" && section.id !== "talents")
+                        .filter(
+                          (section) => section.id !== "identity" && section.id !== "talents" && section.id !== "vices"
+                        )
                         .map(renderSection)}
                     </div>
                     <div className="character-layout-talents">
@@ -1345,6 +1362,7 @@ export function CharacterModal({
                     </div>
                     <div className="character-layout-rail character-layout-right">
                       {definition.lists.filter((list) => list.key === "equipment").map(renderList)}
+                      {sections.filter((section) => section.id === "vices").map(renderSection)}
                     </div>
                   </div>
                   {definition.lists.filter((list) => list.key !== "equipment").map(renderList)}

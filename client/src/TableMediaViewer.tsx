@@ -11,7 +11,7 @@ import {
   Settings2,
   UsersRound
 } from "lucide-react";
-import type { MediaAsset } from "@devils-toys/shared";
+import type { MapNotationEvent, MediaAsset } from "@devils-toys/shared";
 import type { RoomMediaState } from "./MediaModal";
 import { isMarkdownAsset, MediaContent } from "./MediaContent";
 import { mediaLabel } from "./media-label";
@@ -34,7 +34,8 @@ export function TableMediaViewer({
   onManage,
   onPing,
   mapNotationEnabled,
-  mapNotationRevision,
+  mapNotationSyncRevision,
+  mapNotationChange,
   rulesPage,
   requestedTab
 }: {
@@ -47,7 +48,8 @@ export function TableMediaViewer({
   onManage: () => void;
   onPing: (x: number, y: number) => void;
   mapNotationEnabled: boolean;
-  mapNotationRevision: number;
+  mapNotationSyncRevision: number;
+  mapNotationChange?: MapNotationEvent;
   rulesPage: ReactNode;
   requestedTab?: { tab: "rules"; revision: number };
 }) {
@@ -288,7 +290,11 @@ export function TableMediaViewer({
             pings={pings}
             onManage={onManage}
             onPing={onPing}
-            mapNotation={mapNotationEnabled ? { roomId, revision: mapNotationRevision } : undefined}
+            mapNotation={
+              mapNotationEnabled
+                ? { roomId, syncRevision: mapNotationSyncRevision, change: mapNotationChange }
+                : undefined
+            }
           />
         )}
         {tab === "scene" && (

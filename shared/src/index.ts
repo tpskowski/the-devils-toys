@@ -2,6 +2,7 @@ export * from "./roll-tables.js";
 export * from "./table-csv.js";
 export * from "./table-markdown.js";
 export * from "./table-tags.js";
+export * from "./calendar.js";
 
 export const SYSTEM_IDS = ["cairn", "monolith", "cwn"] as const;
 export const THEME_IDS = ["heroic", "digital", "used", "grim", "shinji"] as const;
@@ -48,6 +49,12 @@ export type NewMapNotation = MapNotation extends infer Notation
     : never
   : never;
 
+/** Incremental room events keep map clients synchronized without reloading every notation after each edit. */
+export type MapNotationEvent =
+  | { type: "map-notation-added"; mediaId: number; notation: MapNotation; clientMutationId?: string }
+  | { type: "map-notation-removed"; mediaId: number; notationId: number }
+  | { type: "map-notations-cleared"; mediaId: number };
+
 export type CalendarEventCadence = "holiday" | "weekly" | "biweekly" | "monthly";
 
 export interface CalendarEvent {
@@ -63,6 +70,9 @@ export interface RoomCalendar {
   year: number;
   month: number;
   day: number;
+  /** Number of advances in one day. One means each advance moves to the next day. */
+  segmentsPerDay: number;
+  /** Zero-based segment currently in progress. */
   segment: number;
   daysPerWeek: number;
   daysPerMonth: number;
@@ -115,6 +125,7 @@ export interface ChatMessage {
   body: string;
   detail?: string;
   private?: boolean;
+  rollVisibility?: "private" | "invisible";
   createdAt: string;
 }
 
@@ -165,6 +176,8 @@ export interface CharacterListDefinition {
   key: string;
   label: string;
   slots: readonly string[];
+  /** Stable type for each slot, used when catalogue entries name compatible slots. */
+  slotTypes?: readonly string[];
   /** Slot indexes that begin a new group of slots, drawn starting on a fresh row. */
   groupStarts?: readonly number[];
   /** Show only filled slots on the sheet and edit the full set in a dialog. */
@@ -184,6 +197,8 @@ export interface CharacterItem {
   detail: string;
   cost: string;
   bulky: boolean;
+  /** Slot types named by the item's authoritative parenthetical, when present. */
+  allowedSlotTypes?: readonly string[];
   /** What goes in the slot: the name with its spec, as the book writes it. */
   label: string;
 }
@@ -248,6 +263,25 @@ export interface GroupPageDefinition {
     singularLabel: string;
     rulesQuery: string;
     creationHint: string;
+    creationRoll?: {
+      abilities: readonly {
+        currentKey: string;
+        maximumKey: string;
+        dice: string;
+      }[];
+      hitProtection: {
+        currentKey: string;
+        maximumKey: string;
+        dice: string;
+      };
+      weapon: string;
+      finishingTouches?: {
+        section: string;
+        details: readonly string[];
+        firstNames: readonly string[];
+        lastName: string;
+      };
+    };
     sheet: CharacterSheetDefinition;
     levelUpHint: string;
   };
@@ -445,9 +479,10 @@ export interface RollTableSet {
 }
 
 /**
- * How much of a table roll the room sees. `public` shows the roll but not the
- * table text, `private` tells players a roll happened, `invisible` tells them
- * nothing, and `reveal` shows everyone the text that was rolled.
+ * How much of a table roll the room sees. `public` shows the result to the GM
+ * and tells players a roll happened, `private` does the same as an explicit
+ * restricted choice, `invisible` tells players nothing, and `reveal` shows
+ * everyone the text that was rolled.
  */
 export const TABLE_ROLL_VISIBILITIES = ["public", "private", "invisible", "reveal"] as const;
 

@@ -105,6 +105,33 @@ describe("finding rollable tables in system Markdown", () => {
     expect(tables[3].dice).toBe("d4");
   });
 
+  it("flattens compact repeated Roll and Result pairs", () => {
+    const [compact] = parseRollTables(`## Generators
+
+### Names
+
+| Roll | Result | Roll | Result |
+| --- | --- | --- | --- |
+| 1 | Ash | 4 | Moss |
+| 2 | Bell | 5 | Pike |
+| 3 | Crow | 6 | Vale |
+`);
+    expect(compact).toMatchObject({
+      name: "Names",
+      category: "Generators",
+      dice: "d6",
+      columns: ["Result"]
+    });
+    expect(compact.rows).toEqual([
+      { label: "1", min: 1, max: 1, cells: ["Ash"] },
+      { label: "2", min: 2, max: 2, cells: ["Bell"] },
+      { label: "3", min: 3, max: 3, cells: ["Crow"] },
+      { label: "4", min: 4, max: 4, cells: ["Moss"] },
+      { label: "5", min: 5, max: 5, cells: ["Pike"] },
+      { label: "6", min: 6, max: 6, cells: ["Vale"] }
+    ]);
+  });
+
   it("records the ranges each row covers", () => {
     expect(tables[1].rows).toEqual([
       { label: "1-3", min: 1, max: 3, cells: ["None"] },

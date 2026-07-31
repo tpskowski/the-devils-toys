@@ -44,6 +44,7 @@ import type {
   Account,
   ChatMessage,
   DiceRules,
+  MapNotationEvent,
   PresenceMember,
   RoomSummary,
   RoomCalendar,
@@ -638,7 +639,8 @@ function TableRoom({
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [appearanceOpen, setAppearanceOpen] = useState(false);
   const [groupRevision, setGroupRevision] = useState(0);
-  const [mapNotationRevision, setMapNotationRevision] = useState(0);
+  const [mapNotationSyncRevision, setMapNotationSyncRevision] = useState(0);
+  const [mapNotationChange, setMapNotationChange] = useState<MapNotationEvent>();
   const [groupView, setGroupView] = useState<GroupView>(() => defaultGroupView(room.system));
   const [rulesTabRevision, setRulesTabRevision] = useState(0);
 
@@ -695,7 +697,10 @@ function TableRoom({
       const protocol = location.protocol === "https:" ? "wss:" : "ws:";
       const socket = new WebSocket(`${protocol}//${location.host}/ws`);
       socketRef.current = socket;
-      socket.onopen = () => socket.send(JSON.stringify({ type: "join", roomId: room.id }));
+      socket.onopen = () => {
+        socket.send(JSON.stringify({ type: "join", roomId: room.id }));
+        setMapNotationSyncRevision((current) => current + 1);
+      };
       socket.onmessage = (event) => {
         const data = JSON.parse(event.data);
         if (data.type === "message" || data.type === "presence-notice")
@@ -719,7 +724,13 @@ function TableRoom({
         if (data.type === "audio-playback") setAudio((current) => ({ ...current, playback: data.playback }));
         if (data.type === "npcs-updated") setNpcRevision((current) => current + 1);
         if (data.type === "group-updated") setGroupRevision((current) => current + 1);
-        if (data.type === "map-notations-updated") setMapNotationRevision((current) => current + 1);
+        if (data.type === "map-notations-updated") setMapNotationSyncRevision((current) => current + 1);
+        if (
+          data.type === "map-notation-added" ||
+          data.type === "map-notation-removed" ||
+          data.type === "map-notations-cleared"
+        )
+          setMapNotationChange(data as MapNotationEvent);
         if (data.type === "scene-ping") {
           const ping = data.ping as ScenePing;
           setPings((current) => [...current, ping]);
@@ -808,7 +819,8 @@ function TableRoom({
             media={media}
             isGm={detail.room.role === "gm"}
             mapNotationEnabled={detail.room.mapNotationEnabled}
-            mapNotationRevision={mapNotationRevision}
+            mapNotationSyncRevision={mapNotationSyncRevision}
+            mapNotationChange={mapNotationChange}
             requestedTab={rulesTabRevision ? { tab: "rules", revision: rulesTabRevision } : undefined}
             rulesPage={
               <Rules
@@ -930,6 +942,7 @@ function TableRoom({
       {tablesOpen && (
         <TablesModal
           roomId={room.id}
+          isGm={detail.room.role === "gm"}
           onRolled={(message) =>
             setMessages((current) =>
               current.some(
@@ -1077,7 +1090,13 @@ function Chat({
             <div>
               <strong>{message.displayName}</strong>
               <span className="message-meta">
-                {message.private && <span className="private-marker">Private</span>}
+                {message.private && (
+                  <span
+                    className={`private-marker${message.rollVisibility === "invisible" ? " invisible-marker" : ""}`}
+                  >
+                    {message.rollVisibility === "invisible" ? "Invisible" : "Private"}
+                  </span>
+                )}
                 <time>
                   {new Date(`${message.createdAt}Z`).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
                 </time>

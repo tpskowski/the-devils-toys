@@ -187,15 +187,34 @@ export function parseRollTables(markdown: string, exclude: readonly string[] = [
 
     const path = headings.map((item) => item.text);
     const stated = statedDice(header[0], path);
+    // Some books save horizontal space by repeating Roll/Result pairs. Flatten
+    // those pairs into the same one-roll-column shape used by the catalogue.
+    const compactRollColumns = header.flatMap((label, position) =>
+      dieColumnNames.has(label.trim().toLocaleLowerCase()) && position + 1 < header.length ? [position] : []
+    );
+    const compact =
+      compactRollColumns.length > 1 &&
+      compactRollColumns.every((position, pair) => position === pair * 2) &&
+      compactRollColumns.every((position) => Boolean(header[position + 1]?.trim()));
     const parsed: RollTableRow[] = [];
     let cursor = index + 2;
     for (; cursor < lines.length; cursor += 1) {
       const row = cells(lines[cursor]);
       if (!row) break;
-      const range = rowRange(row[0], Boolean(stated));
-      if (!range) continue;
-      parsed.push({ label: row[0], min: range.min, max: range.max, cells: row.slice(1) });
+      if (compact) {
+        for (const position of compactRollColumns) {
+          const label = row[position] ?? "";
+          const range = rowRange(label, Boolean(stated));
+          if (!range) continue;
+          parsed.push({ label, min: range.min, max: range.max, cells: [row[position + 1] ?? ""] });
+        }
+      } else {
+        const range = rowRange(row[0], Boolean(stated));
+        if (!range) continue;
+        parsed.push({ label: row[0], min: range.min, max: range.max, cells: row.slice(1) });
+      }
     }
+    if (compact) parsed.sort((left, right) => left.min - right.min || left.max - right.max);
     const tableStart = index;
     const tableEnd = cursor - 1;
     const owning = headings[headings.length - 1];
@@ -211,7 +230,7 @@ export function parseRollTables(markdown: string, exclude: readonly string[] = [
       path,
       subject: header[1]?.trim() ?? "",
       dice,
-      columns: header.slice(1),
+      columns: compact ? [header[1]] : header.slice(1),
       rows: parsed,
       tags,
       source: {

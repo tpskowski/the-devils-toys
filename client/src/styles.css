@@ -925,6 +925,10 @@ button:disabled {
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
+.invisible-marker {
+  border-color: color-mix(in srgb, var(--muted), transparent 35%);
+  color: var(--muted);
+}
 .message-private {
   background: color-mix(in srgb, var(--accent), transparent 94%);
   border-left-color: color-mix(in srgb, var(--accent), white 30%);
@@ -951,6 +955,19 @@ button:disabled {
   color: var(--accent);
   font:
     600 16px "DM Mono",
+    monospace;
+}
+.message-system {
+  padding: 8px 0 8px 13px;
+  border-left: 2px solid color-mix(in srgb, var(--accent), var(--line) 45%);
+}
+.message-system strong {
+  color: var(--muted);
+}
+.message-system p {
+  color: var(--text);
+  font:
+    500 12px "DM Mono",
     monospace;
 }
 .empty-copy {
@@ -1183,6 +1200,11 @@ button:disabled {
   width: min(100%, var(--rules-reading-width));
   margin-right: auto;
   margin-left: auto;
+}
+@media (min-width: 701px) {
+  .table-rules-panel .rules-reading > * {
+    margin-left: 0;
+  }
 }
 .rules-reading h1,
 .rules-reading h2,
@@ -1637,10 +1659,43 @@ button:disabled {
   color: var(--accent);
   font-weight: 700;
 }
+.calendar-view-controls {
+  margin-top: 1.1rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+.calendar-view-controls label {
+  min-width: 150px;
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font:
+    600 10px "DM Mono",
+    monospace;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.calendar-view-controls select,
+.calendar-view-controls select option {
+  background: var(--surface);
+  color: var(--text);
+}
+.calendar-view-controls select {
+  height: 42px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 0;
+  font:
+    500 14px Inter,
+    sans-serif;
+  letter-spacing: 0;
+  text-transform: none;
+}
 .calendar-week {
   display: grid;
   gap: 0.35rem;
-  margin-top: 1.25rem;
+  margin-top: 0.9rem;
   min-width: 520px;
 }
 .calendar-week > strong {
@@ -1657,6 +1712,7 @@ button:disabled {
 }
 .calendar-day {
   position: relative;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -1667,9 +1723,30 @@ button:disabled {
   color: var(--text);
   text-align: left;
 }
+.calendar-day::before {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  inset: 0 auto 0 0;
+  width: 0;
+  pointer-events: none;
+  background: color-mix(in srgb, var(--accent), transparent 82%);
+}
+.calendar-day > * {
+  position: relative;
+  z-index: 1;
+}
+.calendar-day.past::before {
+  width: 100%;
+}
 .calendar-day.current {
   border: 2px solid var(--accent);
   background: var(--surface-raised);
+}
+.calendar-day.current::before {
+  width: var(--calendar-progress, 0%);
+  background: color-mix(in srgb, var(--accent), transparent 72%);
+  transition: width 0.22s var(--ease);
 }
 .calendar-day small {
   width: 100%;
@@ -1694,8 +1771,8 @@ button:disabled {
   grid-template-columns: repeat(3, 1fr);
   gap: 0.75rem;
 }
-.calendar-editor textarea {
-  min-height: 4.5rem;
+.calendar-name-list input {
+  width: 100%;
 }
 .calendar-event-editor {
   display: grid;

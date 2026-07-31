@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type PointerEvent } from "react";
 import { ArrowUpRight, Focus, ImagePlus, MapPin, Minus, Plus } from "lucide-react";
-import type { MediaAsset } from "@devils-toys/shared";
+import type { MapNotationEvent, MediaAsset } from "@devils-toys/shared";
 import { mediaLabel } from "./media-label";
 import { MapNotationLayer } from "./MapNotationLayer";
 
@@ -27,7 +27,7 @@ export function SceneViewer({
   pings: ScenePing[];
   onManage: () => void;
   onPing: (x: number, y: number) => void;
-  mapNotation?: { roomId: number; revision: number };
+  mapNotation?: { roomId: number; syncRevision: number; change?: MapNotationEvent };
 }) {
   const [scale, setScale] = useState(1);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
@@ -159,8 +159,10 @@ export function SceneViewer({
           roomId={mapNotation.roomId}
           mediaId={scene.id}
           isGm={isGm}
-          revision={mapNotation.revision}
-          transform={`translate(${offset.x}px, ${offset.y}px) scale(${scale})`}
+          syncRevision={mapNotation.syncRevision}
+          change={mapNotation.change}
+          scale={scale}
+          offset={offset}
         />
       )}
       <div

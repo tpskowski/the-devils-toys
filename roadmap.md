@@ -7,8 +7,8 @@
 ## Library
 
 ## Music
-1. combat music
 
+1. combat music
 
 ## Character Sheet
 
@@ -30,10 +30,10 @@
 ## Group Tab
 
 ### Starship
+
 1. Expand starships by default, but remember user's last setting
 2. Add space for Starship image
 3. Add print option, this always shows full hold space
-
 
 ## GM Stuff
 

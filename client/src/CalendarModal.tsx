@@ -1,6 +1,15 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { ChevronRight, Plus, Settings2, Trash2, X } from "lucide-react";
-import type { CalendarEvent, CalendarEventCadence, RoomCalendar } from "@devils-toys/shared";
+import {
+  calendarDayIndex,
+  calendarDayIsPast,
+  calendarDayProgress,
+  calendarFirstWeekday,
+  calendarSegmentLabel,
+  type CalendarEvent,
+  type CalendarEventCadence,
+  type RoomCalendar
+} from "@devils-toys/shared";
 import { api } from "./api";
 
 export function CalendarModal({
@@ -20,8 +29,11 @@ export function CalendarModal({
   const [draft, setDraft] = useState(calendar);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
-  const firstWeekday =
-    (((calendar.month * calendar.daysPerMonth) % calendar.daysPerWeek) + calendar.daysPerWeek) % calendar.daysPerWeek;
+  const [viewMonth, setViewMonth] = useState(calendar.month);
+  const [viewYear, setViewYear] = useState(calendar.year);
+  const firstWeekday = calendarFirstWeekday(calendar, viewYear, viewMonth);
+  const currentPage = viewMonth === calendar.month && viewYear === calendar.year;
+  const yearOptions = useMemo(() => Array.from({ length: 41 }, (_, index) => viewYear - 20 + index), [viewYear]);
   const cells = useMemo(
     () =>
       Array.from({ length: firstWeekday + calendar.daysPerMonth }, (_, index) =>
@@ -30,11 +42,16 @@ export function CalendarModal({
     [firstWeekday, calendar.daysPerMonth]
   );
 
+  useEffect(() => {
+    setViewMonth(calendar.month);
+    setViewYear(calendar.year);
+  }, [calendar.month, calendar.year]);
+
   function eventsFor(day: number) {
     const weekday = ((firstWeekday + day - 1) % calendar.daysPerWeek) + 1;
-    const absoluteWeek = Math.floor((calendar.month * calendar.daysPerMonth + day - 1) / calendar.daysPerWeek);
+    const absoluteWeek = Math.floor(calendarDayIndex(calendar, viewYear, viewMonth, day) / calendar.daysPerWeek);
     return calendar.events.filter((event) => {
-      if (event.cadence === "holiday") return event.day === day && event.month === calendar.month;
+      if (event.cadence === "holiday") return event.day === day && event.month === viewMonth;
       if (event.cadence === "monthly") return event.day === day;
       if (event.cadence === "biweekly") return event.day === weekday && absoluteWeek % 2 === 0;
       return event.day === weekday;
@@ -74,9 +91,7 @@ export function CalendarModal({
             <h2>
               {calendar.monthNames[calendar.month]} · Day {calendar.day}
             </h2>
-            {calendar.segmentNames.length > 0 && (
-              <p className="calendar-segment">{calendar.segmentNames[calendar.segment]}</p>
-            )}
+            {calendar.segmentsPerDay > 1 && <p className="calendar-segment">{calendarSegmentLabel(calendar)}</p>}
           </div>
           <div className="calendar-actions">
             {isGm && (
@@ -93,6 +108,28 @@ export function CalendarModal({
           <CalendarEditor value={draft} onChange={setDraft} onSave={save} saving={saving} />
         ) : (
           <>
+            <div className="calendar-view-controls" aria-label="Displayed month and year">
+              <label>
+                Month
+                <select value={viewMonth} onChange={(event) => setViewMonth(Number(event.target.value))}>
+                  {calendar.monthNames.map((name, index) => (
+                    <option value={index} key={index}>
+                      {name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Year
+                <select value={viewYear} onChange={(event) => setViewYear(Number(event.target.value))}>
+                  {yearOptions.map((year) => (
+                    <option value={year} key={year}>
+                      {year}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
             <div
               className="calendar-week"
               style={{ gridTemplateColumns: `repeat(${calendar.daysPerWeek}, minmax(0, 1fr))` }}
@@ -100,28 +137,40 @@ export function CalendarModal({
               {Array.from({ length: calendar.daysPerWeek }, (_, i) => (
                 <strong key={i}>{calendar.dayNames[i] ?? `Day ${i + 1}`}</strong>
               ))}
-              {cells.map((day, index) =>
-                day === null ? (
-                  <span className="calendar-blank" key={`b${index}`} />
-                ) : (
+              {cells.map((day, index) => {
+                if (day === null) return <span className="calendar-blank" key={`b${index}`} />;
+                const current = currentPage && day === calendar.day;
+                const past = calendarDayIsPast(calendar, viewYear, viewMonth, day);
+                const style = current
+                  ? ({
+                      "--calendar-progress": `${calendarDayProgress(calendar) * 100}%`
+                    } as CSSProperties)
+                  : undefined;
+                return (
                   <button
                     key={day}
-                    className={`calendar-day ${day === calendar.day ? "current" : ""}`}
-                    onClick={day === calendar.day && isGm ? advance : undefined}
-                    title={day === calendar.day && isGm ? "Advance time" : undefined}
+                    className={`calendar-day${current ? " current" : ""}${past ? " past" : ""}`}
+                    style={style}
+                    aria-current={current ? "date" : undefined}
+                    onClick={current && isGm ? advance : undefined}
+                    title={current && isGm ? "Advance time" : past ? "Past day" : undefined}
                   >
                     <b>{day}</b>
                     {eventsFor(day).map((event) => (
                       <small key={event.id}>{event.name}</small>
                     ))}
-                    {day === calendar.day && isGm && <ChevronRight className="calendar-advance" size={15} />}
+                    {current && isGm && <ChevronRight className="calendar-advance" size={15} />}
                   </button>
-                )
-              )}
+                );
+              })}
             </div>
             {isGm && (
               <p className="calendar-hint">
-                Click the current day to advance to the next {calendar.segmentNames.length ? "part of the day" : "day"}.
+                {currentPage
+                  ? `Click the current day to advance to the next ${
+                      calendar.segmentsPerDay > 1 ? "segment of the day" : "day"
+                    }.`
+                  : "Return to the current month and year to advance time."}
               </p>
             )}
           </>
@@ -132,7 +181,7 @@ export function CalendarModal({
   );
 }
 
-function splitNames(value: string) {
+export function splitCalendarNames(value: string) {
   return value
     .split(",")
     .map((name) => name.trim())
@@ -150,6 +199,17 @@ function CalendarEditor({
   saving: boolean;
 }) {
   const set = <K extends keyof RoomCalendar>(key: K, next: RoomCalendar[K]) => onChange({ ...value, [key]: next });
+  const [dayNamesText, setDayNamesText] = useState(value.dayNames.join(", "));
+  const [monthNamesText, setMonthNamesText] = useState(value.monthNames.join(", "));
+  const [segmentNamesText, setSegmentNamesText] = useState(value.segmentNames.join(", "));
+  function updateNames(
+    key: "dayNames" | "monthNames" | "segmentNames",
+    text: string,
+    updateText: (next: string) => void
+  ) {
+    updateText(text);
+    set(key, splitCalendarNames(text));
+  }
   function addEvent() {
     set("events", [...value.events, { id: crypto.randomUUID(), name: "New event", cadence: "monthly", day: 1 }]);
   }
@@ -210,30 +270,53 @@ function CalendarEditor({
           Current segment
           <select
             value={value.segment}
-            disabled={!value.segmentNames.length}
+            disabled={value.segmentsPerDay === 1}
             onChange={(e) => set("segment", Number(e.target.value))}
           >
-            {value.segmentNames.map((name, i) => (
+            {Array.from({ length: value.segmentsPerDay }, (_, i) => (
               <option value={i} key={i}>
-                {name}
+                {calendarSegmentLabel(value, i)}
               </option>
             ))}
           </select>
         </label>
+        <label>
+          Segments per day
+          <input
+            type="number"
+            min="1"
+            max="100"
+            value={value.segmentsPerDay}
+            onChange={(e) => {
+              const segmentsPerDay = Math.max(1, Math.min(100, Number(e.target.value) || 1));
+              onChange({
+                ...value,
+                segmentsPerDay,
+                segment: Math.min(value.segment, segmentsPerDay - 1)
+              });
+            }}
+          />
+        </label>
       </div>
-      <label>
+      <label className="calendar-name-list">
         Names of days <small>Comma separated</small>
-        <input value={value.dayNames.join(", ")} onChange={(e) => set("dayNames", splitNames(e.target.value))} />
-      </label>
-      <label>
-        Names of months <small>Comma separated</small>
-        <textarea value={value.monthNames.join(", ")} onChange={(e) => set("monthNames", splitNames(e.target.value))} />
-      </label>
-      <label>
-        Segments / parts of day <small>Comma separated; leave blank to advance by full days</small>
         <input
-          value={value.segmentNames.join(", ")}
-          onChange={(e) => set("segmentNames", splitNames(e.target.value))}
+          value={dayNamesText}
+          onChange={(event) => updateNames("dayNames", event.target.value, setDayNamesText)}
+        />
+      </label>
+      <label className="calendar-name-list">
+        Names of months <small>Comma separated</small>
+        <input
+          value={monthNamesText}
+          onChange={(event) => updateNames("monthNames", event.target.value, setMonthNamesText)}
+        />
+      </label>
+      <label className="calendar-name-list">
+        Segment names <small>Comma separated · optional</small>
+        <input
+          value={segmentNamesText}
+          onChange={(event) => updateNames("segmentNames", event.target.value, setSegmentNamesText)}
         />
       </label>
       <div className="calendar-events-title">

@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import { describe, expect, it } from "vitest";
-import { parseCharacterItems } from "./character-items.js";
+import { allowedSlotTypes, parseCharacterItems } from "./character-items.js";
 import { projectFile } from "./paths.js";
 
 const monolith = fs.readFileSync(projectFile("raw", "Monolith.md"), "utf8");
@@ -66,6 +66,24 @@ describe("reading a system's carryable gear", () => {
     ]);
     expect(augments.find((item) => item.name === "Bionic Oculus")?.spec).toBe("Eyes Socket");
     expect(augments.some((item) => item.name === "Rifle")).toBe(false);
+  });
+
+  it("retains every socket restriction written in the augmentation tables", () => {
+    expect(augments.find((item) => item.name === "Standard Brain-Jack")?.allowedSlotTypes).toEqual(["neural"]);
+    expect(augments.find((item) => item.name === "Bionic Tendons")?.allowedSlotTypes).toEqual(["leg"]);
+    expect(augments.find((item) => item.name === "Devil-Leopard Mutation")?.allowedSlotTypes).toEqual([
+      "internal",
+      "skin"
+    ]);
+    expect(augments.find((item) => item.name === "Mask of Pale Starlight")?.allowedSlotTypes).toEqual([
+      "eyes",
+      "lower-face"
+    ]);
+    expect(augments.every((item) => item.allowedSlotTypes?.length)).toBe(true);
+  });
+
+  it("does not treat ordinary item parentheticals as socket restrictions", () => {
+    expect(allowedSlotTypes("D8, bulky, mid/long-range")).toBeUndefined();
   });
 
   it("keeps the first entry when a name repeats across tables", () => {

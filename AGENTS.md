@@ -61,3 +61,9 @@
 - Treat role checks as server responsibilities.
 - Avoid hard limits where the rules call for warnings.
 - Keep player workflows phone-ready; keep essential GM actions usable on small screens.
+
+## Drop-down styling
+
+- Style native `select` controls with the same solid `var(--surface)` background, `var(--text)` text, `var(--line)` border, square corners, and Inter type used by adjacent inputs. Give the control an explicit height and horizontal padding rather than relying on browser defaults.
+- Apply the same solid background and text colours to `option` elements. Native option panels inherit from the control inconsistently, and transparent backgrounds can expose an operating-system palette that does not match the active room theme.
+- Constrain selects in grid or flex layouts with `min-width: 0` and a bounded width so long option labels do not widen their panel. Keep the global `:focus-visible` outline intact.

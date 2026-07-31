@@ -14,10 +14,11 @@ import { availableSets, findSet } from "./table-sets.js";
 import { rollDice } from "./dice.js";
 import { inGameDisplayName } from "./display-name.js";
 import { rowForRoll, rowText } from "./roll-tables.js";
-import { broadcastRoom } from "./realtime.js";
+import { broadcastRoom, sendToRoomGms, sendToRoomPlayers } from "./realtime.js";
 
 /** Browsing and rolling on the catalogue from inside a room, for the room's GM. */
 export const tableRouter = express.Router();
+export const DEFAULT_TABLE_ROLL_NOTICE = "Rolled on a random table";
 
 function gmRoom(req: AuthedRequest, res: express.Response) {
   const roomId = Number(req.params.roomId);
@@ -66,8 +67,65 @@ function publicTableMessage(roomId: number, accountId: number, body: string, det
     detail: row.detail ?? undefined,
     createdAt: row.created_at
   };
-  broadcastRoom(roomId, { type: "message", message });
   return message;
+}
+
+function privateTableMessage(
+  roomId: number,
+  accountId: number,
+  label: string,
+  rolled: { total: number; detail: string },
+  resultText: string,
+  visibility: "private" | "invisible"
+) {
+  const stored = db
+    .prepare("INSERT INTO private_rolls (room_id, account_id, expression, result) VALUES (?, ?, ?, ?)")
+    .run(
+      roomId,
+      accountId,
+      label,
+      JSON.stringify({
+        ...rolled,
+        detail: [rolled.detail, resultText].filter(Boolean).join(" · "),
+        visibility
+      })
+    );
+  const privateRow = one<{
+    id: number;
+    room_id: number;
+    account_id: number;
+    username: string;
+    character_name: string | null;
+    expression: string;
+    result: string;
+    created_at: string;
+  }>(
+    `SELECT pr.id, pr.room_id, pr.account_id, a.username, c.name AS character_name,
+            pr.expression, pr.result, pr.created_at
+     FROM private_rolls pr JOIN accounts a ON a.id = pr.account_id
+     LEFT JOIN memberships rm ON rm.room_id = pr.room_id AND rm.account_id = pr.account_id
+     LEFT JOIN characters c ON c.id = rm.active_character_id
+     WHERE pr.id = ?`,
+    Number(stored.lastInsertRowid)
+  )!;
+  const result = JSON.parse(privateRow.result) as {
+    total: number;
+    detail?: string;
+    visibility?: "private" | "invisible";
+  };
+  return {
+    id: privateRow.id,
+    roomId: privateRow.room_id,
+    accountId: privateRow.account_id,
+    username: privateRow.username,
+    displayName: inGameDisplayName(privateRow.username, privateRow.character_name),
+    kind: "roll" as const,
+    body: `${privateRow.expression} → ${result.total}`,
+    detail: result.detail,
+    private: true,
+    rollVisibility: result.visibility ?? "private",
+    createdAt: privateRow.created_at
+  };
 }
 
 tableRouter.get("/rooms/:roomId/tables", requireAuth, (req: AuthedRequest, res) => {
@@ -127,55 +185,24 @@ tableRouter.post("/rooms/:roomId/tables/roll", requireAuth, (req: AuthedRequest,
   const missing = row ? "" : `No entry for ${rolled.total}`;
 
   if (visibility === "public") {
-    const message = publicTableMessage(roomId, req.account!.id, headline, missing || rolled.detail);
-    return res.status(201).json({ roll, message });
+    const message = privateTableMessage(roomId, req.account!.id, label, rolled, missing || text, "private");
+    const notice = publicTableMessage(roomId, req.account!.id, DEFAULT_TABLE_ROLL_NOTICE, null);
+    sendToRoomGms(roomId, { type: "message", message });
+    sendToRoomPlayers(roomId, { type: "message", message: notice });
+    return res.status(201).json({ roll, message, private: true });
   }
   if (visibility === "reveal") {
     const message = publicTableMessage(roomId, req.account!.id, headline, missing || text || rolled.detail);
+    broadcastRoom(roomId, { type: "message", message });
     return res.status(201).json({ roll, message });
   }
 
   // Private and invisible rolls stay in the GM's own log; only a private roll
   // tells the room that something was rolled.
-  const stored = db
-    .prepare("INSERT INTO private_rolls (room_id, account_id, expression, result) VALUES (?, ?, ?, ?)")
-    .run(
-      roomId,
-      req.account!.id,
-      label,
-      JSON.stringify({ ...rolled, detail: [rolled.detail, missing || text].filter(Boolean).join(" · ") })
-    );
-  const privateRow = one<{
-    id: number;
-    room_id: number;
-    account_id: number;
-    username: string;
-    character_name: string | null;
-    expression: string;
-    result: string;
-    created_at: string;
-  }>(
-    `SELECT pr.id, pr.room_id, pr.account_id, a.username, c.name AS character_name,
-            pr.expression, pr.result, pr.created_at
-     FROM private_rolls pr JOIN accounts a ON a.id = pr.account_id
-     LEFT JOIN memberships rm ON rm.room_id = pr.room_id AND rm.account_id = pr.account_id
-     LEFT JOIN characters c ON c.id = rm.active_character_id
-     WHERE pr.id = ?`,
-    Number(stored.lastInsertRowid)
-  )!;
-  const result = JSON.parse(privateRow.result) as { total: number; detail?: string };
-  const message = {
-    id: privateRow.id,
-    roomId: privateRow.room_id,
-    accountId: privateRow.account_id,
-    username: privateRow.username,
-    displayName: inGameDisplayName(privateRow.username, privateRow.character_name),
-    kind: "roll" as const,
-    body: `${privateRow.expression} → ${result.total}`,
-    detail: result.detail,
-    private: true,
-    createdAt: privateRow.created_at
-  };
-  if (visibility === "private") publicTableMessage(roomId, req.account!.id, `Rolled privately on ${table.name}`, null);
+  const message = privateTableMessage(roomId, req.account!.id, label, rolled, missing || text, visibility);
+  if (visibility === "private") {
+    const notice = publicTableMessage(roomId, req.account!.id, `Rolled privately on ${table.name}`, null);
+    broadcastRoom(roomId, { type: "message", message: notice });
+  }
   res.status(201).json({ roll, message, private: true });
 });

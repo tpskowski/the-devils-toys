@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { spawn } from "node:child_process";
 import { DatabaseSync } from "node:sqlite";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { BUILTIN_TABLE_TAGS, SYSTEM_IDS, THEME_IDS } from "@devils-toys/shared";
@@ -93,12 +94,61 @@ function tableNames(loaded: LoadedDatabase) {
   return loaded.all<{ name: string }>("SELECT name FROM sqlite_master WHERE type = 'table'").map((row) => row.name);
 }
 
+async function holdDatabaseLock(directory: string) {
+  const child = spawn(
+    process.execPath,
+    [
+      "--input-type=module",
+      "--eval",
+      `
+        import { DatabaseSync } from "node:sqlite";
+        const database = new DatabaseSync(process.argv[1]);
+        database.exec("BEGIN EXCLUSIVE");
+        process.stdout.write("locked\\n");
+        setTimeout(() => {
+          database.exec("COMMIT");
+          database.close();
+        }, 250);
+      `,
+      path.join(directory, "devils-toys.sqlite")
+    ],
+    { stdio: ["ignore", "pipe", "pipe"] }
+  );
+  const exited = new Promise<number | null>((resolve) => child.once("exit", resolve));
+
+  await new Promise<void>((resolve, reject) => {
+    let errors = "";
+    child.stderr.setEncoding("utf8");
+    child.stderr.on("data", (chunk) => {
+      errors += chunk;
+    });
+    child.stdout.once("data", (chunk) => {
+      if (String(chunk).includes("locked")) resolve();
+      else reject(new Error(`Lock helper returned unexpected output: ${String(chunk)}`));
+    });
+    child.once("exit", (code) => {
+      if (code !== 0) reject(new Error(`Lock helper exited with code ${code}: ${errors}`));
+    });
+  });
+
+  return { exited };
+}
+
 afterEach(() => {
   for (const loaded of opened.splice(0)) loaded.db.close();
   for (const directory of directories.splice(0)) removeDataDir(directory);
 });
 
 describe("database migrations", () => {
+  it("waits for the other application when both open the shared database", async () => {
+    const directory = dataDir();
+    const lock = await holdDatabaseLock(directory);
+    const loaded = await openDatabase(directory);
+
+    expect(tableNames(loaded)).toContain("accounts");
+    expect(await lock.exited).toBe(0);
+  });
+
   it("accepts every current system in a database created by an older build", async () => {
     const directory = dataDir();
     seedLegacyDatabase(directory);
@@ -172,6 +222,20 @@ describe("database migrations", () => {
         "SELECT calendar_enabled, calendar_json FROM rooms"
       )
     ).toEqual([{ calendar_enabled: 0, calendar_json: null }]);
+  });
+
+  it("adds the room easter-egg ledger to older databases", async () => {
+    const directory = dataDir();
+    seedLegacyDatabase(directory);
+    const loaded = await openDatabase(directory);
+
+    expect(tableNames(loaded)).toContain("room_easter_eggs");
+    loaded.db
+      .prepare("INSERT INTO room_easter_eggs (room_id, egg_id) VALUES (1, 'calendar-strict-time-records')")
+      .run();
+    expect(loaded.all<{ room_id: number; egg_id: string }>("SELECT room_id, egg_id FROM room_easter_eggs")).toEqual([
+      { room_id: 1, egg_id: "calendar-strict-time-records" }
+    ]);
   });
 
   it("adds disabled map notation and its persistent element table to older databases", async () => {

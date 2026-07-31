@@ -317,6 +317,20 @@
   text-transform: uppercase;
 }
 
+.tables-tag-filter button {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+}
+
+.tables-tag-filter button span {
+  color: var(--muted);
+}
+
+.tables-tag-filter button.active span {
+  color: var(--accent);
+}
+
 .tables-back:hover {
   color: var(--accent);
 }
@@ -357,17 +371,18 @@
 
 .tables-toolbar {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  align-items: center;
-  gap: 12px 18px;
+  grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
+  gap: 6px;
   padding-bottom: 14px;
   border-bottom: 1px solid var(--line);
 }
 
 .tables-roll {
+  width: 100%;
   min-height: 46px;
-  padding: 0 20px;
+  padding: 0 14px;
   display: inline-flex;
+  justify-content: center;
   align-items: center;
   gap: 10px;
   border: 0;
@@ -380,29 +395,16 @@
   width: 19px;
 }
 
-.tables-visibility {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px 18px;
-}
-
-.tables-visibility label {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
+.tables-roll-secondary {
+  border: 1px solid var(--line);
+  background: transparent;
   color: var(--text);
-  font:
-    500 12px "DM Mono",
-    monospace;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
 }
 
-.tables-visibility-note {
-  grid-column: 2;
-  margin: 0;
-  color: var(--muted);
-  font-size: 12px;
+.tables-roll-secondary:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent), transparent 92%);
 }
 
 .tables-result {
@@ -663,10 +665,6 @@
   }
 
   .tables-toolbar {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .tables-visibility-note {
-    grid-column: 1;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }

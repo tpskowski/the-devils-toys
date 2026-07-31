@@ -1,7 +1,20 @@
 import { useEffect, useRef, useState, type PointerEvent } from "react";
 import { Circle, Eraser, Pencil, Square, Trash2, Type, Undo2, X } from "lucide-react";
-import { MAP_NOTATION_COLORS, type MapNotation, type MapNotationColor, type NewMapNotation } from "@devils-toys/shared";
+import {
+  MAP_NOTATION_COLORS,
+  type MapNotation,
+  type MapNotationColor,
+  type MapNotationEvent,
+  type NewMapNotation
+} from "@devils-toys/shared";
 import { api } from "./api";
+import {
+  appendNotationPoint,
+  applyMapNotationEvent,
+  notationPoint,
+  type NotationBounds,
+  type NotationTransform
+} from "./map-notation";
 
 type Tool = "draw" | "label" | "box" | "circle" | "erase";
 type Point = { x: number; y: number };
@@ -10,117 +23,310 @@ export function MapNotationLayer({
   roomId,
   mediaId,
   isGm,
-  revision,
-  transform
+  syncRevision,
+  change,
+  scale,
+  offset
 }: {
   roomId: number;
   mediaId: number;
   isGm: boolean;
-  revision: number;
-  transform: string;
+  syncRevision: number;
+  change?: MapNotationEvent;
+  scale: number;
+  offset: { x: number; y: number };
 }) {
   const [notations, setNotations] = useState<MapNotation[]>([]);
   const [tool, setTool] = useState<Tool>();
   const [color, setColor] = useState<MapNotationColor>(MAP_NOTATION_COLORS[0]);
-  const [fontSize, setFontSize] = useState(18);
-  const gesture = useRef<{ start: Point; points: Point[] } | undefined>(undefined);
-  const svg = useRef<SVGSVGElement>(null);
+  const [fontSize, setFontSize] = useState(10);
+  const [labelDraft, setLabelDraft] = useState<{ point: Point; text: string }>();
+  const [error, setError] = useState("");
+  const gesture = useRef<
+    { start: Point; points: Point[]; bounds: NotationBounds; transform: NotationTransform } | undefined
+  >(undefined);
+  const draftLine = useRef<SVGPolylineElement>(null);
+  const draftFrame = useRef<number | undefined>(undefined);
+  const nextOptimisticId = useRef(-1);
+  const mutationSequence = useRef(1);
+  const pendingMutations = useRef(new Map<string, number>());
 
-  async function load() {
-    const result = await api<{ notations: MapNotation[] }>(`/api/rooms/${roomId}/maps/${mediaId}/notations`);
-    setNotations(result.notations);
-  }
   useEffect(() => {
-    load();
-  }, [roomId, mediaId, revision]);
-
-  function point(event: PointerEvent<SVGSVGElement>): Point {
-    const bounds = event.currentTarget.getBoundingClientRect();
-    return {
-      x: Math.max(0, Math.min(1, (event.clientX - bounds.left) / bounds.width)),
-      y: Math.max(0, Math.min(1, (event.clientY - bounds.top) / bounds.height))
+    let cancelled = false;
+    void api<{ notations: MapNotation[] }>(`/api/rooms/${roomId}/maps/${mediaId}/notations`)
+      .then((result) => {
+        if (!cancelled) setNotations(result.notations);
+      })
+      .catch((cause: Error) => {
+        if (!cancelled) setError(cause.message);
+      });
+    return () => {
+      cancelled = true;
     };
-  }
+  }, [roomId, mediaId, syncRevision]);
 
-  async function add(notation: NewMapNotation) {
-    const result = await api<{ notation: MapNotation }>(`/api/rooms/${roomId}/maps/${mediaId}/notations`, {
-      method: "POST",
-      body: JSON.stringify(notation)
+  useEffect(() => {
+    if (!change || change.mediaId !== mediaId) return;
+    const optimisticId =
+      change.type === "map-notation-added" && change.clientMutationId
+        ? pendingMutations.current.get(change.clientMutationId)
+        : undefined;
+    if (change.type === "map-notation-added" && change.clientMutationId)
+      pendingMutations.current.delete(change.clientMutationId);
+    setNotations((current) => applyMapNotationEvent(current, change, optimisticId));
+  }, [change, mediaId]);
+
+  useEffect(
+    () => () => {
+      if (draftFrame.current !== undefined) cancelAnimationFrame(draftFrame.current);
+    },
+    []
+  );
+
+  function scheduleDraft() {
+    if (draftFrame.current !== undefined) return;
+    draftFrame.current = requestAnimationFrame(() => {
+      draftFrame.current = undefined;
+      const points = gesture.current?.points;
+      if (draftLine.current && points)
+        draftLine.current.setAttribute(
+          "points",
+          points.map((point) => `${point.x * 1000},${point.y * 1000}`).join(" ")
+        );
     });
-    setNotations((current) =>
-      current.some((item) => item.id === result.notation.id) ? current : [...current, result.notation]
-    );
   }
 
-  function down(event: PointerEvent<SVGSVGElement>) {
+  function clearDraft() {
+    if (draftFrame.current !== undefined) cancelAnimationFrame(draftFrame.current);
+    draftFrame.current = undefined;
+    draftLine.current?.removeAttribute("points");
+  }
+
+  function finishLabel() {
+    const draft = labelDraft;
+    setLabelDraft(undefined);
+    if (draft?.text.trim())
+      add({
+        kind: "label",
+        color,
+        x: draft.point.x,
+        y: draft.point.y,
+        text: draft.text.trim(),
+        fontSize
+      });
+  }
+
+  function add(notation: NewMapNotation) {
+    const optimisticId = nextOptimisticId.current--;
+    const mutationId = globalThis.crypto?.randomUUID?.() ?? `notation-${Date.now()}-${mutationSequence.current++}`;
+    pendingMutations.current.set(mutationId, optimisticId);
+    setError("");
+    setNotations((current) => [...current, { id: optimisticId, ...notation } as MapNotation]);
+    void api<{ notation: MapNotation }>(`/api/rooms/${roomId}/maps/${mediaId}/notations`, {
+      method: "POST",
+      body: JSON.stringify({ notation, clientMutationId: mutationId })
+    })
+      .then((result) => {
+        pendingMutations.current.delete(mutationId);
+        setNotations((current) =>
+          applyMapNotationEvent(
+            current,
+            { type: "map-notation-added", mediaId, notation: result.notation, clientMutationId: mutationId },
+            optimisticId
+          )
+        );
+      })
+      .catch((cause: Error) => {
+        pendingMutations.current.delete(mutationId);
+        setNotations((current) => current.filter((item) => item.id !== optimisticId));
+        setError(cause.message);
+      });
+  }
+
+  function down(event: PointerEvent<HTMLDivElement>) {
     if (!tool) return;
+    event.stopPropagation();
     if (tool === "erase") {
       const id = Number((event.target as Element).closest("[data-notation-id]")?.getAttribute("data-notation-id"));
       if (id) void erase(id);
       return;
     }
-    const start = point(event);
+    const bounds = event.currentTarget.getBoundingClientRect();
+    const transform = { scale, x: offset.x, y: offset.y };
+    const start = notationPoint(event.clientX, event.clientY, bounds, transform);
     if (tool === "label") {
-      const text = prompt("Label text");
-      if (text?.trim()) void add({ kind: "label", color, x: start.x, y: start.y, text: text.trim(), fontSize });
+      if (labelDraft) finishLabel();
+      setLabelDraft({ point: start, text: "" });
       return;
     }
+    event.preventDefault();
     event.currentTarget.setPointerCapture(event.pointerId);
-    gesture.current = { start, points: [start] };
+    gesture.current = { start, points: [start], bounds, transform };
+    if (tool === "draw") scheduleDraft();
   }
 
-  function move(event: PointerEvent<SVGSVGElement>) {
-    if (!gesture.current || tool !== "draw") return;
-    const next = point(event);
-    const last = gesture.current.points.at(-1)!;
-    if (Math.hypot(next.x - last.x, next.y - last.y) > 0.002) gesture.current.points.push(next);
+  function move(event: PointerEvent<HTMLDivElement>) {
+    if (!tool) return;
+    event.stopPropagation();
+    const current = gesture.current;
+    if (!current || tool !== "draw") return;
+    event.preventDefault();
+    const native = event.nativeEvent;
+    const samples = typeof native.getCoalescedEvents === "function" ? native.getCoalescedEvents() : [native];
+    let changed = false;
+    for (const sample of samples)
+      changed =
+        appendNotationPoint(
+          current.points,
+          notationPoint(sample.clientX, sample.clientY, current.bounds, current.transform)
+        ) || changed;
+    if (changed) scheduleDraft();
   }
 
-  function up(event: PointerEvent<SVGSVGElement>) {
+  function up(event: PointerEvent<HTMLDivElement>) {
+    if (!tool) return;
+    event.stopPropagation();
     const current = gesture.current;
     gesture.current = undefined;
-    if (!current || !tool) return;
-    const end = point(event);
-    if (tool === "draw" && current.points.length > 1) void add({ kind: "line", color, points: current.points });
+    clearDraft();
+    if (!current) return;
+    const end = notationPoint(event.clientX, event.clientY, current.bounds, current.transform);
+    if (tool === "draw") {
+      appendNotationPoint(current.points, end);
+      if (current.points.length > 1) add({ kind: "line", color, points: current.points });
+    }
     if (tool === "box" || tool === "circle") {
       const x = Math.min(current.start.x, end.x),
         y = Math.min(current.start.y, end.y);
       const width = Math.abs(end.x - current.start.x),
         height = Math.abs(end.y - current.start.y);
-      if (width > 0.005 && height > 0.005) void add({ kind: tool, color, x, y, width, height });
+      if (width > 0.005 && height > 0.005) add({ kind: tool, color, x, y, width, height });
     }
   }
 
+  function cancel(event: PointerEvent<HTMLDivElement>) {
+    event.stopPropagation();
+    gesture.current = undefined;
+    clearDraft();
+  }
+
   async function erase(id: number) {
-    await api(`/api/rooms/${roomId}/maps/${mediaId}/notations/${id}`, { method: "DELETE" });
-    setNotations((current) => current.filter((item) => item.id !== id));
+    setError("");
+    try {
+      await api(`/api/rooms/${roomId}/maps/${mediaId}/notations/${id}`, { method: "DELETE" });
+      setNotations((current) => current.filter((item) => item.id !== id));
+    } catch (cause) {
+      setError((cause as Error).message);
+    }
   }
   async function undo() {
-    await api(`/api/rooms/${roomId}/maps/${mediaId}/notations/undo`, { method: "POST" });
-    setNotations((current) => current.slice(0, -1));
+    setError("");
+    try {
+      const result = await api<{ notationId: number | null }>(`/api/rooms/${roomId}/maps/${mediaId}/notations/undo`, {
+        method: "POST"
+      });
+      if (result.notationId !== null)
+        setNotations((current) => current.filter((item) => item.id !== result.notationId));
+    } catch (cause) {
+      setError((cause as Error).message);
+    }
   }
   async function clear() {
     if (!confirm("Clear every notation from this map?")) return;
-    await api(`/api/rooms/${roomId}/maps/${mediaId}/notations`, { method: "DELETE" });
-    setNotations([]);
+    setError("");
+    try {
+      await api(`/api/rooms/${roomId}/maps/${mediaId}/notations`, { method: "DELETE" });
+      setNotations([]);
+    } catch (cause) {
+      setError((cause as Error).message);
+    }
   }
+
+  const mapTransform = `translate(${offset.x}px, ${offset.y}px) scale(${scale})`;
 
   return (
     <>
-      <svg
-        ref={svg}
+      <div
         className={`map-notation-layer ${tool ? "active" : ""}`}
-        style={{ transform }}
-        viewBox="0 0 1000 1000"
-        preserveAspectRatio="none"
         onPointerDown={down}
         onPointerMove={move}
         onPointerUp={up}
+        onPointerCancel={cancel}
       >
-        {notations.map((item) => (
-          <NotationShape key={item.id} notation={item} />
-        ))}
-      </svg>
+        <svg
+          className="map-notation-content"
+          style={{ transform: mapTransform }}
+          viewBox="0 0 1000 1000"
+          preserveAspectRatio="none"
+        >
+          {notations.map((item) => (
+            <NotationShape key={item.id} notation={item} />
+          ))}
+          <polyline
+            ref={draftLine}
+            className="map-notation-draft"
+            stroke={color}
+            fill="none"
+            strokeWidth="4"
+            vectorEffect="non-scaling-stroke"
+            pointerEvents="none"
+          />
+        </svg>
+        <div className="map-notation-labels" style={{ transform: mapTransform }}>
+          {notations.map(
+            (item) =>
+              item.kind === "label" && (
+                <span
+                  key={item.id}
+                  className="map-notation-label"
+                  data-notation-id={item.id}
+                  style={{
+                    left: `${item.x * 100}%`,
+                    top: `${item.y * 100}%`,
+                    color: item.color,
+                    fontSize: `${item.fontSize}px`
+                  }}
+                >
+                  {item.text}
+                </span>
+              )
+          )}
+          {labelDraft && (
+            <input
+              autoFocus
+              className="map-notation-label map-notation-label-editor"
+              aria-label="Map label text"
+              value={labelDraft.text}
+              placeholder="Type label"
+              style={{
+                left: `${labelDraft.point.x * 100}%`,
+                top: `${labelDraft.point.y * 100}%`,
+                color,
+                fontSize: `${fontSize}px`,
+                width: `${Math.max(6, labelDraft.text.length + 1)}ch`
+              }}
+              onPointerDown={(event) => event.stopPropagation()}
+              onChange={(event) => setLabelDraft((current) => current && { ...current, text: event.target.value })}
+              onBlur={finishLabel}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  event.currentTarget.blur();
+                }
+                if (event.key === "Escape") {
+                  event.preventDefault();
+                  setLabelDraft(undefined);
+                }
+              }}
+            />
+          )}
+        </div>
+      </div>
+      {error && (
+        <p className="map-notation-error" role="alert">
+          {error}
+        </p>
+      )}
       <div className="map-notation-toolbar" onPointerDown={(event) => event.stopPropagation()}>
         <div className="notation-colors" title="Notation color">
           {MAP_NOTATION_COLORS.map((value) => (
@@ -148,9 +354,11 @@ export function MapNotationLayer({
           <Type />
         </ToolButton>
         {tool === "label" && (
-          <select aria-label="Label point size" value={fontSize} onChange={(e) => setFontSize(Number(e.target.value))}>
-            {[12, 18, 24, 32, 48].map((size) => (
-              <option key={size}>{size}</option>
+          <select aria-label="Label font size" value={fontSize} onChange={(e) => setFontSize(Number(e.target.value))}>
+            {[8, 10, 12, 14, 18, 22].map((size) => (
+              <option key={size} value={size}>
+                {size}px
+              </option>
             ))}
           </select>
         )}
@@ -212,6 +420,7 @@ function ToolButton({
 }
 
 function NotationShape({ notation }: { notation: MapNotation }) {
+  if (notation.kind === "label") return null;
   const common = {
     "data-notation-id": notation.id,
     stroke: notation.color,
@@ -225,20 +434,6 @@ function NotationShape({ notation }: { notation: MapNotation }) {
         fill="none"
         strokeWidth="4"
       />
-    );
-  if (notation.kind === "label")
-    return (
-      <text
-        {...common}
-        x={notation.x * 1000}
-        y={notation.y * 1000}
-        fill={notation.color}
-        stroke="none"
-        fontSize={notation.fontSize * 2.2}
-        paintOrder="stroke"
-      >
-        {notation.text}
-      </text>
     );
   if (notation.kind === "circle")
     return (
