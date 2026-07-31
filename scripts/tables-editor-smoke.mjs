@@ -4,14 +4,21 @@ import { runSmoke } from "./harness.mjs";
 
 const password = "tables-editor-password";
 
-const starter = `### Rumours in the market
-
-<!-- tags: fantasy -->
-| d6 | Rumour |
-| --- | --- |
-| 1-3 | The well has gone bitter. |
-| 4-6 | A stranger asks after the old road. |
-`;
+const starterTables = [
+  {
+    id: "rumours-in-the-market",
+    name: "Rumours in the market",
+    section: "",
+    category: "Rumours in the market",
+    dice: "d6",
+    columns: ["Rumour"],
+    tags: ["fantasy"],
+    rows: [
+      { label: "1-3", min: 1, max: 3, cells: ["The well has gone bitter."] },
+      { label: "4-6", min: 4, max: 6, cells: ["A stranger asks after the old road."] }
+    ]
+  }
+];
 
 const csv = `table,dice,tags,roll,Omen,Seen by
 Wilderness omens,d4,fantasy,1,Crows circling with nothing beneath them,A shepherd
@@ -73,7 +80,7 @@ await runSmoke(
     const cairnDetail = await tablesJson("/api/table-sets/system%3Acairn", { headers: player.headers });
     assert.equal(cairnDetail.body.set.readOnly, true);
     assert.equal(cairnDetail.body.set.name, cairn.name);
-    assert.match(cairnDetail.body.set.markdown, /Cairn/);
+    assert.ok(cairnDetail.body.set.tables.length > 0);
 
     // Usage includes source-backed system catalogues and tags inherited by all
     // of their tables, rather than looking only at custom database rows.
@@ -90,7 +97,7 @@ await runSmoke(
       {
         method: "POST",
         headers: gm.headers,
-        body: JSON.stringify({ name: "Market rumours", markdown: starter, tags: ["random-encounter"] })
+        body: JSON.stringify({ name: "Market rumours", tables: starterTables, tags: ["random-encounter"] })
       },
       201
     );
@@ -113,7 +120,7 @@ await runSmoke(
       {
         method: "PATCH",
         headers: gm.headers,
-        body: JSON.stringify({ name: "Market rumours", markdown: starter, tags: ["nonesuch"] })
+        body: JSON.stringify({ name: "Market rumours", tables: starterTables, tags: ["nonesuch"] })
       },
       400
     );
@@ -146,17 +153,17 @@ await runSmoke(
     );
 
     const afterCsv = await tablesJson(`/api/table-sets/${setId}`, { headers: gm.headers });
-    assert.match(afterCsv.body.set.markdown, /Wilderness omens/);
-    assert.match(afterCsv.body.set.markdown, /<!-- tags: fantasy -->/, "the original table kept its own tags");
-    assert.match(afterCsv.body.set.markdown, /1-3 \| The well has gone bitter\./, "the original rows were untouched");
-    const savedMarkdown = afterCsv.body.set.markdown;
+    assert.ok(afterCsv.body.set.tables.some((table) => table.name === "Wilderness omens"));
+    const original = afterCsv.body.set.tables.find((table) => table.name === "Rumours in the market");
+    assert.deepEqual(original.tags, ["fantasy", "random-encounter"], "set and table tags are merged");
+    assert.equal(original.rows[0].cells[0], "The well has gone bitter.", "the original rows were untouched");
 
     // The sample template is downloadable and reads as the shape it documents.
     const sample = await tablesBytes("/api/table-templates/sample.csv", { headers: { cookie: player.cookie } });
     assert.match(sample.response.headers.get("content-disposition") ?? "", /attachment; filename=/);
     assert.match(sample.bytes.toString("utf8"), /^table,dice,tags,roll,/);
 
-    // Artifact two: export, delete, import, and the Markdown comes back exactly.
+    // Artifact two: export, delete, import, and the JSON table document comes back exactly.
     const exported = await tablesBytes("/api/table-export", { headers: { cookie: gm.cookie } });
     const archive = unzipSync(new Uint8Array(exported.bytes));
     const manifest = JSON.parse(strFromU8(archive["manifest.json"]));
@@ -167,8 +174,9 @@ await runSmoke(
     );
     assert.ok(
       manifest.tags.some((tag) => tag.slug === "fantasy"),
-      "a tag used only inside the Markdown still travels with the bundle"
+      "table tags travel with the bundle"
     );
+    assert.ok(manifest.sets[0].file.endsWith(".json"));
 
     await tablesJson(`/api/table-sets/${setId}`, { method: "DELETE", headers: gm.headers }, 204);
     const bundle = () => new Blob([exported.bytes], { type: "application/zip" });
@@ -193,7 +201,7 @@ await runSmoke(
     assert.ok(restoredSet, "the imported set is in the catalogue");
     const restoredId = Number(restoredSet.id.replace("custom:", ""));
     const restoredBody = await tablesJson(`/api/table-sets/${restoredId}`, { headers: gm.headers });
-    assert.equal(restoredBody.body.set.markdown, savedMarkdown, "the round trip changed the Markdown");
+    assert.deepEqual(restoredBody.body.set.tables, afterCsv.body.set.tables, "the round trip changed the tables");
 
     // Artifact three is an admin's, and names the real files.
     await tablesJson(`/api/table-sets/custom:${restoredId}/repo-bundle`, { headers: gm.headers }, 403);
@@ -247,7 +255,7 @@ await runSmoke(
       {
         method: "POST",
         headers: player.headers,
-        body: JSON.stringify({ name: "Not allowed", markdown: starter, tags: [] })
+        body: JSON.stringify({ name: "Not allowed", tables: starterTables, tags: [] })
       },
       403
     );
@@ -256,7 +264,7 @@ await runSmoke(
       {
         method: "PATCH",
         headers: player.headers,
-        body: JSON.stringify({ name: "Not allowed", markdown: starter, tags: [] })
+        body: JSON.stringify({ name: "Not allowed", tables: starterTables, tags: [] })
       },
       403
     );

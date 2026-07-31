@@ -1,5 +1,6 @@
 import { ArrowDown, ArrowUp, Plus, Trash2, Wand2 } from "lucide-react";
 import { SUPPORTED_DIE_SIDES, type RollTable, type TableTag, type TableTagDefinition } from "@devils-toys/shared";
+import { InlineMarkdown } from "./InlineMarkdown";
 import { TagPicker } from "./TagPicker";
 import {
   addColumn,
@@ -94,21 +95,26 @@ export function TableGrid({
               <th className="grid-die">{table.dice}</th>
               {table.columns.map((column, index) => (
                 <th key={index}>
-                  <input
-                    value={column}
-                    readOnly={readOnly}
-                    aria-label={`Column ${index + 1} heading`}
-                    onChange={(event) => onChange(setColumn(table, index, event.target.value))}
-                  />
-                  {!readOnly && table.columns.length > 1 && (
-                    <button
-                      type="button"
-                      className="icon-button"
-                      title="Remove this column"
-                      onClick={() => onChange(removeColumn(table, index))}
-                    >
-                      <Trash2 size={13} aria-hidden />
-                    </button>
+                  {readOnly ? (
+                    <InlineMarkdown className="table-grid-readonly">{column}</InlineMarkdown>
+                  ) : (
+                    <>
+                      <input
+                        value={column}
+                        aria-label={`Column ${index + 1} heading`}
+                        onChange={(event) => onChange(setColumn(table, index, event.target.value))}
+                      />
+                      {table.columns.length > 1 && (
+                        <button
+                          type="button"
+                          className="icon-button"
+                          title="Remove this column"
+                          onClick={() => onChange(removeColumn(table, index))}
+                        >
+                          <Trash2 size={13} aria-hidden />
+                        </button>
+                      )}
+                    </>
                   )}
                 </th>
               ))}
@@ -139,12 +145,15 @@ export function TableGrid({
                 </td>
                 {table.columns.map((_, column) => (
                   <td key={column}>
-                    <input
-                      value={row.cells[column] ?? ""}
-                      readOnly={readOnly}
-                      aria-label={`Row ${index + 1}, ${table.columns[column]}`}
-                      onChange={(event) => onChange(setCell(table, index, column, event.target.value))}
-                    />
+                    {readOnly ? (
+                      <InlineMarkdown className="table-grid-readonly">{row.cells[column] ?? ""}</InlineMarkdown>
+                    ) : (
+                      <input
+                        value={row.cells[column] ?? ""}
+                        aria-label={`Row ${index + 1}, ${table.columns[column]}`}
+                        onChange={(event) => onChange(setCell(table, index, column, event.target.value))}
+                      />
+                    )}
                   </td>
                 ))}
                 {!readOnly && (

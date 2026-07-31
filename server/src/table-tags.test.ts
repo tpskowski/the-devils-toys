@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { BUILTIN_TABLE_TAGS, defaultTagLabel, parseRollTables, spliceTable } from "@devils-toys/shared";
+import { BUILTIN_TABLE_TAGS, defaultTagLabel, parseRollTables } from "@devils-toys/shared";
 import { knownTags, tagUsage, tagVocabulary } from "./table-tags.js";
 import { db } from "./db.js";
+import { parseCustomSet } from "./table-json.js";
 
 const setMarkdown = `## Generators
 
@@ -25,29 +26,40 @@ const setMarkdown = `## Generators
  * exercise the same operations the router performs on a real database.
  */
 function rewriteTags(from: string, to: string | null) {
-  const rows = db.prepare("SELECT id, markdown FROM table_sets").all() as { id: number; markdown: string }[];
+  const rows = db.prepare("SELECT id, tables_json FROM table_sets").all() as { id: number; tables_json: string }[];
   for (const row of rows) {
-    let markdown = row.markdown;
-    for (const table of parseRollTables(markdown)
-      .filter((entry) => entry.tags.includes(from))
-      .reverse()) {
-      const tags = [...new Set(table.tags.flatMap((tag) => (tag === from ? (to ? [to] : []) : [tag])))];
-      markdown = spliceTable(markdown, { ...table, tags });
-    }
-    db.prepare("UPDATE table_sets SET markdown = ? WHERE id = ?").run(markdown, row.id);
+    const document = parseCustomSet(row.tables_json, "Set");
+    const tables = document.tables.map((table) => ({
+      ...table,
+      tags: [...new Set(table.tags.flatMap((tag) => (tag === from ? (to ? [to] : []) : [tag])))]
+    }));
+    db.prepare("UPDATE table_sets SET tables_json = ? WHERE id = ?").run(
+      JSON.stringify({ ...document, tables }),
+      row.id
+    );
   }
 }
 
-function storedMarkdown() {
-  return (db.prepare("SELECT markdown FROM table_sets WHERE id = 1").get() as { markdown: string }).markdown;
+function storedTables() {
+  return parseCustomSet(
+    (db.prepare("SELECT tables_json FROM table_sets WHERE id = 1").get() as { tables_json: string }).tables_json,
+    "Set"
+  ).tables;
 }
 
 function seed() {
   db.exec("DELETE FROM table_sets");
   db.exec("DELETE FROM accounts");
   db.prepare("INSERT INTO accounts (id, username, password_hash, account_role) VALUES (1, 'Warden', 'x', 'gm')").run();
-  db.prepare("INSERT INTO table_sets (id, name, markdown, tags_json, created_by) VALUES (1, 'Set', ?, ?, 1)").run(
-    setMarkdown,
+  const document = {
+    formatVersion: 1,
+    setName: "Set",
+    preamble: "",
+    postamble: "",
+    tables: parseRollTables(setMarkdown).map(({ source: _source, ...table }) => table)
+  };
+  db.prepare("INSERT INTO table_sets (id, name, tables_json, tags_json, created_by) VALUES (1, 'Set', ?, ?, 1)").run(
+    JSON.stringify(document),
     JSON.stringify(["fantasy"])
   );
 }
@@ -131,34 +143,28 @@ describe("rewriting a tag across every set", () => {
     seed();
     rewriteTags("fantasy", "high-fantasy");
 
-    const tables = parseRollTables(storedMarkdown());
-    expect(tables.map((table) => table.tags)).toEqual([["high-fantasy", "gear"], ["scifi"]]);
-    expect(storedMarkdown()).toContain("### Rumours (d6)");
-    expect(storedMarkdown()).toContain("| 1 | A caravan is overdue |");
+    expect(storedTables().map((table) => table.tags)).toEqual([["high-fantasy", "gear"], ["scifi"]]);
   });
 
   it("removes a slug without disturbing the other tags on the same table", () => {
     seed();
     rewriteTags("fantasy", null);
 
-    expect(parseRollTables(storedMarkdown()).map((table) => table.tags)).toEqual([["gear"], ["scifi"]]);
-    expect(storedMarkdown()).toContain("<!-- tags: gear -->");
+    expect(storedTables().map((table) => table.tags)).toEqual([["gear"], ["scifi"]]);
   });
 
   it("drops the comment entirely when a table loses its only tag", () => {
     seed();
     rewriteTags("scifi", null);
 
-    const markdown = storedMarkdown();
-    expect(markdown).not.toContain("<!-- tags: scifi -->");
-    expect(parseRollTables(markdown)[1].tags).toEqual([]);
-    expect(parseRollTables(markdown)[1].name).toBe("Reactions (d6)");
+    expect(storedTables()[1].tags).toEqual([]);
+    expect(storedTables()[1].name).toBe("Reactions (d6)");
   });
 
   it("folds one tag into another without leaving a duplicate", () => {
     seed();
     rewriteTags("gear", "fantasy");
 
-    expect(parseRollTables(storedMarkdown())[0].tags).toEqual(["fantasy"]);
+    expect(storedTables()[0].tags).toEqual(["fantasy"]);
   });
 });

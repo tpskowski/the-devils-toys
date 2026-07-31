@@ -1,15 +1,7 @@
 import express from "express";
 import multer from "multer";
 import { z } from "zod";
-import {
-  appendTable,
-  parseRollTables,
-  SAMPLE_CSV,
-  serializeSet,
-  tablesFromCsv,
-  tableToCsv,
-  type RollTable
-} from "@devils-toys/shared";
+import { parseRollTables, SAMPLE_CSV, tablesFromCsv, tableToCsv } from "@devils-toys/shared";
 import type { AuthedRequest } from "./auth.js";
 import { requireAuth } from "./auth.js";
 import { all, db, one } from "./db.js";
@@ -17,6 +9,7 @@ import { requireTableAdmin, requireTableEdit, requireTableRead } from "./table-p
 import { buildBundle, buildRepoBundle, compareToExisting, readBundle, type BundleSet } from "./table-bundles.js";
 import { customSets, findSet, storedTags, type TableSetRow } from "./table-sets.js";
 import { knownTags, tagVocabulary } from "./table-tags.js";
+import { customSetDocument, parseCustomSet } from "./table-json.js";
 
 /**
  * Getting tables in and out: a CSV of rows, and the zip bundles that move sets
@@ -59,7 +52,7 @@ tableEditorRouter.post(
   (req: AuthedRequest, res) => {
     if (!requireTableEdit(req, res)) return;
     const row = one<TableSetRow>(
-      "SELECT id, name, markdown, tags_json, updated_at FROM table_sets WHERE id = ?",
+      "SELECT id, name, tables_json, tags_json, updated_at FROM table_sets WHERE id = ?",
       Number(req.params.setId)
     );
     if (!row) return res.status(404).json({ error: "Table set not found." });
@@ -88,20 +81,22 @@ tableEditorRouter.post(
 
     if (!tables.length) return res.status(400).json({ error: "Nothing in that file could be read as a table." });
 
-    // A tag the CSV names but this instance has never heard of is dropped rather
-    // than invented, and the response says which.
     const vocabulary = tagVocabulary();
-    const dropped = [...new Set(tables.flatMap((table) => table.tags))].filter(
+    const unknownTags = [...new Set(tables.flatMap((table) => table.tags))].filter(
       (tag) => !vocabulary.some((entry) => entry.slug === tag)
     );
+    if (unknownTags.length) return res.status(400).json({ error: `Unknown table tag "${unknownTags[0]}".` });
     const cleaned = tables.map((table) => ({ ...table, tags: knownTags(table.tags, vocabulary) }));
 
-    const markdown = replace
-      ? serializeSet(cleaned, row.name)
-      : cleaned.reduce((document: string, table: RollTable) => appendTable(document, table), row.markdown);
+    const current = parseCustomSet(row.tables_json, row.name, vocabulary);
+    const document = replace
+      ? customSetDocument(row.name, cleaned, vocabulary)
+      : customSetDocument(row.name, [...current.tables, ...cleaned], vocabulary, current.preamble, current.postamble);
 
-    db.prepare("UPDATE table_sets SET markdown = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(markdown, row.id);
-    res.status(201).json({ imported: cleaned.length, problems, droppedTags: dropped });
+    db.prepare(
+      "UPDATE table_sets SET tables_json = ?, migration_markdown = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = ?"
+    ).run(JSON.stringify(document), row.id);
+    res.status(201).json({ imported: cleaned.length, problems });
   }
 );
 
@@ -118,19 +113,20 @@ tableEditorRouter.get("/table-export", requireAuth, (req: AuthedRequest, res) =>
 
   const sets: BundleSet[] = rows.map((row) => ({
     name: row.name,
-    markdown: row.markdown,
+    markdown: "",
+    document: parseCustomSet(row.tables_json, row.name, tagVocabulary()),
     tags: storedTags(row.tags_json)
   }));
-  const used = new Set(sets.flatMap((set) => set.tags).concat(sets.flatMap((set) => tagsInMarkdown(set.markdown))));
+  const used = new Set(
+    sets
+      .flatMap((set) => set.tags)
+      .concat(sets.flatMap((set) => (set.document?.tables ?? []).flatMap((table) => table.tags)))
+  );
   const tags = tagVocabulary().filter((tag) => used.has(tag.slug));
 
   attachment(res, "application/zip", `devils-tables-${new Date().toISOString().slice(0, 10)}.zip`);
   res.send(Buffer.from(buildBundle(sets, tags)));
 });
-
-function tagsInMarkdown(markdown: string) {
-  return parseRollTables(markdown).flatMap((table) => table.tags);
-}
 
 tableEditorRouter.post("/table-import", requireAuth, upload.single("file"), (req: AuthedRequest, res) => {
   if (!requireTableEdit(req, res)) return;
@@ -143,7 +139,7 @@ tableEditorRouter.post("/table-import", requireAuth, upload.single("file"), (req
     return res.status(400).json({ error: error instanceof Error ? error.message : "That bundle could not be read." });
   }
 
-  const existing = all<{ name: string; markdown: string }>("SELECT name, markdown FROM table_sets");
+  const existing = all<{ name: string; tables_json: string }>("SELECT name, tables_json FROM table_sets");
   const vocabulary = tagVocabulary();
   const newTags = bundle.tags.filter((tag) => !vocabulary.some((entry) => entry.slug === tag.slug));
 
@@ -155,9 +151,9 @@ tableEditorRouter.post("/table-import", requireAuth, upload.single("file"), (req
   const insertTag = db.prepare(
     "INSERT OR IGNORE INTO table_tags (slug, label, builtin, sort_order) VALUES (?, ?, 0, ?)"
   );
-  const insertSet = db.prepare("INSERT INTO table_sets (name, markdown, tags_json, created_by) VALUES (?, ?, ?, ?)");
+  const insertSet = db.prepare("INSERT INTO table_sets (name, tables_json, tags_json, created_by) VALUES (?, ?, ?, ?)");
   const updateSet = db.prepare(
-    "UPDATE table_sets SET markdown = ?, tags_json = ?, updated_at = CURRENT_TIMESTAMP WHERE name = ?"
+    "UPDATE table_sets SET tables_json = ?, migration_markdown = NULL, tags_json = ?, updated_at = CURRENT_TIMESTAMP WHERE name = ?"
   );
 
   let created = 0;
@@ -180,11 +176,15 @@ tableEditorRouter.post("/table-import", requireAuth, upload.single("file"), (req
       }
       const tags = JSON.stringify(knownTags(set.tags, known));
       const clash = existing.find((entry) => entry.name.toLocaleLowerCase() === set.name.toLocaleLowerCase());
+      const document = set.document
+        ? customSetDocument(set.name, set.document.tables, known, set.document.preamble, set.document.postamble)
+        : customSetDocument(set.name, parseRollTables(set.markdown ?? ""), known);
       if (clash && action === "overwrite") {
-        updateSet.run(set.markdown, tags, clash.name);
+        updateSet.run(JSON.stringify(document), tags, clash.name);
         overwritten += 1;
       } else {
-        insertSet.run(clash ? `${set.name} (imported)` : set.name, set.markdown, tags, req.account!.id);
+        const name = clash ? `${set.name} (imported)` : set.name;
+        insertSet.run(name, JSON.stringify({ ...document, setName: name }), tags, req.account!.id);
         created += 1;
       }
     }

@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import { BUILTIN_TABLE_TAGS, defaultTagLabel, SYSTEM_IDS, THEME_IDS } from "@devils-toys/shared";
+import { BUILTIN_TABLE_TAGS, defaultTagLabel, parseRollTables, SYSTEM_IDS, THEME_IDS } from "@devils-toys/shared";
 import { config } from "./config.js";
 
 fs.mkdirSync(config.dataDir, { recursive: true });
@@ -156,7 +156,8 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS table_sets (
     id INTEGER PRIMARY KEY,
     name TEXT NOT NULL,
-    markdown TEXT NOT NULL,
+    tables_json TEXT NOT NULL,
+    migration_markdown TEXT,
     tags_json TEXT NOT NULL DEFAULT '[]',
     created_by INTEGER NOT NULL REFERENCES accounts(id),
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -249,6 +250,85 @@ if (!hasColumn("media", "artist")) db.exec("ALTER TABLE media ADD COLUMN artist 
 if (!hasColumn("media", "title")) db.exec("ALTER TABLE media ADD COLUMN title TEXT");
 if (!hasColumn("table_sets", "tags_json"))
   db.exec("ALTER TABLE table_sets ADD COLUMN tags_json TEXT NOT NULL DEFAULT '[]'");
+if (hasColumn("table_sets", "tables_json") && !hasColumn("table_sets", "migration_markdown"))
+  db.exec("ALTER TABLE table_sets ADD COLUMN migration_markdown TEXT");
+
+function customSetDocument(markdown: string, name: string) {
+  const tables = parseRollTables(markdown);
+  const lines = markdown.split("\n");
+  const first = tables[0]?.source?.tableStart ?? lines.length;
+  const last = tables.at(-1)?.source?.tableEnd ?? -1;
+  const storedTables = tables.map((table, index) => {
+    const { source: _source, ...rest } = table;
+    const previousEnd = index === 0 ? 0 : tables[index - 1].source!.tableEnd + 1;
+    return {
+      ...rest,
+      notesBefore: lines.slice(previousEnd, table.source!.tableStart).join("\n")
+    };
+  });
+  return {
+    formatVersion: 1,
+    setName: name,
+    preamble: lines.slice(0, first).join("\n"),
+    postamble: lines.slice(last + 1).join("\n"),
+    tables: storedTables
+  };
+}
+
+// Existing databases have table_sets.markdown. Rebuild them once the tags_json
+// compatibility column has been added, preserving every row and the exact old
+// document for rollback. New databases already have tables_json and skip this.
+if (hasColumn("table_sets", "markdown") || !hasColumn("table_sets", "tables_json")) {
+  const oldRows = db
+    .prepare("SELECT id, name, markdown, tags_json, created_by, created_at, updated_at FROM table_sets")
+    .all() as {
+    id: number;
+    name: string;
+    markdown: string;
+    tags_json: string;
+    created_by: number;
+    created_at: string;
+    updated_at: string;
+  }[];
+  db.exec("PRAGMA foreign_keys = OFF");
+  db.exec("BEGIN IMMEDIATE");
+  try {
+    db.exec(`CREATE TABLE table_sets_rebuilt (
+      id INTEGER PRIMARY KEY,
+      name TEXT NOT NULL,
+      tables_json TEXT NOT NULL,
+      migration_markdown TEXT,
+      tags_json TEXT NOT NULL DEFAULT '[]',
+      created_by INTEGER NOT NULL REFERENCES accounts(id),
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )`);
+    const insert = db.prepare(
+      "INSERT INTO table_sets_rebuilt (id, name, tables_json, migration_markdown, tags_json, created_by, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+    );
+    for (const row of oldRows) {
+      const document = customSetDocument(row.markdown, row.name);
+      insert.run(
+        row.id,
+        row.name,
+        JSON.stringify(document),
+        row.markdown,
+        row.tags_json,
+        row.created_by,
+        row.created_at,
+        row.updated_at
+      );
+    }
+    db.exec("DROP TABLE table_sets");
+    db.exec("ALTER TABLE table_sets_rebuilt RENAME TO table_sets");
+    db.exec("COMMIT");
+  } catch (cause) {
+    db.exec("ROLLBACK");
+    throw cause;
+  } finally {
+    db.exec("PRAGMA foreign_keys = ON");
+  }
+}
 if (!hasColumn("media", "metadata_loaded"))
   db.exec("ALTER TABLE media ADD COLUMN metadata_loaded INTEGER NOT NULL DEFAULT 0");
 if (!hasColumn("media", "visible")) {

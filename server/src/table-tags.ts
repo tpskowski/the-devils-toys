@@ -1,17 +1,13 @@
 import express from "express";
 import { z } from "zod";
-import {
-  parseRollTables,
-  spliceTable,
-  TABLE_TAG_SLUG,
-  type TableTag,
-  type TableTagDefinition
-} from "@devils-toys/shared";
+import { TABLE_TAG_SLUG, type TableTag, type TableTagDefinition } from "@devils-toys/shared";
 import type { AuthedRequest } from "./auth.js";
 import { requireAuth } from "./auth.js";
 import { all, db, one } from "./db.js";
 import { requireTableAdmin, requireTableEdit, requireTableRead } from "./table-permissions.js";
-import { systemMarkdown, systems } from "./systems.js";
+import { systems } from "./systems.js";
+import { tablesForSetJson } from "./table-json.js";
+import { parseCustomSet } from "./table-json.js";
 
 export const tagRouter = express.Router();
 
@@ -62,13 +58,13 @@ function allTagUsage() {
   const includeSet = (tags: readonly string[]) => {
     for (const slug of new Set(tags)) counts(slug).sets += 1;
   };
-  const includeTables = (markdown: string, inherited: readonly string[], exclude: readonly string[] = []) => {
-    for (const table of parseRollTables(markdown, exclude)) {
+  const includeTables = (tables: readonly { tags: readonly string[] }[], inherited: readonly string[]) => {
+    for (const table of tables) {
       for (const slug of new Set([...inherited, ...table.tags])) counts(slug).tables += 1;
     }
   };
 
-  for (const row of all<{ tags_json: string; markdown: string }>("SELECT tags_json, markdown FROM table_sets")) {
+  for (const row of all<{ tags_json: string; tables_json: string }>("SELECT tags_json, tables_json FROM table_sets")) {
     let inherited: string[] = [];
     try {
       const tags = JSON.parse(row.tags_json);
@@ -77,12 +73,16 @@ function allTagUsage() {
       // Unreadable set tags do not hide valid tags carried by its tables.
     }
     includeSet(inherited);
-    includeTables(row.markdown, inherited);
+    includeTables(parseCustomSet(row.tables_json, "Custom").tables, inherited);
   }
 
   for (const system of Object.values(systems)) {
     includeSet(system.tableCatalog.tags);
-    includeTables(systemMarkdown(system.id), system.tableCatalog.tags, system.tableCatalog.exclude);
+    const source = system.sourceDocuments[0];
+    if (!source?.tablesFile) continue;
+    for (const table of tablesForSetJson(source.tablesFile)) {
+      for (const slug of new Set([...system.tableCatalog.tags, ...table.tags])) counts(slug).tables += 1;
+    }
   }
 
   return usage;
@@ -99,10 +99,12 @@ export function tagUsage(slug: string) {
  * rename would leave sets pointing at a tag that no longer exists.
  */
 function rewriteSlug(from: string, to: string | null) {
-  const rows = all<{ id: number; tags_json: string; markdown: string }>(
-    "SELECT id, tags_json, markdown FROM table_sets"
+  const rows = all<{ id: number; tags_json: string; tables_json: string }>(
+    "SELECT id, tags_json, tables_json FROM table_sets"
   );
-  const updateSet = db.prepare("UPDATE table_sets SET tags_json = ?, markdown = ? WHERE id = ?");
+  const updateSet = db.prepare(
+    "UPDATE table_sets SET tags_json = ?, tables_json = ?, migration_markdown = NULL WHERE id = ?"
+  );
 
   db.exec("BEGIN IMMEDIATE");
   try {
@@ -116,17 +118,18 @@ function rewriteSlug(from: string, to: string | null) {
       }
       const nextTags = [...new Set(tags.flatMap((tag) => (tag === from ? (to ? [to] : []) : [tag])))];
 
-      let markdown = row.markdown;
-      // Splicing shifts nothing here — a tags comment is replaced in place or
-      // dropped — but working from the end keeps that true if it ever does.
-      const affected = parseRollTables(markdown).filter((table) => table.tags.includes(from));
-      for (const table of affected.reverse()) {
+      const document = parseCustomSet(row.tables_json, "Custom");
+      const changedTables = document.tables.map((table) => {
+        if (!table.tags.includes(from)) return table;
         const tags = [...new Set(table.tags.flatMap((tag) => (tag === from ? (to ? [to] : []) : [tag])))];
-        markdown = spliceTable(markdown, { ...table, tags });
-      }
+        return { ...table, tags };
+      });
 
-      if (markdown !== row.markdown || JSON.stringify(nextTags) !== JSON.stringify(tags)) {
-        updateSet.run(JSON.stringify(nextTags), markdown, row.id);
+      if (
+        JSON.stringify(changedTables) !== JSON.stringify(document.tables) ||
+        JSON.stringify(nextTags) !== JSON.stringify(tags)
+      ) {
+        updateSet.run(JSON.stringify(nextTags), JSON.stringify({ ...document, tables: changedTables }), row.id);
       }
     }
     db.exec("COMMIT");

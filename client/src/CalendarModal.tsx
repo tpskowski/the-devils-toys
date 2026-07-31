@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { ChevronRight, Plus, Settings2, Trash2, X } from "lucide-react";
 import {
+  advanceCalendar,
   calendarDayIndex,
   calendarDayIsPast,
   calendarDayProgress,
@@ -14,7 +15,7 @@ import { api } from "./api";
 
 export function CalendarModal({
   roomId,
-  calendar,
+  calendar: serverCalendar,
   isGm,
   onChanged,
   onClose
@@ -22,15 +23,17 @@ export function CalendarModal({
   roomId: number;
   calendar: RoomCalendar;
   isGm: boolean;
-  onChanged: () => void;
+  onChanged: (calendar: RoomCalendar) => void;
   onClose: () => void;
 }) {
   const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(calendar);
+  const [calendar, setCalendar] = useState(serverCalendar);
+  const [draft, setDraft] = useState(serverCalendar);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
-  const [viewMonth, setViewMonth] = useState(calendar.month);
-  const [viewYear, setViewYear] = useState(calendar.year);
+  const [advancing, setAdvancing] = useState(false);
+  const [viewMonth, setViewMonth] = useState(serverCalendar.month);
+  const [viewYear, setViewYear] = useState(serverCalendar.year);
   const firstWeekday = calendarFirstWeekday(calendar, viewYear, viewMonth);
   const currentPage = viewMonth === calendar.month && viewYear === calendar.year;
   const yearOptions = useMemo(() => Array.from({ length: 41 }, (_, index) => viewYear - 20 + index), [viewYear]);
@@ -41,6 +44,11 @@ export function CalendarModal({
       ),
     [firstWeekday, calendar.daysPerMonth]
   );
+
+  useEffect(() => {
+    setCalendar(serverCalendar);
+    if (!editing) setDraft(serverCalendar);
+  }, [serverCalendar, editing]);
 
   useEffect(() => {
     setViewMonth(calendar.month);
@@ -59,12 +67,22 @@ export function CalendarModal({
   }
 
   async function advance() {
+    if (advancing) return;
     setError("");
+    const previous = calendar;
+    setCalendar(advanceCalendar(calendar));
+    setAdvancing(true);
     try {
-      await api(`/api/rooms/${roomId}/calendar/advance`, { method: "POST" });
-      onChanged();
+      const result = await api<{ calendar: RoomCalendar }>(`/api/rooms/${roomId}/calendar/advance`, {
+        method: "POST"
+      });
+      setCalendar(result.calendar);
+      onChanged(result.calendar);
     } catch (cause) {
+      setCalendar(previous);
       setError((cause as Error).message);
+    } finally {
+      setAdvancing(false);
     }
   }
 
@@ -72,9 +90,14 @@ export function CalendarModal({
     setSaving(true);
     setError("");
     try {
-      await api(`/api/rooms/${roomId}/calendar`, { method: "PUT", body: JSON.stringify(draft) });
+      const result = await api<{ calendar: RoomCalendar }>(`/api/rooms/${roomId}/calendar`, {
+        method: "PUT",
+        body: JSON.stringify(draft)
+      });
+      setCalendar(result.calendar);
+      setDraft(result.calendar);
       setEditing(false);
-      onChanged();
+      onChanged(result.calendar);
     } catch (cause) {
       setError((cause as Error).message);
     } finally {
@@ -152,8 +175,12 @@ export function CalendarModal({
                     className={`calendar-day${current ? " current" : ""}${past ? " past" : ""}`}
                     style={style}
                     aria-current={current ? "date" : undefined}
+                    aria-busy={current && advancing ? true : undefined}
+                    disabled={current && isGm && advancing}
                     onClick={current && isGm ? advance : undefined}
-                    title={current && isGm ? "Advance time" : past ? "Past day" : undefined}
+                    title={
+                      current && isGm ? (advancing ? "Advancing time…" : "Advance time") : past ? "Past day" : undefined
+                    }
                   >
                     <b>{day}</b>
                     {eventsFor(day).map((event) => (

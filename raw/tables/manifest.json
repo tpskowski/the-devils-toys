@@ -1,0 +1,1061 @@
+{
+  "_comment": "Pre-migration baseline. Never rewrite existing entries.",
+  "generatedAt": "2026-07-31T13:49:10.093Z",
+  "sets": {
+    "system:cairn": {
+      "tableCount": 11,
+      "tables": [
+        {
+          "id": "cairn-character-creation-name-background-d20",
+          "dice": "d20",
+          "rowCount": 20,
+          "columnCount": 4,
+          "unreachableRows": 0,
+          "digest": "ec0aa19af2c15fb13d0338accd3e24ca812359f5c613cd4c5605f86bdf70b28f"
+        },
+        {
+          "id": "cairn-character-creation-character-traits-d10",
+          "dice": "d10",
+          "rowCount": 10,
+          "columnCount": 10,
+          "unreachableRows": 0,
+          "digest": "1d7466b52a07065a32bb7d43f7475c5ecf4f7e3e90068eb7293ff2d6e722bba5"
+        },
+        {
+          "id": "cairn-character-creation-starting-gear-d20-armor",
+          "dice": "d20",
+          "rowCount": 4,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "347c9c3a1dc4f9e7ea95c1085be54fc4fc4c33d2d7ba8097c4efb5675a581fcc"
+        },
+        {
+          "id": "cairn-character-creation-starting-gear-d20-helmets-and-shields",
+          "dice": "d20",
+          "rowCount": 4,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "ce751868b8c89b51d4712668b891d349eeaa19a187f911c8710d3a571259643a"
+        },
+        {
+          "id": "cairn-character-creation-starting-gear-d20-weapons",
+          "dice": "d20",
+          "rowCount": 4,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "40d1aff5760ffb2864776251596f737bdcc2b9120ddffeea813989ae66c38010"
+        },
+        {
+          "id": "cairn-character-creation-starting-gear-d20-expeditionary-gear",
+          "dice": "d20",
+          "rowCount": 20,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "dbee49057f3e49a666d8092bbaf9da9a961ec928b0c3ba98ab1804d74744be1a"
+        },
+        {
+          "id": "cairn-character-creation-starting-gear-d20-tools",
+          "dice": "d20",
+          "rowCount": 20,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "55acd81218a1e8e4bba2a87fbb0bf31523df61aee0cf179e79e6b9fd62818bdf"
+        },
+        {
+          "id": "cairn-character-creation-starting-gear-d20-trinkets",
+          "dice": "d20",
+          "rowCount": 20,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "409305ca6160d4d14067f0d2ec3924a251b1a5851c3724f581a0dfda3c66d4a7"
+        },
+        {
+          "id": "cairn-character-creation-starting-gear-d20-bonus-item",
+          "dice": "d20",
+          "rowCount": 4,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "f8769f755aa3ea11cbeb858d8215fab6924bc8a4210229227d8c83c9d0014c88"
+        },
+        {
+          "id": "cairn-character-creation-spellbooks-d100",
+          "dice": "d100",
+          "rowCount": 100,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "a48b48afad4b6357ca606e0b2eb196ad83f60fe46e80fd95e159644866d25d91"
+        },
+        {
+          "id": "cairn-rules-npcs-reactions",
+          "dice": "2d6",
+          "rowCount": 5,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "78bf35d0d54cda07ed729bf9743a409eb907ff1af06cccb945f2ead5e0b79328"
+        }
+      ]
+    },
+    "system:monolith": {
+      "tableCount": 75,
+      "tables": [
+        {
+          "id": "backgrounds-01-mercenary-starting-gear-mercenary-signature-weapon",
+          "dice": "d6",
+          "rowCount": 6,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "b26bf9b5cfb56e45308e36bb77d2909b18c19a6a51f6c928a45cdfa8467ce44d"
+        },
+        {
+          "id": "backgrounds-01-mercenary-starting-gear-mercenary-old-crew-specialty",
+          "dice": "d6",
+          "rowCount": 6,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "2d9392cf59ecd25ec0a95e6f0fb4ceed4033cfcbb7e9bc4a3e4061705174381e"
+        },
+        {
+          "id": "backgrounds-01-mercenary-starting-gear-mercenary-what-happened",
+          "dice": "d6",
+          "rowCount": 6,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "350c16c63145b85bea31084dec167e34321f99e0435ee93844d27470677fabbb"
+        },
+        {
+          "id": "backgrounds-02-human-experiment-starting-gear-human-experiment-side-effects",
+          "dice": "d6",
+          "rowCount": 6,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "b2fae2a6f42acc237f67f932690e28c75b46b3e30d2a4206721f52a64d90967b"
+        },
+        {
+          "id": "backgrounds-02-human-experiment-starting-gear-human-experiment-type-of-experiment",
+          "dice": "d6",
+          "rowCount": 6,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "b91f0136425513c255a7389e0a44533d3c5e68344dff85a8c2d2c193d4b48909"
+        },
+        {
+          "id": "backgrounds-02-human-experiment-starting-gear-human-experiment-how-did-you-escape",
+          "dice": "d6",
+          "rowCount": 6,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "145bb3640e02876a77466654ca1a33346b37e5faace5a798c8da2b4966b00802"
+        },
+        {
+          "id": "backgrounds-03-engineer-starting-gear-engineer-pet-project",
+          "dice": "d6",
+          "rowCount": 6,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "9be0f99a624b3cdf1053acc189117e5c0d8d42b69b477379d9a2169df919de0e"
+        },
+        {
+          "id": "backgrounds-03-engineer-starting-gear-engineer-technical-expertise",
+          "dice": "d6",
+          "rowCount": 6,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "d08f081020888fec837822a06fdfc36a5f127afc67df22cc1a98b899e4220c28"
+        },
+        {
+          "id": "backgrounds-03-engineer-starting-gear-engineer-savant-specialty",
+          "dice": "d6",
+          "rowCount": 6,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "051395a2ac79c7faacab726a7ff0981841b5debf02de8a83c04499b47e16ca51"
+        },
+        {
+          "id": "backgrounds-04-smuggler-starting-gear-smuggler-lucky-charm",
+          "dice": "d6",
+          "rowCount": 6,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "9b48b5ac844df82cdcd6a0ecca030ae878602ee1f82903d6b5a9bb8383b37ff9"
+        },
+        {
+          "id": "backgrounds-04-smuggler-starting-gear-smuggler-recent-entanglements",
+          "dice": "d6",
+          "rowCount": 6,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "5d36af933debffdec79529a34a359d42c032a9d4f2de8cea023d307c3a618d1d"
+        },
+        {
+          "id": "backgrounds-04-smuggler-starting-gear-smuggler-trick-up-your-sleeve",
+          "dice": "d6",
+          "rowCount": 6,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "6f19952f1384f5dbe991a505b21a19da11c041dc2f5ed933649213d01aef93dd"
+        },
+        {
+          "id": "backgrounds-05-pilot-starting-gear-pilot-suited-up",
+          "dice": "d6",
+          "rowCount": 6,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "0226f194c3ff304f3193efeb06a90be3e46d158e5b883072583296be9072eacd"
+        },
+        {
+          "id": "backgrounds-05-pilot-starting-gear-pilot-flying-expertise",
+          "dice": "d6",
+          "rowCount": 6,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "e302f3a5752925830242849edb2ab9dd977b9a21299e6ce3353d21095a179573"
+        },
+        {
+          "id": "backgrounds-05-pilot-starting-gear-pilot-other-talents",
+          "dice": "d6",
+          "rowCount": 6,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "18f2c879e5d917ecec2dfbc3fe4d7cb50fa8b84f3533d3a2256f59927456ad28"
+        },
+        {
+          "id": "backgrounds-06-machine-starting-gear-machine-custom-hardware",
+          "dice": "d6",
+          "rowCount": 6,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "f5eba9e188b25590ef73328aed2e0ea61eb9212a02f3d75575ecba370455c480"
+        },
+        {
+          "id": "backgrounds-06-machine-starting-gear-machine-model-type",
+          "dice": "d6",
+          "rowCount": 6,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "ce0b2bb92059618ba8e52bcd28b4b3b040ddb46b60a39dc0ad52b779cf9aa330"
+        },
+        {
+          "id": "backgrounds-06-machine-starting-gear-machine-manufacturer",
+          "dice": "d6",
+          "rowCount": 6,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "f5df32780a5549c2c84675e1257171976f36ef116adac3911d0c571fd924a291"
+        },
+        {
+          "id": "backgrounds-07-underworld-starting-gear-underworld-what-keeps-you-safe-on-the-streets",
+          "dice": "d6",
+          "rowCount": 6,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "be1cb4312328df01bbfbe86ca5eb48ff85fa474dd966eabee57914b9ab3060db"
+        },
+        {
+          "id": "backgrounds-07-underworld-starting-gear-underworld-type-of-scum",
+          "dice": "d6",
+          "rowCount": 6,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "f0d6fbe338b08685b8305b13dfc10d7d4edd14d62114f89e539da10fe8796164"
+        },
+        {
+          "id": "backgrounds-07-underworld-starting-gear-underworld-criminal-knack",
+          "dice": "d6",
+          "rowCount": 6,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "aba676a77cb030e6f305e9edaf1bff91277c3b6a1e610e8ef4bd254e4c23bdbd"
+        },
+        {
+          "id": "backgrounds-08-psionic-starting-gear-psionic-psionic-awakening",
+          "dice": "d6",
+          "rowCount": 6,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "4e25c2077aadf3a94e35d8011c7bcee2765dfac7032f3d6b4848f1edf7f6d86e"
+        },
+        {
+          "id": "backgrounds-08-psionic-starting-gear-psionic-old-cover-identity",
+          "dice": "d6",
+          "rowCount": 6,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "d3aa41fe3225ea74323f692dd7c7d90137d535cfb6f9e15cb0a1fdd333a03a00"
+        },
+        {
+          "id": "backgrounds-08-psionic-starting-gear-psionic-neural-ramifications",
+          "dice": "d6",
+          "rowCount": 6,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "6bd8b41b5bc49537b9295f4b3270869061f78aed6bbe4cd8525df7b5f283e09f"
+        },
+        {
+          "id": "backgrounds-09-scientist-starting-gear-scientist-prized-lifetime-research",
+          "dice": "d6",
+          "rowCount": 6,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "42f09fdff59a443130f24b42c58452152fcb81ea9e1f31401856f41cba62cd96"
+        },
+        {
+          "id": "backgrounds-09-scientist-starting-gear-scientist-field-of-expertise",
+          "dice": "d6",
+          "rowCount": 6,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "9774f2dc1d1da0f068ae009362294e71b0fc4b5fa61101dbb684a01315b115fa"
+        },
+        {
+          "id": "backgrounds-09-scientist-starting-gear-scientist-why-you-left-science",
+          "dice": "d6",
+          "rowCount": 6,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "1370f3f72d22379308a61a52f1238c19cbf0dd853c24d42e728701ffda7c7b20"
+        },
+        {
+          "id": "backgrounds-10-soldier-starting-gear-soldier-special-issue-equipment",
+          "dice": "d6",
+          "rowCount": 6,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "494384dfa3e5bdf60aaafceed83a3e44113a0c1be105b7b684a6571cc1bb7c9a"
+        },
+        {
+          "id": "backgrounds-10-soldier-starting-gear-soldier-spec-ops-team",
+          "dice": "d6",
+          "rowCount": 6,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "fb96ff04cb884186e45fdb1b5f608722072d1bbce3666ec00fe7297b69c2e6e2"
+        },
+        {
+          "id": "backgrounds-10-soldier-starting-gear-soldier-squad-job",
+          "dice": "d6",
+          "rowCount": 6,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "e08c9c46ff3438817607ca941effd8ef30c7f051c4fd075ac89260211d4225ee"
+        },
+        {
+          "id": "backgrounds-11-star-touched-starting-gear-star-touched-what-gift-did-the-stars-bring",
+          "dice": "d6",
+          "rowCount": 6,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "c1a0e62b11e395d7c75ba77866039d92acda7eedefcd22ac5f5399732a0018e3"
+        },
+        {
+          "id": "backgrounds-11-star-touched-starting-gear-star-touched-your-vision",
+          "dice": "d6",
+          "rowCount": 6,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "b1917e650d6fd11602f8cbbb710477baf3b6e7d18504543a6f2ff38adcbfbd29"
+        },
+        {
+          "id": "backgrounds-11-star-touched-starting-gear-star-touched-what-was-taken",
+          "dice": "d6",
+          "rowCount": 6,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "e79ba4dcd8b7dc38ba115c0242e71a976d13da4b61cfe0e2c48eeccc1448ccae"
+        },
+        {
+          "id": "backgrounds-12-bounty-hunter-starting-gear-bounty-hunter-specialty-tool",
+          "dice": "d6",
+          "rowCount": 6,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "fcad8e3578dcdd66738912bc5cad772a981f43914c41e1ed9b4b1d67636b6cfc"
+        },
+        {
+          "id": "backgrounds-12-bounty-hunter-starting-gear-bounty-hunter-how-did-you-hunt",
+          "dice": "d6",
+          "rowCount": 6,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "fe00b2f5399522a76ba8166570b3dc39b6ff90d8879d825ee2438f235161fe14"
+        },
+        {
+          "id": "backgrounds-12-bounty-hunter-starting-gear-bounty-hunter-a-past-complication",
+          "dice": "d6",
+          "rowCount": 6,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "0e95c8ecb4e2530316834dda438642771dea2572f9c1b2415317d6bd272d5fd7"
+        },
+        {
+          "id": "finishing-touches-physique",
+          "dice": "d10",
+          "rowCount": 10,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "fb2e6c3001406d60ef97fe78149464d7417ff1b08cf68d8bcc67cb4bd0f42bc2"
+        },
+        {
+          "id": "finishing-touches-hair",
+          "dice": "d10",
+          "rowCount": 10,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "390dfbfa64c437658808ba8c704aac51ffd8a98f6bc033c47b91cca1817ba3f0"
+        },
+        {
+          "id": "finishing-touches-face",
+          "dice": "d10",
+          "rowCount": 10,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "7e60dae221846b3edaf2779b4fe3257ae56334660c81a6aefe75eb5d2f1cbc12"
+        },
+        {
+          "id": "finishing-touches-mannerisms",
+          "dice": "d10",
+          "rowCount": 10,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "a9849c26a54fa240409ec35c191f74e932ebfeabe2a558d9df2baab75ed2393a"
+        },
+        {
+          "id": "finishing-touches-clothing-style",
+          "dice": "d10",
+          "rowCount": 10,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "81fb18828b2c1686fcf2c4e664f48cb9ee15c49872d5cf0e264290ccbd0dd838"
+        },
+        {
+          "id": "finishing-touches-male-names",
+          "dice": "d20",
+          "rowCount": 20,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "826ffa5307f2d36f2c604bc1b6d58c3c25d7cb4e4bd8e57312752475fc2a8cab"
+        },
+        {
+          "id": "finishing-touches-female-names",
+          "dice": "d20",
+          "rowCount": 20,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "e41249d3113eadab51523742d5a04989405d32a6fe390e30f8902d2aeb0a80bd"
+        },
+        {
+          "id": "finishing-touches-ambiguous-names",
+          "dice": "d20",
+          "rowCount": 20,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "afdc59ea9735f1d2bfed65bd0d3adb3e27101edcd3573f82e96ebadc042a5199"
+        },
+        {
+          "id": "finishing-touches-last-names",
+          "dice": "d20",
+          "rowCount": 20,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "f27573cba75a7cafc9f84a41ab6f2f8f82a2e4389314eabee5b321a7b2c291f2"
+        },
+        {
+          "id": "group-debt",
+          "dice": "d12",
+          "rowCount": 12,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "ba9a0c78ae807af45c86155e51142ed262656fba96922ce6806fea722b55c89c"
+        },
+        {
+          "id": "complications",
+          "dice": "d12",
+          "rowCount": 12,
+          "columnCount": 3,
+          "unreachableRows": 0,
+          "digest": "9f555ad0c75e42cad00bf527769f6c9be678b7f33c27db74876e7db5e948deaf"
+        },
+        {
+          "id": "vices-ambition",
+          "dice": "d10",
+          "rowCount": 10,
+          "columnCount": 3,
+          "unreachableRows": 0,
+          "digest": "ffa167b50f48beb12862c56b30043df93802e004389fe3af9915450fc8ece35b"
+        },
+        {
+          "id": "core-rules-npc-wants",
+          "dice": "d10",
+          "rowCount": 10,
+          "columnCount": 2,
+          "unreachableRows": 0,
+          "digest": "6dc35c2babdb067276b287889f25a4cc45457785fc5c7d7e48c940b3ae5013cc"
+        },
+        {
+          "id": "scars-scars-table",
+          "dice": "d12",
+          "rowCount": 12,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "ed66510d9c8e8e5178480d654a35e4207f5ae9eaa47a076c36ffb52dec88a5ac"
+        },
+        {
+          "id": "carousing-2d6-carousing-results",
+          "dice": "2d6",
+          "rowCount": 3,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "c3265b64fcc101d5757cb8f8d0c1ca5e5d35dd8cf82957320c4671ae77cf3bf3"
+        },
+        {
+          "id": "carousing-mishaps",
+          "dice": "d12",
+          "rowCount": 12,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "4a13b4e4e4305967c96cf29d78e11dac586ea1df12df22d2182dba808a833c19"
+        },
+        {
+          "id": "carousing-fortunes",
+          "dice": "d12",
+          "rowCount": 12,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "577527a55b00d90376adcc9f856f0ee8c8396e4056582c7d726a01b12e58d23a"
+        },
+        {
+          "id": "pointcrawl-travel-encounters-01-04",
+          "dice": "d6",
+          "rowCount": 4,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "4e36fc31c76da1f33c8d702e02858a9e90e787138eec2e9a3c1a24ede903ac33"
+        },
+        {
+          "id": "psionics-d66-psionic-powers",
+          "dice": "d66",
+          "rowCount": 36,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "9f2863ca20353d2e161492e25ebaca42745c4ae8e91469a9990672fbb1faff49"
+        },
+        {
+          "id": "astromancy-d66-astromancies",
+          "dice": "d66",
+          "rowCount": 36,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "f635104d6224f5a3658e374ac0464ae5d478ffa69102a641bf4a7be7697ef15e"
+        },
+        {
+          "id": "corruption-aspect-distortion-hollowing",
+          "dice": "d30",
+          "rowCount": 30,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "faffe6acddb173bb7656985e8242387ad00d57272b983b0fe9e3e15c8c8b5530"
+        },
+        {
+          "id": "corruption-aspect-distortion-sacred-geometry-aspects",
+          "dice": "d12",
+          "rowCount": 12,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "9d2f251c763f320c95c70191deaf50802f1c2934de9475e1b37b0a18d75d3f44"
+        },
+        {
+          "id": "corruption-aspect-distortion-entropy-aspects",
+          "dice": "d12",
+          "rowCount": 12,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "7afb7b31622fbd8bf80b7e34e63102bf382f422ee44e8f8996358af108fcc519"
+        },
+        {
+          "id": "corruption-aspect-distortion-non-euclidean-aspects",
+          "dice": "d12",
+          "rowCount": 12,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "2d428a08cc6933d57d774520f417233ffa92de1ee80142d4e4da77e276c2ef65"
+        },
+        {
+          "id": "experimental-technology-d66-ex-tech",
+          "dice": "d66",
+          "rowCount": 36,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "4d25a41d71d5f5d8c63790068797a7b43e51c9232fcf0e798eca074ba168b2e4"
+        },
+        {
+          "id": "artifacts-d66-artifacts",
+          "dice": "d66",
+          "rowCount": 36,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "8a4fef54f1f3fad28851c82d509237cf65ff9b5c49c14729ae8a1da8fc467609"
+        },
+        {
+          "id": "talents-acquiring-talents",
+          "dice": "d20",
+          "rowCount": 20,
+          "columnCount": 2,
+          "unreachableRows": 0,
+          "digest": "b2927b297b54adde10800372ac6aaeb53788af0629a3f528e956b26ccc651548"
+        },
+        {
+          "id": "planets-planet-attributes-temperature",
+          "dice": "2d6",
+          "rowCount": 7,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "3bf7eba783f4009f3f452fed747eae430b2ac51b670bdf7fb1e02a89e2296c7a"
+        },
+        {
+          "id": "planets-planet-attributes-atmosphere",
+          "dice": "2d6",
+          "rowCount": 6,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "2b7eb36a080894a014050e5a507f06f6f1611251868dff87d5e7720af6da9ae6"
+        },
+        {
+          "id": "planets-planet-attributes-dominant-biome",
+          "dice": "2d6",
+          "rowCount": 8,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "8f747bbb540f8633f1707d827f4042657b2661495fe04681aaf9e70b15e7fe23"
+        },
+        {
+          "id": "planets-planet-attributes-tech-level",
+          "dice": "2d6",
+          "rowCount": 7,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "4b973d6e18ec1f45fb19591cad9802a8f01af3aa41fa69b860b72967f70d075c"
+        },
+        {
+          "id": "planets-planet-attributes-law-level",
+          "dice": "2d6",
+          "rowCount": 6,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "4eb96359a2ccca85e1eb4b7b1189fa3137986ad8b18a0bd6cddd9db71adc0916"
+        },
+        {
+          "id": "planets-planet-attributes-complications",
+          "dice": "2d6",
+          "rowCount": 7,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "c86481c150e5a422fbeaedca5e097b59f10a45f753bc2421cbf156358d0eb4a0"
+        },
+        {
+          "id": "planets-interpreting-results",
+          "dice": "2d6",
+          "rowCount": 7,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "30d1303c57a27fd98939d9affbfb92a39c85cfb0868763ded484c39b60aaee5b"
+        },
+        {
+          "id": "tables-generators-alien-species-generator-d44-quality",
+          "dice": "d44",
+          "rowCount": 16,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "2a8c3974121e3240255bcf31ad74e029f17d1940c3c83f674f2474841d28074b"
+        },
+        {
+          "id": "tables-generators-alien-species-generator-d44-physical-trait",
+          "dice": "d44",
+          "rowCount": 16,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "cf0183db4f07af810fdd0c2b0f8966cbe534234107c6214ef77c967ef9ef9b8a"
+        },
+        {
+          "id": "tables-generators-alien-species-generator-d44-physiology",
+          "dice": "d44",
+          "rowCount": 16,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "513cd3f1b141f2b7966bad42dd53597a23a32812e861b2a731e606c854a3b632"
+        },
+        {
+          "id": "tables-generators-d44-mutations",
+          "dice": "d44",
+          "rowCount": 16,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "614c8b0b74810734844bcad458211c6078eb3073a1440835bde8e597cfe5f856"
+        },
+        {
+          "id": "tables-generators-d8-drugs",
+          "dice": "d8",
+          "rowCount": 8,
+          "columnCount": 2,
+          "unreachableRows": 0,
+          "digest": "49fa9751471f9a1d38d2cf768e387837219a2931bb9e4e68b0e2a3eecf2daaf3"
+        }
+      ]
+    },
+    "system:cwn": {
+      "tableCount": 44,
+      "tables": [
+        {
+          "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-bum-growth",
+          "dice": "d6",
+          "rowCount": 6,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "47e3c6ae134c566a65b1fc0ed8a5ee1f08d576558493c865ec0d8b6d5ee0f188"
+        },
+        {
+          "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-bum-learning",
+          "dice": "d8",
+          "rowCount": 8,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "34566a9649ac99375ffcef5e137d0ab78bff037877049d4d23f98a33295f5a31"
+        },
+        {
+          "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-bureaucrat-growth",
+          "dice": "d6",
+          "rowCount": 6,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "80fe64dc64548323b01f3ae8cf8a32e257df948fa4c4d4e49d7e9dfe0deb7941"
+        },
+        {
+          "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-bureaucrat-learning",
+          "dice": "d8",
+          "rowCount": 8,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "eb92524a415d70cf40b9be1ecb71d5b8c8df617bdc67217cdfe79d9153fca979"
+        },
+        {
+          "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-clergy-growth",
+          "dice": "d6",
+          "rowCount": 6,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "c8c7db2699f8577d4c2669a884f762424b39ef9be93c348101cb12fe4a8daa4d"
+        },
+        {
+          "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-clergy-learning",
+          "dice": "d8",
+          "rowCount": 8,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "bb9fc45c95e7c830a08e35c99abcb34c42695d25b963c1b669ef562786ea1199"
+        },
+        {
+          "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-coder-growth",
+          "dice": "d6",
+          "rowCount": 6,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "01b2bb4902d4ca931d768c4790b2351d3986aeecc8cfd1419066a25a46e2389f"
+        },
+        {
+          "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-coder-learning",
+          "dice": "d8",
+          "rowCount": 8,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "b4305927eaaa93c48e0d4bb22c5091ecdeed9e94857f7f1bec49b792001a0546"
+        },
+        {
+          "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-corp-security-growth",
+          "dice": "d6",
+          "rowCount": 6,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "fbc18e4d1952b4cab0e2471978b148c77aaa1682cc39717f9dbc6bb73189515d"
+        },
+        {
+          "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-corp-security-learning",
+          "dice": "d8",
+          "rowCount": 8,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "2005cbdafb7d88076c1cebaac7d9b44527e5dd040cd97876f260168a3225d531"
+        },
+        {
+          "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-corper-growth",
+          "dice": "d6",
+          "rowCount": 6,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "9bd3d01fdd7dffdc00152bb5e08e92173db09fbf91b5bbcde7a89a4901860ff0"
+        },
+        {
+          "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-corper-learning",
+          "dice": "d8",
+          "rowCount": 8,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "aebe277aa9f3c48ae25231ddad0415cbfe1c29b9535ea680ce09356918ab3a4a"
+        },
+        {
+          "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-criminal-growth",
+          "dice": "d6",
+          "rowCount": 6,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "ab8ed5557f8742f544894c5a6a80ea34b3ce561a38534ed63a1ebd75029aaaa5"
+        },
+        {
+          "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-criminal-learning",
+          "dice": "d8",
+          "rowCount": 8,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "fc4916936c537b8d820acbee672ec47c4b6934633116dfc46974e214a01670e2"
+        },
+        {
+          "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-doctor-growth",
+          "dice": "d6",
+          "rowCount": 6,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "3f54b09a02e297e8261ec8d306866f64f8735801518378af3b23d4bdd14372df"
+        },
+        {
+          "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-doctor-learning",
+          "dice": "d8",
+          "rowCount": 8,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "acade31b947c297bf1fdf11ad9e9c3b598b651d1e07ca0a1b029ddb2f5c631fc"
+        },
+        {
+          "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-drone-jockey-growth",
+          "dice": "d6",
+          "rowCount": 6,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "443b7c8e983b6664fef276d392ffc5956c948fc2e33c119859a21f4967903a41"
+        },
+        {
+          "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-drone-jockey-learning",
+          "dice": "d8",
+          "rowCount": 8,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "d2d259a0298e422501d97cae63c387415c0ba91ff49bbde6b932de6f039709c4"
+        },
+        {
+          "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-ganger-growth",
+          "dice": "d6",
+          "rowCount": 6,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "6f949f0169a2aeb61442d29282bfa515dc0bd16825e3343d0a15244c22d6139f"
+        },
+        {
+          "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-ganger-learning",
+          "dice": "d8",
+          "rowCount": 8,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "c3cd6ff2bf4ef1c64a75104ce42115487c8e0dc7f1c56122f5a5127c8f7d1a57"
+        },
+        {
+          "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-laborer-growth",
+          "dice": "d6",
+          "rowCount": 6,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "3d1c886a1c6d3d13379149cf0bad86eac73f1aa8aaed5ab2e3a64990f796bb04"
+        },
+        {
+          "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-laborer-learning",
+          "dice": "d8",
+          "rowCount": 8,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "e28c3bb2abd53525e35d4e0e798bef13dd0b2be3779c76a107bc34b910948564"
+        },
+        {
+          "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-law-enforcement-growth",
+          "dice": "d6",
+          "rowCount": 6,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "6b55254f2a80fe03427fc229e6e5a4aba6f5f277497769871bd2af3933a5a422"
+        },
+        {
+          "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-law-enforcement-learning",
+          "dice": "d8",
+          "rowCount": 8,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "51a16582d789798d17f5f834cc798b2aba8b2dc344626354fcc386278e8f5744"
+        },
+        {
+          "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-manager-growth",
+          "dice": "d6",
+          "rowCount": 6,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "8e192bb9a65fe3a392f2dfdd07017fcd4bfd9168e8b22b689a79756262ad9a5e"
+        },
+        {
+          "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-manager-learning",
+          "dice": "d8",
+          "rowCount": 8,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "63adbaec6613731cc35c1306025c49433a6389d5e4ad494b9eb6510e7b909712"
+        },
+        {
+          "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-outlander-growth",
+          "dice": "d6",
+          "rowCount": 6,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "d9dccf5bb31241e83eb97fb6927dad0a624bc23daabcd0145fbf88ae45a60379"
+        },
+        {
+          "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-outlander-learning",
+          "dice": "d8",
+          "rowCount": 8,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "39a238b32dc70eb39fe9a8957bb06ae5ef4a1fe89b4f143a0441d36de89c2fe8"
+        },
+        {
+          "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-performer-growth",
+          "dice": "d6",
+          "rowCount": 6,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "6ee5c9addec35aa10dd46ff7f6f17df89e3fa741af18cf4ef2bcb8739265a463"
+        },
+        {
+          "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-performer-learning",
+          "dice": "d8",
+          "rowCount": 8,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "f79970dfabee23e4d2d4638cd6473c0b5673e1238219ad1ded4f5f1d535aea2e"
+        },
+        {
+          "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-soldier-growth",
+          "dice": "d6",
+          "rowCount": 6,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "db9243b40fb1980f80ca80545d244965d25cba67fd4451ddf8b8339f1da0677c"
+        },
+        {
+          "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-soldier-learning",
+          "dice": "d8",
+          "rowCount": 8,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "689b2bc90184d24abfdf2e81510afbcc1274f61f49424f04ece9bdb7649de192"
+        },
+        {
+          "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-spy-growth",
+          "dice": "d6",
+          "rowCount": 6,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "0807d01670018c2b305cb838c2a0424204906e4b2a950ba8977e2ded9b16970c"
+        },
+        {
+          "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-spy-learning",
+          "dice": "d8",
+          "rowCount": 8,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "63ec9ea51d2713e641f08a717d1f15e52aa35e6c65ecb99fe843f9d65b3a6a92"
+        },
+        {
+          "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-trader-growth",
+          "dice": "d6",
+          "rowCount": 6,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "c425ab24f87a828cfe09f1ddaa14c3a30fa174cdd6fecbaa9079f5f6f1fb0a4d"
+        },
+        {
+          "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-trader-learning",
+          "dice": "d8",
+          "rowCount": 8,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "a390ab6e63bb9a1627e94ee844812ef121ab22a9537caf50d10f0443bf1def7d"
+        },
+        {
+          "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-streetwalker-growth",
+          "dice": "d6",
+          "rowCount": 6,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "9d569d68a30af07ddf1b69c007a60551fbe8d3879920c57ffd06e7fa25378ecc"
+        },
+        {
+          "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-streetwalker-learning",
+          "dice": "d8",
+          "rowCount": 8,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "6de6f5fdb8631ae92cf1c7fac367eaca5f8c0a32940d210c3040d73a2c4e69ab"
+        },
+        {
+          "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-technician-growth",
+          "dice": "d6",
+          "rowCount": 6,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "489a8c88cb50f9eba22b4ac8f7cf81ea73a595e7f8a8b060c3339131348d61fb"
+        },
+        {
+          "id": "1-0-0-character-creation-1-3-0-backgrounds-1-3-3-background-list-technician-learning",
+          "dice": "d8",
+          "rowCount": 8,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "4035db9bae7b8e3f5c38c004ca278f78fb7172b72e8ebb07cb46c8eccb809823"
+        },
+        {
+          "id": "2-0-0-the-rules-of-the-game-2-5-0-injury-healing-and-system-strain-2-5-6-major-injuries",
+          "dice": "d12",
+          "rowCount": 11,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "5b64d05cef6fe7508ed04a74609cadbc3b74287f5e6cb4d4cf52a361a7629450"
+        },
+        {
+          "id": "3-0-0-gear-vehicles-and-cyberware-3-6-0-cyberware-3-6-1-installing-cyberware-3-6-1-1-implant-complications",
+          "dice": "d12",
+          "rowCount": 12,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "1a296656411d1b5b8bb905634d3b5e7c4ea7849da54a23c179bf6d84a8cb8c00"
+        },
+        {
+          "id": "5-0-0-antagonists-and-npcs-5-1-0-reaction-rolls",
+          "dice": "2d6",
+          "rowCount": 5,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "f08a8d6e43f97e71113f01d53dc14df2c1695206e5b174498007cddad903e536"
+        },
+        {
+          "id": "6-0-0-magic-6-1-0-mages-and-spellcasting-6-1-3-spells-6-1-3-3-overcasting",
+          "dice": "d20",
+          "rowCount": 6,
+          "columnCount": 1,
+          "unreachableRows": 0,
+          "digest": "241851116bb2a6d23faffbae66e0cbc50eec106f7e497048e768c8cb1eb89a23"
+        }
+      ]
+    }
+  }
+}

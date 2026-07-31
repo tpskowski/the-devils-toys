@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { ChevronDown, ChevronLeft, Dices, Library, Plus, Save, Search, Trash2, X } from "lucide-react";
 import {
+  parseRollTables,
   rollTableLabel,
+  serializeSet,
   tagLabel,
   type ChatMessage,
   type RollTable,
@@ -12,6 +14,7 @@ import {
   type TableTagDefinition
 } from "@devils-toys/shared";
 import { api } from "./api";
+import { InlineMarkdown } from "./InlineMarkdown";
 import {
   categoryOpensTable,
   countTablesByTag,
@@ -187,15 +190,17 @@ export function TablesModal({
     setError("");
     try {
       if (draft.id) {
+        const tables = parseRollTables(draft.markdown).map(({ source: _source, ...table }) => table);
         await api(`/api/table-sets/${draft.id}`, {
           method: "PATCH",
-          body: JSON.stringify({ name: draft.name, markdown: draft.markdown, tags: draft.tags })
+          body: JSON.stringify({ name: draft.name, tables, tags: draft.tags })
         });
         await loadSets(`custom:${draft.id}`);
       } else {
+        const tables = parseRollTables(draft.markdown).map(({ source: _source, ...table }) => table);
         const created = await api<{ set: { id: string } }>("/api/table-sets", {
           method: "POST",
-          body: JSON.stringify({ name: draft.name, markdown: draft.markdown, tags: draft.tags })
+          body: JSON.stringify({ name: draft.name, tables, tags: draft.tags })
         });
         await loadSets(created.set.id);
       }
@@ -211,10 +216,15 @@ export function TablesModal({
     setError("");
     try {
       const numericId = Number(entry.id.replace("custom:", ""));
-      const result = await api<{ set: { id: number; name: string; markdown: string; tags: TableTag[] } }>(
+      const result = await api<{ set: { id: number; name: string; tables: RollTable[]; tags: TableTag[] } }>(
         `/api/table-sets/${numericId}`
       );
-      setDraft({ id: result.set.id, name: result.set.name, markdown: result.set.markdown, tags: result.set.tags });
+      setDraft({
+        id: result.set.id,
+        name: result.set.name,
+        markdown: serializeSet(result.set.tables, result.set.name),
+        tags: result.set.tags
+      });
       setManaging(true);
     } catch (cause) {
       setError((cause as Error).message);
@@ -541,7 +551,9 @@ export function TablesModal({
                   <div className="tables-result" role="status">
                     <span className="tables-result-total">{rolled.total}</span>
                     <span>
-                      <strong>{rolled.text || `No entry for ${rolled.total}`}</strong>
+                      <span className="tables-result-text">
+                        <InlineMarkdown>{rolled.text || `No entry for ${rolled.total}`}</InlineMarkdown>
+                      </span>
                       <small>
                         {rollTableLabel(table.name, table.dice)}
                         {rolled.visibility === "public"
@@ -580,7 +592,9 @@ export function TablesModal({
                         <tr>
                           <th>{table.dice}</th>
                           {table.columns.map((column, index) => (
-                            <th key={`${column}-${index}`}>{column}</th>
+                            <th key={`${column}-${index}`}>
+                              <InlineMarkdown>{column}</InlineMarkdown>
+                            </th>
                           ))}
                         </tr>
                       </thead>
@@ -589,7 +603,9 @@ export function TablesModal({
                           <tr key={row.label} className={rolled && row.label === rolled.label ? "rolled" : ""}>
                             <th scope="row">{row.label}</th>
                             {row.cells.map((cell, index) => (
-                              <td key={index}>{cell}</td>
+                              <td key={index}>
+                                <InlineMarkdown>{cell}</InlineMarkdown>
+                              </td>
                             ))}
                           </tr>
                         ))}

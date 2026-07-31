@@ -461,7 +461,7 @@ app.put("/api/rooms/:roomId/calendar", requireAuth, (req: AuthedRequest, res) =>
   if (!parsedCalendar) return;
   const calendar = normalizeCalendar(parsedCalendar);
   db.prepare("UPDATE rooms SET calendar_json = ? WHERE id = ?").run(JSON.stringify(calendar), roomId);
-  broadcastRoom(roomId, { type: "room-updated" });
+  broadcastRoom(roomId, { type: "calendar-updated", calendar });
   res.json({ calendar });
 });
 
@@ -474,7 +474,7 @@ app.post("/api/rooms/:roomId/calendar/advance", requireAuth, (req: AuthedRequest
   const calendar = advanceCalendar(readCalendar(row.calendar_json));
   db.prepare("UPDATE rooms SET calendar_json = ? WHERE id = ?").run(JSON.stringify(calendar), roomId);
   const message = recordSystemMessage(roomId, req.account!.id, calendarNowMessage(calendar));
-  broadcastRoom(roomId, { type: "room-updated" });
+  broadcastRoom(roomId, { type: "calendar-updated", calendar });
   broadcastRoom(roomId, { type: "message", message });
   res.json({ calendar, message });
 });

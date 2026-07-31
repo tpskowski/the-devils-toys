@@ -1,8 +1,8 @@
 import type { RollTable, RollTableRow, RollTableSource, RollTableSummary, TableTag } from "./index.js";
 
 /** Sides the dice engine can roll, largest first so inference prefers the widest match. */
-export const SUPPORTED_DIE_SIDES = [100, 66, 44, 20, 12, 10, 8, 6, 4] as const;
-const dicePattern = /^(?:(\d{1,2})\s*)?d\s*(100|66|44|20|12|10|8|6|4)$/i;
+export const SUPPORTED_DIE_SIDES = [100, 66, 44, 30, 20, 12, 10, 8, 6, 4] as const;
+const dicePattern = /^(?:(\d{1,2})\s*)?d\s*(100|66|44|30|20|12|10|8|6|4)$/i;
 const dieColumnNames = new Set(["roll", "die", "dice", "result of roll", "d"]);
 /** How a table carries its own tags, kept in a comment so rendered Markdown is unchanged. */
 const tagsComment = /^\s*<!--\s*tags:\s*([^>]*?)\s*-->\s*$/i;
@@ -114,7 +114,7 @@ function statedDice(dieColumn: string, headings: string[]) {
   if (named) return `${named[1] ?? ""}d${named[2]}`;
   if (!dieColumnNames.has(dieColumn.toLocaleLowerCase())) return undefined;
   for (const heading of [...headings].reverse()) {
-    const marker = /\(\s*d\s*(100|66|44|20|12|10|8|6|4)\s*\)/i.exec(heading);
+    const marker = /\(\s*d\s*(100|66|44|30|20|12|10|8|6|4)\s*\)/i.exec(heading);
     if (marker) return `d${marker[1]}`;
   }
   return undefined;
@@ -235,6 +235,7 @@ export function parseRollTables(markdown: string, exclude: readonly string[] = [
       tags,
       source: {
         heading: owning ? { line: owning.line, level: owning.level, text: owning.text } : null,
+        headingPath: path,
         tagsLine,
         tableStart,
         tableEnd,
@@ -294,9 +295,8 @@ export function diceMinimum(dice: string) {
 }
 
 /**
- * Rows the stated die cannot reach. Monolith's hollowing table is written with a
- * D20 heading over thirty rows, and the GM is better served by being told than
- * by having the die quietly changed for them.
+ * Rows the stated die cannot reach. Source mismatches are reported rather than
+ * silently changing either the stated die or the authored rows.
  */
 export function unreachableRows(table: RollTable) {
   const maximum = diceMaximum(table.dice);

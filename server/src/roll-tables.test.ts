@@ -105,6 +105,19 @@ describe("finding rollable tables in system Markdown", () => {
     expect(tables[3].dice).toBe("d4");
   });
 
+  it("recognises and resolves d30 tables", () => {
+    const [table] = parseRollTables(`### Omens
+
+| D30 | Result |
+| --- | --- |
+| 1 | The first omen |
+| 30 | The final omen |
+`);
+    expect(table.dice).toBe("d30");
+    expect(rowForRoll(table, 30)?.cells).toEqual(["The final omen"]);
+    expect(unreachableRows(table)).toBe(0);
+  });
+
   it("flattens compact repeated Roll and Result pairs", () => {
     const [compact] = parseRollTables(`## Generators
 

@@ -146,6 +146,28 @@ tableRouter.get("/rooms/:roomId/tables/:setId/:tableId", requireAuth, (req: Auth
   res.json({ table: rest });
 });
 
+tableRouter.get("/rooms/:roomId/rules-tables/:setId/:tableId", requireAuth, (req: AuthedRequest, res) => {
+  const roomId = Number(req.params.roomId);
+  const role = Number.isInteger(roomId) ? roomRole(req.account!.id, roomId) : undefined;
+  if (!role) return res.status(403).json({ error: "Join this room to read its rules tables." });
+  const room = one<{ system: SystemId }>("SELECT system FROM rooms WHERE id = ?", roomId);
+  if (!room || req.params.setId !== `system:${room.system}`)
+    return res.status(404).json({ error: "Rules table not found." });
+  const found = findSet(req.params.setId);
+  const table = found?.tables.find((entry) => entry.id === req.params.tableId);
+  if (!table) return res.status(404).json({ error: "Rules table not found." });
+  if (role === "player" && (table as { classification?: string }).classification === "gm")
+    return res.status(403).json({ error: "That rules table is not available to players." });
+  const {
+    source: _source,
+    classification: _classification,
+    ...rest
+  } = table as typeof table & {
+    classification?: string;
+  };
+  return res.json({ table: rest });
+});
+
 tableRouter.post("/rooms/:roomId/tables/roll", requireAuth, (req: AuthedRequest, res) => {
   const roomId = gmRoom(req, res);
   if (!roomId) return;

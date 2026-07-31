@@ -47,3 +47,13 @@ No table gained, lost, or altered a row.
 **Worth knowing:** the annotation carried a real cross-reference. Monolith has one 1D6 give both starting HP and the background's signature gear, so "1 HP" told a reader which of their rolls this table keys off. That link now lives only in the surrounding rules text — "roll 1d6 HP, and reference the chart according to … their HP". Restore the annotation if that connection matters more than a clean die column.
 
 The `4 HP | 5 HP | 6 HP` column headings of the GEAR PACKS chart are untouched: there HP is the axis of the chart rather than a die value.
+
+## Monolith — Hollowing uses a d30
+
+**Source:** `raw/Monolith.md`, the HOLLOWING rules and thirty-row table under CORRUPTION.
+
+**Original:** the rules called for `D20 + current corruption`, the example added 2 corruption to a roll of 7, and the table heading said `D20` despite containing results 1–30.
+
+**Correction:** the rules and table now call for `D30`, and the example reaches result 9 directly.
+
+**Reason:** The Devil's Tables rolls the die named by a table. Treating Hollowing as a d30 makes all thirty authored outcomes reachable and gives the roller one complete die expression instead of silently leaving rows 21–30 unavailable.

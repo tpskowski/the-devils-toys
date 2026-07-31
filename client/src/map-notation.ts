@@ -12,6 +12,13 @@ export interface NotationPoint {
   y: number;
 }
 
+export interface NotationArea {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
 export interface NotationTransform {
   scale: number;
   x: number;
@@ -33,6 +40,30 @@ export function notationPoint(
   return {
     x: Math.max(0, Math.min(1, (width / 2 + (clientX - centerX - transform.x) / scale) / width)),
     y: Math.max(0, Math.min(1, (height / 2 + (clientY - centerY - transform.y) / scale) / height))
+  };
+}
+
+/** Normalizes a drag in either direction into a map-relative rectangle. */
+export function notationArea(start: NotationPoint, end: NotationPoint): NotationArea {
+  return {
+    x: Math.min(start.x, end.x),
+    y: Math.min(start.y, end.y),
+    width: Math.abs(end.x - start.x),
+    height: Math.abs(end.y - start.y)
+  };
+}
+
+/** A click still opens a useful editor; a real drag keeps the user's exact bounds. */
+export function labelArea(start: NotationPoint, end: NotationPoint): NotationArea {
+  const area = notationArea(start, end);
+  if (area.width > 0.005 && area.height > 0.005) return area;
+  const width = 0.24;
+  const height = 0.1;
+  return {
+    x: Math.min(start.x, 1 - width),
+    y: Math.min(start.y, 1 - height),
+    width,
+    height
   };
 }
 

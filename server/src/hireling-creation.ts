@@ -1,10 +1,14 @@
-import type { GroupPageDefinition } from "@devils-toys/shared";
+import type { GroupPageDefinition, SystemId } from "@devils-toys/shared";
 import { rollDice } from "./dice.js";
-import { parseCompactRollTables } from "./roll-tables.js";
+import { compactTables, parseCompactRollTables } from "./roll-tables.js";
 
 type CreationRoll = NonNullable<NonNullable<GroupPageDefinition["hirelings"]>["creationRoll"]>;
 
-export function rollHirelingCreation(definition: CreationRoll, markdown: string, random: () => number = Math.random) {
+export function rollHirelingCreation(
+  definition: CreationRoll,
+  source: string | SystemId,
+  random: () => number = Math.random
+) {
   const generated: Record<string, unknown> = {};
 
   for (const ability of definition.abilities) {
@@ -21,7 +25,12 @@ export function rollHirelingCreation(definition: CreationRoll, markdown: string,
   const finishing = definition.finishingTouches;
   if (!finishing) return generated;
 
-  const tables = new Map(parseCompactRollTables(markdown, finishing.section).map((table) => [table.name, table]));
+  const tables = new Map(
+    (source === "cairn" || source === "monolith" || source === "cwn"
+      ? compactTables(source, finishing.section)
+      : parseCompactRollTables(source, finishing.section)
+    ).map((table) => [table.name, table])
+  );
   const rollTable = (name: string) => {
     const table = tables.get(name);
     if (!table) throw new Error(`The ${finishing.section} source has no rollable "${name}" table.`);

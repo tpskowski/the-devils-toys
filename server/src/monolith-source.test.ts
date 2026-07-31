@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseRollTables } from "@devils-toys/shared";
+import { parseRollTables, unreachableRows } from "@devils-toys/shared";
 import { systemMarkdown } from "./systems.js";
 
 describe("Monolith source tables", () => {
@@ -34,5 +34,12 @@ describe("Monolith source tables", () => {
       ["Ambiguous Names", "d20"],
       ["Last Names", "d20"]
     ]);
+  });
+
+  it("rolls every Hollowing outcome on a d30", () => {
+    const hollowing = tables.find((table) => table.name === "ASPECT DISTORTION — HOLLOWING");
+    expect(hollowing).toMatchObject({ dice: "d30" });
+    expect(hollowing?.rows).toHaveLength(30);
+    expect(hollowing && unreachableRows(hollowing)).toBe(0);
   });
 });

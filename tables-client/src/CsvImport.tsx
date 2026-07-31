@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { Download, FileUp } from "lucide-react";
 import { api, download } from "./api";
+import { InlineMarkdown } from "./InlineMarkdown";
 
 interface PreviewTable {
   name: string;
@@ -116,7 +117,9 @@ export function CsvImport({ setId, onImported }: { setId: number; onImported: ()
                   <tr>
                     <th className="grid-die">{table.dice}</th>
                     {table.columns.map((column) => (
-                      <th key={column}>{column}</th>
+                      <th key={column}>
+                        <InlineMarkdown>{column}</InlineMarkdown>
+                      </th>
                     ))}
                   </tr>
                 </thead>
@@ -125,7 +128,9 @@ export function CsvImport({ setId, onImported }: { setId: number; onImported: ()
                     <tr key={index}>
                       <td className="grid-die">{row.label}</td>
                       {table.columns.map((_, column) => (
-                        <td key={column}>{row.cells[column] ?? ""}</td>
+                        <td key={column}>
+                          <InlineMarkdown>{row.cells[column] ?? ""}</InlineMarkdown>
+                        </td>
                       ))}
                     </tr>
                   ))}

@@ -55,6 +55,7 @@ import { api } from "./api";
 import { tablesAppUrl, type TablesApp } from "./tables-app";
 import { TablesAppDialog } from "./TablesAppDialog";
 import { shouldSubmitChatOnEnter } from "./chat";
+import { InlineMarkdown } from "./InlineMarkdown";
 import type { AudioPlaybackState, RoomAudioState } from "@devils-toys/shared";
 import { InviteScreen } from "./InviteScreen";
 import { CharacterModal } from "./CharacterModal";
@@ -684,6 +685,10 @@ function TableRoom({
     setDetail(nextDetail);
     setMessages(nextMessages.messages);
   }
+
+  function applyCalendar(calendar: RoomCalendar) {
+    setDetail((current) => (current ? { ...current, room: { ...current.room, calendar } } : current));
+  }
   useEffect(() => {
     load();
     loadMedia();
@@ -725,6 +730,7 @@ function TableRoom({
         if (data.type === "npcs-updated") setNpcRevision((current) => current + 1);
         if (data.type === "group-updated") setGroupRevision((current) => current + 1);
         if (data.type === "map-notations-updated") setMapNotationSyncRevision((current) => current + 1);
+        if (data.type === "calendar-updated") applyCalendar(data.calendar as RoomCalendar);
         if (
           data.type === "map-notation-added" ||
           data.type === "map-notation-removed" ||
@@ -826,6 +832,7 @@ function TableRoom({
               <Rules
                 roomId={room.id}
                 system={room.system}
+                isGm={detail.room.role === "gm"}
                 focusQuery={rulesFocus}
                 onFocused={() => setRulesFocus("")}
               />
@@ -961,7 +968,7 @@ function TableRoom({
           roomId={room.id}
           calendar={detail.room.calendar}
           isGm={detail.room.role === "gm"}
-          onChanged={load}
+          onChanged={applyCalendar}
           onClose={() => setCalendarOpen(false)}
         />
       )}
@@ -1102,8 +1109,14 @@ function Chat({
                 </time>
               </span>
             </div>
-            <p>{message.body}</p>
-            {message.detail && <small>{message.detail}</small>}
+            <p>
+              <InlineMarkdown>{message.body}</InlineMarkdown>
+            </p>
+            {message.detail && (
+              <small>
+                <InlineMarkdown>{message.detail}</InlineMarkdown>
+              </small>
+            )}
           </article>
         ))}
         <div ref={end} />
@@ -1135,11 +1148,13 @@ function Chat({
 function Rules({
   roomId,
   system,
+  isGm,
   focusQuery,
   onFocused
 }: {
   roomId: number;
   system: SystemId;
+  isGm: boolean;
   focusQuery: string;
   onFocused: () => void;
 }) {
@@ -1180,7 +1195,7 @@ function Rules({
     ) : loadError ? (
       <p className="form-error rules-status">Rules could not be loaded: {loadError}</p>
     ) : filtered ? (
-      <RulesMarkdown markdown={filtered} idPrefix={idPrefix} />
+      <RulesMarkdown markdown={filtered} idPrefix={idPrefix} roomId={roomId} isGm={isGm} />
     ) : (
       <p className="rules-status">{query ? "No matching sections." : "This rules reference is empty."}</p>
     );

@@ -6,6 +6,7 @@ import {
   type TableTag,
   type TableTagDefinition
 } from "@devils-toys/shared";
+import { parseCustomSet, type CustomSetDocument } from "./table-json.js";
 
 /**
  * The two archives The Devil's Tables produces.
@@ -16,7 +17,7 @@ import {
  * `raw/` expects, with written instructions for folding it into the repository.
  */
 
-export const BUNDLE_VERSION = 1;
+export const BUNDLE_VERSION = 2;
 
 export interface BundleManifest {
   bundleVersion: number;
@@ -29,6 +30,7 @@ export interface BundleManifest {
 export interface BundleSet {
   name: string;
   markdown: string;
+  document?: CustomSetDocument;
   tags: TableTag[];
 }
 
@@ -48,7 +50,7 @@ export function buildBundle(sets: readonly BundleSet[], tags: readonly TableTagD
   const taken = new Set<string>();
   const files: Record<string, Uint8Array> = {};
   const manifest: BundleManifest = {
-    bundleVersion: BUNDLE_VERSION,
+    bundleVersion: sets.some((set) => set.document) ? BUNDLE_VERSION : 1,
     exportedAt: new Date().toISOString(),
     app: "devils-tables",
     sets: [],
@@ -56,8 +58,9 @@ export function buildBundle(sets: readonly BundleSet[], tags: readonly TableTagD
   };
 
   for (const set of sets) {
-    const file = `sets/${slugFor(set.name, taken)}.md`;
-    files[file] = strToU8(set.markdown);
+    const json = Boolean(set.document);
+    const file = `sets/${slugFor(set.name, taken)}.${json ? "json" : "md"}`;
+    files[file] = strToU8(json ? `${JSON.stringify(set.document, null, 2)}\n` : set.markdown);
     manifest.sets.push({ file, name: set.name, tags: [...set.tags] });
   }
   files["manifest.json"] = strToU8(`${JSON.stringify(manifest, null, 2)}\n`);
@@ -96,11 +99,17 @@ export function readBundle(archive: Uint8Array): ReadBundle {
   for (const entry of manifest.sets) {
     const file = files[entry.file];
     if (!file) throw new Error(`The bundle names "${entry.file}" but does not contain it.`);
-    sets.push({
-      name: String(entry.name ?? "Untitled set").slice(0, 80),
-      markdown: strFromU8(file),
-      tags: Array.isArray(entry.tags) ? entry.tags.filter((tag): tag is string => typeof tag === "string") : []
-    });
+    const name = String(entry.name ?? "Untitled set").slice(0, 80);
+    const tags = Array.isArray(entry.tags) ? entry.tags.filter((tag): tag is string => typeof tag === "string") : [];
+    if (manifest.bundleVersion <= 1 || entry.file.toLocaleLowerCase().endsWith(".md")) {
+      sets.push({ name, markdown: strFromU8(file), tags });
+    } else {
+      try {
+        sets.push({ name, markdown: "", document: parseCustomSet(strFromU8(file), name), tags });
+      } catch {
+        throw new Error(`The bundle's table JSON for "${name}" could not be read.`);
+      }
+    }
   }
 
   const tags = Array.isArray(manifest.tags)
@@ -185,11 +194,23 @@ export type ImportStatus = "new" | "identical" | "conflict";
 
 export function compareToExisting(
   incoming: readonly BundleSet[],
-  existing: readonly { name: string; markdown: string }[]
+  existing: readonly { name: string; markdown?: string; tables_json?: string }[]
 ) {
   return incoming.map((set) => {
     const match = existing.find((entry) => entry.name.toLocaleLowerCase() === set.name.toLocaleLowerCase());
-    const status: ImportStatus = !match ? "new" : match.markdown === set.markdown ? "identical" : "conflict";
-    return { name: set.name, tags: set.tags, status, tables: parseRollTables(set.markdown).length };
+    const incomingValue = set.document ? JSON.stringify(set.document) : set.markdown;
+    const existingValue = match?.tables_json ?? match?.markdown;
+    const status: ImportStatus = !match
+      ? "new"
+      : (set.document ? JSON.stringify(parseCustomSet(existingValue ?? "{}", set.name)) : existingValue) ===
+          incomingValue
+        ? "identical"
+        : "conflict";
+    return {
+      name: set.name,
+      tags: set.tags,
+      status,
+      tables: set.document ? set.document.tables.length : parseRollTables(set.markdown).length
+    };
   });
 }

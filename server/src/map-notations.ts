@@ -10,7 +10,7 @@ export const mapNotationRouter = express.Router();
 
 const coordinate = z.number().finite().min(0).max(1);
 const color = z.enum(MAP_NOTATION_COLORS);
-const notation = z.discriminatedUnion("kind", [
+export const mapNotationSchema = z.discriminatedUnion("kind", [
   z.object({
     kind: z.literal("line"),
     color,
@@ -24,6 +24,8 @@ const notation = z.discriminatedUnion("kind", [
     color,
     x: coordinate,
     y: coordinate,
+    width: coordinate.optional(),
+    height: coordinate.optional(),
     text: z.string().trim().min(1).max(200),
     fontSize: z.number().int().min(8).max(72)
   }),
@@ -31,7 +33,7 @@ const notation = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("circle"), color, x: coordinate, y: coordinate, width: coordinate, height: coordinate })
 ]);
 const createNotation = z.object({
-  notation,
+  notation: mapNotationSchema,
   clientMutationId: z.string().trim().min(1).max(120).optional()
 });
 

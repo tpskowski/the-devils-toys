@@ -257,6 +257,15 @@ describe("database migrations", () => {
     expect(loaded.all<{ name: string; tags_json: string }>("SELECT name, tags_json FROM table_sets")).toEqual([
       { name: "Old tables", tags_json: "[]" }
     ]);
+    const tableSetColumns = loaded.all<{ name: string }>("PRAGMA table_info(table_sets)").map((column) => column.name);
+    expect(tableSetColumns).toContain("tables_json");
+    expect(tableSetColumns).toContain("migration_markdown");
+    expect(tableSetColumns).not.toContain("markdown");
+    const migratedSet = loaded.all<{ tables_json: string; migration_markdown: string }>(
+      "SELECT tables_json, migration_markdown FROM table_sets WHERE id = 1"
+    )[0];
+    expect(JSON.parse(migratedSet.tables_json).formatVersion).toBe(1);
+    expect(migratedSet.migration_markdown).toBe("# Tables");
   });
 
   it("seeds the tag vocabulary into a database that predates it", async () => {

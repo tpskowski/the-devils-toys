@@ -46,3 +46,24 @@ export function calendarNowMessage(calendar: RoomCalendar) {
     calendar.segmentNames[calendar.segment] ?? `segment ${calendar.segment + 1} of ${calendar.segmentsPerDay}`;
   return `It is now ${segment}, ${date}.`;
 }
+
+/** Advance exactly one configured part of the day, rolling dates as needed. */
+export function advanceCalendar(value: RoomCalendar): RoomCalendar {
+  const calendar = { ...value };
+  if (calendar.segment + 1 < calendar.segmentsPerDay) {
+    calendar.segment += 1;
+    return calendar;
+  }
+
+  calendar.segment = 0;
+  calendar.day += 1;
+  if (calendar.day > calendar.daysPerMonth) {
+    calendar.day = 1;
+    calendar.month += 1;
+    if (calendar.month >= calendar.monthNames.length) {
+      calendar.month = 0;
+      calendar.year += 1;
+    }
+  }
+  return calendar;
+}
