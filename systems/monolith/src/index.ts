@@ -18,6 +18,16 @@ function numeric(sheet: Record<string, unknown>, key: string) {
   return Number.isFinite(value) ? value : undefined;
 }
 
+/**
+ * Monolith's range bands, as ARMORY writes them: `C-R`, `S-R`, `M-R`, `F-R`, or
+ * spelled out as "mid-range" and "close/ short range". Anything naming a band or
+ * a distance is a range and is reported in the book's own words.
+ */
+const weaponRange = {
+  melee: [String.raw`\bmelee\b`, String.raw`^c-?r$`, String.raw`^close(?:\s+range)?$`, String.raw`^touch$`],
+  ranged: [String.raw`range`, String.raw`\b[smf]-r\b`, String.raw`\b(?:feet|foot|ft|metres?|meters?)\b`]
+} as const;
+
 export const monolith: GameSystem = {
   id: "monolith",
   name: "Monolith",
@@ -62,6 +72,42 @@ export const monolith: GameSystem = {
   abilities: ["Strength", "Dexterity", "Will"],
   gmOnlyHeadings: ["NPCS", "SAMPLE BESTIARY", "PLANETS", "FACTION RULES", "SAMPLE FACTIONS", "TABLES & GENERATORS"],
   npcCatalog: { heading: "SAMPLE BESTIARY", entryLevel: 3, exclude: [] },
+  initiative: {
+    model: "side",
+    sides: [
+      { id: "party", label: "PC turn" },
+      { id: "enemies", label: "Enemy turn" }
+    ],
+    sideOrder: "fixed"
+    // Monolith's opening DEX save is played at the table, not tracked here, so the
+    // rail carries no per-character save marks for it.
+  },
+  rangedWeaponIcon: "gun",
+  traitCatalog: { headings: ["RANGED PROPERTIES", "MELEE PROPERTIES", "DAMAGE TYPES"] },
+  npcStatblock: {
+    hitPointsKey: "hp",
+    weaponRange,
+    attacksKey: "attacks",
+    armorKey: "armor",
+    fields: [
+      { key: "hp", label: "HP", kind: "number", inSummary: true },
+      { key: "armor", label: "Armor", kind: "number", inSummary: true },
+      { key: "str", label: "STR", kind: "number" },
+      { key: "dex", label: "DEX", kind: "number", inSummary: true },
+      { key: "wil", label: "WIL", kind: "number" },
+      { key: "attacks", label: "Attacks", kind: "text" }
+    ]
+  },
+  attributeDamage: {
+    label: "Attribute damage",
+    note: "Damage past 0 HP takes STR by the remainder, and the target then saves against STR to avoid critical damage.",
+    criticalDamage: { attributeId: "str", key: "criticalDamage", label: "Critical damage" },
+    attributes: [
+      { id: "str", label: "STR", currentKey: "strCurrent", maximumKey: "strMax", statblockKey: "str" },
+      { id: "dex", label: "DEX", currentKey: "dexCurrent", maximumKey: "dexMax", statblockKey: "dex" },
+      { id: "wil", label: "WIL", currentKey: "wilCurrent", maximumKey: "wilMax", statblockKey: "wil" }
+    ]
+  },
   tableCatalog: {
     label: "Monolith tables",
     exclude: [],
@@ -103,6 +149,11 @@ export const monolith: GameSystem = {
       },
       { id: "core", label: "Core statistics", layout: "paired-current-max", fields: statFields },
       {
+        id: "state",
+        label: "State",
+        fields: [{ key: "criticalDamage", label: "Critical damage", kind: "checkbox" }]
+      },
+      {
         id: "talents",
         label: "Talents",
         // Stored under the original `abilities` key so existing sheets keep their text.
@@ -138,7 +189,12 @@ export const monolith: GameSystem = {
           "LAND VEHICLES (DAILY RENTING PRICE IS 1/1OTH COST)",
           "FOOD, DRINKS, & SERVICES",
           "SPECIALISTS (COST IS DAILY)"
-        ]
+        ],
+        // The armory's own headings. Explosives belong here because a grenade is
+        // thrown at someone, and because a stun gun and a flash grenade state a
+        // save rather than a die and would otherwise read as ordinary gear.
+        weaponCategories: ["STANDARD WEAPONS", "HIGH ENERGY WEAPONS", "SMART WEAPONS", "EXPLOSIVES"],
+        weaponRange
       },
       {
         key: "augmentations",
@@ -173,7 +229,10 @@ export const monolith: GameSystem = {
         ],
         // Twelve sockets are mostly empty, so the sheet lists only the filled ones.
         editInDialog: true,
-        itemHeadings: ["AUGMENTATIONS"]
+        itemHeadings: ["AUGMENTATIONS"],
+        // An augment can be a weapon — a Basilisk Gland spits acid 30 feet — so it
+        // reads its reach the same way the armory does.
+        weaponRange
       }
     ]
   },
@@ -232,19 +291,22 @@ export const monolith: GameSystem = {
             fields: statFields.filter((field) => !field.key.startsWith("armor"))
           },
           {
+            id: "state",
+            label: "State",
+            fields: [{ key: "criticalDamage", label: "Critical damage", kind: "checkbox" }]
+          },
+          {
             id: "gear",
             label: "Gear",
-            fields: [
-              { key: "weapon", label: "Standard weapon (D6)", kind: "text" },
-              { key: "notes", label: "Notes", kind: "textarea" }
-            ]
+            fields: [{ key: "notes", label: "Notes", kind: "textarea" }]
           }
         ],
         lists: [
           {
             key: "equipment",
             label: "Equipment slots",
-            slots: Array.from({ length: 10 }, (_, index) => `Slot ${index + 1}`)
+            slots: Array.from({ length: 10 }, (_, index) => `Slot ${index + 1}`),
+            weaponRange
           }
         ]
       }

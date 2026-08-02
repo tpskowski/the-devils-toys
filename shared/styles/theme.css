@@ -14,7 +14,15 @@
   --accent: #b63e2e;
   --accent-soft: #e8c9bd;
   --button-text: #fff;
+  --friendly: #2f6f4f;
+  --hostile: #a33223;
 }
+/*
+ * Which side of a fight a name is on, in the initiative rail and on the encounter
+ * board. A pair per palette rather than one pair over all of them: the green that
+ * reads as the party against a dark slate is not the one that reads on parchment.
+ */
+
 /*
  * Which way each palette leans. The browser draws the parts of a control it owns
  * — dropdown panels, scrollbars, focus rings — from this, and without it a dark
@@ -40,6 +48,8 @@
   --accent: #18e1d1;
   --accent-soft: #0c4c50;
   --button-text: #031210;
+  --friendly: #4fd6a8;
+  --hostile: #ff6b8a;
 }
 .theme-used {
   --bg: #c9c0ad;
@@ -51,6 +61,8 @@
   --accent: #9a4c2f;
   --accent-soft: #bba68d;
   --button-text: #fff8e9;
+  --friendly: #3f6b46;
+  --hostile: #8f3a22;
 }
 .theme-grim {
   --bg: #171717;
@@ -62,6 +74,8 @@
   --accent: #9f2634;
   --accent-soft: #56232a;
   --button-text: #fff;
+  --friendly: #7fa07a;
+  --hostile: #c4525c;
 }
 .theme-shinji {
   --bg: #1d1a2f;
@@ -73,4 +87,6 @@
   --accent: #8bd450;
   --accent-soft: #3f6d4e;
   --button-text: #1d1a2f;
+  --friendly: #8bd450;
+  --hostile: #e2557f;
 }

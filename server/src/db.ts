@@ -175,9 +175,63 @@ db.exec(`
     created_by INTEGER NOT NULL REFERENCES accounts(id),
     name TEXT NOT NULL,
     notes TEXT NOT NULL DEFAULT '',
+    statblock_json TEXT NOT NULL DEFAULT '{}',
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
   );
+  CREATE TABLE IF NOT EXISTS encounters (
+    id INTEGER PRIMARY KEY,
+    room_id INTEGER NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    active INTEGER NOT NULL DEFAULT 0,
+    media_id INTEGER REFERENCES media(id) ON DELETE SET NULL,
+    notes TEXT NOT NULL DEFAULT '',
+    individual_initiative INTEGER NOT NULL DEFAULT 0,
+    created_by INTEGER NOT NULL REFERENCES accounts(id),
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+  );
+  CREATE TABLE IF NOT EXISTS encounter_sides (
+    encounter_id INTEGER NOT NULL REFERENCES encounters(id) ON DELETE CASCADE,
+    side TEXT NOT NULL,
+    initiative INTEGER,
+    PRIMARY KEY (encounter_id, side)
+  );
+  CREATE TABLE IF NOT EXISTS encounter_combatants (
+    id INTEGER PRIMARY KEY,
+    encounter_id INTEGER NOT NULL REFERENCES encounters(id) ON DELETE CASCADE,
+    kind TEXT NOT NULL CHECK (kind IN ('character', 'hireling', 'npc')),
+    character_id INTEGER REFERENCES characters(id) ON DELETE CASCADE,
+    npc_id INTEGER REFERENCES custom_npcs(id) ON DELETE CASCADE,
+    hireling_id TEXT,
+    name TEXT NOT NULL,
+    side TEXT NOT NULL DEFAULT 'enemies',
+    initiative INTEGER,
+    acts_first_turn INTEGER,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    hp_current INTEGER,
+    hp_max INTEGER,
+    statblock_json TEXT NOT NULL DEFAULT '{}',
+    conditions TEXT NOT NULL DEFAULT '',
+    included INTEGER NOT NULL DEFAULT 1,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CHECK (
+      (kind = 'character' AND character_id IS NOT NULL AND npc_id IS NULL AND hireling_id IS NULL) OR
+      (kind = 'npc' AND npc_id IS NOT NULL AND character_id IS NULL AND hireling_id IS NULL) OR
+      (kind = 'hireling' AND hireling_id IS NOT NULL AND character_id IS NULL AND npc_id IS NULL)
+    )
+  );
+  CREATE TABLE IF NOT EXISTS encounter_zones (
+    id INTEGER PRIMARY KEY,
+    encounter_id INTEGER NOT NULL REFERENCES encounters(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    sort_order INTEGER NOT NULL DEFAULT 0
+  );
+  CREATE UNIQUE INDEX IF NOT EXISTS encounter_combatants_character
+    ON encounter_combatants (encounter_id, character_id) WHERE character_id IS NOT NULL;
+  CREATE UNIQUE INDEX IF NOT EXISTS encounter_combatants_hireling
+    ON encounter_combatants (encounter_id, hireling_id) WHERE hireling_id IS NOT NULL;
 `);
 
 function hasColumn(table: string, column: string) {
@@ -243,6 +297,13 @@ if (!hasColumn("characters", "portrait_stored_name"))
 if (!hasColumn("characters", "portrait_mime_type"))
   db.exec("ALTER TABLE characters ADD COLUMN portrait_mime_type TEXT");
 if (!hasColumn("characters", "portrait_size")) db.exec("ALTER TABLE characters ADD COLUMN portrait_size INTEGER");
+if (!hasColumn("custom_npcs", "statblock_json"))
+  db.exec("ALTER TABLE custom_npcs ADD COLUMN statblock_json TEXT NOT NULL DEFAULT '{}'");
+// A record cloned out of the bestiary to put something into a fight is a spawn,
+// not a monster the GM wrote. It is tracked, but it does not belong in the
+// bestiary beside the entries it was copied from.
+if (!hasColumn("custom_npcs", "spawned"))
+  db.exec("ALTER TABLE custom_npcs ADD COLUMN spawned INTEGER NOT NULL DEFAULT 0");
 if (!hasColumn("media", "category")) db.exec("ALTER TABLE media ADD COLUMN category TEXT");
 if (!hasColumn("media", "display_name")) db.exec("ALTER TABLE media ADD COLUMN display_name TEXT");
 if (!hasColumn("media", "artist")) db.exec("ALTER TABLE media ADD COLUMN artist TEXT");
@@ -310,6 +371,14 @@ if (!hasColumn("media", "visible")) {
        OR id IN (SELECT scene_id FROM room_state WHERE scene_id IS NOT NULL)
        OR id IN (SELECT media_id FROM revealed_references WHERE removed_at IS NULL)`);
 }
+// What the encounter tab shows above the roster: the chosen map, or the zones
+// the GM laid out. Existing encounters keep showing their image.
+if (!hasColumn("encounters", "display"))
+  db.exec("ALTER TABLE encounters ADD COLUMN display TEXT NOT NULL DEFAULT 'map'");
+if (!hasColumn("encounter_combatants", "zone_id"))
+  db.exec(
+    "ALTER TABLE encounter_combatants ADD COLUMN zone_id INTEGER REFERENCES encounter_zones(id) ON DELETE SET NULL"
+  );
 if (!hasColumn("room_state", "map_id"))
   db.exec("ALTER TABLE room_state ADD COLUMN map_id INTEGER REFERENCES media(id)");
 if (!hasColumn("room_state", "group_json"))

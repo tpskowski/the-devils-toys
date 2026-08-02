@@ -1,7 +1,5 @@
-import { useEffect, useRef, useState, type CSSProperties, type MouseEvent, type ReactNode } from "react";
-import { createPortal } from "react-dom";
+import { useEffect, useState, type MouseEvent, type ReactNode } from "react";
 import {
-  Check,
   ChevronDown,
   Clapperboard,
   FileText,
@@ -9,15 +7,17 @@ import {
   BookOpen,
   Map as MapIcon,
   Settings2,
-  UsersRound
+  UsersRound,
+  Swords
 } from "lucide-react";
 import type { MapNotationEvent, MediaAsset } from "@devils-toys/shared";
 import type { RoomMediaState } from "./MediaModal";
 import { isMarkdownAsset, MediaContent } from "./MediaContent";
 import { mediaLabel } from "./media-label";
 import { SceneViewer, type ScenePing } from "./SceneViewer";
+import { useTabPicker } from "./TabPicker";
 
-type MediaTab = "map" | "scene" | "reference" | "group" | "rules";
+type MediaTab = "map" | "scene" | "reference" | "group" | "encounter" | "rules";
 
 interface GroupPicker {
   options: readonly { id: string; label: string }[];
@@ -31,6 +31,9 @@ export function TableMediaViewer({
   pings,
   groupPage,
   groupPicker,
+  encounterPage,
+  encounterPicker,
+  encounterEnabled,
   onManage,
   onPing,
   mapNotationEnabled,
@@ -45,6 +48,13 @@ export function TableMediaViewer({
   pings: ScenePing[];
   groupPage?: ReactNode;
   groupPicker?: GroupPicker;
+  encounterPage?: ReactNode;
+  encounterPicker?: {
+    options: readonly { id: string; label: string }[];
+    selected: string;
+    onSelect: (id: string) => void;
+  };
+  encounterEnabled: boolean;
   onManage: () => void;
   onPing: (x: number, y: number) => void;
   mapNotationEnabled: boolean;
@@ -57,10 +67,6 @@ export function TableMediaViewer({
   const [mapId, setMapId] = useState<number>();
   const [sceneId, setSceneId] = useState<number>();
   const [referenceId, setReferenceId] = useState<number>();
-  const [pickerOpen, setPickerOpen] = useState(false);
-  const [pickerPosition, setPickerPosition] = useState<CSSProperties>({});
-  const pickerToggle = useRef<HTMLButtonElement>(null);
-  const pickerMenu = useRef<HTMLDivElement>(null);
 
   const library = media.library ?? [];
   const maps = library.filter((item) => item.kind === "map");
@@ -79,43 +85,12 @@ export function TableMediaViewer({
 
   useEffect(() => {
     if (!groupPage && tab === "group") setTab("scene");
-  }, [Boolean(groupPage), tab]);
-
-  useEffect(() => setPickerOpen(false), [tab]);
+    if (!encounterEnabled && tab === "encounter") setTab("scene");
+  }, [Boolean(groupPage), encounterEnabled, tab]);
 
   useEffect(() => {
     if (requestedTab) setTab(requestedTab.tab);
   }, [requestedTab?.revision]);
-
-  useEffect(() => {
-    if (!pickerOpen) return;
-    const closeOutside = (event: PointerEvent) => {
-      const target = event.target as Node;
-      if (!pickerToggle.current?.contains(target) && !pickerMenu.current?.contains(target)) setPickerOpen(false);
-    };
-    const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setPickerOpen(false);
-        pickerToggle.current?.focus();
-      }
-    };
-    const closeOnViewportChange = () => setPickerOpen(false);
-    const closeOnScroll = (event: Event) => {
-      const target = event.target;
-      if (target instanceof Node && pickerMenu.current?.contains(target)) return;
-      setPickerOpen(false);
-    };
-    document.addEventListener("pointerdown", closeOutside);
-    document.addEventListener("keydown", closeOnEscape);
-    addEventListener("resize", closeOnViewportChange);
-    addEventListener("scroll", closeOnScroll, true);
-    return () => {
-      document.removeEventListener("pointerdown", closeOutside);
-      document.removeEventListener("keydown", closeOnEscape);
-      removeEventListener("resize", closeOnViewportChange);
-      removeEventListener("scroll", closeOnScroll, true);
-    };
-  }, [pickerOpen]);
 
   const pickerOptions =
     tab === "map"
@@ -126,7 +101,9 @@ export function TableMediaViewer({
           ? media.references.map((item) => ({ id: String(item.id), label: mediaLabel(item) }))
           : tab === "group"
             ? (groupPicker?.options ?? [])
-            : [];
+            : tab === "encounter"
+              ? (encounterPicker?.options ?? [])
+              : [];
   const selectedPickerId =
     tab === "map"
       ? selectedMap && String(selectedMap.id)
@@ -136,7 +113,9 @@ export function TableMediaViewer({
           ? selectedReference && String(selectedReference.id)
           : tab === "group"
             ? groupPicker?.selected
-            : undefined;
+            : tab === "encounter"
+              ? encounterPicker?.selected
+              : undefined;
   const tabLabel =
     tab === "map"
       ? "Map"
@@ -146,124 +125,106 @@ export function TableMediaViewer({
           ? "Reference"
           : tab === "group"
             ? "Group view"
-            : "Rules";
+            : tab === "encounter"
+              ? "Encounter"
+              : "Rules";
 
-  function choosePicker(value: string) {
-    if (tab === "group") groupPicker?.onSelect(value);
-    const id = Number(value);
-    if (tab === "map") setMapId(id);
-    if (tab === "scene") setSceneId(id);
-    if (tab === "reference") setReferenceId(id);
-    setPickerOpen(false);
-  }
+  const picker = useTabPicker({
+    options: pickerOptions,
+    selected: selectedPickerId,
+    label: tabLabel,
+    anchorSelector: ".table-media-tab",
+    onSelect: (value) => {
+      if (tab === "group") groupPicker?.onSelect(value);
+      if (tab === "encounter") encounterPicker?.onSelect(value);
+      const id = Number(value);
+      if (tab === "map") setMapId(id);
+      if (tab === "scene") setSceneId(id);
+      if (tab === "reference") setReferenceId(id);
+    }
+  });
 
-  function togglePicker(event: MouseEvent<HTMLButtonElement>) {
-    if (!pickerOptions.length) return;
-    const tabBounds = event.currentTarget.closest(".table-media-tab")?.getBoundingClientRect();
-    if (!tabBounds) return;
-    const width = Math.min(240, window.innerWidth - 16);
-    setPickerPosition({
-      top: tabBounds.bottom + 4,
-      left: Math.min(Math.max(8, tabBounds.left), window.innerWidth - width - 8),
-      width
-    });
-    setPickerOpen((current) => !current);
-  }
+  // Switching tabs changes what the menu would offer, so it closes rather than
+  // repointing at another tab's list.
+  useEffect(picker.close, [tab]);
 
   function activateTab(nextTab: MediaTab, event: MouseEvent<HTMLButtonElement>) {
     if (tab === nextTab) {
-      togglePicker(event);
+      picker.toggle(event);
       return;
     }
     setTab(nextTab);
   }
-
-  const assetPicker =
-    pickerOpen &&
-    pickerOptions.length > 0 &&
-    createPortal(
-      <div
-        ref={pickerMenu}
-        className="table-media-picker-menu"
-        style={pickerPosition}
-        role="listbox"
-        aria-label={`Choose ${tabLabel}`}
-      >
-        {pickerOptions.map((item) => (
-          <button
-            key={item.id}
-            className={item.id === selectedPickerId ? "selected" : ""}
-            role="option"
-            aria-selected={item.id === selectedPickerId}
-            onClick={() => choosePicker(item.id)}
-          >
-            <span>{item.label}</span>
-            {item.id === selectedPickerId && <Check />}
-          </button>
-        ))}
-      </div>,
-      document.querySelector(".workspace") ?? document.body
-    );
 
   return (
     <div className="table-media-viewer">
       <nav className="table-media-tabs" aria-label="Table media">
         <div className={`table-media-tab${tab === "map" ? " active" : ""}`}>
           <button
-            ref={tab === "map" ? pickerToggle : undefined}
-            className={`table-media-tab-main${tab === "map" && pickerOpen ? " picker-open" : ""}`}
+            ref={tab === "map" ? picker.toggleRef : undefined}
+            className={`table-media-tab-main${tab === "map" && picker.open ? " picker-open" : ""}`}
             onClick={(event) => activateTab("map", event)}
             aria-haspopup={tab === "map" ? "listbox" : undefined}
-            aria-expanded={tab === "map" ? pickerOpen : undefined}
+            aria-expanded={tab === "map" ? picker.open : undefined}
           >
             <MapIcon /> Maps
-            {tab === "map" && (
-              <ChevronDown className={`table-media-picker-chevron${maps.length ? "" : " picker-empty"}`} />
-            )}
+            {tab === "map" && <ChevronDown className={`tab-picker-chevron${maps.length ? "" : " picker-empty"}`} />}
           </button>
         </div>
         <div className={`table-media-tab${tab === "scene" ? " active" : ""}`}>
           <button
-            ref={tab === "scene" ? pickerToggle : undefined}
-            className={`table-media-tab-main${tab === "scene" && pickerOpen ? " picker-open" : ""}`}
+            ref={tab === "scene" ? picker.toggleRef : undefined}
+            className={`table-media-tab-main${tab === "scene" && picker.open ? " picker-open" : ""}`}
             onClick={(event) => activateTab("scene", event)}
             aria-haspopup={tab === "scene" ? "listbox" : undefined}
-            aria-expanded={tab === "scene" ? pickerOpen : undefined}
+            aria-expanded={tab === "scene" ? picker.open : undefined}
           >
             <Clapperboard /> Scenes
-            {tab === "scene" && (
-              <ChevronDown className={`table-media-picker-chevron${scenes.length ? "" : " picker-empty"}`} />
-            )}
+            {tab === "scene" && <ChevronDown className={`tab-picker-chevron${scenes.length ? "" : " picker-empty"}`} />}
           </button>
         </div>
         <div className={`table-media-tab${tab === "reference" ? " active" : ""}`}>
           <button
-            ref={tab === "reference" ? pickerToggle : undefined}
-            className={`table-media-tab-main${tab === "reference" && pickerOpen ? " picker-open" : ""}`}
+            ref={tab === "reference" ? picker.toggleRef : undefined}
+            className={`table-media-tab-main${tab === "reference" && picker.open ? " picker-open" : ""}`}
             onClick={(event) => activateTab("reference", event)}
             aria-haspopup={tab === "reference" ? "listbox" : undefined}
-            aria-expanded={tab === "reference" ? pickerOpen : undefined}
+            aria-expanded={tab === "reference" ? picker.open : undefined}
           >
             References
             {tab === "reference" && (
-              <ChevronDown className={`table-media-picker-chevron${media.references.length ? "" : " picker-empty"}`} />
+              <ChevronDown className={`tab-picker-chevron${media.references.length ? "" : " picker-empty"}`} />
             )}
           </button>
         </div>
         {groupPage && (
           <div className={`table-media-tab${tab === "group" ? " active" : ""}`}>
             <button
-              ref={tab === "group" && groupPicker ? pickerToggle : undefined}
-              className={`table-media-tab-main${tab === "group" && pickerOpen ? " picker-open" : ""}`}
+              ref={tab === "group" && groupPicker ? picker.toggleRef : undefined}
+              className={`table-media-tab-main${tab === "group" && picker.open ? " picker-open" : ""}`}
               onClick={(event) => activateTab("group", event)}
               aria-haspopup={tab === "group" && groupPicker ? "listbox" : undefined}
-              aria-expanded={tab === "group" && groupPicker ? pickerOpen : undefined}
+              aria-expanded={tab === "group" && groupPicker ? picker.open : undefined}
             >
               <UsersRound /> Group
               {tab === "group" && groupPicker && (
-                <ChevronDown
-                  className={`table-media-picker-chevron${groupPicker.options.length ? "" : " picker-empty"}`}
-                />
+                <ChevronDown className={`tab-picker-chevron${groupPicker.options.length ? "" : " picker-empty"}`} />
+              )}
+            </button>
+          </div>
+        )}
+        {encounterEnabled && (
+          <div className={`table-media-tab${tab === "encounter" ? " active" : ""}`}>
+            <button
+              ref={tab === "encounter" && encounterPicker ? picker.toggleRef : undefined}
+              className={`table-media-tab-main${tab === "encounter" && picker.open ? " picker-open" : ""}`}
+              onClick={(event) => activateTab("encounter", event)}
+              aria-haspopup={tab === "encounter" && encounterPicker ? "listbox" : undefined}
+              aria-expanded={tab === "encounter" && encounterPicker ? picker.open : undefined}
+            >
+              <Swords /> Encounter
+              {tab === "encounter" && encounterPicker && (
+                <ChevronDown className={`tab-picker-chevron${encounterPicker.options.length ? "" : " picker-empty"}`} />
               )}
             </button>
           </div>
@@ -279,7 +240,7 @@ export function TableMediaViewer({
           </button>
         )}
       </nav>
-      {assetPicker}
+      {picker.menu}
 
       <div className="table-media-panel">
         {tab === "map" && (
@@ -309,6 +270,9 @@ export function TableMediaViewer({
         )}
         <div className="table-group-panel" hidden={tab !== "group"}>
           {groupPage}
+        </div>
+        <div className="table-encounter-panel" hidden={tab !== "encounter"}>
+          {encounterPage}
         </div>
         <div className="table-rules-panel" hidden={tab !== "rules"}>
           {rulesPage}

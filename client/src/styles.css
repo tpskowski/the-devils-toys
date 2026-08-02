@@ -859,6 +859,895 @@ button:disabled {
   display: grid;
   grid-template-rows: minmax(0, 1fr);
 }
+/* The tracker sits above chat rather than beside it in a tab. It takes what its
+   combatants need up to half the rail, and chat keeps the rest. */
+.context-panel:has(.rail-encounter) {
+  grid-template-rows: minmax(0, auto) minmax(0, 1fr);
+}
+.rail-encounter {
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  max-height: 50svh;
+  border-bottom: 1px solid var(--line);
+}
+/* Collapsed, only the header is left at the top of the rail. */
+.rail-encounter-collapsed {
+  grid-template-rows: auto;
+  max-height: none;
+}
+.rail-encounter-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--line);
+}
+.rail-encounter-collapsed .rail-encounter-header {
+  border-bottom: 0;
+}
+.rail-encounter-header button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 4px 6px;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font:
+    600 10px "DM Mono",
+    monospace;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.rail-encounter-header button:hover {
+  color: var(--accent);
+}
+.rail-encounter-header svg {
+  flex: 0 0 auto;
+  width: 13px;
+  height: 13px;
+}
+.rail-encounter-switch {
+  min-width: 0;
+}
+.rail-encounter-switch span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-transform: none;
+}
+.rail-encounter-body {
+  min-height: 0;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr);
+}
+.combat-tracker {
+  min-height: 0;
+  overflow-y: auto;
+  padding: 10px 14px 14px;
+}
+.combat-tracker-note,
+.encounter-notes {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+/* Both rows carry a variable number of children — a position only in individual
+   initiative, a save only where the system has one — so they lay out with flex
+   rather than fixed columns. A fixed grid silently pushes the name into whatever
+   track happens to be first. */
+.combat-tracker-row,
+.encounter-roster-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 12px;
+}
+.combat-tracker-row > strong,
+.encounter-roster-row > strong {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.combat-tracker-row small,
+.encounter-roster-row > span {
+  flex: 0 0 auto;
+  color: var(--muted);
+}
+/* The side label takes the slack, so hit points and the row's controls sit
+   against the right edge instead of crowding the name. */
+.encounter-roster-row > span:first-of-type {
+  flex: 1 1 auto;
+}
+.combat-tracker-position {
+  flex: 0 0 auto;
+  min-width: 22px;
+  color: var(--accent);
+  font:
+    11px "DM Mono",
+    monospace;
+}
+.encounter-page,
+.encounter-empty {
+  min-height: 100%;
+  padding: clamp(18px, 4vw, 44px);
+  overflow-y: auto;
+}
+.encounter-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  gap: 16px;
+}
+.encounter-header h2,
+.encounter-empty h2 {
+  margin: 0 0 18px;
+}
+.encounter-empty form {
+  display: flex;
+  gap: 8px;
+  max-width: 420px;
+}
+.encounter-empty form input {
+  flex: 1;
+  min-width: 0;
+}
+.encounter-image {
+  display: block;
+  width: min(100%, 760px);
+  max-height: 44vh;
+  object-fit: contain;
+  object-position: left center;
+  margin: 0 0 18px;
+}
+.encounter-roster {
+  display: grid;
+  gap: 0;
+}
+.encounter-roster-row {
+  align-items: center;
+}
+.encounter-roster-excluded {
+  opacity: 0.5;
+}
+.encounter-roster-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+}
+.encounter-roster-actions label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.encounter-roster-actions button {
+  display: inline-flex;
+  padding: 4px;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+.encounter-roster-actions button svg {
+  width: 15px;
+  height: 15px;
+}
+.encounter-add {
+  margin-top: 26px;
+  display: grid;
+  gap: 16px;
+}
+.encounter-add h3 {
+  margin: 0;
+}
+.encounter-add .eyebrow {
+  margin: 0 0 6px;
+}
+.encounter-add-empty {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+.encounter-add-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.encounter-add-options button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--line);
+  cursor: pointer;
+  font-size: 13px;
+}
+.encounter-add-options button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.encounter-add-options button svg {
+  width: 14px;
+  height: 14px;
+}
+.combat-tracker-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 0 12px 8px;
+}
+.combat-tracker-actions button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 9px;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--line);
+  cursor: pointer;
+  font-size: 12px;
+}
+.combat-tracker-actions button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.combat-tracker-actions button svg {
+  width: 13px;
+  height: 13px;
+}
+.combat-tracker-side {
+  margin-bottom: 10px;
+}
+.combat-tracker-side-label {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0;
+  padding: 4px 12px;
+  color: var(--muted);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.combat-tracker-side-label span:last-child {
+  color: var(--accent);
+  font:
+    12px "DM Mono",
+    monospace;
+}
+/* Combatants the GM has taken out of the order, kept reachable and plainly set
+   apart from the fight above them. */
+.combat-tracker-benched {
+  opacity: 0.6;
+  border-top: 1px dashed var(--line);
+  padding-top: 8px;
+}
+.combat-tracker-name {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  background: none;
+  border: 0;
+  color: var(--text);
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+.combat-tracker-name:hover {
+  color: var(--accent);
+}
+.combat-tracker-row-late {
+  opacity: 0.62;
+}
+.combat-tracker-row em {
+  color: var(--muted);
+  font-size: 11px;
+  font-style: normal;
+}
+/* What a combatant is wearing, beside their name: the number is read at a
+   glance, so the shield is only there to say what the number is. Marked in the
+   accent the weapon beside it uses, since both are what a row is scanned for. */
+.combat-tracker-armor {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--accent);
+  font:
+    12px "DM Mono",
+    monospace;
+}
+.combat-tracker-armor svg {
+  width: 12px;
+  height: 12px;
+}
+.combat-tracker-hp {
+  font:
+    12px "DM Mono",
+    monospace;
+}
+/* The two buttons that move a score by one, in the rail and in the attribute
+   dialog alike. The floor button replaces the lower arrow at zero and keeps its
+   footprint, so the row does not shift when a combatant drops. */
+.stat-stepper {
+  flex: 0 0 auto;
+  display: inline-flex;
+  flex-direction: column;
+}
+.stat-stepper button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 12px;
+  padding: 0;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--muted);
+  cursor: pointer;
+}
+.stat-stepper button + button {
+  border-top: 0;
+}
+.stat-stepper button:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.stat-stepper button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.stat-stepper svg {
+  width: 11px;
+  height: 11px;
+}
+/* Spending an attribute is an action, not an error, so it wears the room's own
+   accent. No theme defines a danger colour, and inventing one here would be a
+   fixed red in nine palettes that never asked for it. */
+.stat-stepper .stat-stepper-floor {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.stat-stepper .stat-stepper-floor:hover {
+  background: color-mix(in srgb, var(--accent), transparent 88%);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+/* The bar between the two is the arrow's own bottom border — the ✕ has none of
+   its own — so it takes the accent as well, rather than leaving the ✕ marked on
+   three sides and neutral on the fourth. */
+.stat-stepper:has(.stat-stepper-floor) button:first-child {
+  border-bottom-color: var(--accent);
+}
+/* `.modal` is declared later with the same specificity, so both classes are
+   needed to set the width. */
+.modal.attribute-damage {
+  width: min(100%, 380px);
+}
+/* Closed with the same mark the tracker spends an attribute from, so the two
+   read as one control rather than two things that happen to be crosses. */
+.modal.attribute-damage > header button {
+  color: var(--accent);
+}
+.attribute-damage-body {
+  display: grid;
+  gap: 14px;
+  padding: 20px 27px 24px;
+}
+.attribute-damage-note {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.attribute-damage-scores {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+}
+.attribute-damage-scores > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--line);
+}
+.attribute-damage-scores dt {
+  font:
+    600 11px "DM Mono",
+    monospace;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.attribute-damage-scores dd {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+}
+.attribute-damage-scores dd span {
+  font:
+    13px "DM Mono",
+    monospace;
+}
+/* The same quiet dice control the character sheet puts beside a save. */
+.attribute-damage-roll {
+  flex: 0 0 26px;
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+.attribute-damage-roll:hover:not(:disabled),
+.attribute-damage-roll:focus-visible {
+  border-color: var(--line);
+  color: var(--accent);
+}
+.attribute-damage-roll:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+.attribute-damage-roll svg {
+  width: 15px;
+  height: 15px;
+}
+/* The mark a failed save leaves. Set by the roll above it, and by hand for a
+   table that rolled somewhere else. */
+.attribute-damage-mark {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--accent);
+  font:
+    600 10px "DM Mono",
+    monospace;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* The roll goes to the room's log, which the rail is not showing while this
+   dialog is open, so its result is repeated here. */
+.attribute-damage-outcome {
+  margin: 0;
+  padding: 9px 11px;
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--accent), transparent 92%);
+  color: var(--text);
+  font:
+    12px "DM Mono",
+    monospace;
+}
+.combat-tracker-save {
+  display: inline-flex;
+  gap: 4px;
+}
+.combat-tracker-save span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border: 1px solid var(--line);
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 11px;
+}
+.combat-tracker-save span.passed {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+/* Passed is the accent, so failed is the room's plain text: told apart by weight
+   rather than by a colour no theme states. */
+.combat-tracker-save span.failed {
+  border-color: var(--text);
+  color: var(--text);
+}
+/* `.modal` is declared later in this file with the same specificity, so the
+   width needs both classes to win rather than relying on source order. */
+.modal.combatant-sheet {
+  width: min(100%, 620px);
+}
+/* The modal itself carries no padding; every body matches the header's inset. */
+.combatant-sheet-body {
+  display: grid;
+  gap: 18px;
+  padding: 22px 27px 26px;
+}
+/* Whether this combatant is in the fight at all, which is the GM's to say. */
+.combatant-sheet-manage {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+  font-size: 12px;
+}
+.combatant-sheet-manage label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+}
+.combatant-sheet-manage button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  font: inherit;
+}
+.combatant-sheet-manage button svg {
+  width: 13px;
+  height: 13px;
+}
+.combatant-sheet-empty {
+  margin: 0;
+  color: var(--muted);
+}
+.combatant-statblock {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
+  gap: 16px 20px;
+  margin: 0;
+}
+.combatant-statblock > div {
+  min-width: 0;
+}
+/* Prose fields take the whole row, so a numeric column never has to wrap them. */
+.combatant-statblock-wide {
+  grid-column: 1 / -1;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+.combatant-statblock dt {
+  color: var(--muted);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.combatant-statblock dd {
+  margin: 4px 0 0;
+  font:
+    500 16px "DM Mono",
+    monospace;
+  overflow-wrap: anywhere;
+}
+.combatant-statblock-wide dd {
+  font:
+    400 14px Inter,
+    sans-serif;
+  line-height: 1.55;
+  /* CWN's gear arrives as one string with newline-separated entries, which HTML
+     would otherwise collapse into a single run-on line. */
+  white-space: pre-line;
+}
+.combatant-sheet-conditions {
+  margin: 0;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+  color: var(--text);
+  line-height: 1.55;
+}
+.combatant-avatar {
+  flex: 0 0 auto;
+  width: 26px;
+  height: 26px;
+  border: 1px solid var(--line);
+  object-fit: cover;
+  background: var(--bg);
+}
+.combatant-avatar-blank {
+  display: inline-grid;
+  place-items: center;
+  color: var(--muted);
+  font:
+    600 11px "DM Mono",
+    monospace;
+}
+/* The encounter tab's board. What it shows is the GM's choice: a map from the
+   Library, or zones laid out left to right with everyone standing in one. */
+.encounter-display {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.encounter-display button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 11px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--muted);
+  cursor: pointer;
+  font:
+    600 10px "DM Mono",
+    monospace;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.encounter-display button.selected {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.encounter-display button svg {
+  width: 13px;
+  height: 13px;
+}
+.encounter-display select {
+  min-width: 0;
+  max-width: 280px;
+  height: 30px;
+  padding: 0 8px;
+  border: 1px solid var(--line);
+  border-radius: 0;
+  background: var(--surface);
+  color: var(--text);
+  font-family: Inter, sans-serif;
+  font-size: 12px;
+}
+.encounter-display select option {
+  background: var(--surface);
+  color: var(--text);
+}
+.encounter-zones {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.encounter-zones-empty {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+/* Zones read left to right and scroll rather than wrap, so their order is the
+   order the table talks about them in. */
+.encounter-zone-row {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+.encounter-zone {
+  flex: 1 0 180px;
+  min-width: 180px;
+  display: grid;
+  grid-template-rows: auto minmax(72px, 1fr) auto;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--surface), transparent 40%);
+}
+.encounter-zone-over,
+.encounter-zone-bench.encounter-zone-over {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent), transparent 92%);
+}
+.encounter-zone header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+/* The handle a zone is dragged by. The header holds an editable name, so the
+   card itself is not draggable — that would fight with selecting the text. */
+.encounter-zone-grip {
+  flex: 0 0 auto;
+  display: inline-flex;
+  color: var(--muted);
+  cursor: grab;
+}
+.encounter-zone-grip:hover {
+  color: var(--accent);
+}
+.encounter-zone-grip svg {
+  width: 13px;
+  height: 13px;
+}
+.encounter-zone-moving {
+  opacity: 0.55;
+}
+.encounter-zone header h4,
+.encounter-zone header input {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  font:
+    600 11px "DM Mono",
+    monospace;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.encounter-zone header input {
+  padding: 3px 5px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text);
+}
+.encounter-zone header input:hover,
+.encounter-zone header input:focus {
+  border-color: var(--line);
+  background: var(--surface);
+}
+.encounter-zone header button {
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+.encounter-zone header button svg {
+  width: 13px;
+  height: 13px;
+}
+.encounter-zone-tokens {
+  display: flex;
+  flex-wrap: wrap;
+  align-content: start;
+  gap: 8px;
+}
+.encounter-zone-bench {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 1px dashed var(--line);
+}
+.encounter-zone-drop,
+.encounter-zone-add button {
+  padding: 5px 9px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  font-size: 11px;
+}
+.encounter-zone-drop {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.encounter-zone-add {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.encounter-zone-add input {
+  flex: 1 1 220px;
+  min-width: 0;
+  height: 32px;
+  padding: 0 9px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 12px;
+}
+.encounter-zone-add .encounter-zone-clear,
+.encounter-zone-add button svg {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.encounter-zone-add button svg {
+  width: 12px;
+  height: 12px;
+}
+/* A combatant on the board: the portrait is the token, so it is round and the
+   name rides under it. */
+.encounter-token {
+  width: 62px;
+  display: grid;
+  justify-items: center;
+  gap: 3px;
+  padding: 4px 2px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text);
+  cursor: grab;
+  font-size: 10px;
+}
+.encounter-token:disabled {
+  cursor: default;
+  opacity: 0.75;
+}
+.encounter-token .combatant-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+}
+.encounter-token span {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.encounter-token:hover:not(:disabled),
+.encounter-token-carried {
+  border-color: var(--accent);
+}
+.encounter-token-carried .combatant-avatar {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.modal.spawned-npc-modal {
+  width: min(100%, 620px);
+}
+.spawned-npc-body {
+  display: grid;
+  gap: 22px;
+  padding: 22px 27px 26px;
+}
+.spawned-npc-body .eyebrow {
+  margin: 0 0 6px;
+}
+.spawned-npc-empty {
+  margin: 0;
+  color: var(--muted);
+}
+.spawned-npc-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 13px;
+}
+.spawned-npc-row > strong {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.spawned-npc-row > span {
+  flex: 0 0 auto;
+  color: var(--muted);
+  font-size: 12px;
+}
+.spawned-npc-row > button {
+  flex: 0 0 auto;
+  display: inline-flex;
+  padding: 4px;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+.spawned-npc-row > button svg {
+  width: 15px;
+  height: 15px;
+}
+.spawned-npc-out {
+  opacity: 0.55;
+}
+.combatant-sheet-conditions span {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--muted);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
 .chat {
   min-height: 0;
   display: grid;
@@ -946,6 +1835,31 @@ button:disabled {
   font:
     400 11px "DM Mono",
     monospace;
+}
+/* What a weapon does, beside what it rolled. Set apart from the die because it
+   is the book's own wording, and carries its definitions in a tooltip. */
+.message-traits {
+  color: var(--muted);
+  cursor: help;
+}
+/* Shown the moment the pointer arrives, which `title` cannot be made to do.
+   Above the modal layer, since a weapon is read from an open sheet as well. */
+.hover-tip {
+  position: fixed;
+  z-index: 120;
+  max-height: min(240px, 40svh);
+  overflow-y: auto;
+  padding: 8px 10px;
+  border: 1px solid color-mix(in srgb, var(--line), var(--text) 12%);
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 12px 30px #0006;
+  font:
+    400 11px "DM Mono",
+    monospace;
+  line-height: 1.5;
+  white-space: pre-line;
+  pointer-events: none;
 }
 .message-roll {
   border-left: 2px solid var(--accent);
@@ -2217,7 +3131,11 @@ button:disabled {
   .context-panel.panel-chat {
     display: grid;
   }
-  .table-grid:has(.context-panel.panel-chat) .scene-stage {
+  .context-panel.panel-combat {
+    display: grid;
+  }
+  .table-grid:has(.context-panel.panel-chat) .scene-stage,
+  .table-grid:has(.context-panel.panel-combat) .scene-stage {
     display: none;
   }
   .mobile-tabs {
@@ -2344,4 +3262,140 @@ button:disabled {
 }
 .tables-app-actions .primary-button {
   text-decoration: none;
+}
+
+/* A weapon in a slot, wherever slots are shown: the character sheet, a hireling,
+   and the read-only sheet a GM opens from the party roster. */
+.character-slot-weapon {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--accent);
+  white-space: nowrap;
+}
+
+.character-slot-weapon small {
+  font-size: 0.72rem;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+/* The same mark, where whoever is looking may roll the weapon. */
+button.character-slot-weapon-roll {
+  padding: 2px 5px;
+  border: 1px solid transparent;
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+}
+
+button.character-slot-weapon-roll:hover,
+button.character-slot-weapon-roll:focus-visible {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent), transparent 90%);
+}
+
+/* What a roll made from a sheet came to, since the sheet is over the room's log. */
+.character-rolled {
+  margin: 0 clamp(18px, 4vw, 44px);
+  padding: 8px 11px;
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--accent), transparent 92%);
+  font:
+    12px "DM Mono",
+    monospace;
+}
+
+/* The mark itself, in the item editor. Reads as a statement about the item
+   rather than as another field of it, so it sits apart from the inputs. */
+.character-item-weapon {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+}
+
+.character-item-weapon input {
+  width: auto;
+  margin: 0;
+}
+
+/* Damage and traits sit side by side because both are short; notes span the row
+   because they are not. Collapses to one column where there is no room. */
+.character-item-weapon-detail {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px;
+  padding-left: 24px;
+}
+
+.character-item-weapon-detail .character-item-weapon-notes,
+.character-item-weapon-detail .character-item-detail {
+  grid-column: 1 / -1;
+}
+
+.character-item-weapon-detail textarea {
+  resize: vertical;
+}
+
+/* What a character or hireling has in hand, chosen from what is within reach. */
+.weapon-selector {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 10px 16px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+.weapon-selector label {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+}
+.weapon-selector label > span {
+  color: var(--muted);
+  font:
+    600 10px "DM Mono",
+    monospace;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.weapon-selector select {
+  min-width: 0;
+  max-width: 220px;
+  height: 30px;
+  padding: 0 8px;
+  border: 1px solid var(--line);
+  border-radius: 0;
+  background: var(--surface);
+  color: var(--text);
+  font-family: Inter, sans-serif;
+  font-size: 12px;
+}
+.weapon-selector select option {
+  background: var(--surface);
+  color: var(--text);
+}
+.weapon-selector-dual input:disabled + span {
+  opacity: 0.5;
+}
+.weapon-selector-empty {
+  margin: 10px 0 0;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 12px;
+}
+
+/* Which side a name is on, in the initiative rail and on the encounter board
+   alike. Each palette states its own pair, so the party reads as the party in
+   every theme. Declared last on purpose: both surfaces colour their own names at
+   the same specificity, and whichever comes later wins. */
+.combat-side-friendly {
+  color: var(--friendly);
+}
+.combat-side-hostile {
+  color: var(--hostile);
 }

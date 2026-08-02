@@ -23,7 +23,7 @@ import { characterVicesFor } from "./character-vices.js";
 
 export const characterRouter = express.Router();
 
-interface CharacterRow {
+export interface CharacterRow {
   id: number;
   system: SystemId;
   owner_account_id: number | null;
@@ -73,7 +73,7 @@ function parseSheet(json: string) {
   }
 }
 
-function publicCharacter(row: CharacterRow, roomId: number) {
+export function publicCharacter(row: CharacterRow, roomId: number) {
   const sheet = parseSheet(row.sheet_json);
   const activeBy = all<{ account_id: number; username: string }>(
     `SELECT m.account_id, a.username FROM memberships m
@@ -104,7 +104,7 @@ function publicCharacter(row: CharacterRow, roomId: number) {
   };
 }
 
-function findVisibleCharacter(accountId: number, roomId: number, characterId: number) {
+export function findVisibleCharacter(accountId: number, roomId: number, characterId: number) {
   const context = roomContext(accountId, roomId);
   if (!context) return;
   const row = one<CharacterRow>(
@@ -131,14 +131,14 @@ function findVisibleCharacter(accountId: number, roomId: number, characterId: nu
   return row.pool_room_id === roomId || ownerInRoom ? { context, row } : undefined;
 }
 
-function findAccessibleCharacter(accountId: number, roomId: number, characterId: number) {
+export function findAccessibleCharacter(accountId: number, roomId: number, characterId: number) {
   const visible = findVisibleCharacter(accountId, roomId, characterId);
   if (!visible) return;
   if (visible.context.role === "player" && visible.row.owner_account_id !== accountId) return;
   return visible;
 }
 
-function broadcastCharacterChange(row: Pick<CharacterRow, "system" | "owner_account_id" | "pool_room_id">) {
+export function broadcastCharacterChange(row: Pick<CharacterRow, "system" | "owner_account_id" | "pool_room_id">) {
   const roomIds = new Set<number>();
   if (row.pool_room_id) roomIds.add(row.pool_room_id);
   if (row.owner_account_id) {
@@ -192,7 +192,7 @@ characterRouter.get("/rooms/:roomId/characters", requireAuth, (req: AuthedReques
     activeCharacterId: activeCharacterId ?? null,
     partyLabel: systems[context.system].partyLabel,
     sheetDefinition: systems[context.system].characterSheet,
-    itemCatalogue: characterItemsFor(context.system, systems[context.system].characterSheet),
+    itemCatalogue: characterItemsFor(context.system),
     viceCatalogue: context.system === "monolith" ? characterVicesFor("monolith") : []
   });
 });
@@ -244,25 +244,53 @@ characterRouter.post("/rooms/:roomId/characters", requireAuth, (req: AuthedReque
 characterRouter.patch("/rooms/:roomId/characters/:characterId", requireAuth, (req: AuthedRequest, res) => {
   const roomId = Number(req.params.roomId);
   const characterId = Number(req.params.characterId);
-  const accessible = findAccessibleCharacter(req.account!.id, roomId, characterId);
-  if (!accessible) return res.status(404).json({ error: "Character not found." });
   const parsed = z
     .object({ name: z.string().trim().min(1).max(80).optional(), sheet: sheetSchema.optional() })
     .refine((value) => value.name !== undefined || value.sheet !== undefined)
     .safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Invalid character." });
+  const result = updateCharacter(req.account!.id, roomId, characterId, parsed.data);
+  if ("error" in result) return res.status(result.status).json({ error: result.error });
+  res.json(result);
+});
+
+export function updateCharacter(
+  accountId: number,
+  roomId: number,
+  characterId: number,
+  changes: { name?: string; sheet?: Record<string, unknown>; sheetPatch?: Record<string, unknown> }
+): { character: ReturnType<typeof publicCharacter> } | { error: string; status: number } {
+  const accessible = findAccessibleCharacter(accountId, roomId, characterId);
+  if (!accessible) return { error: "Character not found.", status: 404 };
+
+  const name = changes.name === undefined ? undefined : changes.name.trim();
+  if (name !== undefined && (!name || name.length > 80))
+    return { error: "Character names must be between 1 and 80 characters.", status: 400 };
+
+  let sheet: Record<string, unknown> | undefined;
+  if (changes.sheet !== undefined && !sheetSchema.safeParse(changes.sheet).success)
+    return { error: "Invalid character data.", status: 400 };
+  if (changes.sheetPatch !== undefined && !sheetSchema.safeParse(changes.sheetPatch).success)
+    return { error: "Invalid character data.", status: 400 };
+  if (changes.sheet !== undefined) sheet = changes.sheet;
+  if (changes.sheetPatch !== undefined) sheet = { ...parseSheet(accessible.row.sheet_json), ...changes.sheetPatch };
+  if (sheet !== undefined && !sheetSchema.safeParse(sheet).success)
+    return { error: "Invalid character data.", status: 400 };
+  if (name === undefined && sheet === undefined)
+    return { error: "Give the character a name or sheet data.", status: 400 };
+
   db.prepare(
     `UPDATE characters SET name = COALESCE(?, name), sheet_json = COALESCE(?, sheet_json),
        updated_at = CURRENT_TIMESTAMP WHERE id = ?`
-  ).run(parsed.data.name ?? null, parsed.data.sheet ? JSON.stringify(parsed.data.sheet) : null, characterId);
+  ).run(name ?? null, sheet ? JSON.stringify(sheet) : null, characterId);
   const row = one<CharacterRow>(
     `SELECT c.*, a.username AS owner_username FROM characters c
      LEFT JOIN accounts a ON a.id = c.owner_account_id WHERE c.id = ?`,
     characterId
   )!;
   broadcastCharacterChange(row);
-  res.json({ character: publicCharacter(row, roomId) });
-});
+  return { character: publicCharacter(row, roomId) };
+}
 
 characterRouter.get("/rooms/:roomId/characters/:characterId/portrait", requireAuth, (req: AuthedRequest, res) => {
   const roomId = Number(req.params.roomId);

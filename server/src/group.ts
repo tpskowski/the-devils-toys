@@ -5,6 +5,7 @@ import { z } from "zod";
 import type { SystemId } from "@devils-toys/shared";
 import type { AuthedRequest } from "./auth.js";
 import { requireAuth, roomRole } from "./auth.js";
+import { characterItemsFor } from "./character-items.js";
 import { config } from "./config.js";
 import { all, db, one } from "./db.js";
 import {
@@ -79,12 +80,70 @@ function groupContext(accountId: number, roomId: number) {
   return { role, system: room.system, definition: { ...definition, starshipSheet } };
 }
 
+function requireGroupGm(req: AuthedRequest, res: express.Response, roomId: number) {
+  const context = groupContext(req.account!.id, roomId);
+  if (!context) {
+    res.status(404).json({ error: "Group page not found." });
+    return;
+  }
+  if (context.role !== "gm") {
+    res.status(403).json({ error: "The group page is maintained by the room GM." });
+    return;
+  }
+  return context;
+}
+
 export function parseGroupState(json: string | null | undefined) {
   try {
     const parsed: unknown = JSON.parse(json ?? "{}");
     return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? (parsed as Record<string, unknown>) : {};
   } catch {
     return {};
+  }
+}
+
+/** Merge one hireling inside the shared group blob without replacing the rest of the state. */
+export function updateHireling(
+  roomId: number,
+  hirelingId: string,
+  changes: Record<string, unknown>
+): { state: Record<string, unknown> } | { error: string; status: number } {
+  if (!hirelingId || !changes || Array.isArray(changes)) return { error: "Invalid hireling update.", status: 400 };
+  db.exec("BEGIN IMMEDIATE");
+  try {
+    const current = one<{ group_json: string }>("SELECT group_json FROM room_state WHERE room_id = ?", roomId);
+    const state = parseGroupState(current?.group_json);
+    if (!Array.isArray(state.hirelings)) {
+      db.exec("ROLLBACK");
+      return { error: "Hireling not found.", status: 404 };
+    }
+    let found = false;
+    const hirelings = state.hirelings.map((entry) => {
+      if (!entry || typeof entry !== "object" || Array.isArray(entry)) return entry;
+      const record = entry as Record<string, unknown>;
+      if (record.id !== hirelingId) return entry;
+      found = true;
+      return { ...record, ...changes, id: hirelingId };
+    });
+    if (!found) {
+      db.exec("ROLLBACK");
+      return { error: "Hireling not found.", status: 404 };
+    }
+    const nextState = { ...state, hirelings };
+    const validState = groupStateSchema.safeParse(nextState);
+    if (!validState.success) {
+      db.exec("ROLLBACK");
+      return { error: validState.error.issues[0]?.message ?? "Group data is too large.", status: 400 };
+    }
+    db.prepare(
+      `INSERT INTO room_state (room_id, group_json, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)
+       ON CONFLICT(room_id) DO UPDATE SET group_json = excluded.group_json, updated_at = CURRENT_TIMESTAMP`
+    ).run(roomId, JSON.stringify(nextState));
+    db.exec("COMMIT");
+    return { state: nextState };
+  } catch (error) {
+    db.exec("ROLLBACK");
+    throw error;
   }
 }
 
@@ -137,6 +196,9 @@ groupRouter.get("/rooms/:roomId/group", requireAuth, (req: AuthedRequest, res) =
   res.json({
     state: parseGroupState(row?.group_json),
     definition: context.definition,
+    // Hirelings fill the same slots out of the same tables a character does, so
+    // the page is given the same gear rather than a second, thinner copy of it.
+    itemCatalogue: characterItemsFor(context.system),
     images: all<StarshipImageRow>("SELECT * FROM starship_images WHERE room_id = ? ORDER BY updated_at", roomId).map(
       publicStarshipImage
     ),
@@ -150,33 +212,64 @@ groupRouter.get("/rooms/:roomId/group", requireAuth, (req: AuthedRequest, res) =
 
 groupRouter.patch("/rooms/:roomId/group", requireAuth, (req: AuthedRequest, res) => {
   const roomId = Number(req.params.roomId);
-  const context = groupContext(req.account!.id, roomId);
-  if (!context) return res.status(404).json({ error: "Group page not found." });
-  const parsed = z.object({ state: groupStateSchema }).safeParse(req.body);
+  if (!requireGroupGm(req, res, roomId)) return;
+  const parsed = z.object({ state: groupStateSchema, updatedAt: z.string().nullable().optional() }).safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Invalid group data." });
+  const existing = one<{ group_json: string; updated_at: string }>(
+    "SELECT group_json, updated_at FROM room_state WHERE room_id = ?",
+    roomId
+  );
+  if (parsed.data.updatedAt !== undefined && parsed.data.updatedAt !== (existing?.updated_at ?? null))
+    return res.status(409).json({ error: "The group changed elsewhere. Reload before saving." });
+  const existingState = parseGroupState(existing?.group_json);
+  const existingIds = new Set(
+    Array.isArray(existingState.hirelings)
+      ? existingState.hirelings
+          .filter((entry): entry is Record<string, unknown> =>
+            Boolean(entry && typeof entry === "object" && !Array.isArray(entry))
+          )
+          .map((entry) => String(entry.id ?? ""))
+          .filter(Boolean)
+      : []
+  );
+  const nextHirelings = Array.isArray(parsed.data.state.hirelings)
+    ? parsed.data.state.hirelings
+        .filter((entry): entry is Record<string, unknown> =>
+          Boolean(entry && typeof entry === "object" && !Array.isArray(entry))
+        )
+        .map((entry) => String(entry.id ?? ""))
+        .filter(Boolean)
+    : [];
+  if ([...existingIds].some((id) => !nextHirelings.includes(id)))
+    return res.status(409).json({ error: "Remove hirelings through the dedicated delete route." });
   const groupJson = JSON.stringify(parsed.data.state);
   db.prepare(
     `INSERT INTO room_state (room_id, group_json, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)
      ON CONFLICT(room_id) DO UPDATE SET group_json = excluded.group_json, updated_at = CURRENT_TIMESTAMP`
   ).run(roomId, groupJson);
-  const hirelingIds = new Set(
-    (Array.isArray(parsed.data.state.hirelings) ? parsed.data.state.hirelings : []).flatMap((hireling) => {
-      if (!hireling || typeof hireling !== "object" || Array.isArray(hireling)) return [];
-      const parsedId = hirelingIdSchema.safeParse((hireling as Record<string, unknown>).id);
-      return parsedId.success ? [parsedId.data] : [];
-    })
-  );
-  for (const image of all<HirelingImageRow>("SELECT * FROM hireling_images WHERE room_id = ?", roomId)) {
-    if (hirelingIds.has(image.hireling_id)) continue;
-    db.prepare("DELETE FROM hireling_images WHERE room_id = ? AND hireling_id = ?").run(roomId, image.hireling_id);
-    removeStoredPortrait(image.stored_name);
-  }
   const updatedAt = one<{ updated_at: string }>(
     "SELECT updated_at FROM room_state WHERE room_id = ?",
     roomId
   )!.updated_at;
   broadcastRoom(roomId, { type: "group-updated" });
   res.json({ state: parsed.data.state, updatedAt });
+});
+
+groupRouter.patch("/rooms/:roomId/group/hirelings/:hirelingId", requireAuth, (req: AuthedRequest, res) => {
+  const roomId = Number(req.params.roomId);
+  if (!requireGroupGm(req, res, roomId)) return;
+  const parsedId = hirelingIdSchema.safeParse(req.params.hirelingId);
+  if (!parsedId.success) return res.status(404).json({ error: "Hireling not found." });
+  const parsed = z.record(z.unknown()).safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: "Invalid hireling update." });
+  const result = updateHireling(roomId, parsedId.data, parsed.data);
+  if ("error" in result) return res.status(result.status).json({ error: result.error });
+  const updatedAt = one<{ updated_at: string }>(
+    "SELECT updated_at FROM room_state WHERE room_id = ?",
+    roomId
+  )!.updated_at;
+  broadcastRoom(roomId, { type: "group-updated" });
+  res.json({ ...result, updatedAt });
 });
 
 groupRouter.post("/rooms/:roomId/group/hirelings/roll", requireAuth, (req: AuthedRequest, res) => {
@@ -186,10 +279,63 @@ groupRouter.post("/rooms/:roomId/group/hirelings/roll", requireAuth, (req: Authe
   if (!context || !creationRoll) return res.status(404).json({ error: "Hireling creation is not available." });
 
   try {
-    res.json({ hireling: rollHirelingCreation(creationRoll, context.system) });
+    res.json({
+      hireling: rollHirelingCreation(
+        creationRoll,
+        context.system,
+        undefined,
+        context.definition.hirelings?.sheet.lists[0]?.key
+      )
+    });
   } catch (cause) {
     res.status(500).json({ error: cause instanceof Error ? cause.message : "Hireling creation failed." });
   }
+});
+
+groupRouter.delete("/rooms/:roomId/group/hirelings/:hirelingId", requireAuth, (req: AuthedRequest, res) => {
+  const roomId = Number(req.params.roomId);
+  if (!requireGroupGm(req, res, roomId)) return;
+  const parsedId = hirelingIdSchema.safeParse(req.params.hirelingId);
+  if (!parsedId.success) return res.status(404).json({ error: "Hireling not found." });
+  const row = one<{ group_json: string }>("SELECT group_json FROM room_state WHERE room_id = ?", roomId);
+  const state = parseGroupState(row?.group_json);
+  if (!Array.isArray(state.hirelings)) return res.status(404).json({ error: "Hireling not found." });
+  const hirelingId = parsedId.data;
+  const hirelings = state.hirelings.filter((hireling) => {
+    if (!hireling || typeof hireling !== "object" || Array.isArray(hireling)) return true;
+    return (hireling as Record<string, unknown>).id !== hirelingId;
+  });
+  if (hirelings.length === state.hirelings.length) return res.status(404).json({ error: "Hireling not found." });
+  const nextState = { ...state, hirelings };
+  const image = one<HirelingImageRow>(
+    "SELECT * FROM hireling_images WHERE room_id = ? AND hireling_id = ?",
+    roomId,
+    hirelingId
+  );
+  db.exec("BEGIN");
+  try {
+    db.prepare(
+      `INSERT INTO room_state (room_id, group_json, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)
+       ON CONFLICT(room_id) DO UPDATE SET group_json = excluded.group_json, updated_at = CURRENT_TIMESTAMP`
+    ).run(roomId, JSON.stringify(nextState));
+    db.prepare("DELETE FROM hireling_images WHERE room_id = ? AND hireling_id = ?").run(roomId, hirelingId);
+    db.prepare(
+      `DELETE FROM encounter_combatants
+       WHERE kind = 'hireling' AND hireling_id = ? AND encounter_id IN
+         (SELECT id FROM encounters WHERE room_id = ?)`
+    ).run(hirelingId, roomId);
+    db.exec("COMMIT");
+  } catch (error) {
+    db.exec("ROLLBACK");
+    throw error;
+  }
+  if (image) removeStoredPortrait(image.stored_name);
+  const updatedAt = one<{ updated_at: string }>(
+    "SELECT updated_at FROM room_state WHERE room_id = ?",
+    roomId
+  )!.updated_at;
+  broadcastRoom(roomId, { type: "group-updated" });
+  res.json({ state: nextState, updatedAt });
 });
 
 groupRouter.get("/rooms/:roomId/group/hirelings/:hirelingId/image", requireAuth, (req: AuthedRequest, res) => {
@@ -209,9 +355,13 @@ groupRouter.post(
   groupImageUpload.single("file"),
   (req: AuthedRequest, res) => {
     const roomId = Number(req.params.roomId);
-    const context = groupContext(req.account!.id, roomId);
+    const context = requireGroupGm(req, res, roomId);
     const parsedId = hirelingIdSchema.safeParse(req.params.hirelingId);
-    if (!context || !parsedId.success) {
+    if (!context) {
+      removeUploadedPortrait(req.file);
+      return;
+    }
+    if (!parsedId.success) {
       removeUploadedPortrait(req.file);
       return res.status(404).json({ error: "Hireling not found." });
     }
@@ -274,6 +424,7 @@ groupRouter.post(
 
 groupRouter.delete("/rooms/:roomId/group/hirelings/:hirelingId/image", requireAuth, (req: AuthedRequest, res) => {
   const roomId = Number(req.params.roomId);
+  if (!requireGroupGm(req, res, roomId)) return;
   const image = hirelingImage(req.account!.id, roomId, String(req.params.hirelingId));
   if (!image) return res.status(404).json({ error: "Hireling image not found." });
   db.prepare("DELETE FROM hireling_images WHERE room_id = ? AND hireling_id = ?").run(roomId, image.hireling_id);
@@ -299,9 +450,13 @@ groupRouter.post(
   groupImageUpload.single("file"),
   (req: AuthedRequest, res) => {
     const roomId = Number(req.params.roomId);
-    const context = groupContext(req.account!.id, roomId);
+    const context = requireGroupGm(req, res, roomId);
     const parsedId = starshipIdSchema.safeParse(req.params.starshipId);
-    if (!context || !parsedId.success) {
+    if (!context) {
+      removeUploadedPortrait(req.file);
+      return;
+    }
+    if (!parsedId.success) {
       removeUploadedPortrait(req.file);
       return res.status(404).json({ error: "Starship not found." });
     }
@@ -364,6 +519,7 @@ groupRouter.post(
 
 groupRouter.delete("/rooms/:roomId/group/starships/:starshipId/image", requireAuth, (req: AuthedRequest, res) => {
   const roomId = Number(req.params.roomId);
+  if (!requireGroupGm(req, res, roomId)) return;
   const image = starshipImage(req.account!.id, roomId, String(req.params.starshipId));
   if (!image) return res.status(404).json({ error: "Starship image not found." });
   db.prepare("DELETE FROM starship_images WHERE room_id = ? AND starship_id = ?").run(roomId, image.starship_id);

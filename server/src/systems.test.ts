@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { cairn } from "@devils-toys/system-cairn";
 import { monolith } from "@devils-toys/system-monolith";
 import { cwn } from "@devils-toys/system-cwn";
+import { characterItemsFor } from "./character-items.js";
 import { filterPlayerRules } from "./systems.js";
 
 describe("role-filtered rules", () => {
@@ -45,6 +46,23 @@ describe("character system definitions", () => {
         inventory: Array.from({ length: 10 }, () => "gear")
       })
     ).toHaveLength(4);
+  });
+
+  it("ships Monolith's weapon classification, corrections included", () => {
+    const catalogue = characterItemsFor("monolith");
+    const weapon = (list: string, name: string) => catalogue[list]?.find((item) => item.name === name);
+
+    // The armoury's own categories, and a weapon the book files under Tools.
+    expect(weapon("equipment", "Stun Gun")?.weapon).toBe(true);
+    expect(weapon("equipment", "Sledgehammer")).toMatchObject({ weapon: true, damage: "D8" });
+    expect(weapon("equipment", "Medkit")?.weapon).toBe(false);
+
+    // Corrected by hand, because its damage is in a second parenthetical.
+    expect(weapon("augmentations", "Basilisk Gland")).toMatchObject({
+      weapon: true,
+      damage: "1D8",
+      traits: ["biological", "blast", "30 feet"]
+    });
   });
 
   it("defines Cairn's shared hireling sheet", () => {
@@ -144,7 +162,11 @@ describe("character system definitions", () => {
     });
     expect(
       monolith.groupPage?.hirelings?.sheet.sections.flatMap((section) => section.fields).map((field) => field.key)
-    ).toEqual(expect.arrayContaining(["name", "strCurrent", "dexCurrent", "wilCurrent", "hpCurrent", "weapon"]));
+      // No weapon field: a freelancer draws from their slots like a character.
+    ).toEqual(expect.arrayContaining(["name", "strCurrent", "dexCurrent", "wilCurrent", "hpCurrent"]));
+    expect(
+      monolith.groupPage?.hirelings?.sheet.sections.flatMap((section) => section.fields).map((field) => field.key)
+    ).not.toContain("weapon");
     expect(
       monolith.groupPage?.starshipSheet?.sections.flatMap((section) => section.fields).map((field) => field.key)
     ).toEqual(

@@ -1,0 +1,71 @@
+/* The drop-down that hangs off an active tab. Shared by the table's media tabs
+   and the rail's combat tab, so nothing here is scoped to either. */
+
+.tab-picker-chevron {
+  width: 12px;
+  margin-left: 1px;
+  transition: rotate 140ms ease;
+}
+
+.picker-open .tab-picker-chevron {
+  rotate: 180deg;
+}
+
+.tab-picker-chevron.picker-empty {
+  opacity: 0.35;
+}
+
+.tab-picker-menu {
+  position: fixed;
+  z-index: 80;
+  max-height: min(320px, calc(100svh - 80px));
+  overflow-y: auto;
+  padding: 4px;
+  border: 1px solid color-mix(in srgb, var(--line), var(--text) 12%);
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 14px 36px #0005;
+  animation: tab-picker-menu-in 140ms var(--ease) both;
+}
+
+.tab-picker-menu button {
+  width: 100%;
+  min-height: 36px;
+  padding: 0 9px 0 11px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font:
+    500 10px "DM Mono",
+    monospace;
+  text-align: left;
+}
+
+.tab-picker-menu button:hover,
+.tab-picker-menu button.selected {
+  background: color-mix(in srgb, var(--accent), transparent 90%);
+  color: var(--accent);
+}
+
+.tab-picker-menu button span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tab-picker-menu button svg {
+  flex: 0 0 auto;
+  width: 13px;
+}
+
+@keyframes tab-picker-menu-in {
+  from {
+    opacity: 0;
+    translate: 0 -4px;
+  }
+}

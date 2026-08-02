@@ -18,17 +18,26 @@ import type {
   CharacterItem,
   CharacterSheetDefinition,
   CharacterVice,
+  ChatMessage,
+  ItemClassification,
+  ItemTrait,
   SystemId
 } from "@devils-toys/shared";
+import type { SlotWeaponDetail } from "@devils-toys/shared";
+import { setSlotWeapon, slotWeapon, splitItemLabel, weaponOverrideKey } from "@devils-toys/shared";
 import { api } from "./api";
 import { CharacterItemEditor } from "./CharacterItemEditor";
 import { RulesMarkdown } from "./RulesMarkdown";
+import { WeaponMark } from "./WeaponMark";
+import { WeaponSelector } from "./WeaponSelector";
 import { appendEntry, entryName, readEntries, removeEntry, singularLabel, updateEntry } from "./character-entries";
-import { characterItemsForSlot } from "./character-items";
+import { characterItemsForSlot, slotClassification, weaponTraitSuggestions } from "./character-items";
+import { canEditCharacter, canRollAttack } from "./character-permissions";
 import { groupRoster } from "./character-roster";
 import { currentsToBackfill } from "./character-stats";
 import { saveSetupForField, type SaveRollSetup } from "./save-roll";
-import { findRuleAnchorId, findRuleExcerpt, rulesAnchorPath } from "./rules";
+import { rollableDamage, rollWeapon } from "./weapon-roll";
+import { findRuleAnchorId, findRuleExcerpt, rulesAnchorPath, rulesQueryForField as fieldRulesQuery } from "./rules";
 import "./CharacterModal.css";
 
 interface Character {
@@ -88,11 +97,7 @@ function rulesQueryForSection(section: CharacterSheetDefinition["sections"][numb
 
 /** Fields whose rule is narrower than their section's, so they carry their own reminder. */
 function rulesQueryForField(field: CharacterSheetDefinition["sections"][number]["fields"][number]) {
-  if (field.key === "level") return "Leveling Up";
-  if (field.key === "xp") return "Experience Points";
-  // The CORRUPTION heading is only a divider; GAINING CORRUPTION carries the rule text.
-  if (field.key === "corruption") return "Gaining Corruption";
-  return undefined;
+  return fieldRulesQuery(field.key);
 }
 
 /** A section drops its own reminder once every field carries one. */
@@ -143,6 +148,8 @@ export function CharacterModal({
   revision,
   initialCharacterId,
   onRollSave,
+  onRolled,
+  traits,
   onClose
 }: {
   roomId: number;
@@ -152,6 +159,10 @@ export function CharacterModal({
   revision: number;
   initialCharacterId?: number;
   onRollSave: (setup: SaveRollSetup) => void;
+  /** Files a weapon's damage roll in the room's log. */
+  onRolled: (message: ChatMessage) => void;
+  /** What this system's weapon words mean, for the marks beside its slots. */
+  traits: readonly ItemTrait[];
   onClose: () => void;
 }) {
   const [characters, setCharacters] = useState<Character[]>([]);
@@ -180,6 +191,8 @@ export function CharacterModal({
   );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  // The sheet covers the room's log, so a roll made from it reports back here.
+  const [rolled, setRolled] = useState("");
   const [rulesMarkdown, setRulesMarkdown] = useState("");
   const [rulesLoading, setRulesLoading] = useState(true);
   const [rulesError, setRulesError] = useState("");
@@ -196,7 +209,10 @@ export function CharacterModal({
   const selectedIdRef = useRef<number | undefined>(undefined);
 
   const selected = characters.find((character) => character.id === selectedId);
-  const canEdit = selected && (role === "gm" || selected.ownerAccountId === accountId);
+  const canEdit = selected ? canEditCharacter({ accountId, role }, selected) : false;
+  // Rolling is narrower than editing: a character's attacks are their player's,
+  // even where the GM may write the sheet.
+  const canRoll = selected ? canRollAttack({ accountId, role }, { kind: "character", ...selected }) : false;
   const canMakeActive = Boolean(selected && selected.ownerAccountId === accountId && selected.id !== activeId);
   const canClaim = Boolean(selected && selected.ownerAccountId === null && role === "player");
   const canMoveToPool = Boolean(selected && role === "gm" && selected.ownerAccountId !== null);
@@ -552,10 +568,18 @@ export function CharacterModal({
     );
   }
 
-  function setListItem(key: string, index: number, value: string) {
+  /**
+   * The one place a slot is written. A weapon record belongs to the item that was
+   * in the slot, so replacing the text drops the record unless this call carries
+   * a new one — otherwise a machete's damage would outlive it and be inherited by
+   * whatever was stowed next. The editor submits both together; typing straight
+   * into the slot submits none, which clears it.
+   */
+  function setListItem(key: string, index: number, value: string, weapon?: SlotWeaponDetail) {
     const current = Array.isArray(sheet[key]) ? [...(sheet[key] as unknown[])] : [];
     current[index] = value;
-    setField(key, current);
+    const records = setSlotWeapon(sheet, key, index, weapon);
+    setFields({ [key]: current, [weaponOverrideKey(key)]: records.length ? records : undefined });
   }
 
   function changeName(value: string) {
@@ -1076,8 +1100,29 @@ export function CharacterModal({
     return String(stored ?? "");
   }
 
+  /** Rolls one slot's weapon, reporting the result where the sheet can show it. */
+  async function rollSlotWeapon(name: string, held: ItemClassification) {
+    if (!selected) return;
+    setError("");
+    try {
+      const message = await rollWeapon(roomId, selected.name, {
+        name,
+        damage: held.damage!,
+        traits: held.traits
+      });
+      setRolled(message.body);
+      onRolled(message);
+    } catch (cause) {
+      setError((cause as Error).message);
+    }
+  }
+
   function renderSlotInput(list: CharacterSheetDefinition["lists"][number], slot: string, index: number) {
     const stock = characterItemsForSlot(itemCatalogue[list.key] ?? [], list, index);
+    const value = slotValue(list, index);
+    const held = value.trim()
+      ? slotClassification(value, sheet, list, index, itemCatalogue[list.key] ?? [])
+      : undefined;
     return (
       <div
         className={`character-slot ${index > 0 && list.groupStarts?.includes(index) ? "character-list-group-start" : ""}`}
@@ -1086,12 +1131,24 @@ export function CharacterModal({
         <label>
           <span>{slot}</span>
           <input
-            value={slotValue(list, index)}
+            value={value}
             onChange={(event) => setListItem(list.key, index, event.target.value)}
             disabled={!canEdit}
           />
         </label>
-        {canEdit && stock.length > 0 && (
+        {held && (
+          <WeaponMark
+            held={held}
+            name={splitItemLabel(value).name || value}
+            traits={traits}
+            onRoll={
+              canRoll && rollableDamage(held)
+                ? () => void rollSlotWeapon(splitItemLabel(value).name || value, held)
+                : undefined
+            }
+          />
+        )}
+        {canEdit && (
           <button
             type="button"
             className="character-slot-edit"
@@ -1117,9 +1174,13 @@ export function CharacterModal({
         slotName={list.slots[editingSlot.index] ?? `Slot ${editingSlot.index + 1}`}
         items={stock}
         current={slotValue(list, editingSlot.index)}
+        currentWeapon={slotWeapon(sheet, list.key, editingSlot.index)}
+        weaponCategories={list.weaponCategories}
+        weaponRange={list.weaponRange}
+        traitSuggestions={weaponTraitSuggestions(itemCatalogue[list.key] ?? [])}
         onCancel={() => setEditingSlot(undefined)}
-        onSubmit={(value) => {
-          setListItem(list.key, editingSlot.index, value);
+        onSubmit={(value, weapon) => {
+          setListItem(list.key, editingSlot.index, value, weapon);
           setEditingSlot(undefined);
         }}
       />
@@ -1166,6 +1227,10 @@ export function CharacterModal({
           <>
             <div className="character-list">{list.slots.map((slot, index) => renderSlotInput(list, slot, index))}</div>
             {renderSlotEditor(list)}
+            {/* What is actually in hand, drawn from the slots above it. */}
+            {list === definition?.lists[0] && (
+              <WeaponSelector sheet={sheet} list={list} canEdit={canEdit} onChange={setField} />
+            )}
           </>
         )}
       </fieldset>
@@ -1222,6 +1287,7 @@ export function CharacterModal({
           </button>
         </header>
         {error && <p className="form-error character-error">{error}</p>}
+        {rolled && <p className="character-rolled">{rolled}</p>}
         <div className="character-workspace">
           <aside className="character-index" aria-label="Available characters">
             {characters.length === 0 && <p>No compatible characters yet. Create one below to begin.</p>}

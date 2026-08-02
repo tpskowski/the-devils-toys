@@ -3,7 +3,11 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "exports": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./items": "./items.json",
+    "./traits": "./traits.json"
+  },
   "dependencies": {
     "@devils-toys/shared": "0.1.0"
   }

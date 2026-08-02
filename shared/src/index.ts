@@ -1,3 +1,7 @@
+import type { RangedWeaponIcon, WeaponRangeRules } from "./character-items.js";
+
+export * from "./character-items.js";
+export * from "./item-traits.js";
 export * from "./roll-tables.js";
 export * from "./table-csv.js";
 export * from "./table-markdown.js";
@@ -197,10 +201,27 @@ export interface CharacterListDefinition {
   itemHeadings?: readonly string[];
   /** Categories under those headings that are not things a character carries. */
   skipCategories?: readonly string[];
+  /**
+   * Categories the book files as weapons. Everything under one is a weapon even
+   * without a damage die, which is how a stun gun and a grenade qualify.
+   *
+   * Read when seeding `items.json` from the book and never again; an entry that
+   * comes out wrong is fixed in the catalogue, which is the authority thereafter.
+   */
+  weaponCategories?: readonly string[];
+  /** How this system states a weapon's reach, for reading one off its notation. */
+  weaponRange?: WeaponRangeRules;
 }
 
 /** One entry from a system's priced tables, offered when filling a slot. */
 export interface CharacterItem {
+  /**
+   * Stable across regenerations, so anything that needs to point at an item —
+   * a combatant's weapon, a shop, a loot table — has something to point at that
+   * a reformatted rulebook cannot move. Derived from the system and the item's
+   * name, because a rename is a content change worth noticing.
+   */
+  id: string;
   category: string;
   name: string;
   /** The parenthetical the book gives, such as "D8, bulky" or "Armor 2". */
@@ -208,6 +229,14 @@ export interface CharacterItem {
   detail: string;
   cost: string;
   bulky: boolean;
+  /** Something a character attacks with, so combat can offer it as one. */
+  weapon: boolean;
+  /** The damage the item's parenthetical states, when it states any. */
+  damage?: string;
+  /** What else that parenthetical says of a weapon, in the book's own words. */
+  traits?: readonly string[];
+  /** Its reach: `Melee`, the system's own notation, or `unknown`. */
+  range?: string;
   /** Slot types named by the item's authoritative parenthetical, when present. */
   allowedSlotTypes?: readonly string[];
   /** What goes in the slot: the name with its spec, as the book writes it. */
@@ -217,6 +246,38 @@ export interface CharacterItem {
 export interface CharacterSheetDefinition {
   sections: readonly CharacterSheetSection[];
   lists: readonly CharacterListDefinition[];
+}
+
+/**
+ * A system's gear, resolved once and committed as `systems/<id>/items.json`
+ * rather than re-read from the rulebook on every start.
+ *
+ * The book seeds it, but the generated file is authoritative afterwards: the
+ * application loads it directly, and unusual readings are corrected there.
+ * Parsing at runtime meant a reformatted heading could silently change the
+ * catalogue in production; now a catalogue edit is explicit and every item has
+ * an id that survives the reformat.
+ *
+ * Hand edits are intentional. `build:items` leaves an existing catalogue alone,
+ * and its additive merge preserves entries already recorded there.
+ *
+ * Reached as `@devils-toys/system-<id>/items` rather than through the system
+ * definition, because the generator reads those definitions to decide what to
+ * write — a definition that carried its own catalogue could not be loaded until
+ * the catalogue already existed.
+ */
+export interface SystemItemCatalog {
+  system: SystemId;
+  /** The rulebook the entries were read out of. */
+  source: string;
+  /** Items by the sheet list they stock, matching `CharacterListDefinition.key`. */
+  lists: Readonly<Record<string, readonly CharacterItem[]>>;
+  /**
+   * Ids the catalogue has deliberately dropped — a book row replaced by better
+   * entries, say — so seeding never brings them back. Removing an entry without
+   * retiring it only lasts until the next `build:items`.
+   */
+  retired?: readonly string[];
 }
 
 export interface GroupFieldDefinition extends CharacterFieldDefinition {
@@ -493,6 +554,75 @@ export interface RollTableSet {
   tables: readonly RollTableSummary[];
 }
 
+export type InitiativeModel = "none" | "side" | "individual";
+
+export interface InitiativeRules {
+  model: InitiativeModel;
+  sides?: readonly { id: string; label: string }[];
+  sideOrder?: "fixed" | "roll";
+  roll?: { dice: string; modifierFrom?: "best-dex" | "dex"; label: string };
+  entrySave?: {
+    label: string;
+    appliesTo: "party";
+    onFailure: "after-opponents" | "skip-first-turn";
+    description: string;
+  };
+  tieBreak?: "party-wins";
+  allowIndividualVariant?: boolean;
+  note?: string;
+}
+
+export interface NpcStatblockField {
+  key: string;
+  label: string;
+  kind: "number" | "text";
+  inSummary?: boolean;
+}
+
+export interface NpcStatblockDefinition {
+  hitPointsKey: string;
+  armorKey?: string;
+  /** The field holding what the creature attacks with, where the system states one. */
+  attacksKey?: string;
+  /** How the statblock states an attack's reach, in the system's own words. */
+  weaponRange?: WeaponRangeRules;
+  fields: readonly NpcStatblockField[];
+}
+
+/**
+ * The scores damage moves to once hit points run out, as Cairn and Monolith both
+ * work. A system that does not spend attributes this way omits the block, and
+ * nothing offers to damage them.
+ */
+export interface AttributeDamageDefinition {
+  /** Names the dialog, in the words the system uses. */
+  label: string;
+  /** One line of why, shown above the scores. */
+  note?: string;
+  /**
+   * The mark a failed save against one of these attributes leaves. Monolith's
+   * critical damage is the case: spend past 0 HP, save against STR, and a
+   * failure is a state the sheet carries rather than another number.
+   */
+  criticalDamage?: {
+    /** Which attribute's save leaves it. */
+    attributeId: string;
+    /** The sheet field and statblock key it is recorded under. */
+    key: string;
+    label: string;
+  };
+  attributes: readonly {
+    /** Stable id used by the API; the sheet and statblock keys may differ. */
+    id: string;
+    label: string;
+    /** Character and hireling sheet keys. Both sheets use the same names. */
+    currentKey: string;
+    maximumKey: string;
+    /** The NPC statblock field holding the same score, where there is one. */
+    statblockKey?: string;
+  }[];
+}
+
 /**
  * How much of a table roll the room sees. `public` shows the result to the GM
  * and tells players a roll happened, `private` does the same as an explicit
@@ -537,6 +667,18 @@ export interface GameSystem {
   /** Omit this definition to remove the Group tab for a system. */
   groupPage?: GroupPageDefinition;
   characterWarnings: (sheet: Record<string, unknown>) => string[];
+  initiative: InitiativeRules;
+  npcStatblock: NpcStatblockDefinition;
+  /** Omit for a system where hit points are the only pool damage touches. */
+  attributeDamage?: AttributeDamageDefinition;
+  /** What a weapon that is not used in arm's reach is drawn as. */
+  rangedWeaponIcon: RangedWeaponIcon;
+  /**
+   * Headings whose definition lists state what this system's weapon words mean.
+   * Omit for a book that explains its words in prose alone; those are written
+   * into `traits.json` by hand.
+   */
+  traitCatalog?: { headings: readonly string[] };
   abilities: readonly string[];
   gmOnlyHeadings: readonly string[];
   npcCatalog: {

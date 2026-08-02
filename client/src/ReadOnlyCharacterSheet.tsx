@@ -1,6 +1,8 @@
 import { UserRound } from "lucide-react";
 import type { CharacterSheetDefinition, CharacterVice, SystemId } from "@devils-toys/shared";
+import { slotIsWeapon, slotWeapon } from "@devils-toys/shared";
 import { entryName, readEntries, singularLabel } from "./character-entries";
+import { WeaponMark } from "./WeaponMark";
 import "./ReadOnlyCharacterSheet.css";
 
 export interface ReadOnlyCharacter {
@@ -131,7 +133,13 @@ export function ReadOnlyCharacterSheet({
 
   function renderList(list: CharacterSheetDefinition["lists"][number]) {
     const stored = Array.isArray(character.sheet[list.key]) ? (character.sheet[list.key] as unknown[]) : [];
-    const values = list.slots.map((slot, index) => ({ slot, value: fixedValue(stored[index]) }));
+    const values = list.slots.map((slot, index) => ({
+      slot,
+      value: fixedValue(stored[index]),
+      held: String(stored[index] ?? "").trim()
+        ? slotIsWeapon(String(stored[index]), slotWeapon(character.sheet, list.key, index), list)
+        : undefined
+    }));
     const visible = list.editInDialog ? values.filter((item) => item.value !== "—") : values;
     return (
       <section className="party-sheet-section party-sheet-list" key={list.key}>
@@ -141,7 +149,10 @@ export function ReadOnlyCharacterSheet({
             {visible.map((item) => (
               <div key={item.slot}>
                 <dt>{item.slot}</dt>
-                <dd>{item.value}</dd>
+                <dd>
+                  {item.value}
+                  {item.held && <WeaponMark held={item.held} size={13} />}
+                </dd>
               </div>
             ))}
           </dl>
