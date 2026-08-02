@@ -139,7 +139,27 @@ export function EncounterMap({
           if (movable && (event.key === "Enter" || event.key === " ")) {
             event.preventDefault();
             setCarried((current) => (current === combatant.id ? undefined : combatant.id));
+            return;
           }
+          if (!movable || carried !== combatant.id) return;
+          const movement =
+            event.key === "ArrowLeft"
+              ? { x: -0.05, y: 0 }
+              : event.key === "ArrowRight"
+                ? { x: 0.05, y: 0 }
+                : event.key === "ArrowUp"
+                  ? { x: 0, y: -0.05 }
+                  : event.key === "ArrowDown"
+                    ? { x: 0, y: 0.05 }
+                    : undefined;
+          if (!movement) return;
+          event.preventDefault();
+          const current = combatant.mapPosition ?? { x: 0.5, y: 0.5 };
+          setCarried(undefined);
+          void place(combatant, {
+            x: clampMapPosition(current.x + movement.x),
+            y: clampMapPosition(current.y + movement.y)
+          });
         }}
       >
         <CombatantAvatar combatant={combatant} />

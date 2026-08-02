@@ -299,6 +299,14 @@ await runSmoke(
       { method: "PATCH", headers: gmJson, body: JSON.stringify({ mapPosition: null }) },
       200
     );
+    const clearedTokenMap = await json(`/api/rooms/${roomId}/encounters/${encounterId}`, {
+      headers: { cookie: gmCookie }
+    });
+    assert.equal(
+      clearedTokenMap.body.encounter.combatants.find((entry) => entry.id === seenGoblin.id).mapPosition,
+      null,
+      "clearing a map position returns the combatant to the roster"
+    );
 
     // The encounter tab shows either a map or a board of zones, and the GM says
     // which. Zones read left to right in the order they were made.

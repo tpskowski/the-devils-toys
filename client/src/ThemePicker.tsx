@@ -61,7 +61,10 @@ export function ThemePicker({
             className={`theme-picker-option ${theme === value ? "selected" : ""}`}
             onClick={() => {
               onChange(theme);
-              if (picker.current) picker.current.open = false;
+              if (picker.current) {
+                picker.current.open = false;
+                picker.current.querySelector("summary")?.focus();
+              }
             }}
           >
             <ThemePalette theme={theme} />

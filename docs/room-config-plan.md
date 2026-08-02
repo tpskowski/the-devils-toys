@@ -132,7 +132,7 @@ Reveals stay in the room. Revealing a reference to a player is a live act.
 **Reuses** `npcRouter`. The panel gives the bestiary and the room's NPCs one screen: catalogue on the left, room roster in the middle, full statblock editor on the right, with none of it in a modal.
 
 - The statblock editor is driven by `systems[system].npcStatblock.fields`, the same definition `NpcModal` reads, and validates the same way on the server.
-- **Copy to another room** — `POST /rooms/:id/npcs/:npcId/copy-to` with `{ roomId }`, allowed only when the caller passes `requireRoomConfig` on **both** rooms and the two rooms share a system. This is the first cross-room write in the application; the double check is the whole of its safety.
+- **Copy to another room** — a dedicated config handler takes `{ roomId }`, resolves the source NPC by both `:id` and the source `room_id`, then validates `requireRoomConfig` and the shared system on **both** rooms before it inserts anything. A record from another room is a 404, never a copy source. This is the first cross-room write in the application; the double check is the whole of its safety.
 - Bulk delete, and a filter over name, notes, and statblock text.
 - `clone` and `from-catalog` are reused as they are.
 
@@ -151,9 +151,9 @@ which is the same shape as `mergeCatalog`'s rule in `item-catalog.ts`, applied o
 - **Ids.** A room item's id is `room:<roomId>:<slug>`, which the `itemId()` scheme can never produce, so a room item and a system item can never collide and a slot's `SlotWeaponDetail` pointing at one is never ambiguous.
 - **The seam.** `characterItemsFor(system)` becomes `characterItemsFor(system, roomId?)` and applies the overlay when a room is given. There are exactly two call sites — `characters.ts:195` and `group.ts:201` — and both already have the room in hand. A character sitting in a pool with no room falls through to the system catalogue unchanged.
 - **A retired item already on a sheet stays on the sheet.** Slots hold plain strings; retiring an id removes it from the picker and from nothing else. That is the same promise `retired` makes in `items.json`, and it is what keeps this safe.
-- **Editing a system item** is retire-plus-add: the panel offers "customise", which copies the entry to a room item and retires the original in one request, so the picker shows one entry rather than two.
+- **Editing a system item** is retire-plus-add: the panel offers "customise", which validates the source item and the proposed room item first, then inserts the room item and retires the original in one database transaction. Either both writes commit or neither does, so the picker never loses the original without gaining its replacement.
 - **Validation** runs the entry's name and parenthetical back through `shared/src/character-items.ts`, so a room item is read as a weapon on exactly the same terms as a rulebook one, and shows the GM what it parsed as before saving.
-- **Copy to another room**, same double-gate as NPCs.
+- **Copy to another room**, through the same source-room-qualified, double-gated handler shape as NPCs.
 - **Export/import as JSON** in the `items.json` list shape, which is also the migration path if a room's additions later deserve to become part of the system.
 
 _The alternative considered and rejected:_ letting an admin edit `systems/<id>/items.json` through the panel. It contradicts the compiled-in model, does not survive a container restart, and would put a shared file behind a per-room screen.
@@ -179,23 +179,29 @@ CREATE TABLE IF NOT EXISTS room_playlists (
   room_id INTEGER NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
   sort_order INTEGER NOT NULL DEFAULT 0,
+  revision INTEGER NOT NULL DEFAULT 0,
+  UNIQUE(id, room_id),
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 CREATE TABLE IF NOT EXISTS room_playlist_tracks (
   playlist_id INTEGER NOT NULL REFERENCES room_playlists(id) ON DELETE CASCADE,
+  room_id INTEGER NOT NULL,
   media_id INTEGER NOT NULL REFERENCES media(id) ON DELETE CASCADE,
   sort_order INTEGER NOT NULL,
-  PRIMARY KEY(playlist_id, media_id)
+  PRIMARY KEY(playlist_id, media_id),
+  FOREIGN KEY(playlist_id, room_id) REFERENCES room_playlists(id, room_id) ON DELETE CASCADE,
+  FOREIGN KEY(media_id, room_id) REFERENCES media(id, room_id) ON DELETE CASCADE
 );
 ```
 
-Both are new tables, so `CREATE TABLE IF NOT EXISTS` in `db.ts` is the whole schema change. `ON DELETE CASCADE` on `media_id` means deleting a track removes it from every playlist for free.
+Both are new tables, so `CREATE TABLE IF NOT EXISTS` in `db.ts` is the whole table schema change; `media` also gains a supporting `UNIQUE (id, room_id)` index for the composite foreign key. A playlist track therefore cannot name media from another room. `ON DELETE CASCADE` on `media_id` means deleting a track removes it from every playlist for free.
 
 - The panel manages playlists and their order; **`AudioPlayer` in the room gains a playlist selector** and plays through the chosen list. That is the one place the panel's new model reaches into the game UI, and it is what the roadmap's "add combat music" asks for.
 - `room_state.audio_json` gains an optional `playlistId`. It is a JSON blob with a tolerant reader, so nothing needs migrating.
 - **No transport controls.** `PATCH /rooms/:id/audio/playback` is not called from the panel; play, pause, seek, shuffle, and repeat are the room's. The panel decides what a playlist _is_.
 - A track in no playlist is still in the library and still playable. Playlists are a view, not a gate.
 - Metadata repair belongs here too: `mp3-metadata.ts` fills artist and title on upload, and the panel is the natural place to fix what it read wrongly and to re-run it over a batch.
+- Every name, membership, or order mutation carries the playlist's current `revision`. The handler validates the entire replacement track set and its room before writing, then updates it and increments `revision` in the same transaction. A stale revision answers `409` rather than silently replacing a newer name or order.
 
 ---
 
@@ -229,6 +235,7 @@ CREATE TABLE IF NOT EXISTS group_hirelings (
   -- The blob's client-minted string id, kept so the migration is re-runnable
   -- and so anything still holding one can be traced.
   legacy_id TEXT,
+  UNIQUE(room_id, legacy_id),
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -272,12 +279,13 @@ Three consequences worth stating plainly:
 
 ### The migration
 
-Four steps in `db.ts` below the schema block, each idempotent and each detectable from `sqlite_master` rather than a counter, per `AGENTS.md`.
+Four steps in `db.ts` below the schema block, each idempotent and each detectable from `sqlite_master` rather than a counter, per `AGENTS.md`. They run in one `BEGIN IMMEDIATE` / `COMMIT` transaction: foreign keys are disabled before the transaction only where the rebuild requires it, and their prior setting is restored in a `finally` path if any step fails.
 
 1. **Create the three tables** with `CREATE TABLE IF NOT EXISTS`. No migration needed for this part.
 2. **Backfill from the blob, then strip the keys.** For each `room_state` row, parse `group_json`, insert one row per entry of `hirelings`, `starships` (falling back to legacy singular `starship`), and `obligations` (falling back to legacy `groupDebt`), preserving array order as `sort_order` and the string id as `legacy_id`; then rewrite `group_json` **without** those keys. Stripping is what makes the step idempotent by construction — a second run finds nothing to move — and it is the same legacy-fallback reading `parseGroupStarships` and `parseGroupObligations` already do, so those functions are the specification and should be lifted to `shared/` and reused rather than reimplemented.
-3. **Fold the image tables in**, copying `hireling_images` and `starship_images` onto the new rows by `legacy_id`, then `DROP TABLE` both. The drop is the detectable signal: their absence from `sqlite_master` means the step has run.
-4. **Rebuild `encounter_combatants`** so `hireling_id` becomes `INTEGER REFERENCES group_hirelings(id) ON DELETE CASCADE`. This changes a column type, a `CHECK`, and a foreign key, so it is the rooms-style rebuild: `PRAGMA foreign_keys = OFF` **outside** the transaction, create the replacement, copy rows mapping the old text id through `group_hirelings.legacy_id`, drop combatants whose hireling no longer resolves (they are already invisible today), drop the original, rename, recreate both partial unique indexes, restore the pragma. Detect it from the stored `CHECK` text in `sqlite_master`, and derive the constraint from the shared source of truth so the _next_ change is recognised too.
+   Before dependent data is copied, `group_hirelings` enforces `UNIQUE(room_id, legacy_id)`, and every legacy-ID lookup includes both columns. A legacy id is never allowed to resolve across rooms.
+3. **Fold the image tables in**, copying `hireling_images` and `starship_images` onto the new rows by both `room_id` and `legacy_id`, then `DROP TABLE` both. The drop is the detectable signal: their absence from `sqlite_master` means the step has run.
+4. **Rebuild `encounter_combatants`** so `hireling_id` becomes `INTEGER REFERENCES group_hirelings(id) ON DELETE CASCADE`. This changes a column type, a `CHECK`, and a foreign key, so it is the rooms-style rebuild: `PRAGMA foreign_keys = OFF` **outside** the transaction, create the replacement, copy rows mapping the old text id through `group_hirelings.room_id = encounters.room_id` and `group_hirelings.legacy_id`, drop combatants whose hireling no longer resolves (they are already invisible today), drop the original, rename, recreate both partial unique indexes, restore the pragma. Detect it from the stored `CHECK` text in `sqlite_master`, and derive the constraint from the shared source of truth so the _next_ change is recognised too.
 
 Step 4 is the one to be careful with, and it is also the one that pays best: after it, deleting a hireling cascades, and the hand-rolled cleanup in `group.ts:295` and the silent drop in `visibleEncounter` both go away.
 
@@ -337,28 +345,28 @@ Migrations against existing tables, each idempotent and detectable from `sqlite_
 
 ## API summary
 
-All under `server/src/room-config.ts` mounting `roomConfigRouter`, every route behind `requireRoomConfig`, except where it reuses an existing route unchanged.
+Panel routes live under `server/src/room-config.ts` and `roomConfigRouter`, behind one `requireRoomConfig` gate. Existing game routes keep their current membership-only checks; where a panel action must also admit an admin who is not a room member, it uses a dedicated room-config handler that calls the shared resource operation after the gate rather than stacking a second role check on the game route.
 
-| Route                                                          | Purpose                                                           |
-| -------------------------------------------------------------- | ----------------------------------------------------------------- |
-| `GET /api/room-config/rooms`                                   | The selector: rooms this account may configure                    |
-| `GET /api/room-config/:roomId`                                 | One payload: room, flags, system definition, section availability |
-| `PATCH /api/rooms/:roomId/media/bulk`                          | Bulk category / visibility                                        |
-| `DELETE /api/rooms/:roomId/media/bulk`                         | Bulk delete                                                       |
-| `POST /api/rooms/:roomId/npcs/:npcId/copy-to`                  | Copy an NPC to another configurable room                          |
-| `GET/POST/PATCH/DELETE /api/rooms/:roomId/items`               | The room's item overlay                                           |
-| `POST /api/rooms/:roomId/items/:itemId/retire`                 | Retire a system item for this room                                |
-| `GET/POST/PATCH/DELETE /api/rooms/:roomId/playlists`           | Playlists and their tracks                                        |
-| `GET/POST/PATCH/DELETE /api/rooms/:roomId/group/hirelings/:id` | One hireling row                                                  |
-| `GET/POST/PATCH/DELETE /api/rooms/:roomId/group/assets/:id`    | One ship or other group asset                                     |
-| `POST/DELETE /api/rooms/:roomId/group/hirelings/:id/portrait`  | Portrait, as `characters` does                                    |
-| `PATCH /api/rooms/:roomId/group/order`                         | Reorder — writes `sort_order` only                                |
+| Route                                                                | Purpose                                                           |
+| -------------------------------------------------------------------- | ----------------------------------------------------------------- |
+| `GET /api/room-config/rooms`                                         | The selector: rooms this account may configure                    |
+| `GET /api/room-config/:roomId`                                       | One payload: room, flags, system definition, section availability |
+| `PATCH /api/room-config/:roomId/media/bulk`                          | Bulk category / visibility                                        |
+| `DELETE /api/room-config/:roomId/media/bulk`                         | Bulk delete                                                       |
+| `POST /api/room-config/:roomId/npcs/:npcId/copy-to`                  | Copy an NPC to another configurable room                          |
+| `GET/POST/PATCH/DELETE /api/room-config/:roomId/items`               | The room's item overlay                                           |
+| `POST /api/room-config/:roomId/items/:itemId/retire`                 | Retire a system item for this room                                |
+| `GET/POST/PATCH/DELETE /api/room-config/:roomId/playlists`           | Playlists and their tracks                                        |
+| `GET/POST/PATCH/DELETE /api/room-config/:roomId/group/hirelings/:id` | One hireling row                                                  |
+| `GET/POST/PATCH/DELETE /api/room-config/:roomId/group/assets/:id`    | One ship or other group asset                                     |
+| `POST/DELETE /api/room-config/:roomId/group/hirelings/:id/portrait`  | Portrait, as `characters` does                                    |
+| `PATCH /api/room-config/:roomId/group/order`                         | Reorder — writes `sort_order` only                                |
 
-Everything else — calendar PUT, media upload, npc create/patch/clone/from-catalog, hireling creation roll, starship parts — is called as it stands.
+The room-config handlers reuse the existing validation and resource operations for calendar, media upload, NPC create/patch/clone/from-catalog, hireling creation roll, and starship parts, but do not call a membership-gated game route after `requireRoomConfig`. This keeps admin non-member access on one gate while preserving every resource ownership check.
 
 The group routes are a **restructure of `groupRouter`, not an addition to it**: the Group tab moves onto the same row routes at the same time, so there is never one surface on rows and another on the blob. `PATCH /rooms/:id/group` survives, narrowed to the group's own fields.
 
-**One rule for all of them:** an existing GM route keeps its existing `roomRole` check. Where the panel needs a route an admin non-member can reach, the route moves behind `requireRoomConfig`, which still admits the room GM. No route ends up with two role checks.
+**One rule for all of them:** `GET /api/room-config/rooms` always reads `configurableRooms`; every panel-qualified handler uses `requireRoomConfig`; existing game routes keep their existing `roomRole` checks. Admin non-member coverage is exercised for each reused media, NPC, item, playlist, and group handler, and no handler has both role checks.
 
 ## Live sync and conflicts
 
@@ -372,11 +380,12 @@ The group routes are a **restructure of `groupRouter`, not an addition to it**: 
 Matching how the repository already tests:
 
 - **Unit, beside the source.** `room-config-permissions.test.ts` for the full matrix — player / GM-own / GM-other / admin-member / admin-non-member / archived room / missing room. `room-items.test.ts` for overlay resolution: retire hides, add appears, room id namespacing cannot collide with `itemId()`, a retired id still parses on a sheet, no room means the system catalogue exactly. `room-config.test.ts` for section availability against each system definition.
+- **Room-config route coverage** includes an admin who is not a member for every reused media, NPC, item, playlist, and group handler; it also proves that NPC and item copy reject a source record from another room, playlist membership rejects media from another room, and stale playlist name or track-order revisions answer `409`.
 - **The group migration is the part to test hardest**, in `db-migrations.test.ts`, each case written against a database built at the old schema with real blob contents, and **each confirmed to fail when its migration is removed**:
   - a blob with `hirelings`, `starships`, and `obligations` becomes rows in array order, with `legacy_id` preserved and the keys gone from the blob;
   - the legacy singular `starship` and the legacy `groupDebt` string migrate too — these are the shapes `parseGroupStarships` and `parseGroupObligations` still carry fallbacks for, so real databases have them;
   - an entry with no `id` gets one, and the `hireling-<n>` positional fallback resolves to the same row its image and combatants pointed at;
-  - `hireling_images` and `starship_images` land on the right rows and the tables are gone;
+  - `hireling_images` and `starship_images` land on the right rows by matching both `room_id` and `legacy_id`, and the tables are gone;
   - an `encounter_combatants` row survives the rebuild with an integer `hireling_id`, one pointing at a vanished hireling does not, the two partial unique indexes come back, and deleting a hireling now cascades;
   - **running the whole migration twice changes nothing** — the property that makes it safe on a restart loop.
 - **`scripts/room-config-smoke.mjs`**, added to the `smoke` script, driving a real server: a player is refused every route; a GM configures their own room and is refused another's; an admin configures a room they do not belong to and does not appear in its presence; an item added in the panel appears in that room's character payload and not in another room's; a playlist survives deleting one of its tracks; two hirelings edited concurrently both save, and the same hireling edited twice from a stale copy answers 409.

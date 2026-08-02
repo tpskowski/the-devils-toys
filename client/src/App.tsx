@@ -684,6 +684,9 @@ function TableRoom({
   const [trackerOpen, setTrackerOpen] = useState(true);
 
   const socketRef = useRef<WebSocket | null>(null);
+  // Requests cannot be cancelled; a room switch or disabling music makes every
+  // earlier result irrelevant and prevents it from restoring a cleared player.
+  const audioLoadGeneration = useRef(0);
   // The dock owns the audio element; the playlist needs its live position so its
   // commands do not seek the room back to the last command's position.
   const audioPosition = useRef(0);
@@ -715,8 +718,13 @@ function TableRoom({
     setMedia(next);
   }
 
-  async function loadAudio() {
-    setAudio(await api<RoomAudioState>(`/api/rooms/${room.id}/audio`));
+  async function loadAudio(generation = audioLoadGeneration.current) {
+    try {
+      const next = await api<RoomAudioState>(`/api/rooms/${room.id}/audio`);
+      if (audioLoadGeneration.current === generation) setAudio(next);
+    } catch {
+      if (audioLoadGeneration.current === generation) setAudio(emptyRoomAudio());
+    }
   }
 
   async function loadEncounters() {
@@ -779,8 +787,9 @@ function TableRoom({
     setGroupView(defaultGroupView(room.system));
   }, [room.id]);
   useEffect(() => {
+    const generation = ++audioLoadGeneration.current;
     if (!detail || detail.room.id !== room.id) return;
-    if (detail.room.musicEnabled) loadAudio().catch(() => setAudio(emptyRoomAudio()));
+    if (detail.room.musicEnabled) void loadAudio(generation);
     else {
       setAudio(emptyRoomAudio());
       setAudioOpen(false);

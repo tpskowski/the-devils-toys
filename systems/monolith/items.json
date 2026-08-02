@@ -449,7 +449,7 @@
         "weapon": true,
         "damage": "2D4",
         "traits": [
-          "Cryo"
+          "cryo"
         ],
         "range": "Melee",
         "label": "Pulse Axe (2D4 Cryo)"
@@ -1239,7 +1239,8 @@
         "weapon": true,
         "damage": "D8",
         "traits": [
-          "Thermal and d6 Cryo",
+          "thermal",
+          "d6 cryo",
           "bulky"
         ],
         "range": "mid-range",
@@ -1731,7 +1732,7 @@
         "weapon": true,
         "damage": "D6",
         "traits": [
-          "Thermal"
+          "thermal"
         ],
         "range": "Melee",
         "label": "Laserblade Gauntlet (D6 Thermal)"
