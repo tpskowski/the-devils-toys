@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Trash2, X } from "lucide-react";
 import { api } from "./api";
 
@@ -33,14 +33,26 @@ export function SpawnedNpcModal({
   const [spawned, setSpawned] = useState<SpawnedNpc[]>([]);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const loadVersion = useRef(0);
 
   async function load() {
-    const result = await api<{ spawned: SpawnedNpc[] }>(`/api/rooms/${roomId}/npcs/spawned`);
-    setSpawned(result.spawned);
+    const version = ++loadVersion.current;
+    try {
+      const result = await api<{ spawned: SpawnedNpc[] }>(`/api/rooms/${roomId}/npcs/spawned`);
+      if (version === loadVersion.current) setSpawned(result.spawned);
+    } catch (cause) {
+      if (version === loadVersion.current) setError((cause as Error).message);
+      throw cause;
+    }
   }
 
   useEffect(() => {
-    load().catch((cause: Error) => setError(cause.message));
+    void load().catch(() => undefined);
+    return () => {
+      // Any pending response from this room/revision is obsolete before the
+      // replacement effect starts, so it may not overwrite the new list.
+      loadVersion.current += 1;
+    };
   }, [roomId, npcRevision, encounterRevision]);
 
   async function remove(npc: SpawnedNpc) {
