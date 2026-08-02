@@ -2,6 +2,7 @@ import { useEffect, useState, type DragEvent } from "react";
 import { GripVertical, Plus, Trash2, X } from "lucide-react";
 import { api } from "./api";
 import { CombatantAvatar } from "./CombatantAvatar";
+import { canControlCombatant } from "./encounter-control";
 import type { EncounterCombatant, EncounterRecord } from "./EncounterPage";
 
 /** What a zone's own drag carries, so a drop can tell it from a combatant's. */
@@ -55,10 +56,7 @@ export function EncounterZones({
    * A player moves their own characters and the party's hirelings; the GM moves
    * anyone, including whatever they are running.
    */
-  const canMove = (combatant: EncounterCombatant) =>
-    isGm ||
-    combatant.kind === "hireling" ||
-    (combatant.kind === "character" && combatant.character?.ownerAccountId === viewerId);
+  const canMove = (combatant: EncounterCombatant) => canControlCombatant(combatant, isGm, viewerId);
 
   async function act(run: () => Promise<unknown>) {
     setBusy(true);

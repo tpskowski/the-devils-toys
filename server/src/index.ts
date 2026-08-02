@@ -17,7 +17,7 @@ import { roomAdminRouter } from "./room-admin.js";
 import { canResetAccountPassword } from "./account-permissions.js";
 import { managementRouter } from "./management.js";
 import { mediaRouter } from "./media.js";
-import { audioRouter } from "./audio.js";
+import { audioRouter, pauseRoomAudio } from "./audio.js";
 import { attachRealtime, broadcastRoom, disconnectAccount, sendToRoomGms } from "./realtime.js";
 import { npcRouter } from "./npcs.js";
 import { DEFAULT_TABLE_ROLL_NOTICE, tableRouter } from "./tables.js";
@@ -299,15 +299,18 @@ app.get("/api/rooms", requireAuth, (req: AuthedRequest, res) => {
     archived: number;
     calendar_enabled: number;
     map_notation_enabled: number;
+    music_enabled: number;
   }>(
-    `SELECT r.id, r.name, r.system, r.theme, m.role, r.archived, r.calendar_enabled, r.map_notation_enabled FROM rooms r
+    `SELECT r.id, r.name, r.system, r.theme, m.role, r.archived, r.calendar_enabled, r.map_notation_enabled,
+            r.music_enabled FROM rooms r
      JOIN memberships m ON m.room_id = r.id WHERE m.account_id = ? ORDER BY r.archived, r.name`,
     req.account!.id
-  ).map(({ calendar_enabled, map_notation_enabled, ...room }) => ({
+  ).map(({ calendar_enabled, map_notation_enabled, music_enabled, ...room }) => ({
     ...room,
     archived: Boolean(room.archived),
     calendarEnabled: Boolean(calendar_enabled),
-    mapNotationEnabled: Boolean(map_notation_enabled)
+    mapNotationEnabled: Boolean(map_notation_enabled),
+    musicEnabled: Boolean(music_enabled)
   }));
   res.json({ rooms });
 });
@@ -343,7 +346,8 @@ app.post("/api/rooms", requireAuth, (req: AuthedRequest, res) => {
         role: "gm",
         archived: false,
         calendarEnabled: false,
-        mapNotationEnabled: false
+        mapNotationEnabled: false,
+        musicEnabled: false
       }
     });
   } catch (error) {
@@ -365,8 +369,10 @@ app.get("/api/rooms/:roomId", requireAuth, (req: AuthedRequest, res) => {
     calendar_enabled: number;
     calendar_json: string | null;
     map_notation_enabled: number;
+    music_enabled: number;
   }>(
-    "SELECT id, name, system, theme, archived, calendar_enabled, calendar_json, map_notation_enabled FROM rooms WHERE id = ?",
+    `SELECT id, name, system, theme, archived, calendar_enabled, calendar_json, map_notation_enabled, music_enabled
+     FROM rooms WHERE id = ?`,
     roomId
   )!;
   const members = all<{
@@ -390,7 +396,7 @@ app.get("/api/rooms/:roomId", requireAuth, (req: AuthedRequest, res) => {
     role: member.role,
     isAdmin: Boolean(member.is_admin)
   }));
-  const { calendar_enabled, calendar_json, map_notation_enabled, ...roomFields } = room;
+  const { calendar_enabled, calendar_json, map_notation_enabled, music_enabled, ...roomFields } = room;
   res.json({
     room: {
       ...roomFields,
@@ -398,7 +404,8 @@ app.get("/api/rooms/:roomId", requireAuth, (req: AuthedRequest, res) => {
       role,
       calendarEnabled: Boolean(calendar_enabled),
       calendar: readCalendar(calendar_json),
-      mapNotationEnabled: Boolean(map_notation_enabled)
+      mapNotationEnabled: Boolean(map_notation_enabled),
+      musicEnabled: Boolean(music_enabled)
     },
     members
   });
@@ -414,21 +421,23 @@ app.patch("/api/rooms/:roomId", requireAuth, (req: AuthedRequest, res) => {
         theme: z.enum(THEME_IDS).optional(),
         archived: z.boolean().optional(),
         calendarEnabled: z.boolean().optional(),
-        mapNotationEnabled: z.boolean().optional()
+        mapNotationEnabled: z.boolean().optional(),
+        musicEnabled: z.boolean().optional()
       })
       .refine(
         (value) =>
           value.theme !== undefined ||
           value.archived !== undefined ||
           value.calendarEnabled !== undefined ||
-          value.mapNotationEnabled !== undefined
+          value.mapNotationEnabled !== undefined ||
+          value.musicEnabled !== undefined
       ),
     req.body,
     res
   );
   if (!body) return;
-  const currentRoom = one<{ calendar_enabled: number; map_notation_enabled: number }>(
-    "SELECT calendar_enabled, map_notation_enabled FROM rooms WHERE id = ?",
+  const currentRoom = one<{ calendar_enabled: number; map_notation_enabled: number; music_enabled: number }>(
+    "SELECT calendar_enabled, map_notation_enabled, music_enabled FROM rooms WHERE id = ?",
     roomId
   );
   if (!currentRoom) return res.status(404).json({ error: "Room not found." });
@@ -447,6 +456,10 @@ app.patch("/api/rooms/:roomId", requireAuth, (req: AuthedRequest, res) => {
     db.prepare("UPDATE rooms SET calendar_enabled = ? WHERE id = ?").run(body.calendarEnabled ? 1 : 0, roomId);
   if (body.mapNotationEnabled !== undefined)
     db.prepare("UPDATE rooms SET map_notation_enabled = ? WHERE id = ?").run(body.mapNotationEnabled ? 1 : 0, roomId);
+  if (body.musicEnabled !== undefined) {
+    db.prepare("UPDATE rooms SET music_enabled = ? WHERE id = ?").run(body.musicEnabled ? 1 : 0, roomId);
+    if (!body.musicEnabled && currentRoom.music_enabled) pauseRoomAudio(roomId);
+  }
   const easterEggMessages = [
     firstCalendarEnable ? recordSystemMessage(roomId, req.account!.id, CALENDAR_STRICT_TIME_EGG_MESSAGE) : undefined,
     firstMapNotationEnable ? recordSystemMessage(roomId, req.account!.id, MAP_NOTATION_ROAD_EGG_MESSAGE) : undefined

@@ -82,7 +82,15 @@ function requireGm(req: AuthedRequest, res: express.Response) {
     res.status(403).json({ error: "Only the room GM can manage shared audio." });
     return;
   }
+  if (!roomMusicEnabled(roomId)) {
+    res.status(409).json({ error: "Music playback is not enabled for this room." });
+    return;
+  }
   return roomId;
+}
+
+export function roomMusicEnabled(roomId: number) {
+  return Boolean(one<{ music_enabled: number }>("SELECT music_enabled FROM rooms WHERE id = ?", roomId)?.music_enabled);
 }
 
 function removeUpload(file?: Express.Multer.File) {
@@ -133,9 +141,16 @@ function savePlayback(roomId: number, state: Omit<AudioPlaybackState, "updatedAt
   return playback;
 }
 
+export function pauseRoomAudio(roomId: number) {
+  const current = storedPlayback(roomId);
+  const playback = savePlayback(roomId, { ...current, playing: false });
+  broadcastRoom(roomId, { type: "audio-playback", playback });
+}
+
 audioRouter.get("/rooms/:roomId/audio", requireAuth, (req: AuthedRequest, res) => {
   const roomId = Number(req.params.roomId);
   if (!roomRole(req.account!.id, roomId)) return res.status(404).json({ error: "Room not found." });
+  if (!roomMusicEnabled(roomId)) return res.status(409).json({ error: "Music playback is not enabled for this room." });
   const tracks = all<AudioRow>(
     `SELECT id, room_id, kind, filename, stored_name, mime_type, artist, title, metadata_loaded, size, created_at
      FROM media WHERE room_id = ? AND kind = 'audio' ORDER BY id`,

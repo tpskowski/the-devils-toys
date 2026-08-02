@@ -89,6 +89,7 @@ import { useHoverTip } from "./HoverTip";
 import { mediaLabel } from "./media-label";
 import { describeTraits } from "@devils-toys/shared";
 import { rollBodyParts } from "./weapon-roll";
+import { ThemePicker } from "./ThemePicker";
 interface SystemStatus {
   id: SystemId;
   name: string;
@@ -133,8 +134,23 @@ const themeNames: Record<ThemeId, string> = {
   digital: "Digital Future",
   used: "Used Universe",
   grim: "Grim Adventure",
-  shinji: "Get in the VTT Shinji"
+  shinji: "Get in the VTT Shinji",
+  "production-type": "Production Type"
 };
+
+function emptyRoomAudio(): RoomAudioState {
+  return {
+    tracks: [],
+    playback: {
+      trackId: null,
+      playing: false,
+      position: 0,
+      repeat: "off",
+      shuffle: false,
+      updatedAt: new Date(0).toISOString()
+    }
+  };
+}
 
 export function App() {
   const [status, setStatus] = useState<Status>();
@@ -278,6 +294,7 @@ function Workspace({ account, status, onLogout }: { account: Account; status: St
   const [tablesPrompt, setTablesPrompt] = useState(false);
   const [checkingTables, setCheckingTables] = useState(false);
   const [managementOpen, setManagementOpen] = useState(false);
+  const [roomThemePreview, setRoomThemePreview] = useState<ThemeId>();
   // Bumped when a player picks their own theme, to re-read what is stored.
   const [themeChoiceRevision, setThemeChoiceRevision] = useState(0);
 
@@ -291,6 +308,9 @@ function Workspace({ account, status, onLogout }: { account: Account; status: St
   useEffect(() => {
     loadRooms();
   }, []);
+  useEffect(() => {
+    setRoomThemePreview(undefined);
+  }, [selectedId]);
 
   // Only the accounts that see the link need to know whether the editor is up.
   const loadTablesApp = useCallback(async () => {
@@ -321,10 +341,9 @@ function Workspace({ account, status, onLogout }: { account: Account; status: St
     () => (active ? readPersonalTheme(browserStorage, active.id) : undefined),
     [active?.id, themeChoiceRevision]
   );
+  const displayedTheme = roomThemePreview ?? effectiveTheme(active?.theme, personalTheme);
   return (
-    <main
-      className={`workspace theme-${effectiveTheme(active?.theme, personalTheme)}${railCollapsed ? " rail-collapsed" : ""}`}
-    >
+    <main className={`workspace theme-${displayedTheme}${railCollapsed ? " rail-collapsed" : ""}`}>
       <aside className={`rail ${menuOpen ? "rail-open" : ""}`}>
         <button
           className="brand"
@@ -483,6 +502,7 @@ function Workspace({ account, status, onLogout }: { account: Account; status: St
           accountId={account.id}
           hasGroupPage={status.systems.find((system) => system.id === active.system)?.groupPage ?? false}
           onRoomChange={loadRooms}
+          onRoomThemePreview={setRoomThemePreview}
           onCreatePlayer={() => setShowPlayer(true)}
           personalTheme={personalTheme}
           onPersonalTheme={(theme) => {
@@ -609,6 +629,7 @@ function TableRoom({
   accountId,
   hasGroupPage,
   onRoomChange,
+  onRoomThemePreview,
   onCreatePlayer,
   personalTheme,
   onPersonalTheme
@@ -619,6 +640,7 @@ function TableRoom({
   accountId: number;
   hasGroupPage: boolean;
   onRoomChange: () => void;
+  onRoomThemePreview: (theme: ThemeId | undefined) => void;
   onCreatePlayer: () => void;
   personalTheme: ThemeId | undefined;
   onPersonalTheme: (theme: ThemeId | undefined) => void;
@@ -637,17 +659,7 @@ function TableRoom({
   const [media, setMedia] = useState<RoomMediaState>({ map: null, scene: null, references: [] });
   const [mediaOpen, setMediaOpen] = useState(false);
   const [pings, setPings] = useState<ScenePing[]>([]);
-  const [audio, setAudio] = useState<RoomAudioState>({
-    tracks: [],
-    playback: {
-      trackId: null,
-      playing: false,
-      position: 0,
-      repeat: "off",
-      shuffle: false,
-      updatedAt: new Date(0).toISOString()
-    }
-  });
+  const [audio, setAudio] = useState<RoomAudioState>(emptyRoomAudio);
   const [audioOpen, setAudioOpen] = useState(false);
   const [npcOpen, setNpcOpen] = useState(false);
   const [spawnedOpen, setSpawnedOpen] = useState(false);
@@ -672,6 +684,9 @@ function TableRoom({
   const [trackerOpen, setTrackerOpen] = useState(true);
 
   const socketRef = useRef<WebSocket | null>(null);
+  // Requests cannot be cancelled; a room switch or disabling music makes every
+  // earlier result irrelevant and prevents it from restoring a cleared player.
+  const audioLoadGeneration = useRef(0);
   // The dock owns the audio element; the playlist needs its live position so its
   // commands do not seek the room back to the last command's position.
   const audioPosition = useRef(0);
@@ -703,8 +718,13 @@ function TableRoom({
     setMedia(next);
   }
 
-  async function loadAudio() {
-    setAudio(await api<RoomAudioState>(`/api/rooms/${room.id}/audio`));
+  async function loadAudio(generation = audioLoadGeneration.current) {
+    try {
+      const next = await api<RoomAudioState>(`/api/rooms/${room.id}/audio`);
+      if (audioLoadGeneration.current === generation) setAudio(next);
+    } catch {
+      if (audioLoadGeneration.current === generation) setAudio(emptyRoomAudio());
+    }
   }
 
   async function loadEncounters() {
@@ -762,11 +782,19 @@ function TableRoom({
   useEffect(() => {
     load();
     loadMedia();
-    loadAudio();
     loadEncounters();
     loadSheetDefinitions();
     setGroupView(defaultGroupView(room.system));
   }, [room.id]);
+  useEffect(() => {
+    const generation = ++audioLoadGeneration.current;
+    if (!detail || detail.room.id !== room.id) return;
+    if (detail.room.musicEnabled) void loadAudio(generation);
+    else {
+      setAudio(emptyRoomAudio());
+      setAudioOpen(false);
+    }
+  }, [room.id, detail?.room.musicEnabled]);
   useEffect(() => {
     let stopped = false;
     let retry: number;
@@ -887,7 +915,7 @@ function TableRoom({
             <FileText />
           </button>
 
-          {(detail.room.role === "gm" || audio.tracks.length > 0) && (
+          {detail.room.musicEnabled && (detail.room.role === "gm" || audio.tracks.length > 0) && (
             <button className="icon-button" onClick={() => setAudioOpen(true)} title="Shared audio">
               <Music />
             </button>
@@ -1122,7 +1150,7 @@ function TableRoom({
             onClose={() => setMediaOpen(false)}
           />
         ))}
-      {audioOpen && (
+      {audioOpen && detail.room.musicEnabled && (
         <AudioModal
           roomId={room.id}
           audio={audio}
@@ -1204,17 +1232,21 @@ function TableRoom({
       )}
       {settingsOpen && (
         <RoomSettings
-          room={room}
+          room={detail.room}
           isAdmin={isAdmin}
           onChanged={async () => {
             await load();
             await onRoomChange();
           }}
           onDeleted={onRoomChange}
-          onClose={() => setSettingsOpen(false)}
+          onThemePreview={onRoomThemePreview}
+          onClose={() => {
+            setSettingsOpen(false);
+            onRoomThemePreview(undefined);
+          }}
         />
       )}
-      {audio.tracks.length > 0 && (
+      {detail.room.musicEnabled && audio.tracks.length > 0 && (
         <AudioDock
           audio={audio}
           isGm={detail.room.role === "gm"}
@@ -1711,17 +1743,20 @@ function RoomSettings({
   isAdmin,
   onChanged,
   onDeleted,
+  onThemePreview,
   onClose
 }: {
   room: RoomSummary;
   isAdmin: boolean;
   onChanged: () => void | Promise<void>;
   onDeleted: () => void | Promise<void>;
+  onThemePreview: (theme: ThemeId) => void;
   onClose: () => void;
 }) {
   const [theme, setTheme] = useState(room.theme);
   const [calendarEnabled, setCalendarEnabled] = useState(room.calendarEnabled);
   const [mapNotationEnabled, setMapNotationEnabled] = useState(room.mapNotationEnabled);
+  const [musicEnabled, setMusicEnabled] = useState(room.musicEnabled);
   const [confirmName, setConfirmName] = useState("");
   const [error, setError] = useState("");
 
@@ -1730,7 +1765,7 @@ function RoomSettings({
     try {
       await api(`/api/rooms/${room.id}`, {
         method: "PATCH",
-        body: JSON.stringify({ theme, calendarEnabled, mapNotationEnabled })
+        body: JSON.stringify({ theme, calendarEnabled, mapNotationEnabled, musicEnabled })
       });
       await onChanged();
       onClose();
@@ -1765,37 +1800,54 @@ function RoomSettings({
   return (
     <Modal title="Room settings" onClose={onClose}>
       <div className="settings-list">
-        <label>
-          Theme
-          <select value={theme} onChange={(event) => setTheme(event.target.value as ThemeId)}>
-            {Object.entries(themeNames).map(([id, name]) => (
-              <option key={id} value={id}>
-                {name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <p className="modal-intro">The game system is fixed as {room.system}. Themes can change at any time.</p>
-        <label className="toggle-row">
-          <input
-            type="checkbox"
-            checked={calendarEnabled}
-            onChange={(event) => setCalendarEnabled(event.target.checked)}
+        <div className="theme-field">
+          <span>Theme</span>
+          <ThemePicker
+            value={theme}
+            names={themeNames}
+            onChange={(nextTheme) => {
+              setTheme(nextTheme);
+              onThemePreview(nextTheme);
+            }}
           />
-          <span>
+        </div>
+        <p className="modal-intro">The game system is fixed as {room.system}. Themes can change at any time.</p>
+        <label className={`toggle-row ${calendarEnabled ? "enabled" : ""}`}>
+          <span className="toggle-copy">
             <strong>Calendar</strong>
             <small>Show the shared in-game calendar to everyone in this room.</small>
           </span>
+          <span className="toggle-control">
+            <input
+              type="checkbox"
+              checked={calendarEnabled}
+              onChange={(event) => setCalendarEnabled(event.target.checked)}
+            />
+            <span aria-hidden="true" />
+          </span>
         </label>
-        <label className="toggle-row">
-          <input
-            type="checkbox"
-            checked={mapNotationEnabled}
-            onChange={(event) => setMapNotationEnabled(event.target.checked)}
-          />
-          <span>
+        <label className={`toggle-row ${mapNotationEnabled ? "enabled" : ""}`}>
+          <span className="toggle-copy">
             <strong>Map notation</strong>
             <small>Let everyone draw, label, and mark up maps together.</small>
+          </span>
+          <span className="toggle-control">
+            <input
+              type="checkbox"
+              checked={mapNotationEnabled}
+              onChange={(event) => setMapNotationEnabled(event.target.checked)}
+            />
+            <span aria-hidden="true" />
+          </span>
+        </label>
+        <label className={`toggle-row ${musicEnabled ? "enabled" : ""}`}>
+          <span className="toggle-copy">
+            <strong>Music playback</strong>
+            <small>Show shared music controls and playback to everyone in this room.</small>
+          </span>
+          <span className="toggle-control">
+            <input type="checkbox" checked={musicEnabled} onChange={(event) => setMusicEnabled(event.target.checked)} />
+            <span aria-hidden="true" />
           </span>
         </label>
         {error && <p className="form-error">{error}</p>}

@@ -22,6 +22,7 @@ await runSmoke(
       201
     );
     const roomId = room.body.room.id;
+    assert.equal(room.body.room.musicEnabled, false);
     const invitation = await json(
       `/api/rooms/${roomId}/invitations`,
       { method: "POST", headers: gmJson, body: JSON.stringify({ username: "AudioPlayer" }) },
@@ -30,6 +31,14 @@ await runSmoke(
     const player = await redeem(invitation.body.invitation.token, "audio-player-password");
     const playerCookie = player.cookie;
     const playerJson = player.headers;
+
+    await track(roomId, gmCookie, new File([mp3], "disabled.mp3", { type: "audio/mpeg" }), 409);
+    await json(`/api/rooms/${roomId}/audio`, { headers: gmJson }, 409);
+    await json(
+      `/api/rooms/${roomId}`,
+      { method: "PATCH", headers: gmJson, body: JSON.stringify({ musicEnabled: true }) },
+      204
+    );
 
     const uploaded = await track(roomId, gmCookie, new File([mp3], "derelict-signal.mp3", { type: "audio/mpeg" }));
     const first = uploaded.body.track;
@@ -68,6 +77,33 @@ await runSmoke(
     assert.ok(
       lateJoin.body.playback.position >= 13,
       `Expected derived position, got ${lateJoin.body.playback.position}`
+    );
+
+    await json(
+      `/api/rooms/${roomId}`,
+      { method: "PATCH", headers: gmJson, body: JSON.stringify({ musicEnabled: false }) },
+      204
+    );
+    const pausedEvent = await waitFor(
+      playerEvents,
+      (event) => event.type === "audio-playback" && event.playback.playing === false,
+      "disabled music pause",
+      { latest: true }
+    );
+    assert.equal(pausedEvent.playback.trackId, first.id);
+    await json(`/api/rooms/${roomId}/audio`, { headers: playerJson }, 409);
+    assert.equal((await fetch(`${base}${first.url}`, { headers: { cookie: playerCookie } })).status, 404);
+
+    await json(
+      `/api/rooms/${roomId}`,
+      { method: "PATCH", headers: gmJson, body: JSON.stringify({ musicEnabled: true }) },
+      204
+    );
+    const restored = await json(`/api/rooms/${roomId}/audio`, { headers: playerJson });
+    assert.equal(restored.body.playback.playing, false);
+    assert.deepEqual(
+      restored.body.tracks.map((item) => item.id),
+      [first.id]
     );
 
     await json(`/api/rooms/${roomId}/audio/${first.id}`, { method: "DELETE", headers: { cookie: gmCookie } }, 204);

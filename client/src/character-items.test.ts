@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { CharacterItem, CharacterListDefinition } from "@devils-toys/shared";
-import { characterItemsForSlot, slotClassification, weaponTraitSuggestions } from "./character-items";
+import { allWeapons, characterItemsForSlot, slotClassification, weaponTraitSuggestions } from "./character-items";
 
 const list: CharacterListDefinition = {
   key: "augmentations",
@@ -101,5 +101,34 @@ describe("what a filled slot holds", () => {
 
   it("offers the traits this system's own weapons use", () => {
     expect(weaponTraitSuggestions([rifle, item("Bedroll")])).toEqual(["bulky", "mid/long-range"]);
+  });
+});
+
+describe("the catalogue's own all-weapons table", () => {
+  const item = (name: string, category: string, weapon: boolean) =>
+    ({
+      id: `monolith/${name.toLocaleLowerCase()}`,
+      category,
+      name,
+      spec: "",
+      detail: "",
+      cost: "1",
+      bulky: false,
+      weapon,
+      label: name
+    }) as CharacterItem;
+
+  it("gathers every weapon the list holds, whatever the book filed it under", () => {
+    const stock = [
+      item("Rifle", "STANDARD WEAPONS", true),
+      item("Rope", "GEAR", false),
+      item("Sledgehammer", "TOOLS", true),
+      item("Ghostglass Sword", "GEAR PACKS", true)
+    ];
+    expect(allWeapons(stock).map((entry) => entry.name)).toEqual(["Ghostglass Sword", "Rifle", "Sledgehammer"]);
+  });
+
+  it("says nothing for a list that holds no weapon", () => {
+    expect(allWeapons([item("Rope", "GEAR", false)])).toEqual([]);
   });
 });

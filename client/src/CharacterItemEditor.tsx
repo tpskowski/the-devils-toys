@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import { Check, Swords, X } from "lucide-react";
 import type { CharacterItem, ItemClassification, SlotWeaponDetail, WeaponRangeRules } from "@devils-toys/shared";
 import { classifyItemLabel, UNKNOWN_RANGE } from "@devils-toys/shared";
+import { ALL_WEAPONS, allWeapons } from "./character-items";
 
 /** Traits are held as text while being edited, so a half-typed comma is not a trait. */
 function parseTraits(value: string) {
@@ -56,6 +57,9 @@ export function CharacterItemEditor({
   const panel = useRef<HTMLDivElement>(null);
   const traitListId = useId();
   const categories = [...new Set(items.map((item) => item.category))];
+  // The catalogue's own all-weapons table, above the headings the book files
+  // them under, since a weapon is what someone is usually reaching for.
+  const weapons = allWeapons(items);
   const chosen = items.find((item) => item.label === value);
 
   const read: ItemClassification = chosen
@@ -127,6 +131,16 @@ export function CharacterItemEditor({
             aria-label={`Choose an item for ${slotName}`}
           >
             <option value="">Choose an item…</option>
+            {weapons.length > 0 && (
+              <optgroup label={ALL_WEAPONS}>
+                {weapons.map((item) => (
+                  <option value={item.label} key={`all-${item.id}`}>
+                    {item.label}
+                    {item.cost ? ` — ${item.cost}` : ""}
+                  </option>
+                ))}
+              </optgroup>
+            )}
             {categories.map((category) => (
               <optgroup label={category} key={category}>
                 {items

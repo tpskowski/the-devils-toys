@@ -132,15 +132,23 @@ describe("the committed item catalogues", () => {
   it("records what Monolith's gear is, so a change to it has to be deliberate", () => {
     const lists = readItemCatalog("monolith").lists;
     // The book's two generic rows — "Heavy Weapons", "Stationary Weapons" — were
-    // retired in favour of the four weapons their own descriptions name.
-    expect(lists.equipment).toHaveLength(81);
+    // retired in favour of the four weapons their own descriptions name, and the
+    // weapons the book only names in a background or a gear pack were added.
+    expect(lists.equipment).toHaveLength(127);
     expect(lists.augmentations).toHaveLength(16);
     expect(
       Object.values(lists)
         .flat()
         .filter((item) => item.weapon)
-    ).toHaveLength(41);
-    expect(readItemCatalog("monolith").retired).toEqual(["monolith/heavy-weapons", "monolith/stationary-weapons"]);
+    ).toHaveLength(87);
+    expect(readItemCatalog("monolith").retired).toEqual([
+      "monolith/heavy-weapons",
+      "monolith/stationary-weapons",
+      // The armoury already prices a Shotgun with the same reach, and a
+      // Collapsible Baton is a Retractable Baton under another name.
+      "monolith/old-shotgun",
+      "monolith/collapsible-baton"
+    ]);
   });
 
   it("has nothing to say for the systems whose gear tables are not read yet", () => {

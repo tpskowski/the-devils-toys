@@ -253,6 +253,61 @@ await runSmoke(
       "and the Maps tab still has not revealed it"
     );
 
+    // Map tokens use normalized coordinates so they stay attached to the same
+    // place as the image responds to different screens. Control is identical to
+    // the zone board: a player moves their character, while the GM moves NPCs.
+    await json(
+      `/api/rooms/${roomId}/encounters/${encounterId}/combatants/${partyMember.id}`,
+      { method: "PATCH", headers: playerJson, body: JSON.stringify({ mapPosition: { x: 0.25, y: 0.6 } }) },
+      200
+    );
+    await json(
+      `/api/rooms/${roomId}/encounters/${encounterId}/combatants/${seenGoblin.id}`,
+      { method: "PATCH", headers: gmJson, body: JSON.stringify({ mapPosition: { x: 0.7, y: 0.3 } }) },
+      200
+    );
+    await json(
+      `/api/rooms/${roomId}/encounters/${encounterId}/combatants/${seenGoblin.id}`,
+      { method: "PATCH", headers: playerJson, body: JSON.stringify({ mapPosition: { x: 0.4, y: 0.4 } }) },
+      403
+    );
+    await json(
+      `/api/rooms/${roomId}/encounters/${encounterId}/combatants/${partyMember.id}`,
+      { method: "PATCH", headers: interloper.headers, body: JSON.stringify({ mapPosition: { x: 0.4, y: 0.4 } }) },
+      404
+    );
+    await json(
+      `/api/rooms/${roomId}/encounters/${encounterId}/combatants/${partyMember.id}`,
+      { method: "PATCH", headers: gmJson, body: JSON.stringify({ mapPosition: { x: 1.1, y: 0.4 } }) },
+      400
+    );
+    const tokenMap = await json(`/api/rooms/${roomId}/encounters/${encounterId}`, {
+      headers: { cookie: playerCookie }
+    });
+    assert.deepEqual(
+      tokenMap.body.encounter.combatants.find((entry) => entry.id === partyMember.id).mapPosition,
+      { x: 0.25, y: 0.6 },
+      "the whole table sees a character's map position"
+    );
+    assert.deepEqual(
+      tokenMap.body.encounter.combatants.find((entry) => entry.id === seenGoblin.id).mapPosition,
+      { x: 0.7, y: 0.3 },
+      "the whole table sees an NPC's map position without seeing its hidden statistics"
+    );
+    await json(
+      `/api/rooms/${roomId}/encounters/${encounterId}/combatants/${seenGoblin.id}`,
+      { method: "PATCH", headers: gmJson, body: JSON.stringify({ mapPosition: null }) },
+      200
+    );
+    const clearedTokenMap = await json(`/api/rooms/${roomId}/encounters/${encounterId}`, {
+      headers: { cookie: gmCookie }
+    });
+    assert.equal(
+      clearedTokenMap.body.encounter.combatants.find((entry) => entry.id === seenGoblin.id).mapPosition,
+      null,
+      "clearing a map position returns the combatant to the roster"
+    );
+
     // The encounter tab shows either a map or a board of zones, and the GM says
     // which. Zones read left to right in the order they were made.
     assert.equal(seen.display, "map", "an encounter starts on its map");

@@ -449,7 +449,7 @@
         "weapon": true,
         "damage": "2D4",
         "traits": [
-          "Cryo"
+          "cryo"
         ],
         "range": "Melee",
         "label": "Pulse Axe (2D4 Cryo)"
@@ -1108,6 +1108,705 @@
         "bulky": false,
         "weapon": false,
         "label": "Starship Fuel (1 tank)"
+      },
+      {
+        "id": "monolith/combat-knife",
+        "category": "STARTING GEAR",
+        "name": "Combat Knife",
+        "spec": "D6",
+        "detail": "",
+        "cost": "50",
+        "bulky": false,
+        "weapon": true,
+        "damage": "D6",
+        "range": "Melee",
+        "label": "Combat Knife (D6)"
+      },
+      {
+        "id": "monolith/crowbar",
+        "category": "STARTING GEAR",
+        "name": "Crowbar",
+        "spec": "D6",
+        "detail": "",
+        "cost": "50",
+        "bulky": false,
+        "weapon": true,
+        "damage": "D6",
+        "range": "Melee",
+        "label": "Crowbar (D6)"
+      },
+      {
+        "id": "monolith/short-rifle",
+        "category": "STARTING GEAR",
+        "name": "Short Rifle",
+        "spec": "D6, bulky",
+        "detail": "",
+        "cost": "200",
+        "bulky": true,
+        "weapon": true,
+        "damage": "D6",
+        "traits": [
+          "bulky"
+        ],
+        "range": "mid-range",
+        "label": "Short Rifle (D6, bulky)"
+      },
+      {
+        "id": "monolith/plasma-knife",
+        "category": "STARTING GEAR",
+        "name": "Plasma-Knife",
+        "spec": "D6 thermal, concealable",
+        "detail": "",
+        "cost": "100",
+        "bulky": false,
+        "weapon": true,
+        "damage": "D6",
+        "traits": [
+          "thermal",
+          "concealable"
+        ],
+        "range": "Melee",
+        "label": "Plasma-Knife (D6 thermal, concealable)"
+      },
+      {
+        "id": "monolith/bloody-scalpel",
+        "category": "STARTING GEAR",
+        "name": "Bloody Scalpel",
+        "spec": "D6",
+        "detail": "",
+        "cost": "25",
+        "bulky": false,
+        "weapon": true,
+        "damage": "D6",
+        "range": "Melee",
+        "label": "Bloody Scalpel (D6)"
+      },
+      {
+        "id": "monolith/silver-plated-blaster",
+        "category": "STARTING GEAR",
+        "name": "Silver-Plated Blaster",
+        "spec": "d6",
+        "detail": "",
+        "cost": "400",
+        "bulky": false,
+        "weapon": true,
+        "damage": "d6",
+        "range": "short-range",
+        "label": "Silver-Plated Blaster (d6)"
+      },
+      {
+        "id": "monolith/retractable-baton",
+        "category": "STARTING GEAR",
+        "name": "Retractable Baton",
+        "spec": "D6, concealable",
+        "detail": "",
+        "cost": "100",
+        "bulky": false,
+        "weapon": true,
+        "damage": "D6",
+        "traits": [
+          "concealable"
+        ],
+        "range": "Melee",
+        "label": "Retractable Baton (D6, concealable)"
+      },
+      {
+        "id": "monolith/folding-vibro-shank",
+        "category": "STARTING GEAR",
+        "name": "Folding Vibro-Shank",
+        "spec": "D6, Deadly, Shock, concealable",
+        "detail": "A five-inch blade that does absolutely devastating damage. Folds up for concealing. Very-illegal.",
+        "cost": "300",
+        "bulky": false,
+        "weapon": true,
+        "damage": "D6",
+        "traits": [
+          "Deadly",
+          "Shock",
+          "concealable"
+        ],
+        "range": "Melee",
+        "label": "Folding Vibro-Shank (D6, Deadly, Shock, concealable)"
+      },
+      {
+        "id": "monolith/supercharged-carbine-repeater",
+        "category": "STARTING GEAR",
+        "name": "Supercharged Carbine Repeater",
+        "spec": "D8 Thermal and d6 Cryo, bulky",
+        "detail": "Custom modded to switch between thermal or sub-zero energy rounds. Switching takes 1 turn.",
+        "cost": "1,000",
+        "bulky": true,
+        "weapon": true,
+        "damage": "D8",
+        "traits": [
+          "thermal",
+          "d6 cryo",
+          "bulky"
+        ],
+        "range": "mid-range",
+        "label": "Supercharged Carbine Repeater (D8 Thermal and d6 Cryo, bulky)"
+      },
+      {
+        "id": "monolith/jade-iron-machete",
+        "category": "STARTING GEAR",
+        "name": "Jade-Iron Machete",
+        "spec": "D8, Deadly",
+        "detail": "3 feet of marbled green metal with a wicked cutting edge. Expert craftsmanship and quite valuable.",
+        "cost": "500",
+        "bulky": false,
+        "weapon": true,
+        "damage": "D8",
+        "traits": [
+          "Deadly"
+        ],
+        "range": "Melee",
+        "label": "Jade-Iron Machete (D8, Deadly)"
+      },
+      {
+        "id": "monolith/mass-untangler",
+        "category": "STARTING GEAR",
+        "name": "Mass Untangler",
+        "spec": "D8, illegal, critical damage instantly disintegrates organics if they fail a STR save",
+        "detail": "",
+        "cost": "800",
+        "bulky": false,
+        "weapon": true,
+        "damage": "D8",
+        "traits": [
+          "illegal",
+          "critical damage instantly disintegrates organics if they fail a STR save"
+        ],
+        "range": "close/short-range",
+        "label": "Mass Untangler (D8, illegal, critical damage instantly disintegrates organics if they fail a STR save)"
+      },
+      {
+        "id": "monolith/billhook",
+        "category": "STARTING GEAR",
+        "name": "Billhook",
+        "spec": "D6, bulky",
+        "detail": "",
+        "cost": "250",
+        "bulky": true,
+        "weapon": true,
+        "damage": "D6",
+        "traits": [
+          "bulky"
+        ],
+        "range": "Melee",
+        "label": "Billhook (D6, bulky)"
+      },
+      {
+        "id": "monolith/shard-sprayer",
+        "category": "STARTING GEAR",
+        "name": "Shard-Sprayer",
+        "spec": "D8 blast, bulky",
+        "detail": "",
+        "cost": "600",
+        "bulky": true,
+        "weapon": true,
+        "damage": "D8",
+        "traits": [
+          "blast",
+          "bulky"
+        ],
+        "range": "close/short-range",
+        "label": "Shard-Sprayer (D8 blast, bulky)"
+      },
+      {
+        "id": "monolith/smart-grenade",
+        "category": "STARTING GEAR",
+        "name": "Smart Grenade",
+        "spec": "d6 blast, thermal, grappling",
+        "detail": "",
+        "cost": "200",
+        "bulky": false,
+        "weapon": true,
+        "damage": "d6",
+        "traits": [
+          "blast",
+          "thermal",
+          "grappling"
+        ],
+        "range": "short-range",
+        "label": "Smart Grenade (d6 blast, thermal, grappling)"
+      },
+      {
+        "id": "monolith/trick-axe",
+        "category": "STARTING GEAR",
+        "name": "Trick-Axe",
+        "spec": "D8, bulky, sweep",
+        "detail": "Retracts to 3 feet in length for D6.",
+        "cost": "400",
+        "bulky": true,
+        "weapon": true,
+        "damage": "D8",
+        "traits": [
+          "bulky",
+          "sweep"
+        ],
+        "range": "Melee",
+        "label": "Trick-Axe (D8, bulky, sweep)"
+      },
+      {
+        "id": "monolith/ghostglass-sword",
+        "category": "GEAR PACKS",
+        "name": "Ghostglass Sword",
+        "spec": "D8 Deadly",
+        "detail": "",
+        "cost": "600",
+        "bulky": false,
+        "weapon": true,
+        "damage": "D8",
+        "traits": [
+          "Deadly"
+        ],
+        "range": "Melee",
+        "label": "Ghostglass Sword (D8 Deadly)"
+      },
+      {
+        "id": "monolith/hook-blade",
+        "category": "GEAR PACKS",
+        "name": "Hook-blade",
+        "spec": "D10",
+        "detail": "",
+        "cost": "1,000",
+        "bulky": false,
+        "weapon": true,
+        "damage": "D10",
+        "range": "Melee",
+        "label": "Hook-blade (D10)"
+      },
+      {
+        "id": "monolith/ice-rifle",
+        "category": "GEAR PACKS",
+        "name": "Ice Rifle",
+        "spec": "D8 cryo, bulky",
+        "detail": "",
+        "cost": "800",
+        "bulky": true,
+        "weapon": true,
+        "damage": "D8",
+        "traits": [
+          "cryo",
+          "bulky"
+        ],
+        "range": "mid/long-range",
+        "label": "Ice Rifle (D8 cryo, bulky)"
+      },
+      {
+        "id": "monolith/sonic-hatchet",
+        "category": "GEAR PACKS",
+        "name": "Sonic Hatchet",
+        "spec": "D6, exploding",
+        "detail": "",
+        "cost": "600",
+        "bulky": false,
+        "weapon": true,
+        "damage": "D6",
+        "traits": [
+          "exploding"
+        ],
+        "range": "Melee",
+        "label": "Sonic Hatchet (D6, exploding)"
+      },
+      {
+        "id": "monolith/furnace-pick",
+        "category": "GEAR PACKS",
+        "name": "Furnace-Pick",
+        "spec": "D8 thermal, bulky",
+        "detail": "",
+        "cost": "400",
+        "bulky": true,
+        "weapon": true,
+        "damage": "D8",
+        "traits": [
+          "thermal",
+          "bulky"
+        ],
+        "range": "Melee",
+        "label": "Furnace-Pick (D8 thermal, bulky)"
+      },
+      {
+        "id": "monolith/beam-axe",
+        "category": "GEAR PACKS",
+        "name": "Beam-axe",
+        "spec": "D8 thermal",
+        "detail": "",
+        "cost": "800",
+        "bulky": false,
+        "weapon": true,
+        "damage": "D8",
+        "traits": [
+          "thermal"
+        ],
+        "range": "Melee",
+        "label": "Beam-axe (D8 thermal)"
+      },
+      {
+        "id": "monolith/vibro-saw",
+        "category": "GEAR PACKS",
+        "name": "Vibro-saw",
+        "spec": "D8 exploding, bulky",
+        "detail": "",
+        "cost": "900",
+        "bulky": true,
+        "weapon": true,
+        "damage": "D8",
+        "traits": [
+          "exploding",
+          "bulky"
+        ],
+        "range": "Melee",
+        "label": "Vibro-saw (D8 exploding, bulky)"
+      },
+      {
+        "id": "monolith/laser-pistol",
+        "category": "GEAR PACKS",
+        "name": "Laser Pistol",
+        "spec": "D6",
+        "detail": "",
+        "cost": "100",
+        "bulky": false,
+        "weapon": true,
+        "damage": "D6",
+        "range": "close/short-range",
+        "label": "Laser Pistol (D6)"
+      },
+      {
+        "id": "monolith/curved-blade",
+        "category": "GEAR PACKS",
+        "name": "Curved Blade",
+        "spec": "D8",
+        "detail": "",
+        "cost": "500",
+        "bulky": false,
+        "weapon": true,
+        "damage": "D8",
+        "range": "Melee",
+        "label": "Curved Blade (D8)"
+      },
+      {
+        "id": "monolith/titanium-mace",
+        "category": "GEAR PACKS",
+        "name": "Titanium Mace",
+        "spec": "D8",
+        "detail": "",
+        "cost": "600",
+        "bulky": false,
+        "weapon": true,
+        "damage": "D8",
+        "range": "Melee",
+        "label": "Titanium Mace (D8)"
+      },
+      {
+        "id": "monolith/photon-coilgun",
+        "category": "GEAR PACKS",
+        "name": "Photon Coilgun",
+        "spec": "D8, Bulky, EMP",
+        "detail": "",
+        "cost": "900",
+        "bulky": true,
+        "weapon": true,
+        "damage": "D8",
+        "traits": [
+          "Bulky",
+          "EMP"
+        ],
+        "range": "short/mid-range",
+        "label": "Photon Coilgun (D8, Bulky, EMP)"
+      },
+      {
+        "id": "monolith/stun-rod",
+        "category": "GEAR PACKS",
+        "name": "Stun-Rod",
+        "spec": "D6, shock",
+        "detail": "",
+        "cost": "350",
+        "bulky": false,
+        "weapon": true,
+        "damage": "D6",
+        "traits": [
+          "shock"
+        ],
+        "range": "Melee",
+        "label": "Stun-Rod (D6, shock)"
+      },
+      {
+        "id": "monolith/electric-net",
+        "category": "GEAR PACKS",
+        "name": "Electric Net",
+        "spec": "D4 shock",
+        "detail": "",
+        "cost": "300",
+        "bulky": false,
+        "weapon": true,
+        "damage": "D4",
+        "traits": [
+          "shock"
+        ],
+        "range": "close-range",
+        "label": "Electric Net (D4 shock)"
+      },
+      {
+        "id": "monolith/dueling-sword",
+        "category": "GEAR PACKS",
+        "name": "Dueling Sword",
+        "spec": "D8",
+        "detail": "",
+        "cost": "500",
+        "bulky": false,
+        "weapon": true,
+        "damage": "D8",
+        "range": "Melee",
+        "label": "Dueling Sword (D8)"
+      },
+      {
+        "id": "monolith/fire-oil",
+        "category": "GEAR PACKS",
+        "name": "Fire Oil",
+        "spec": "D6 blast",
+        "detail": "",
+        "cost": "200",
+        "bulky": false,
+        "weapon": true,
+        "damage": "D6",
+        "traits": [
+          "blast"
+        ],
+        "range": "short-range",
+        "label": "Fire Oil (D6 blast)"
+      },
+      {
+        "id": "monolith/antique-sword",
+        "category": "GEAR PACKS",
+        "name": "Antique Sword",
+        "spec": "D6 Serrating",
+        "detail": "",
+        "cost": "800",
+        "bulky": false,
+        "weapon": true,
+        "damage": "D6",
+        "traits": [
+          "Serrating"
+        ],
+        "range": "Melee",
+        "label": "Antique Sword (D6 Serrating)"
+      },
+      {
+        "id": "monolith/astro-staff",
+        "category": "GEAR PACKS",
+        "name": "Astro-staff",
+        "spec": "D8, Sweep",
+        "detail": "",
+        "cost": "800",
+        "bulky": false,
+        "weapon": true,
+        "damage": "D8",
+        "traits": [
+          "Sweep"
+        ],
+        "range": "Melee",
+        "label": "Astro-staff (D8, Sweep)"
+      },
+      {
+        "id": "monolith/hail-blaster",
+        "category": "GEAR PACKS",
+        "name": "Hail Blaster",
+        "spec": "D6 cryo",
+        "detail": "",
+        "cost": "600",
+        "bulky": false,
+        "weapon": true,
+        "damage": "D6",
+        "traits": [
+          "cryo"
+        ],
+        "range": "short/mid-range",
+        "label": "Hail Blaster (D6 cryo)"
+      },
+      {
+        "id": "monolith/deluxe-blaster",
+        "category": "GEAR PACKS",
+        "name": "Deluxe Blaster",
+        "spec": "D8",
+        "detail": "",
+        "cost": "500",
+        "bulky": false,
+        "weapon": true,
+        "damage": "D8",
+        "range": "short/mid-range",
+        "label": "Deluxe Blaster (D8)"
+      },
+      {
+        "id": "monolith/knives",
+        "category": "GEAR PACKS",
+        "name": "Knives",
+        "spec": "D6",
+        "detail": "",
+        "cost": "100",
+        "bulky": false,
+        "weapon": true,
+        "damage": "D6",
+        "range": "Melee",
+        "label": "Knives (D6)"
+      },
+      {
+        "id": "monolith/pistols",
+        "category": "GEAR PACKS",
+        "name": "Pistols",
+        "spec": "D6",
+        "detail": "",
+        "cost": "100",
+        "bulky": false,
+        "weapon": true,
+        "damage": "D6",
+        "range": "close/short-range",
+        "label": "Pistols (D6)"
+      },
+      {
+        "id": "monolith/plasma-maul",
+        "category": "GEAR PACKS",
+        "name": "Plasma Maul",
+        "spec": "D8 thermal",
+        "detail": "",
+        "cost": "800",
+        "bulky": false,
+        "weapon": true,
+        "damage": "D8",
+        "traits": [
+          "thermal"
+        ],
+        "range": "Melee",
+        "label": "Plasma Maul (D8 thermal)"
+      },
+      {
+        "id": "monolith/slag-club",
+        "category": "GEAR PACKS",
+        "name": "Slag-club",
+        "spec": "D6",
+        "detail": "",
+        "cost": "300",
+        "bulky": false,
+        "weapon": true,
+        "damage": "D6",
+        "range": "Melee",
+        "label": "Slag-club (D6)"
+      },
+      {
+        "id": "monolith/sling-blade",
+        "category": "GEAR PACKS",
+        "name": "Sling Blade",
+        "spec": "D6, Sweep",
+        "detail": "",
+        "cost": "150",
+        "bulky": false,
+        "weapon": true,
+        "damage": "D6",
+        "traits": [
+          "Sweep"
+        ],
+        "range": "Melee",
+        "label": "Sling Blade (D6, Sweep)"
+      },
+      {
+        "id": "monolith/proto-steel-saber",
+        "category": "GEAR PACKS",
+        "name": "Proto-Steel Saber",
+        "spec": "D8",
+        "detail": "",
+        "cost": "400",
+        "bulky": false,
+        "weapon": true,
+        "damage": "D8",
+        "range": "Melee",
+        "label": "Proto-Steel Saber (D8)"
+      },
+      {
+        "id": "monolith/laserblade-gauntlet",
+        "category": "GEAR PACKS",
+        "name": "Laserblade Gauntlet",
+        "spec": "D6 Thermal",
+        "detail": "",
+        "cost": "400",
+        "bulky": false,
+        "weapon": true,
+        "damage": "D6",
+        "traits": [
+          "thermal"
+        ],
+        "range": "Melee",
+        "label": "Laserblade Gauntlet (D6 Thermal)"
+      },
+      {
+        "id": "monolith/brass-knuckles",
+        "category": "GEAR PACKS",
+        "name": "Brass Knuckles",
+        "spec": "D6",
+        "detail": "",
+        "cost": "100",
+        "bulky": false,
+        "weapon": true,
+        "damage": "D6",
+        "range": "Melee",
+        "label": "Brass Knuckles (D6)"
+      },
+      {
+        "id": "monolith/baton",
+        "category": "GEAR PACKS",
+        "name": "Baton",
+        "spec": "D6",
+        "detail": "",
+        "cost": "50",
+        "bulky": false,
+        "weapon": true,
+        "damage": "D6",
+        "range": "Melee",
+        "label": "Baton (D6)"
+      },
+      {
+        "id": "monolith/rusty-harpe",
+        "category": "GEAR PACKS",
+        "name": "Rusty Harpe",
+        "spec": "D8, Bulky",
+        "detail": "",
+        "cost": "350",
+        "bulky": true,
+        "weapon": true,
+        "damage": "D8",
+        "traits": [
+          "Bulky"
+        ],
+        "range": "Melee",
+        "label": "Rusty Harpe (D8, Bulky)"
+      },
+      {
+        "id": "monolith/hook-staff",
+        "category": "GEAR PACKS",
+        "name": "Hook Staff",
+        "spec": "D8, sweep",
+        "detail": "",
+        "cost": "400",
+        "bulky": false,
+        "weapon": true,
+        "damage": "D8",
+        "traits": [
+          "sweep"
+        ],
+        "range": "Melee",
+        "label": "Hook Staff (D8, sweep)"
+      },
+      {
+        "id": "monolith/cane",
+        "category": "GEAR PACKS",
+        "name": "Cane",
+        "spec": "D6",
+        "detail": "",
+        "cost": "50",
+        "bulky": false,
+        "weapon": true,
+        "damage": "D6",
+        "range": "Melee",
+        "label": "Cane (D6)"
       }
     ],
     "augmentations": [
@@ -1350,6 +2049,8 @@
   },
   "retired": [
     "monolith/heavy-weapons",
-    "monolith/stationary-weapons"
+    "monolith/stationary-weapons",
+    "monolith/old-shotgun",
+    "monolith/collapsible-baton"
   ]
 }

@@ -55,6 +55,8 @@ interface CombatantRow {
   acts_first_turn: number | null;
   sort_order: number;
   zone_id: number | null;
+  map_x: number | null;
+  map_y: number | null;
   hp_current: number | null;
   hp_max: number | null;
   statblock_json: string;
@@ -318,6 +320,13 @@ export function visibleEncounter(accountId: number, roomId: number, encounterId:
       sortOrder: row.sort_order,
       included: Boolean(row.included),
       zoneId: row.zone_id,
+      mapPosition:
+        row.map_x === null || row.map_y === null
+          ? null
+          : {
+              x: row.map_x,
+              y: row.map_y
+            },
       conditions: context.role === "gm" ? row.conditions : undefined
     };
     if (row.kind === "character") {
@@ -835,6 +844,11 @@ encounterRouter.patch(
         attributes: z.record(z.string(), z.number().int().min(0)).optional(),
         /** Which zone they are standing in, or null for none. */
         zoneId: z.number().int().positive().nullable().optional(),
+        /** Normalized coordinates on the encounter map, or null to return to its roster. */
+        mapPosition: z
+          .object({ x: z.number().min(0).max(1), y: z.number().min(0).max(1) })
+          .nullable()
+          .optional(),
         /** Monolith's mark for failing the save that follows a spent attribute. */
         criticalDamage: z.boolean().optional()
       })
@@ -849,9 +863,14 @@ encounterRouter.patch(
     if (context.role === "player") {
       const keys = Object.keys(parsed.data);
       const ownScores = keys.every(
-        (key) => key === "hpCurrent" || key === "attributes" || key === "zoneId" || key === "criticalDamage"
+        (key) =>
+          key === "hpCurrent" ||
+          key === "attributes" ||
+          key === "zoneId" ||
+          key === "mapPosition" ||
+          key === "criticalDamage"
       );
-      const placementOnly = keys.length === 1 && keys[0] === "zoneId";
+      const placementOnly = keys.length === 1 && (keys[0] === "zoneId" || keys[0] === "mapPosition");
       if (!ownScores || row.kind === "npc" || (row.kind === "hireling" && !placementOnly))
         return res.status(403).json({ error: "Only the room GM can manage encounters." });
       // Someone else's character is not theirs to touch, and is answered the way
@@ -918,6 +937,7 @@ encounterRouter.patch(
        acts_first_turn = CASE WHEN ? THEN ? ELSE acts_first_turn END, sort_order = COALESCE(?, sort_order), included = COALESCE(?, included),
        conditions = COALESCE(?, conditions), hp_current = CASE WHEN kind = 'npc' AND ? THEN ? ELSE hp_current END,
        zone_id = CASE WHEN ? THEN ? ELSE zone_id END,
+       map_x = CASE WHEN ? THEN ? ELSE map_x END, map_y = CASE WHEN ? THEN ? ELSE map_y END,
        updated_at = CURRENT_TIMESTAMP WHERE id = ? AND encounter_id = ?`
     ).run(
       values.name ?? null,
@@ -933,6 +953,10 @@ encounterRouter.patch(
       values.hpCurrent ?? null,
       values.zoneId !== undefined ? 1 : 0,
       values.zoneId ?? null,
+      values.mapPosition !== undefined ? 1 : 0,
+      values.mapPosition?.x ?? null,
+      values.mapPosition !== undefined ? 1 : 0,
+      values.mapPosition?.y ?? null,
       row.id,
       existing.encounter.id
     );

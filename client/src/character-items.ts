@@ -54,3 +54,19 @@ export function characterItemsForSlot(
   if (!slotType) return items;
   return items.filter((item) => !item.allowedSlotTypes?.length || item.allowedSlotTypes.includes(slotType));
 }
+
+/** What the catalogue's own all-weapons table is called in a picker. */
+export const ALL_WEAPONS = "ALL WEAPONS";
+
+/**
+ * Every weapon a list can hold, gathered into one table.
+ *
+ * The book files its weapons under eight headings — the armoury's four, plus the
+ * tools, explosives, and starting kits that turn out to hold weapons too — and
+ * finding one meant knowing which. This is derived rather than stored: a second
+ * copy in `items.json` would be 87 entries to keep in step, and would be wrong
+ * the first time one of them was corrected.
+ */
+export function allWeapons(items: readonly CharacterItem[]) {
+  return items.filter((item) => item.weapon).sort((left, right) => left.name.localeCompare(right.name));
+}

@@ -102,6 +102,64 @@ function seedJsonTableSetDatabase(directory: string) {
   legacy.close();
 }
 
+function seedFeatureFlagDatabase(directory: string) {
+  seedLegacyDatabase(directory);
+  const legacy = new DatabaseSync(path.join(directory, "devils-toys.sqlite"));
+  legacy.exec(`
+    ALTER TABLE rooms ADD COLUMN calendar_enabled INTEGER NOT NULL DEFAULT 0;
+    ALTER TABLE rooms ADD COLUMN calendar_json TEXT;
+    ALTER TABLE rooms ADD COLUMN map_notation_enabled INTEGER NOT NULL DEFAULT 0;
+    UPDATE rooms
+      SET calendar_enabled = 1,
+          calendar_json = '{"year":7}',
+          map_notation_enabled = 1;
+  `);
+  legacy.close();
+}
+
+function seedEncounterPlacementDatabase(directory: string) {
+  seedLegacyDatabase(directory);
+  const legacy = new DatabaseSync(path.join(directory, "devils-toys.sqlite"));
+  legacy.exec(`
+    CREATE TABLE encounters (
+      id INTEGER PRIMARY KEY,
+      room_id INTEGER NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
+      name TEXT NOT NULL,
+      active INTEGER NOT NULL DEFAULT 0,
+      media_id INTEGER,
+      notes TEXT NOT NULL DEFAULT '',
+      individual_initiative INTEGER NOT NULL DEFAULT 0,
+      created_by INTEGER NOT NULL REFERENCES accounts(id),
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE TABLE encounter_combatants (
+      id INTEGER PRIMARY KEY,
+      encounter_id INTEGER NOT NULL REFERENCES encounters(id) ON DELETE CASCADE,
+      kind TEXT NOT NULL,
+      character_id INTEGER,
+      npc_id INTEGER,
+      hireling_id TEXT,
+      name TEXT NOT NULL,
+      side TEXT NOT NULL DEFAULT 'enemies',
+      initiative INTEGER,
+      acts_first_turn INTEGER,
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      hp_current INTEGER,
+      hp_max INTEGER,
+      statblock_json TEXT NOT NULL DEFAULT '{}',
+      conditions TEXT NOT NULL DEFAULT '',
+      included INTEGER NOT NULL DEFAULT 1,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+    INSERT INTO encounters (id, room_id, name, created_by) VALUES (1, 1, 'Old encounter', 1);
+    INSERT INTO encounter_combatants (id, encounter_id, kind, hireling_id, name)
+      VALUES (1, 1, 'hireling', 'old-hireling', 'Old hireling');
+  `);
+  legacy.close();
+}
+
 /** Applies the real schema and migrations to `directory`, as a server start would. */
 async function openDatabase(directory: string) {
   process.env.DEVILS_TOYS_DATA_DIR = directory;
@@ -272,6 +330,43 @@ describe("database migrations", () => {
       { map_notation_enabled: 0 }
     ]);
     expect(tableNames(loaded)).toContain("map_notations");
+  });
+
+  it("adds responsive map positions without losing existing encounter combatants", async () => {
+    const directory = dataDir();
+    seedEncounterPlacementDatabase(directory);
+    const loaded = await openDatabase(directory);
+
+    const columns = loaded.all<{ name: string }>("PRAGMA table_info(encounter_combatants)").map(({ name }) => name);
+    expect(columns).toContain("map_x");
+    expect(columns).toContain("map_y");
+    expect(
+      loaded.all<{ name: string; map_x: number | null; map_y: number | null }>(
+        "SELECT name, map_x, map_y FROM encounter_combatants"
+      )
+    ).toEqual([{ name: "Old hireling", map_x: null, map_y: null }]);
+  });
+
+  it("preserves existing room features while adding disabled music playback", async () => {
+    const directory = dataDir();
+    seedFeatureFlagDatabase(directory);
+    const loaded = await openDatabase(directory);
+
+    expect(
+      loaded.all<{
+        calendar_enabled: number;
+        calendar_json: string | null;
+        map_notation_enabled: number;
+        music_enabled: number;
+      }>("SELECT calendar_enabled, calendar_json, map_notation_enabled, music_enabled FROM rooms")
+    ).toEqual([
+      {
+        calendar_enabled: 1,
+        calendar_json: '{"year":7}',
+        map_notation_enabled: 1,
+        music_enabled: 0
+      }
+    ]);
   });
 
   it("adds empty tag storage to existing custom table sets", async () => {
