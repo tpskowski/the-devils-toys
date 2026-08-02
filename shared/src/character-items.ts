@@ -260,6 +260,8 @@ export interface SlotWeaponDetail {
   damage?: string;
   /** Traits, replacing those read from the notation. */
   traits?: readonly string[];
+  /** Records that an empty traits list was intentionally chosen. */
+  traitsCleared?: boolean;
   /** Range, for a weapon whose book never states one. */
   range?: string;
   /** Free notes about this weapon, which no system parses. */
@@ -275,12 +277,14 @@ export function readiedSlotCount(list: { groupStarts?: readonly number[] }) {
   return list.groupStarts?.[0] ?? 4;
 }
 
-/** Where a sheet records which of its readied weapons is in hand. */
 /** A weapon that takes two hands, and so cannot be paired with another. */
 const BULKY = /\bbulky\b/i;
 
+/** The readied slot used for the main hand. */
 export const WEAPON_SLOT_KEY = "weaponSlot";
+/** The readied slot used for the off hand while dual-wielding. */
 export const OFFHAND_SLOT_KEY = "weaponOffhandSlot";
+/** Whether the selected main and off-hand weapons are both drawn. */
 export const DUAL_WIELD_KEY = "dualWield";
 
 export interface ReadiedWeapon {
@@ -364,6 +368,12 @@ function readDetail(value: unknown): SlotWeaponDetail | undefined {
   if (Array.isArray(record.traits)) {
     const traits = record.traits.map((trait) => String(trait).trim()).filter(Boolean);
     if (traits.length) detail.traits = traits;
+    // An empty array needs an explicit marker: otherwise a completely blank
+    // editor record would turn into a needless persistent override.
+    if (!traits.length && record.traitsCleared === true) {
+      detail.traits = [];
+      detail.traitsCleared = true;
+    }
   }
   if (typeof record.range === "string" && record.range.trim()) detail.range = record.range.trim();
   if (typeof record.notes === "string" && record.notes.trim()) detail.notes = record.notes.trim();

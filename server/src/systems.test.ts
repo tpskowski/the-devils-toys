@@ -165,6 +165,9 @@ describe("character system definitions", () => {
       // No weapon field: a freelancer draws from their slots like a character.
     ).toEqual(expect.arrayContaining(["name", "strCurrent", "dexCurrent", "wilCurrent", "hpCurrent"]));
     expect(
+      monolith.groupPage?.hirelings?.sheet.sections.flatMap((section) => section.fields).map((field) => field.key)
+    ).not.toContain("weapon");
+    expect(
       monolith.groupPage?.starshipSheet?.sections.flatMap((section) => section.fields).map((field) => field.key)
     ).toEqual(
       expect.arrayContaining([

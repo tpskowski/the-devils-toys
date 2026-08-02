@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Trash2, X } from "lucide-react";
 import type { CharacterSheetDefinition, NpcStatblockDefinition, SystemId } from "@devils-toys/shared";
 import { api } from "./api";
@@ -50,6 +50,36 @@ export function CombatantSheet({
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const dialog = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    const previous = document.activeElement instanceof HTMLElement ? document.activeElement : undefined;
+    dialog.current?.focus();
+    const keepFocusInside = (event: KeyboardEvent) => {
+      if (event.key === "Escape") return onClose();
+      if (event.key !== "Tab") return;
+      const focusable = [
+        ...(dialog.current?.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), input:not([disabled]), [href], select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        ) ?? [])
+      ];
+      if (!focusable.length) return event.preventDefault();
+      const first = focusable[0]!;
+      const last = focusable[focusable.length - 1]!;
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener("keydown", keepFocusInside);
+    return () => {
+      document.removeEventListener("keydown", keepFocusInside);
+      previous?.focus();
+    };
+  }, [onClose]);
 
   /**
    * Who is in the fight is managed from here, since the rail is the one list of
@@ -61,6 +91,7 @@ export function CombatantSheet({
     setError("");
     try {
       await run();
+      setBusy(false);
       onChanged();
       if (close) onClose();
     } catch (cause) {
@@ -89,7 +120,14 @@ export function CombatantSheet({
       role="presentation"
       onMouseDown={(event) => event.target === event.currentTarget && onClose()}
     >
-      <section className="modal combatant-sheet" role="dialog" aria-modal="true" aria-label={combatant.name}>
+      <section
+        className="modal combatant-sheet"
+        ref={dialog}
+        role="dialog"
+        aria-modal="true"
+        aria-label={combatant.name}
+        tabIndex={-1}
+      >
         <header>
           <p className="eyebrow">
             {combatant.kind === "npc" ? "Statblock" : combatant.kind === "hireling" ? "Hireling" : "Character"}

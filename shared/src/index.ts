@@ -241,15 +241,14 @@ export interface CharacterSheetDefinition {
  * A system's gear, resolved once and committed as `systems/<id>/items.json`
  * rather than re-read from the rulebook on every start.
  *
- * The book stays authoritative — the file is generated from it by
- * `npm run build:items`, and a test fails if the two disagree — but the
- * generated file is what the application loads and what everything else
- * references. Parsing at runtime meant a reformatted heading could silently
- * change the catalogue in production with nothing to review; now that shows up
- * as a diff, and every item has an id that survives the reformat.
+ * The book seeds it, but the generated file is authoritative afterwards: the
+ * application loads it directly, and unusual readings are corrected there.
+ * Parsing at runtime meant a reformatted heading could silently change the
+ * catalogue in production; now a catalogue edit is explicit and every item has
+ * an id that survives the reformat.
  *
- * Do not hand-edit the file: it is rewritten wholesale. An entry the parser
- * reads wrongly is corrected in the owning list's `weaponOverrides`.
+ * Hand edits are intentional. `build:items` leaves an existing catalogue alone,
+ * and its additive merge preserves entries already recorded there.
  *
  * Reached as `@devils-toys/system-<id>/items` rather than through the system
  * definition, because the generator reads those definitions to decide what to

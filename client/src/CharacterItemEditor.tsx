@@ -49,8 +49,10 @@ export function CharacterItemEditor({
   const [weapon, setWeapon] = useState<boolean | undefined>(currentWeapon?.weapon);
   const [damage, setDamage] = useState(currentWeapon?.damage ?? "");
   const [traits, setTraits] = useState((currentWeapon?.traits ?? []).join(", "));
+  const [traitsTouched, setTraitsTouched] = useState(false);
   const [range, setRange] = useState(currentWeapon?.range ?? "");
   const [notes, setNotes] = useState(currentWeapon?.notes ?? "");
+  const [notesTouched, setNotesTouched] = useState(false);
   const panel = useRef<HTMLDivElement>(null);
   const traitListId = useId();
   const categories = [...new Set(items.map((item) => item.category))];
@@ -78,8 +80,10 @@ export function CharacterItemEditor({
     setWeapon(undefined);
     setDamage("");
     setTraits("");
+    setTraitsTouched(false);
     setRange("");
     setNotes("");
+    setNotesTouched(false);
   }
 
   /**
@@ -93,11 +97,16 @@ export function CharacterItemEditor({
     if (isWeapon) {
       const typed = parseTraits(traits);
       if (damage.trim() && damage.trim() !== read.damage) detail.damage = damage.trim();
-      if (typed.length && !sameTraits(typed, read.traits ?? [])) detail.traits = typed;
+      const hasTraitOverride = currentWeapon && Object.hasOwn(currentWeapon, "traits");
+      if ((traitsTouched || hasTraitOverride) && !sameTraits(typed, read.traits ?? [])) detail.traits = typed;
+      if (!typed.length && (read.traits?.length || currentWeapon?.traitsCleared)) {
+        detail.traits = [];
+        detail.traitsCleared = true;
+      }
       if (range.trim() && range.trim() !== read.range) detail.range = range.trim();
-      // Clearing every trait off a weapon that reads as having some is itself a change.
-      if (!typed.length && read.traits?.length && traits !== (read.traits ?? []).join(", ")) detail.traits = [];
       if (notes.trim()) detail.notes = notes.trim();
+      // Omitting a note from a newly written record clears one that was stored.
+      if (notesTouched && !notes.trim()) delete detail.notes;
     }
     return Object.keys(detail).length ? detail : undefined;
   }
@@ -171,7 +180,10 @@ export function CharacterItemEditor({
               value={traits}
               list={traitSuggestions.length ? traitListId : undefined}
               placeholder={(read.traits ?? []).join(", ") || "bulky, blast, mid-range"}
-              onChange={(event) => setTraits(event.target.value)}
+              onChange={(event) => {
+                setTraitsTouched(true);
+                setTraits(event.target.value);
+              }}
             />
           </label>
           {traitSuggestions.length > 0 && (
@@ -187,7 +199,10 @@ export function CharacterItemEditor({
               value={notes}
               rows={2}
               placeholder="Anything worth remembering about this weapon"
-              onChange={(event) => setNotes(event.target.value)}
+              onChange={(event) => {
+                setNotesTouched(true);
+                setNotes(event.target.value);
+              }}
             />
           </label>
           {(read.damage || read.traits?.length || (read.range && read.range !== UNKNOWN_RANGE)) && (

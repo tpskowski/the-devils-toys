@@ -656,6 +656,7 @@ function TableRoom({
   const [appearanceOpen, setAppearanceOpen] = useState(false);
   const [groupRevision, setGroupRevision] = useState(0);
   const [encounters, setEncounters] = useState<EncounterRecord[]>([]);
+  const [encounterRevision, setEncounterRevision] = useState(0);
   const [selectedEncounterId, setSelectedEncounterId] = useState<number>();
   const [inspecting, setInspecting] = useState<EncounterCombatant>();
   const [sheetDefinitions, setSheetDefinitions] = useState<{
@@ -706,13 +707,19 @@ function TableRoom({
   }
 
   async function loadEncounters() {
-    const response = await api<{ encounters: EncounterRecord[] }>(`/api/rooms/${room.id}/encounters`);
-    setEncounters(response.encounters);
-    setSelectedEncounterId((current) =>
-      current && response.encounters.some((encounter) => encounter.id === current)
-        ? current
-        : response.encounters[0]?.id
-    );
+    try {
+      const response = await api<{ encounters: EncounterRecord[] }>(`/api/rooms/${room.id}/encounters`);
+      setEncounters(response.encounters);
+      setEncounterRevision((current) => current + 1);
+      setSelectedEncounterId((current) =>
+        current && response.encounters.some((encounter) => encounter.id === current)
+          ? current
+          : response.encounters[0]?.id
+      );
+    } catch {
+      // A socket refresh can race room teardown or a failed initial load. Keep
+      // the last useful roster rather than creating an unhandled rejection.
+    }
   }
 
   /** Sheet shapes for the combat tracker's inspector, read from the room's own definitions. */
@@ -768,16 +775,7 @@ function TableRoom({
       };
       socket.onmessage = (event) => {
         const data = JSON.parse(event.data);
-        if (data.type === "message" || data.type === "presence-notice")
-          setMessages((current) =>
-            // Public messages and private rolls are numbered separately, so both
-            // parts have to match before this counts as one already shown.
-            current.some(
-              (message) => message.id === data.message.id && Boolean(message.private) === Boolean(data.message.private)
-            )
-              ? current
-              : [...current, data.message]
-          );
+        if (data.type === "message" || data.type === "presence-notice") noteMessage(data.message);
         if (data.type === "messages-cleared") setMessages((current) => current.filter((message) => message.private));
         if (data.type === "presence") setPresence(data.members);
         if (data.type === "characters-updated") {
@@ -845,11 +843,18 @@ function TableRoom({
   });
   useEffect(combatPicker.close, [panel]);
 
+  const hasActiveEncounters = encounters.some((encounter) => encounter.active);
+  useEffect(() => {
+    if (!hasActiveEncounters) setPanel("chat");
+  }, [hasActiveEncounters]);
+
   if (!detail) return <div className="table-loading">Opening {room.name}…</div>;
   const selectedEncounter = encounters.find((encounter) => encounter.id === selectedEncounterId);
-  // What the rail tracks: the chosen encounter, or the first the room has.
-  const railEncounter = selectedEncounter ?? encounters[0];
-  const hasActiveEncounters = encounters.some((encounter) => encounter.active);
+  // The combat rail is live-only. The GM may still select and edit an inactive
+  // encounter in the central tab without replacing the table's active tracker.
+  const railEncounter = selectedEncounter?.active
+    ? selectedEncounter
+    : encounters.find((encounter) => encounter.active);
   return (
     <section className="table-shell">
       <header className="table-header">
@@ -1137,7 +1142,7 @@ function TableRoom({
           system={room.system}
           characterSheet={sheetDefinitions.character}
           hirelingSheet={sheetDefinitions.hireling}
-          npcStatblock={selectedEncounter?.npcStatblock}
+          npcStatblock={railEncounter?.npcStatblock}
           roomId={room.id}
           encounterId={railEncounter?.id}
           isGm={detail.room.role === "gm"}
@@ -1149,7 +1154,8 @@ function TableRoom({
       {spawnedOpen && (
         <SpawnedNpcModal
           roomId={room.id}
-          revision={npcRevision + encounters.length}
+          npcRevision={npcRevision}
+          encounterRevision={encounterRevision}
           onClose={() => setSpawnedOpen(false)}
         />
       )}

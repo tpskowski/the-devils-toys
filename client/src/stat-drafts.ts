@@ -33,7 +33,9 @@ export function useStatDrafts({
     setDrafts((existing) => {
       let next = existing;
       for (const key of Object.keys(existing)) {
-        if (existing[key] !== latest.current(key)) continue;
+        // A completed refresh is authoritative even when the server clamped or
+        // otherwise changed the target we optimistically showed.
+        if (latest.current(key) === undefined || latest.current(key) === null) continue;
         if (next === existing) next = { ...existing };
         delete next[key];
       }
@@ -46,14 +48,6 @@ export function useStatDrafts({
     return () => pending.forEach(clearTimeout);
   }, []);
 
-  function drop(key: string) {
-    setDrafts((existing) => {
-      const next = { ...existing };
-      delete next[key];
-      return next;
-    });
-  }
-
   function step(key: string, target: number) {
     setDrafts((existing) => ({ ...existing, [key]: target }));
     clearTimeout(timers.current.get(key));
@@ -62,7 +56,14 @@ export function useStatDrafts({
       setTimeout(() => {
         timers.current.delete(key);
         write(key, target).catch((cause) => {
-          drop(key);
+          // A later click may already have replaced this draft while the first
+          // request was in flight; never erase that newer local value.
+          setDrafts((existing) => {
+            if (existing[key] !== target) return existing;
+            const next = { ...existing };
+            delete next[key];
+            return next;
+          });
           onError((cause as Error).message);
         });
       }, delay)

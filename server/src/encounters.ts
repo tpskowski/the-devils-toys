@@ -138,7 +138,9 @@ function sheetArmor(system: SystemId, sheet: Record<string, unknown>, hireling: 
   const definition = hireling ? systems[system].groupPage?.hirelings?.sheet : systems[system].characterSheet;
   const fields = new Set(definition?.sections.flatMap((section) => section.fields.map((field) => field.key)) ?? []);
   const key = ["armorCurrent", "armor"].find((candidate) => fields.has(candidate));
-  const value = key === undefined ? undefined : Number(sheet[key]);
+  const raw = key === undefined ? undefined : sheet[key];
+  if (raw === null || raw === "") return undefined;
+  const value = raw === undefined ? undefined : Number(raw);
   return value !== undefined && Number.isFinite(value) ? value : undefined;
 }
 
@@ -154,7 +156,9 @@ function markedCritical(system: SystemId, fields: Record<string, unknown>) {
 /** The armor a creature's own statblock states, in the field the system names. */
 function statblockArmor(system: SystemId, fields: Record<string, unknown>) {
   const key = systems[system].npcStatblock.armorKey;
-  const value = key === undefined ? undefined : Number(fields[key]);
+  const raw = key === undefined ? undefined : fields[key];
+  if (raw === null || raw === "") return undefined;
+  const value = raw === undefined ? undefined : Number(raw);
   return value !== undefined && Number.isFinite(value) ? value : undefined;
 }
 
@@ -324,6 +328,7 @@ export function visibleEncounter(accountId: number, roomId: number, encounterId:
       return [
         {
           ...common,
+          sourceId: row.character_id,
           name: character.name,
           imageUrl: character.portraitUrl,
           hpCurrent: character.sheet.hpCurrent ?? null,
@@ -343,6 +348,7 @@ export function visibleEncounter(accountId: number, roomId: number, encounterId:
       return [
         {
           ...common,
+          sourceId: row.hireling_id,
           name: String(hireling.name ?? row.name),
           imageUrl: portraits.get(row.hireling_id) ?? null,
           hpCurrent: sheet.hpCurrent ?? null,
@@ -359,6 +365,7 @@ export function visibleEncounter(accountId: number, roomId: number, encounterId:
     return [
       {
         ...common,
+        sourceId: row.npc_id,
         imageUrl: null,
         hpCurrent: context.role === "gm" ? row.hp_current : undefined,
         hpMax: context.role === "gm" ? row.hp_max : undefined,
@@ -831,6 +838,7 @@ encounterRouter.patch(
         /** Monolith's mark for failing the save that follows a spent attribute. */
         criticalDamage: z.boolean().optional()
       })
+      .refine((value) => Object.keys(value).length > 0)
       .safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: "Invalid combatant update." });
     // Whose character it is decides the rest, and `updateCharacter` below settles

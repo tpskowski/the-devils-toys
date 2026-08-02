@@ -220,7 +220,7 @@ export function GroupPage({
         void api<{ updatedAt: string }>(`/api/rooms/${roomId}/group`, {
           method: "PATCH",
           body: JSON.stringify({ state: latestStateRef.current, updatedAt: updatedAtRef.current })
-        });
+        }).catch(() => undefined);
       }
     };
   }, [roomId, canEditGroup]);
@@ -1022,7 +1022,7 @@ export function GroupPage({
                   onClick={() => void rollHireling()}
                   disabled={!canEditGroup || rollingHireling}
                 >
-                  <Dices aria-hidden="true" /> {rollingHireling ? "Rollingâ€¦" : "Roll freelancer"}
+                  <Dices aria-hidden="true" /> {rollingHireling ? "Rolling…" : "Roll freelancer"}
                 </button>
               )}
               <button type="button" className="primary-button" onClick={addHireling} disabled={!canEditGroup}>
@@ -1219,7 +1219,7 @@ export function GroupPage({
                                           rollableDamage(held)
                                             ? () =>
                                                 void rollHirelingWeapon(
-                                                  String(hireling.name ?? "Hireling"),
+                                                  String(hireling.name ?? "").trim() || "Hireling",
                                                   splitItemLabel(value).name || value,
                                                   held
                                                 )

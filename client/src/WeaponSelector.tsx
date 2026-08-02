@@ -33,13 +33,20 @@ export function WeaponSelector({
   if (!readied.length)
     return (
       <p className="weapon-selector-empty">
-        Nothing to hand. Stow a weapon in {list.slots.slice(0, within).length > 1 ? "one of the first" : "the first"}{" "}
-        {within} {list.label.toLocaleLowerCase()} to draw it.
+        Nothing to hand. Stow a weapon in{" "}
+        {within > 1
+          ? `one of the first ${within} ${list.label.toLocaleLowerCase()}`
+          : `the first ${list.label.replace(/s$/i, "").toLocaleLowerCase()}`}{" "}
+        to draw it.
       </p>
     );
 
-  const choose = (key: string) => (event: { target: { value: string } }) =>
-    onChange(key, event.target.value === "" ? undefined : Number(event.target.value));
+  const choose = (key: string) => (event: { target: { value: string } }) => {
+    const value = event.target.value === "" ? undefined : Number(event.target.value);
+    onChange(key, value);
+    if (key === WEAPON_SLOT_KEY && value !== undefined && Number(sheet[OFFHAND_SLOT_KEY]) === value)
+      onChange(OFFHAND_SLOT_KEY, undefined);
+  };
 
   return (
     <div className="weapon-selector">

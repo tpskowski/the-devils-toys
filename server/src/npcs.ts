@@ -221,7 +221,10 @@ npcRouter.post("/rooms/:roomId/npcs/from-catalog", requireAuth, (req: AuthedRequ
       name: entry.name,
       notes: entry.markdown,
       statblock: parsedStatblock.fields,
-      parseWarning: typeof parsedStatblock.fields.hp !== "number" ? "stats could not be read — fill them in" : null
+      parseWarning:
+        typeof parsedStatblock.fields[systems[system].npcStatblock.hitPointsKey] !== "number"
+          ? "stats could not be read — fill them in"
+          : null
     }
   });
 });

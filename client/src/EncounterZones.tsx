@@ -1,4 +1,4 @@
-import { useState, type DragEvent } from "react";
+import { useEffect, useState, type DragEvent } from "react";
 import { GripVertical, Plus, Trash2, X } from "lucide-react";
 import { api } from "./api";
 import { CombatantAvatar } from "./CombatantAvatar";
@@ -40,6 +40,16 @@ export function EncounterZones({
   // A zone being carried to a new place in the row, which is a different drag
   // from a combatant being carried to a new zone.
   const [movingZone, setMovingZone] = useState<number>();
+  const [zoneNames, setZoneNames] = useState<Record<number, string>>({});
+  const [editingZone, setEditingZone] = useState<number>();
+
+  useEffect(() => {
+    setZoneNames((current) => {
+      const next = { ...current };
+      for (const zone of encounter.zones) if (editingZone !== zone.id) next[zone.id] = zone.name;
+      return next;
+    });
+  }, [encounter.zones, editingZone]);
 
   /**
    * A player moves their own characters and the party's hirelings; the GM moves
@@ -94,10 +104,10 @@ export function EncounterZones({
     act(() => api(`/api/rooms/${roomId}/encounters/${encounter.id}/zones/${zoneId}`, { method: "DELETE" }));
 
   /** Drops the carried zone where the target one stands, and shuffles the rest along. */
-  function reorder(zoneId: number, targetId: number) {
+  function reorder(zoneId: number, targetId?: number) {
     if (zoneId === targetId) return;
     const order = zones.map((zone) => zone.id).filter((id) => id !== zoneId);
-    order.splice(order.indexOf(targetId), 0, zoneId);
+    order.splice(targetId === undefined ? order.length : order.indexOf(targetId), 0, zoneId);
     return act(() =>
       api(`/api/rooms/${roomId}/encounters/${encounter.id}/zones`, {
         method: "PATCH",
@@ -105,6 +115,14 @@ export function EncounterZones({
       })
     );
   }
+
+  const clearZones = () => {
+    if (!confirm("Remove every zone from this encounter? Combatants will remain in the encounter.")) return;
+    return act(async () => {
+      for (const zone of zones)
+        await api(`/api/rooms/${roomId}/encounters/${encounter.id}/zones/${zone.id}`, { method: "DELETE" });
+    });
+  };
 
   function drop(event: DragEvent<HTMLElement>, zoneId: number | null) {
     event.preventDefault();
@@ -175,7 +193,7 @@ export function EncounterZones({
         </p>
       ) : (
         <div className="encounter-zone-row" aria-label="Zones">
-          {zones.map((zone) => (
+          {zones.map((zone, zoneIndex) => (
             <section
               key={zone.id}
               className={`encounter-zone${over === zone.id ? " encounter-zone-over" : ""}${
@@ -208,12 +226,37 @@ export function EncounterZones({
                   </span>
                 )}
                 {isGm ? (
-                  <input
-                    value={zone.name}
-                    aria-label={`Zone name`}
-                    disabled={busy}
-                    onChange={(event) => void renameZone(zone.id, event.target.value)}
-                  />
+                  <>
+                    <input
+                      value={zoneNames[zone.id] ?? zone.name}
+                      aria-label={`Zone name`}
+                      disabled={busy}
+                      onFocus={() => setEditingZone(zone.id)}
+                      onChange={(event) => setZoneNames((current) => ({ ...current, [zone.id]: event.target.value }))}
+                      onBlur={() => {
+                        const next = (zoneNames[zone.id] ?? zone.name).trim();
+                        setEditingZone(undefined);
+                        if (!next) return setZoneNames((current) => ({ ...current, [zone.id]: zone.name }));
+                        if (next !== zone.name) void renameZone(zone.id, next);
+                      }}
+                    />
+                    <span className="encounter-zone-order" aria-label={`Move ${zone.name} along the row`}>
+                      <button
+                        type="button"
+                        disabled={busy || zoneIndex === 0}
+                        onClick={() => void reorder(zone.id, zones[zoneIndex - 1]?.id)}
+                      >
+                        Move left
+                      </button>
+                      <button
+                        type="button"
+                        disabled={busy || zoneIndex === zones.length - 1}
+                        onClick={() => void reorder(zone.id, zones[zoneIndex + 2]?.id)}
+                      >
+                        Move right
+                      </button>
+                    </span>
+                  </>
                 ) : (
                   <h4>{zone.name}</h4>
                 )}
@@ -289,7 +332,7 @@ export function EncounterZones({
               className="danger-text encounter-zone-clear"
               disabled={busy}
               title="Remove every zone"
-              onClick={() => zones.forEach((zone) => void removeZone(zone.id))}
+              onClick={() => void clearZones()}
             >
               <Trash2 /> Clear
             </button>

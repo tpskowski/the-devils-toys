@@ -627,7 +627,7 @@ app.post("/api/rooms/:roomId/rolls", requireAuth, (req: AuthedRequest, res) => {
       error: `${systems[system].name} does not define ${body.save.position} for saves.`
     });
   let attackExpression;
-  if (body.attack) {
+  if (body.attack && !body.save) {
     attackExpression = damageExpression(body.attack.damage, diceRules.damage?.multipleRolls);
     if (!attackExpression)
       return res.status(400).json({
@@ -639,7 +639,7 @@ app.post("/api/rooms/:roomId/rolls", requireAuth, (req: AuthedRequest, res) => {
   let checkOutcome;
   try {
     rolled = rollDice(body.save ? "1d20" : (attackExpression ?? body.expression!));
-    if (body.attack) rolled = { ...rolled, detail: `${rolled.detail} · ${body.attack.damage}` };
+    if (body.attack && !body.save) rolled = { ...rolled, detail: `${rolled.detail} · ${body.attack.damage}` };
     if (body.save) {
       saveOutcome = evaluateSave(rolled.total, body.save.target, body.save.position, diceRules);
       rolled = {

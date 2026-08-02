@@ -1508,7 +1508,12 @@ button:disabled {
   border-radius: 0;
   background: var(--surface);
   color: var(--text);
+  font-family: Inter, sans-serif;
   font-size: 12px;
+}
+.encounter-display select option {
+  background: var(--surface);
+  color: var(--text);
 }
 .encounter-zones {
   display: grid;
@@ -3366,7 +3371,12 @@ button.character-slot-weapon-roll:focus-visible {
   border-radius: 0;
   background: var(--surface);
   color: var(--text);
+  font-family: Inter, sans-serif;
   font-size: 12px;
+}
+.weapon-selector select option {
+  background: var(--surface);
+  color: var(--text);
 }
 .weapon-selector-dual input:disabled + span {
   opacity: 0.5;

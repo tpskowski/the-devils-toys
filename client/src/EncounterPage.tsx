@@ -15,6 +15,8 @@ import type { ReadOnlyCharacter } from "./ReadOnlyCharacterSheet";
 export interface EncounterCombatant {
   id: number;
   kind: "character" | "hireling" | "npc";
+  /** The character, hireling, or NPC record this combatant was made from. */
+  sourceId?: number | string;
   name: string;
   side: string;
   initiative: number | null;
@@ -137,7 +139,7 @@ export function EncounterPage({
     return () => {
       active = false;
     };
-  }, [roomId, isGm, encounter?.id]);
+  }, [roomId, isGm]);
 
   async function act(run: () => Promise<unknown>) {
     setBusy(true);
@@ -225,8 +227,12 @@ export function EncounterPage({
     );
   }
 
-  const present = new Set(encounter.combatants.map((combatant) => `${combatant.kind}:${combatant.name}`));
-  const inEncounter = (kind: string, candidateName: string) => present.has(`${kind}:${candidateName}`);
+  const present = new Set(
+    encounter.combatants.flatMap((combatant) =>
+      combatant.sourceId === undefined ? [] : [`${combatant.kind}:${combatant.sourceId}`]
+    )
+  );
+  const inEncounter = (kind: string, sourceId: number | string) => present.has(`${kind}:${sourceId}`);
 
   return (
     <div className="encounter-page">
@@ -299,7 +305,7 @@ export function EncounterPage({
                 items: candidates.characters.map((character) => ({
                   key: `character-${character.id}`,
                   label: character.name,
-                  taken: inEncounter("character", character.name),
+                  taken: inEncounter("character", character.id),
                   body: { kind: "character", characterId: character.id }
                 }))
               },
@@ -309,7 +315,7 @@ export function EncounterPage({
                 items: candidates.hirelings.map((hireling) => ({
                   key: `hireling-${hireling.id}`,
                   label: hireling.name,
-                  taken: inEncounter("hireling", hireling.name),
+                  taken: inEncounter("hireling", hireling.id),
                   body: { kind: "hireling", hirelingId: hireling.id }
                 }))
               },

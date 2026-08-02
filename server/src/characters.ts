@@ -274,6 +274,8 @@ export function updateCharacter(
     return { error: "Invalid character data.", status: 400 };
   if (changes.sheet !== undefined) sheet = changes.sheet;
   if (changes.sheetPatch !== undefined) sheet = { ...parseSheet(accessible.row.sheet_json), ...changes.sheetPatch };
+  if (sheet !== undefined && !sheetSchema.safeParse(sheet).success)
+    return { error: "Invalid character data.", status: 400 };
   if (name === undefined && sheet === undefined)
     return { error: "Give the character a name or sheet data.", status: 400 };
 

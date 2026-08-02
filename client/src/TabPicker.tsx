@@ -1,4 +1,12 @@
-import { useCallback, useEffect, useRef, useState, type CSSProperties, type MouseEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type MouseEvent
+} from "react";
 import { createPortal } from "react-dom";
 import { Check } from "lucide-react";
 
@@ -37,6 +45,10 @@ export function useTabPicker({
 
   useEffect(() => {
     if (!open) return;
+    const focusInitialOption = window.setTimeout(() => {
+      const options = [...(menuRef.current?.querySelectorAll<HTMLButtonElement>('[role="option"]') ?? [])];
+      (options.find((option) => option.getAttribute("aria-selected") === "true") ?? options[0])?.focus();
+    });
     const closeOutside = (event: PointerEvent) => {
       const target = event.target as Node;
       if (!toggleRef.current?.contains(target) && !menuRef.current?.contains(target)) setOpen(false);
@@ -58,12 +70,29 @@ export function useTabPicker({
     addEventListener("resize", closeOnViewportChange);
     addEventListener("scroll", closeOnScroll, true);
     return () => {
+      window.clearTimeout(focusInitialOption);
       document.removeEventListener("pointerdown", closeOutside);
       document.removeEventListener("keydown", closeOnEscape);
       removeEventListener("resize", closeOnViewportChange);
       removeEventListener("scroll", closeOnScroll, true);
     };
   }, [open]);
+
+  function moveOption(event: ReactKeyboardEvent<HTMLDivElement>) {
+    const optionButtons = [...(menuRef.current?.querySelectorAll<HTMLButtonElement>('[role="option"]') ?? [])];
+    if (!optionButtons.length) return;
+    const current = optionButtons.indexOf(document.activeElement as HTMLButtonElement);
+    let index: number | undefined;
+    if (event.key === "ArrowDown") index = current < 0 ? 0 : (current + 1) % optionButtons.length;
+    if (event.key === "ArrowUp")
+      index = current < 0 ? optionButtons.length - 1 : (current - 1 + optionButtons.length) % optionButtons.length;
+    if (event.key === "Home") index = 0;
+    if (event.key === "End") index = optionButtons.length - 1;
+    if (index === undefined) return;
+    event.preventDefault();
+    optionButtons[index]!.focus();
+    onSelect(options[index]!.id);
+  }
 
   function toggle(event: MouseEvent<HTMLElement>) {
     if (!options.length) return;
@@ -84,7 +113,14 @@ export function useTabPicker({
   const menu =
     open && options.length > 0
       ? createPortal(
-          <div ref={menuRef} className="tab-picker-menu" style={position} role="listbox" aria-label={`Choose ${label}`}>
+          <div
+            ref={menuRef}
+            className="tab-picker-menu"
+            style={position}
+            role="listbox"
+            aria-label={`Choose ${label}`}
+            onKeyDown={moveOption}
+          >
             {options.map((item) => (
               <button
                 key={item.id}

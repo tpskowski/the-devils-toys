@@ -112,6 +112,8 @@ export function CombatTracker({
   }
 
   async function rollAttack(combatant: EncounterCombatant, weapon: NonNullable<EncounterCombatant["weapon"]>) {
+    if (busy) return;
+    setBusy(true);
     setError("");
     try {
       const message = await rollWeapon(roomId, combatant.name, {
@@ -122,6 +124,8 @@ export function CombatTracker({
       onRolled(message);
     } catch (cause) {
       setError((cause as Error).message);
+    } finally {
+      setBusy(false);
     }
   }
 

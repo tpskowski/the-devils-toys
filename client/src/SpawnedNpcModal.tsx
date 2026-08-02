@@ -21,11 +21,13 @@ interface SpawnedNpc {
  */
 export function SpawnedNpcModal({
   roomId,
-  revision,
+  npcRevision,
+  encounterRevision,
   onClose
 }: {
   roomId: number;
-  revision: number;
+  npcRevision: number;
+  encounterRevision: number;
   onClose: () => void;
 }) {
   const [spawned, setSpawned] = useState<SpawnedNpc[]>([]);
@@ -39,7 +41,7 @@ export function SpawnedNpcModal({
 
   useEffect(() => {
     load().catch((cause: Error) => setError(cause.message));
-  }, [roomId, revision]);
+  }, [roomId, npcRevision, encounterRevision]);
 
   async function remove(npc: SpawnedNpc) {
     if (!confirm(`Remove ${npc.name} from ${npc.encounterName}?`)) return;

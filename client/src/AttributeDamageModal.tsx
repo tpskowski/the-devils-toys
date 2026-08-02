@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Dices, X } from "lucide-react";
 import { ArrowUpRight } from "lucide-react";
 import type { AttributeDamageDefinition, ChatMessage, SystemId } from "@devils-toys/shared";
@@ -12,6 +12,7 @@ import { useStatDrafts } from "./stat-drafts";
 type Attribute = AttributeDamageDefinition["attributes"][number];
 
 function numeric(value: unknown) {
+  if (value === null || value === "") return undefined;
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : undefined;
 }
@@ -64,6 +65,20 @@ export function AttributeDamageModal({
   const [rolling, setRolling] = useState(false);
   // The rail is not the chat pane, so the roll it just made is reported here too.
   const [outcome, setOutcome] = useState("");
+  const dialog = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    const previous = document.activeElement instanceof HTMLElement ? document.activeElement : undefined;
+    dialog.current?.focus();
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("keydown", closeOnEscape);
+      previous?.focus();
+    };
+  }, [onClose]);
   const scores = useStatDrafts({
     current: (id) => {
       const attribute = definition.attributes.find((candidate) => candidate.id === id);
@@ -121,7 +136,14 @@ export function AttributeDamageModal({
       role="presentation"
       onMouseDown={(event) => event.target === event.currentTarget && onClose()}
     >
-      <section className="modal attribute-damage" role="dialog" aria-modal="true" aria-label={`${definition.label}`}>
+      <section
+        className="modal attribute-damage"
+        ref={dialog}
+        role="dialog"
+        aria-modal="true"
+        aria-label={`${definition.label}`}
+        tabIndex={-1}
+      >
         <header>
           <p className="eyebrow">{definition.label}</p>
           <h2>{combatant.name}</h2>
@@ -136,36 +158,39 @@ export function AttributeDamageModal({
             <p className="attribute-damage-note">No attributes are recorded for {combatant.name}.</p>
           ) : (
             <dl className="attribute-damage-scores">
-              {rows.map(({ attribute, current, maximum }) => (
-                <div key={attribute.id}>
-                  <dt>{attribute.label}</dt>
-                  <dd>
-                    <span>
-                      {current}
-                      {maximum !== undefined && `/${maximum}`}
-                    </span>
-                    <StatStepper
-                      label={`${combatant.name}'s ${attribute.label}`}
-                      value={current}
-                      maximum={maximum}
-                      onStep={(target) => scores.step(attribute.id, target)}
-                    />
-                    <button
-                      className="attribute-damage-roll"
-                      disabled={rolling || !saveSetupForScore(attribute.label, current)}
-                      title={
-                        saveSetupForScore(attribute.label, current)
-                          ? `Roll ${attribute.label} save (target ${current})`
-                          : `A ${attribute.label} save needs a score from 1 to 20`
-                      }
-                      aria-label={`Roll ${combatant.name}'s ${attribute.label} save at target ${current}`}
-                      onClick={() => void roll(attribute, current)}
-                    >
-                      <Dices aria-hidden="true" />
-                    </button>
-                  </dd>
-                </div>
-              ))}
+              {rows.map(({ attribute, current, maximum }) => {
+                const setup = saveSetupForScore(attribute.label, current);
+                return (
+                  <div key={attribute.id}>
+                    <dt>{attribute.label}</dt>
+                    <dd>
+                      <span>
+                        {current}
+                        {maximum !== undefined && `/${maximum}`}
+                      </span>
+                      <StatStepper
+                        label={`${combatant.name}'s ${attribute.label}`}
+                        value={current}
+                        maximum={maximum}
+                        onStep={(target) => scores.step(attribute.id, target)}
+                      />
+                      <button
+                        className="attribute-damage-roll"
+                        disabled={rolling || !setup}
+                        title={
+                          setup
+                            ? `Roll ${attribute.label} save (target ${current})`
+                            : `A ${attribute.label} save needs a score from 1 to 20`
+                        }
+                        aria-label={`Roll ${combatant.name}'s ${attribute.label} save at target ${current}`}
+                        onClick={() => void roll(attribute, current)}
+                      >
+                        <Dices aria-hidden="true" />
+                      </button>
+                    </dd>
+                  </div>
+                );
+              })}
             </dl>
           )}
           {mark && (

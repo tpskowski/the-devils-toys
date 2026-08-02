@@ -25,7 +25,7 @@ function numeric(sheet: Record<string, unknown>, key: string) {
  */
 const weaponRange = {
   melee: [String.raw`\bmelee\b`, String.raw`^c-?r$`, String.raw`^close(?:\s+range)?$`, String.raw`^touch$`],
-  ranged: [String.raw`range`, String.raw`\b[csmf]-r\b`, String.raw`\b(?:feet|foot|ft|metres?|meters?)\b`]
+  ranged: [String.raw`range`, String.raw`\b[smf]-r\b`, String.raw`\b(?:feet|foot|ft|metres?|meters?)\b`]
 } as const;
 
 export const monolith: GameSystem = {

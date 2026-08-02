@@ -1,9 +1,10 @@
 # Roadmap
 
 ## General
+
 1. When making changes browser sessions often get sent to a 'setting the table' screen and stay there, can that have some kind of retry so the page re-opens?
 2. Add links to a room, e.g. /room/xyz would take someone to room xyz after logging in, if their account doesn't have access dump them to main screen.
-3. Also support invite links taking someont to a table
+3. Also support invite links taking someone to a table
 
 ## Game UI
 
@@ -12,6 +13,7 @@
 ## Library
 
 ## Music
+
 1. Add combat music
 2. Move music to be a toggle option for GM
 
@@ -56,18 +58,18 @@
 ## Gamne Config
 
 ## Rules
+
 1. Bump up font size on rules by 1pt across the board (basic text and headings)
 2. Hide markdown comments on-site
 3. When possible display top row of table without line breaks, not sure if this is in markdown or data but things like:
-D
-6	What Happened?
-should render as:
-D6	What Happened?
+   D
+   6 What Happened?
+   should render as:
+   D6 What Happened?
 
 Likewise seeing D66 split as
 D6
 6
-
 
 ## Future Games
 

@@ -38,7 +38,7 @@ export function allowedSlotTypes(spec: string) {
  * are things you carry at all.
  *
  * Generation-time only: the application loads the committed result. Ids are
- * assigned by `buildItemCatalog`, which can see every list at once and so can
+ * assigned by `catalogFromRulebook`, which can see every list at once and so can
  * tell whether a name needs qualifying.
  */
 export function parseCharacterItems(

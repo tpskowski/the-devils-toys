@@ -11,7 +11,7 @@ export function StatStepper({
   maximum,
   onStep,
   onFloor,
-  floorLabel
+  floorLabel = "Use floor action"
 }: {
   /** What is being moved, as a phrase: "Bea's hit points". */
   label: string;
@@ -24,6 +24,7 @@ export function StatStepper({
   return (
     <span className="stat-stepper">
       <button
+        type="button"
         disabled={maximum !== undefined && value >= maximum}
         title={`Raise ${label}`}
         aria-label={`Raise ${label}`}
@@ -32,11 +33,18 @@ export function StatStepper({
         <ChevronUp />
       </button>
       {value <= 0 && onFloor ? (
-        <button className="stat-stepper-floor" title={floorLabel} aria-label={floorLabel} onClick={onFloor}>
+        <button
+          type="button"
+          className="stat-stepper-floor"
+          title={floorLabel}
+          aria-label={floorLabel}
+          onClick={onFloor}
+        >
           <X />
         </button>
       ) : (
         <button
+          type="button"
           disabled={value <= 0}
           title={`Lower ${label}`}
           aria-label={`Lower ${label}`}
