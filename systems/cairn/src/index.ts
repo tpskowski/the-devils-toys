@@ -16,6 +16,16 @@ function numeric(sheet: Record<string, unknown>, key: string) {
   return Number.isFinite(value) ? value : undefined;
 }
 
+/**
+ * Cairn's weapons state damage and bulk and nothing about reach, so almost every
+ * one of them reads as unknown until someone records otherwise. The few words the
+ * book does use are recognised rather than invented ones being read in.
+ */
+const weaponRange = {
+  melee: [String.raw`\bmelee\b`, String.raw`^close$`],
+  ranged: [String.raw`range`, String.raw`\b(?:feet|foot|ft|paces?)\b`]
+} as const;
+
 export const cairn: GameSystem = {
   id: "cairn",
   name: "Cairn",
@@ -59,6 +69,46 @@ export const cairn: GameSystem = {
   abilities: ["Strength", "Dexterity", "Will"],
   gmOnlyHeadings: ["Principles for Wardens", "Bestiary"],
   npcCatalog: { heading: "Bestiary", entryLevel: 3, exclude: ["Creating Monsters"] },
+  initiative: {
+    model: "side",
+    sides: [
+      { id: "party", label: "Party" },
+      { id: "enemies", label: "Enemies" }
+    ],
+    sideOrder: "fixed",
+    entrySave: {
+      label: "DEX",
+      appliesTo: "party",
+      onFailure: "after-opponents",
+      description:
+        "A PC who passes acts before opponents at the start of combat; Cairn does not state the later side order."
+    },
+    note: "At the start of combat, each PC makes a DEX save for a chance to act before opponents."
+  },
+  rangedWeaponIcon: "bow",
+  npcStatblock: {
+    hitPointsKey: "hp",
+    weaponRange,
+    attacksKey: "attacks",
+    armorKey: "armor",
+    fields: [
+      { key: "hp", label: "HP", kind: "number", inSummary: true },
+      { key: "armor", label: "Armor", kind: "number", inSummary: true },
+      { key: "str", label: "STR", kind: "number" },
+      { key: "dex", label: "DEX", kind: "number", inSummary: true },
+      { key: "wil", label: "WIL", kind: "number" },
+      { key: "attacks", label: "Attacks", kind: "text" }
+    ]
+  },
+  attributeDamage: {
+    label: "Attribute damage",
+    note: "Damage past 0 HP takes STR by the remainder, and the target then saves against STR to avoid critical damage.",
+    attributes: [
+      { id: "str", label: "STR", currentKey: "strCurrent", maximumKey: "strMax", statblockKey: "str" },
+      { id: "dex", label: "DEX", currentKey: "dexCurrent", maximumKey: "dexMax", statblockKey: "dex" },
+      { id: "wil", label: "WIL", currentKey: "wilCurrent", maximumKey: "wilMax", statblockKey: "wil" }
+    ]
+  },
   tableCatalog: {
     label: "Cairn tables",
     exclude: [],
@@ -123,7 +173,8 @@ export const cairn: GameSystem = {
       {
         key: "inventory",
         label: "Inventory",
-        slots: Array.from({ length: 10 }, (_, index) => `Slot ${index + 1}`)
+        slots: Array.from({ length: 10 }, (_, index) => `Slot ${index + 1}`),
+        weaponRange
       }
     ]
   },
@@ -150,14 +201,16 @@ export const cairn: GameSystem = {
           {
             id: "gear",
             label: "Gear",
-            fields: [
-              { key: "weapon", label: "Simple weapon (d6)", kind: "text" },
-              { key: "notes", label: "Notes", kind: "textarea" }
-            ]
+            fields: [{ key: "notes", label: "Notes", kind: "textarea" }]
           }
         ],
         lists: [
-          { key: "inventory", label: "Inventory", slots: Array.from({ length: 10 }, (_, index) => `Slot ${index + 1}`) }
+          {
+            key: "inventory",
+            label: "Inventory",
+            slots: Array.from({ length: 10 }, (_, index) => `Slot ${index + 1}`),
+            weaponRange
+          }
         ]
       }
     }

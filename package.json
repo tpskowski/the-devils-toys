@@ -21,11 +21,15 @@
     "test:e2e": "playwright test",
     "playwright:install": "playwright install --with-deps chromium",
     "format:check": "prettier --check .",
-    "smoke": "node scripts/smoke.mjs && node scripts/characters-smoke.mjs && node scripts/management-smoke.mjs && node scripts/capacity-smoke.mjs && node scripts/media-smoke.mjs && node scripts/audio-smoke.mjs && node scripts/npc-smoke.mjs && node scripts/dice-smoke.mjs && node scripts/tables-smoke.mjs && node scripts/tables-editor-smoke.mjs",
+    "smoke": "node scripts/smoke.mjs && node scripts/characters-smoke.mjs && node scripts/management-smoke.mjs && node scripts/capacity-smoke.mjs && node scripts/media-smoke.mjs && node scripts/audio-smoke.mjs && node scripts/npc-smoke.mjs && node scripts/dice-smoke.mjs && node scripts/tables-smoke.mjs && node scripts/tables-editor-smoke.mjs && node scripts/encounter-smoke.mjs",
     "dev:tables-client": "npm run dev --workspace @devils-toys/tables-client",
     "dev:tables-server": "npm run dev:tables --workspace @devils-toys/server",
     "dev:tables": "concurrently -n tables-client,tables-server -c cyan,magenta \"npm:dev:tables-client\" \"npm:dev:tables-server\"",
-    "start:tables": "npm run start:tables --workspace @devils-toys/server"
+    "start:tables": "npm run start:tables --workspace @devils-toys/server",
+    "build:items": "npm run build:items --workspace @devils-toys/server",
+    "build:traits": "npm run build:traits --workspace @devils-toys/server",
+    "build:items:merge": "npm run build:items --workspace @devils-toys/server -- --merge",
+    "build:traits:merge": "npm run build:traits --workspace @devils-toys/server -- --merge"
   },
   "devDependencies": {
     "@playwright/test": "^1.62.1",

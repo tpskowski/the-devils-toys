@@ -1,0 +1,141 @@
+{
+  "system": "monolith",
+  "source": "Monolith.md",
+  "traits": [
+    {
+      "id": "cheap",
+      "label": "Cheap",
+      "description": "Roll a D6 after any combat encounter, or as fiction might dictate. A roll of 1 and it breaks.",
+      "category": "RANGED PROPERTIES"
+    },
+    {
+      "id": "armor-piercing-ap",
+      "label": "Armor Piercing (AP)",
+      "description": "Ignore all armor (damage rolls of 1 misfire)",
+      "category": "RANGED PROPERTIES"
+    },
+    {
+      "id": "exploding",
+      "label": "Exploding",
+      "description": "Re-roll max damage dice and add to total.",
+      "category": "RANGED PROPERTIES"
+    },
+    {
+      "id": "spec-ammo",
+      "label": "Spec Ammo",
+      "description": "Special ammo, charge, or fuel. Max damage rolls require spending a turn reloading/refueling and consume a unit of spec ammo from your inventory.",
+      "category": "RANGED PROPERTIES"
+    },
+    {
+      "id": "overclocked",
+      "label": "Overclocked",
+      "description": "On max damage, upgrade dice type. 6>8>10. 10 on a d10 will reset the weapon to its base dice and the weapon will need 2d6 hours to recharge. Can manually re-set the battery outside of combat for 1d6 hours recharge.",
+      "category": "RANGED PROPERTIES"
+    },
+    {
+      "id": "parry",
+      "label": "Parry",
+      "description": "Melee attacks of 2 damage or less are harmlessly parried away.",
+      "category": "MELEE PROPERTIES"
+    },
+    {
+      "id": "grapple",
+      "label": "Grapple",
+      "description": "Entangle your opponent. They will need to pass a STR Save to break free.",
+      "appliesTo": "no damage",
+      "category": "MELEE PROPERTIES"
+    },
+    {
+      "id": "sweep",
+      "label": "Sweep",
+      "description": "Long weapons that allow a second attack on an adjacent opponent.",
+      "appliesTo": "Bulky",
+      "category": "MELEE PROPERTIES"
+    },
+    {
+      "id": "brutal",
+      "label": "Brutal",
+      "description": "Big enough to instantly kill an opponent on max damage and force a morale check on the target’s allies.",
+      "appliesTo": "Bulky",
+      "category": "MELEE PROPERTIES"
+    },
+    {
+      "id": "vorpal",
+      "label": "Vorpal",
+      "description": "Damage immediately bypasses HP, going straight to STR and requiring a save against Critical Damage. Typically illegal.",
+      "appliesTo": "Small Blades",
+      "category": "MELEE PROPERTIES"
+    },
+    {
+      "id": "deadly",
+      "label": "Deadly",
+      "description": "Deadly weapons are fast enough to roll again on max damage and add to total.",
+      "appliesTo": "Small or Medium Blades",
+      "category": "MELEE PROPERTIES"
+    },
+    {
+      "id": "thermal",
+      "label": "Thermal",
+      "description": "DEX Save or take 1D4 heat damage for 1D4 rounds.",
+      "category": "DAMAGE TYPES"
+    },
+    {
+      "id": "cryo",
+      "label": "Cryo",
+      "description": "STR Save or do half damage on next attack.",
+      "category": "DAMAGE TYPES"
+    },
+    {
+      "id": "shock",
+      "label": "Shock",
+      "description": "DEX Save or lose turn for 1 round.",
+      "category": "DAMAGE TYPES"
+    },
+    {
+      "id": "emp",
+      "label": "EMP",
+      "description": "STR save or lose turn for 1 round.",
+      "appliesTo": "Only effective vs machines",
+      "category": "DAMAGE TYPES"
+    },
+    {
+      "id": "biological",
+      "label": "Biological",
+      "description": "STR save or 1D4 damage for 1D4 rounds.",
+      "appliesTo": "Only effective vs organics",
+      "category": "DAMAGE TYPES"
+    },
+    {
+      "id": "serrating",
+      "label": "Serrating",
+      "description": "STR Save or 1D4 damage for 1D4 rounds.",
+      "appliesTo": "Only effective vs organics",
+      "category": "DAMAGE TYPES"
+    },
+    {
+      "id": "sonic",
+      "label": "Sonic",
+      "description": "WIL Save or lose turn for 1 round.",
+      "appliesTo": "Only effective vs organics",
+      "category": "DAMAGE TYPES"
+    },
+    {
+      "id": "disintegration",
+      "label": "Disintegration",
+      "description": "DEX Save vs instant obliteration. Usually illegal.",
+      "category": "DAMAGE TYPES"
+    },
+    {
+      "id": "bulky",
+      "label": "Bulky",
+      "description": "Takes up two slots, and is typically two-handed or awkward to carry.",
+      "category": "INVENTORY"
+    },
+    {
+      "id": "blast",
+      "label": "Blast",
+      "description": "Affects every target in the noted area, rolling separately for each.",
+      "category": "BLAST DAMAGE"
+    }
+  ]
+}

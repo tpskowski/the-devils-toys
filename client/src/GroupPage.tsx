@@ -14,21 +14,33 @@ import {
 } from "lucide-react";
 import type {
   CharacterFieldDefinition,
+  CharacterItem,
   CharacterListDefinition,
   CharacterSheetDefinition,
+  ChatMessage,
   GroupPageDefinition,
   GroupSheetSection,
+  ItemClassification,
+  ItemTrait,
   PresenceMember,
+  RoomRole,
   SystemId
 } from "@devils-toys/shared";
+import type { SlotWeaponDetail } from "@devils-toys/shared";
+import { setSlotWeapon, slotIsWeapon, slotWeapon, splitItemLabel, weaponOverrideKey } from "@devils-toys/shared";
 import { api } from "./api";
+import { CharacterItemEditor } from "./CharacterItemEditor";
+import { characterItemsForSlot, weaponTraitSuggestions } from "./character-items";
+import { WeaponMark } from "./WeaponMark";
+import { WeaponSelector } from "./WeaponSelector";
+import { rollableDamage, rollWeapon } from "./weapon-roll";
 import { parseGroupObligations, type GroupObligation } from "./group-obligations";
 import { parseGroupHirelings, type GroupHireling } from "./group-hirelings";
 import { parseGroupStarships, type GroupStarship } from "./group-starships";
 import { Modal } from "./Modal";
 import { otherPartyMembers, partyMemberIsOnline } from "./party-members";
 import { ReadOnlyCharacterSheet, type ReadOnlyCharacter } from "./ReadOnlyCharacterSheet";
-import { headingSlug, rulesAnchorPath } from "./rules";
+import { headingSlug, rulesAnchorPath, rulesQueryForField } from "./rules";
 import { readStarshipExpansion, writeStarshipExpansion } from "./starship-expansion";
 import { applyStarshipSize, holdSlots, setHoldValue, starshipHolds, starshipSizeFor } from "./starship";
 import { HoldEditor } from "./StarshipHoldEditor";
@@ -37,6 +49,8 @@ import "./GroupPage.css";
 interface GroupResponse {
   state: Record<string, unknown>;
   definition: GroupPageDefinition;
+  /** The system's own gear, keyed by sheet list, for filling a hireling's slots. */
+  itemCatalogue?: Record<string, CharacterItem[]>;
   images?: StarshipImage[];
   hirelingImages?: HirelingImage[];
   updatedAt: string | null;
@@ -126,6 +140,10 @@ export function GroupPage({
   characterRevision,
   hidden,
   viewerId,
+  role,
+  onOpenCharacter,
+  onRolled,
+  traits,
   presence,
   view = "group"
 }: {
@@ -135,13 +153,22 @@ export function GroupPage({
   characterRevision: number;
   hidden: boolean;
   viewerId: number;
+  role: RoomRole;
+  onOpenCharacter?: (characterId: number) => void;
+  /** Files a hireling's damage roll in the room's log. */
+  onRolled: (message: ChatMessage) => void;
+  /** What this system's weapon words mean, for the marks beside its slots. */
+  traits: readonly ItemTrait[];
   presence: PresenceMember[];
   view?: GroupView;
 }) {
+  const canEditGroup = role === "gm";
   const [definition, setDefinition] = useState<GroupPageDefinition>();
   const [state, setState] = useState<Record<string, unknown>>({});
   const [status, setStatus] = useState<SaveStatus>("Saved");
   const [error, setError] = useState("");
+  // The group page covers the room's log, so a roll made here reports back.
+  const [rolled, setRolled] = useState("");
   const [editingHold, setEditingHold] = useState<{ index: number; value: string }>();
   const [editingStarshipId, setEditingStarshipId] = useState<string>();
   const [starshipExpansion, setStarshipExpansion] = useState<Record<string, boolean>>(() => {
@@ -158,6 +185,7 @@ export function GroupPage({
   const [expandedPartyMembers, setExpandedPartyMembers] = useState<ReadonlySet<number>>(new Set());
   const [expandedHirelings, setExpandedHirelings] = useState<ReadonlySet<string>>(new Set());
   const [editingHirelingMaximums, setEditingHirelingMaximums] = useState<string>();
+  const [editingHirelingSlot, setEditingHirelingSlot] = useState<{ id: string; listKey: string; index: number }>();
   const [hirelingImages, setHirelingImages] = useState<HirelingImage[]>([]);
   const [busyHirelingImageId, setBusyHirelingImageId] = useState<string>();
   const [rollingHireling, setRollingHireling] = useState(false);
@@ -165,16 +193,20 @@ export function GroupPage({
   const saveTimerRef = useRef<number | undefined>(undefined);
   const saveChainRef = useRef<Promise<void>>(Promise.resolve());
   const latestStateRef = useRef<Record<string, unknown>>({});
+  const [itemCatalogue, setItemCatalogue] = useState<Record<string, CharacterItem[]>>({});
   const editVersionRef = useRef(0);
   const dirtyRef = useRef(false);
+  const updatedAtRef = useRef<string | null>(null);
 
   async function load() {
     const response = await api<GroupResponse>(`/api/rooms/${roomId}/group`);
     setDefinition(response.definition);
+    setItemCatalogue(response.itemCatalogue ?? {});
     setState(response.state);
     setStarshipImages(response.images ?? []);
     setHirelingImages(response.hirelingImages ?? []);
     latestStateRef.current = response.state;
+    updatedAtRef.current = response.updatedAt;
     dirtyRef.current = false;
     setStatus("Saved");
     setError("");
@@ -184,14 +216,14 @@ export function GroupPage({
     void load().catch((cause: Error) => setError(cause.message));
     return () => {
       window.clearTimeout(saveTimerRef.current);
-      if (dirtyRef.current) {
-        void api(`/api/rooms/${roomId}/group`, {
+      if (canEditGroup && dirtyRef.current) {
+        void api<{ updatedAt: string }>(`/api/rooms/${roomId}/group`, {
           method: "PATCH",
-          body: JSON.stringify({ state: latestStateRef.current })
+          body: JSON.stringify({ state: latestStateRef.current, updatedAt: updatedAtRef.current })
         });
       }
     };
-  }, [roomId]);
+  }, [roomId, canEditGroup]);
 
   useEffect(() => {
     const storage = typeof localStorage === "undefined" ? undefined : localStorage;
@@ -227,6 +259,7 @@ export function GroupPage({
   }, [roomId, viewerId, characterRevision, view]);
 
   function queueSave(next: Record<string, unknown>) {
+    if (!canEditGroup) return;
     latestStateRef.current = next;
     dirtyRef.current = true;
     const version = ++editVersionRef.current;
@@ -237,10 +270,11 @@ export function GroupPage({
       setStatus("Saving…");
       saveChainRef.current = saveChainRef.current
         .then(async () => {
-          await api(`/api/rooms/${roomId}/group`, {
+          const saved = await api<{ updatedAt: string }>(`/api/rooms/${roomId}/group`, {
             method: "PATCH",
-            body: JSON.stringify({ state: next })
+            body: JSON.stringify({ state: next, updatedAt: updatedAtRef.current })
           });
+          updatedAtRef.current = saved.updatedAt;
           if (version === editVersionRef.current) {
             dirtyRef.current = false;
             setStatus("Saved");
@@ -254,6 +288,7 @@ export function GroupPage({
   }
 
   function updateState(updater: (current: Record<string, unknown>) => Record<string, unknown>) {
+    if (!canEditGroup) return;
     const next = updater(latestStateRef.current);
     latestStateRef.current = next;
     setState(next);
@@ -303,6 +338,7 @@ export function GroupPage({
   }
 
   async function rollHireling() {
+    if (!canEditGroup) return;
     setRollingHireling(true);
     setError("");
     try {
@@ -326,13 +362,27 @@ export function GroupPage({
     updateHirelings((current) => current.map((entry) => (entry.id === id ? { ...entry, [key]: value } : entry)));
   }
 
-  function setHirelingListItem(id: string, key: string, index: number, value: string) {
+  /** Slot text and its weapon record move together, as they do on a character sheet. */
+  /** Anyone at the table may swing a hireling: they are the party's, not one player's. */
+  async function rollHirelingWeapon(holder: string, name: string, held: ItemClassification) {
+    setError("");
+    try {
+      const message = await rollWeapon(roomId, holder, { name, damage: held.damage!, traits: held.traits });
+      setRolled(message.body);
+      onRolled(message);
+    } catch (cause) {
+      setError((cause as Error).message);
+    }
+  }
+
+  function setHirelingListItem(id: string, key: string, index: number, value: string, weapon?: SlotWeaponDetail) {
     updateHirelings((current) =>
       current.map((entry) => {
         if (entry.id !== id) return entry;
         const list = Array.isArray(entry[key]) ? [...(entry[key] as unknown[])] : [];
         list[index] = value;
-        return { ...entry, [key]: list };
+        const records = setSlotWeapon(entry, key, index, weapon);
+        return { ...entry, [key]: list, [weaponOverrideKey(key)]: records.length ? records : undefined };
       })
     );
   }
@@ -347,6 +397,7 @@ export function GroupPage({
   }
 
   async function uploadHirelingImage(hirelingId: string, file?: File) {
+    if (!canEditGroup) return;
     if (!file) return;
     if (file.size > groupImageLimitBytes) {
       setError("Freelancer images may be at most 5 MB.");
@@ -375,6 +426,7 @@ export function GroupPage({
   }
 
   async function removeHirelingImage(hirelingId: string) {
+    if (!canEditGroup) return;
     setBusyHirelingImageId(hirelingId);
     setError("");
     try {
@@ -389,10 +441,17 @@ export function GroupPage({
     }
   }
 
-  function removeHireling(hirelingId: string) {
-    setHirelingImages((current) => current.filter((image) => image.hirelingId !== hirelingId));
-    setEditingHirelingMaximums((current) => (current?.startsWith(`${hirelingId}:`) ? undefined : current));
-    updateHirelings((current) => current.filter((entry) => entry.id !== hirelingId));
+  async function removeHireling(hirelingId: string) {
+    if (!canEditGroup) return;
+    setError("");
+    try {
+      await api(`/api/rooms/${roomId}/group/hirelings/${encodeURIComponent(hirelingId)}`, { method: "DELETE" });
+      setHirelingImages((current) => current.filter((image) => image.hirelingId !== hirelingId));
+      setEditingHirelingMaximums((current) => (current?.startsWith(`${hirelingId}:`) ? undefined : current));
+      await load();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Hireling removal failed.");
+    }
   }
 
   function updateStarships(updater: (current: GroupStarship[]) => GroupStarship[]) {
@@ -452,6 +511,7 @@ export function GroupPage({
   }
 
   async function uploadStarshipImage(shipId: string, file?: File) {
+    if (!canEditGroup) return;
     if (!file) return;
     if (file.size > groupImageLimitBytes) {
       setError("Starship images may be at most 5 MB.");
@@ -551,6 +611,7 @@ export function GroupPage({
             id={fieldId}
             type="checkbox"
             checked={values[field.key] === true}
+            disabled={!canEditGroup}
             onChange={(event) => setField(field.key, event.target.checked)}
           />
         ) : field.kind === "textarea" ? (
@@ -558,6 +619,7 @@ export function GroupPage({
             id={fieldId}
             value={String(values[field.key] ?? "")}
             placeholder={field.placeholder}
+            readOnly={!canEditGroup}
             onChange={(event) => setField(field.key, event.target.value)}
           />
         ) : (
@@ -567,6 +629,7 @@ export function GroupPage({
               type={field.kind}
               value={String(values[field.key] ?? "")}
               placeholder={field.placeholder}
+              disabled={!canEditGroup}
               onChange={(event) =>
                 setField(
                   field.key,
@@ -601,6 +664,7 @@ export function GroupPage({
         <select
           id={fieldId}
           value={chosen?.id ?? ""}
+          disabled={!canEditGroup}
           onChange={(event) =>
             updateStarships((current) =>
               current.map((entry) =>
@@ -641,6 +705,7 @@ export function GroupPage({
                     type="number"
                     aria-label={`${label} current`}
                     value={String(ship[currentField.key] ?? "")}
+                    disabled={!canEditGroup}
                     onChange={(event) =>
                       setStarshipField(
                         ship.id,
@@ -653,6 +718,7 @@ export function GroupPage({
                     type="number"
                     aria-label={`${label} maximum`}
                     value={String(ship[maximumField.key] ?? "")}
+                    disabled={!canEditGroup}
                     onChange={(event) =>
                       setStarshipField(
                         ship.id,
@@ -779,6 +845,7 @@ export function GroupPage({
         )}
       </header>
       {error && <p className="form-error">{error}</p>}
+      {rolled && <p className="character-rolled">{rolled}</p>}
 
       {view === "party" && (
         <section className="group-party" aria-label="Party members">
@@ -826,6 +893,15 @@ export function GroupPage({
                         </span>
                         <ChevronDown aria-hidden="true" />
                       </button>
+                      {role === "gm" && onOpenCharacter && (
+                        <button
+                          type="button"
+                          className="group-party-open"
+                          onClick={() => onOpenCharacter(character.id)}
+                        >
+                          Open sheet
+                        </button>
+                      )}
                     </header>
                     {expanded && partyDefinition && (
                       <div id={detailsId}>
@@ -847,7 +923,7 @@ export function GroupPage({
               <span>{obligations.length === 1 ? "1 obligation" : `${obligations.length} obligations`}</span>
               {rulesLink("Group Debt")}
             </div>
-            <button type="button" className="primary-button" onClick={addObligation}>
+            <button type="button" className="primary-button" onClick={addObligation} disabled={!canEditGroup}>
               <Plus aria-hidden="true" /> Add obligation
             </button>
           </header>
@@ -865,12 +941,14 @@ export function GroupPage({
                         aria-label={`Obligation ${index + 1} name`}
                         value={obligation.name}
                         placeholder={`Obligation ${index + 1}`}
+                        disabled={!canEditGroup}
                         onChange={(event) => setObligationField(obligation.id, "name", event.target.value)}
                       />
                       <button
                         type="button"
                         className="group-obligation-remove"
                         onClick={() => removeObligation(obligation.id)}
+                        disabled={!canEditGroup}
                         aria-label={`Remove obligation ${index + 1}`}
                       >
                         <Trash2 aria-hidden="true" /> Remove
@@ -882,6 +960,7 @@ export function GroupPage({
                         <input
                           id={`${fieldPrefix}-owed-to`}
                           value={obligation.owedTo}
+                          disabled={!canEditGroup}
                           onChange={(event) => setObligationField(obligation.id, "owedTo", event.target.value)}
                         />
                       </label>
@@ -890,6 +969,7 @@ export function GroupPage({
                         <input
                           id={`${fieldPrefix}-amount`}
                           value={obligation.amount}
+                          disabled={!canEditGroup}
                           onChange={(event) => setObligationField(obligation.id, "amount", event.target.value)}
                         />
                       </label>
@@ -898,6 +978,7 @@ export function GroupPage({
                         <textarea
                           id={`${fieldPrefix}-details`}
                           value={obligation.details}
+                          readOnly={!canEditGroup}
                           onChange={(event) => setObligationField(obligation.id, "details", event.target.value)}
                         />
                       </label>
@@ -939,12 +1020,12 @@ export function GroupPage({
                   type="button"
                   className="secondary-button"
                   onClick={() => void rollHireling()}
-                  disabled={rollingHireling}
+                  disabled={!canEditGroup || rollingHireling}
                 >
                   <Dices aria-hidden="true" /> {rollingHireling ? "Rollingâ€¦" : "Roll freelancer"}
                 </button>
               )}
-              <button type="button" className="primary-button" onClick={addHireling}>
+              <button type="button" className="primary-button" onClick={addHireling} disabled={!canEditGroup}>
                 <Plus aria-hidden="true" /> Add {definition.hirelings.singularLabel}
               </button>
             </div>
@@ -978,7 +1059,7 @@ export function GroupPage({
                         type="button"
                         className="group-obligation-remove"
                         onClick={() => removeHireling(hireling.id)}
-                        disabled={busyHirelingImageId === hireling.id}
+                        disabled={!canEditGroup || busyHirelingImageId === hireling.id}
                         aria-label={`Remove ${label}`}
                       >
                         <Trash2 aria-hidden="true" /> Remove
@@ -995,7 +1076,7 @@ export function GroupPage({
                               <input
                                 type="file"
                                 accept="image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp"
-                                disabled={busyHirelingImageId === hireling.id}
+                                disabled={!canEditGroup || busyHirelingImageId === hireling.id}
                                 onChange={(event) => {
                                   const file = event.target.files?.[0];
                                   event.target.value = "";
@@ -1007,7 +1088,7 @@ export function GroupPage({
                               <button
                                 type="button"
                                 onClick={() => void removeHirelingImage(hireling.id)}
-                                disabled={busyHirelingImageId === hireling.id}
+                                disabled={!canEditGroup || busyHirelingImageId === hireling.id}
                                 aria-label={`Remove ${label} portrait`}
                                 title="Remove portrait"
                               >
@@ -1060,6 +1141,7 @@ export function GroupPage({
                                           type="number"
                                           aria-label={`${statLabel} current`}
                                           value={String(hireling[currentField.key] ?? "")}
+                                          disabled={!canEditGroup}
                                           onChange={(event) =>
                                             setHirelingField(
                                               hireling.id,
@@ -1073,6 +1155,7 @@ export function GroupPage({
                                           className="character-stat-max"
                                           aria-label={`${statLabel} maximum`}
                                           value={String(hireling[maximumField.key] ?? "")}
+                                          disabled={!canEditGroup || !editingMaxima}
                                           onChange={(event) =>
                                             setHirelingField(
                                               hireling.id,
@@ -1080,7 +1163,6 @@ export function GroupPage({
                                               event.target.value === "" ? "" : Number(event.target.value)
                                             )
                                           }
-                                          readOnly={!editingMaxima}
                                         />
                                       </div>
                                     </div>
@@ -1093,7 +1175,9 @@ export function GroupPage({
                                       { ...section, id: `${hireling.id}-${section.id}` },
                                       field,
                                       hireling,
-                                      (key, value) => setHirelingField(hireling.id, key, value)
+                                      (key, value) => setHirelingField(hireling.id, key, value),
+                                      // A freelancer's fields read the same rules a character's do.
+                                      rulesQueryForField(field.key)
                                     )
                                   )}
                                 </div>
@@ -1105,22 +1189,100 @@ export function GroupPage({
                           <fieldset key={list.key}>
                             <legend>{list.label}</legend>
                             <div className="group-hireling-inventory">
-                              {list.slots.map((slot, slotIndex) => (
-                                <label key={slot}>
-                                  <span>{slot}</span>
-                                  <input
-                                    value={String(
-                                      (Array.isArray(hireling[list.key])
-                                        ? (hireling[list.key] as unknown[])[slotIndex]
-                                        : "") ?? ""
+                              {list.slots.map((slot, slotIndex) => {
+                                const value = String(
+                                  (Array.isArray(hireling[list.key])
+                                    ? (hireling[list.key] as unknown[])[slotIndex]
+                                    : "") ?? ""
+                                );
+                                const held = value.trim()
+                                  ? slotIsWeapon(value, slotWeapon(hireling, list.key, slotIndex), list)
+                                  : undefined;
+                                return (
+                                  <div className="character-slot" key={slot}>
+                                    <label>
+                                      <span>{slot}</span>
+                                      <input
+                                        value={value}
+                                        disabled={!canEditGroup}
+                                        onChange={(event) =>
+                                          setHirelingListItem(hireling.id, list.key, slotIndex, event.target.value)
+                                        }
+                                      />
+                                    </label>
+                                    {held && (
+                                      <WeaponMark
+                                        held={held}
+                                        name={splitItemLabel(value).name || value}
+                                        traits={traits}
+                                        onRoll={
+                                          rollableDamage(held)
+                                            ? () =>
+                                                void rollHirelingWeapon(
+                                                  String(hireling.name ?? "Hireling"),
+                                                  splitItemLabel(value).name || value,
+                                                  held
+                                                )
+                                            : undefined
+                                        }
+                                      />
                                     )}
-                                    onChange={(event) =>
-                                      setHirelingListItem(hireling.id, list.key, slotIndex, event.target.value)
-                                    }
-                                  />
-                                </label>
-                              ))}
+                                    {canEditGroup && (
+                                      <button
+                                        type="button"
+                                        className="character-slot-edit"
+                                        aria-label={`Choose an item for ${slot}`}
+                                        title="Choose an item"
+                                        onClick={() =>
+                                          setEditingHirelingSlot({
+                                            id: hireling.id,
+                                            listKey: list.key,
+                                            index: slotIndex
+                                          })
+                                        }
+                                      >
+                                        <Pencil size={14} aria-hidden="true" />
+                                      </button>
+                                    )}
+                                  </div>
+                                );
+                              })}
                             </div>
+                            {list === definition!.hirelings!.sheet.lists[0] && (
+                              <WeaponSelector
+                                sheet={hireling}
+                                list={list}
+                                canEdit={canEditGroup}
+                                onChange={(key, value) => setHirelingField(hireling.id, key, value)}
+                              />
+                            )}
+                            {editingHirelingSlot?.id === hireling.id && editingHirelingSlot.listKey === list.key && (
+                              <CharacterItemEditor
+                                key={`${hireling.id}-${list.key}-${editingHirelingSlot.index}`}
+                                slotName={
+                                  list.slots[editingHirelingSlot.index] ?? `Slot ${editingHirelingSlot.index + 1}`
+                                }
+                                items={characterItemsForSlot(
+                                  itemCatalogue[list.key] ?? [],
+                                  list,
+                                  editingHirelingSlot.index
+                                )}
+                                current={String(
+                                  (Array.isArray(hireling[list.key])
+                                    ? (hireling[list.key] as unknown[])[editingHirelingSlot.index]
+                                    : "") ?? ""
+                                )}
+                                currentWeapon={slotWeapon(hireling, list.key, editingHirelingSlot.index)}
+                                weaponCategories={list.weaponCategories}
+                                weaponRange={list.weaponRange}
+                                traitSuggestions={weaponTraitSuggestions(itemCatalogue[list.key] ?? [])}
+                                onCancel={() => setEditingHirelingSlot(undefined)}
+                                onSubmit={(value, weapon) => {
+                                  setHirelingListItem(hireling.id, list.key, editingHirelingSlot.index, value, weapon);
+                                  setEditingHirelingSlot(undefined);
+                                }}
+                              />
+                            )}
                           </fieldset>
                         ))}
                         <div className="group-hireling-level">
@@ -1170,6 +1332,7 @@ export function GroupPage({
                         type="button"
                         className="group-starship-edit"
                         onClick={() => setEditingStarshipId(ship.id)}
+                        disabled={!canEditGroup}
                         aria-label={`Edit ${String(ship.name || "").trim() || `starship ${index + 1}`}`}
                         title="Edit starship"
                       >
@@ -1184,7 +1347,7 @@ export function GroupPage({
           ) : (
             <p className="group-starships-empty">No starships recorded.</p>
           )}
-          <button type="button" className="group-starship-add" onClick={addStarship}>
+          <button type="button" className="group-starship-add" onClick={addStarship} disabled={!canEditGroup}>
             <Plus aria-hidden="true" /> Add starship
           </button>
         </section>
@@ -1215,7 +1378,7 @@ export function GroupPage({
                   <input
                     type="file"
                     accept="image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp"
-                    disabled={busyStarshipImageId === editingStarship.id}
+                    disabled={!canEditGroup || busyStarshipImageId === editingStarship.id}
                     onChange={(event) => {
                       const file = event.target.files?.[0];
                       event.target.value = "";
@@ -1227,7 +1390,7 @@ export function GroupPage({
                   <button
                     type="button"
                     onClick={() => void removeStarshipImage(editingStarship.id)}
-                    disabled={busyStarshipImageId === editingStarship.id}
+                    disabled={!canEditGroup || busyStarshipImageId === editingStarship.id}
                     aria-label={`Remove ${String(editingStarship.name || "").trim() || "starship"} image`}
                     title="Remove starship image"
                   >
@@ -1264,6 +1427,7 @@ export function GroupPage({
                                 ? (editingStarship[list.key] as unknown[])[index]
                                 : "") ?? ""
                             )}
+                            disabled={!canEditGroup}
                             onChange={(event) =>
                               setStarshipListItem(editingStarship.id, list.key, index, event.target.value)
                             }
@@ -1275,6 +1439,7 @@ export function GroupPage({
                             className="starship-hold-edit"
                             aria-label={`Choose a part for ${slot}`}
                             title="Choose a part"
+                            disabled={!canEditGroup}
                             onClick={() => {
                               setHoldError("");
                               setEditingHold({ index, value: "" });

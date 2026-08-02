@@ -36,13 +36,17 @@ import {
   Table2,
   Trash2,
   UserPlus,
+  UserRound,
   Library,
   UsersRound,
+  Swords,
   X
 } from "lucide-react";
 import type {
   Account,
+  CharacterSheetDefinition,
   ChatMessage,
+  ItemTrait,
   DiceRules,
   MapNotationEvent,
   PresenceMember,
@@ -71,10 +75,19 @@ import { defaultGroupView, GroupPage, groupViewsForSystem, type GroupView } from
 import { AppearanceModal } from "./AppearanceModal";
 import { effectiveTheme, readPersonalTheme, writePersonalTheme } from "./personal-theme";
 import { NpcModal } from "./NpcModal";
+import { SpawnedNpcModal } from "./SpawnedNpcModal";
 import { TablesModal } from "./TablesModal";
 import { DiceModal as SystemDiceModal } from "./DiceModal";
 import type { SaveRollSetup } from "./save-roll";
 import { CalendarModal } from "./CalendarModal";
+import { EncounterPage, type EncounterCombatant, type EncounterRecord } from "./EncounterPage";
+import { CombatTracker } from "./CombatTracker";
+import { CombatantSheet } from "./CombatantSheet";
+import { useTabPicker } from "./TabPicker";
+import { useHoverTip } from "./HoverTip";
+import { mediaLabel } from "./media-label";
+import { describeTraits } from "@devils-toys/shared";
+import { rollBodyParts } from "./weapon-roll";
 interface SystemStatus {
   id: SystemId;
   name: string;
@@ -85,6 +98,8 @@ interface SystemStatus {
   rollRulesQuery: string;
   dice: DiceRules;
   groupPage: boolean;
+  /** What this system's weapon words mean, for the tooltips that show them. */
+  traits: ItemTrait[];
 }
 
 interface Status {
@@ -610,7 +625,7 @@ function TableRoom({
   const [detail, setDetail] = useState<RoomDetail>();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [presence, setPresence] = useState<PresenceMember[]>([]);
-  const [panel, setPanel] = useState<"scene" | "chat">("chat");
+  const [panel, setPanel] = useState<"scene" | "chat" | "combat">("chat");
   const [rulesFocus, setRulesFocus] = useState("");
   const [diceOpen, setDiceOpen] = useState(false);
   const [diceInitialSave, setDiceInitialSave] = useState<SaveRollSetup>();
@@ -634,20 +649,42 @@ function TableRoom({
   });
   const [audioOpen, setAudioOpen] = useState(false);
   const [npcOpen, setNpcOpen] = useState(false);
+  const [spawnedOpen, setSpawnedOpen] = useState(false);
   const [npcRevision, setNpcRevision] = useState(0);
   const [tablesOpen, setTablesOpen] = useState(false);
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [appearanceOpen, setAppearanceOpen] = useState(false);
   const [groupRevision, setGroupRevision] = useState(0);
+  const [encounters, setEncounters] = useState<EncounterRecord[]>([]);
+  const [selectedEncounterId, setSelectedEncounterId] = useState<number>();
+  const [inspecting, setInspecting] = useState<EncounterCombatant>();
+  const [sheetDefinitions, setSheetDefinitions] = useState<{
+    character?: CharacterSheetDefinition;
+    hireling?: CharacterSheetDefinition;
+  }>({});
   const [mapNotationSyncRevision, setMapNotationSyncRevision] = useState(0);
   const [mapNotationChange, setMapNotationChange] = useState<MapNotationEvent>();
   const [groupView, setGroupView] = useState<GroupView>(() => defaultGroupView(room.system));
   const [rulesTabRevision, setRulesTabRevision] = useState(0);
+  /** The tracker sits above chat; collapsing it leaves only its header. */
+  const [trackerOpen, setTrackerOpen] = useState(true);
 
   const socketRef = useRef<WebSocket | null>(null);
   // The dock owns the audio element; the playlist needs its live position so its
   // commands do not seek the room back to the last command's position.
   const audioPosition = useRef(0);
+
+  /** A roll arrives both in its response and over the socket; take it once. */
+  function noteMessage(message: ChatMessage) {
+    setMessages((current) =>
+      current.some(
+        (currentMessage) =>
+          currentMessage.id === message.id && Boolean(currentMessage.private) === Boolean(message.private)
+      )
+        ? current
+        : [...current, message]
+    );
+  }
 
   function openDice(initialSave?: SaveRollSetup) {
     setDiceInitialSave(initialSave);
@@ -666,6 +703,32 @@ function TableRoom({
 
   async function loadAudio() {
     setAudio(await api<RoomAudioState>(`/api/rooms/${room.id}/audio`));
+  }
+
+  async function loadEncounters() {
+    const response = await api<{ encounters: EncounterRecord[] }>(`/api/rooms/${room.id}/encounters`);
+    setEncounters(response.encounters);
+    setSelectedEncounterId((current) =>
+      current && response.encounters.some((encounter) => encounter.id === current)
+        ? current
+        : response.encounters[0]?.id
+    );
+  }
+
+  /** Sheet shapes for the combat tracker's inspector, read from the room's own definitions. */
+  async function loadSheetDefinitions() {
+    const [characters, group] = await Promise.all([
+      api<{ sheetDefinition?: CharacterSheetDefinition }>(`/api/rooms/${room.id}/characters`).catch(() => ({
+        sheetDefinition: undefined
+      })),
+      api<{ definition?: { hirelings?: { sheet?: CharacterSheetDefinition } } }>(`/api/rooms/${room.id}/group`).catch(
+        () => ({ definition: undefined })
+      )
+    ]);
+    setSheetDefinitions({
+      character: characters.sheetDefinition,
+      hireling: group.definition?.hirelings?.sheet
+    });
   }
 
   async function updatePlayback(state: Omit<AudioPlaybackState, "updatedAt">) {
@@ -688,6 +751,8 @@ function TableRoom({
     load();
     loadMedia();
     loadAudio();
+    loadEncounters();
+    loadSheetDefinitions();
     setGroupView(defaultGroupView(room.system));
   }, [room.id]);
   useEffect(() => {
@@ -718,12 +783,25 @@ function TableRoom({
         if (data.type === "characters-updated") {
           setCharactersRevision((current) => current + 1);
           load();
+          loadEncounters();
         }
-        if (data.type === "media-updated") loadMedia();
+        if (data.type === "media-updated") {
+          loadMedia();
+          loadEncounters();
+        }
         if (data.type === "audio-updated") loadAudio();
         if (data.type === "audio-playback") setAudio((current) => ({ ...current, playback: data.playback }));
-        if (data.type === "npcs-updated") setNpcRevision((current) => current + 1);
-        if (data.type === "group-updated") setGroupRevision((current) => current + 1);
+        if (data.type === "npcs-updated") {
+          setNpcRevision((current) => current + 1);
+          loadEncounters();
+        }
+        if (data.type === "group-updated") {
+          setGroupRevision((current) => current + 1);
+          loadEncounters();
+        }
+        if (data.type === "encounters-updated") {
+          loadEncounters();
+        }
         if (data.type === "map-notations-updated") setMapNotationSyncRevision((current) => current + 1);
         if (
           data.type === "map-notation-added" ||
@@ -754,7 +832,24 @@ function TableRoom({
     };
   }, [room.id]);
 
+  // The rail's combat tab carries the encounter switcher, in the same drop-down
+  // the table's own tabs use: click the active tab again to choose.
+  const combatPicker = useTabPicker({
+    options: encounters.map((encounter) => ({
+      id: String(encounter.id),
+      label: encounter.active ? encounter.name : `${encounter.name} (inactive)`
+    })),
+    selected: selectedEncounterId === undefined ? undefined : String(selectedEncounterId),
+    label: "Encounter",
+    onSelect: (id) => setSelectedEncounterId(Number(id))
+  });
+  useEffect(combatPicker.close, [panel]);
+
   if (!detail) return <div className="table-loading">Opening {room.name}…</div>;
+  const selectedEncounter = encounters.find((encounter) => encounter.id === selectedEncounterId);
+  // What the rail tracks: the chosen encounter, or the first the room has.
+  const railEncounter = selectedEncounter ?? encounters[0];
+  const hasActiveEncounters = encounters.some((encounter) => encounter.active);
   return (
     <section className="table-shell">
       <header className="table-header">
@@ -787,8 +882,13 @@ function TableRoom({
             </button>
           )}
           {detail.room.role === "gm" && (
-            <button className="icon-button" onClick={() => setNpcOpen(true)} title="NPCs and monsters">
+            <button className="icon-button" onClick={() => setNpcOpen(true)} title="Bestiary">
               <Skull />
+            </button>
+          )}
+          {detail.room.role === "gm" && (
+            <button className="icon-button" onClick={() => setSpawnedOpen(true)} title="Spawned NPCs">
+              <UserRound />
             </button>
           )}
           {detail.room.role === "gm" && (
@@ -840,6 +940,13 @@ function TableRoom({
                   characterRevision={charactersRevision}
                   hidden={false}
                   viewerId={accountId}
+                  role={detail.room.role}
+                  onOpenCharacter={(characterId) => {
+                    setCharacterToOpen(characterId);
+                    setCharactersOpen(true);
+                  }}
+                  onRolled={noteMessage}
+                  traits={systemDefinition.traits}
                   view={groupView}
                   presence={presence.length ? presence : detail.members.map((member) => ({ ...member, online: false }))}
                 />
@@ -854,14 +961,86 @@ function TableRoom({
                   }
                 : undefined
             }
+            encounterEnabled={encounters.length > 0 || detail.room.role === "gm"}
+            encounterPage={
+              <EncounterPage
+                roomId={room.id}
+                encounter={selectedEncounter}
+                isGm={detail.room.role === "gm"}
+                viewerId={accountId}
+                maps={(media.library ?? [])
+                  .filter((asset) => asset.kind === "map")
+                  .map((asset) => ({ id: asset.id, label: mediaLabel(asset) }))}
+                onChanged={loadEncounters}
+              />
+            }
+            encounterPicker={
+              encounters.length
+                ? {
+                    options: encounters.map((encounter) => ({ id: String(encounter.id), label: encounter.name })),
+                    selected: selectedEncounter ? String(selectedEncounter.id) : "",
+                    onSelect: (id) => setSelectedEncounterId(Number(id))
+                  }
+                : undefined
+            }
             onManage={() => setMediaOpen(true)}
             onPing={(x, y) => socketRef.current?.send(JSON.stringify({ type: "scene-ping", x, y }))}
           />
         </section>
         <aside className={`context-panel panel-${panel}`}>
-          {panel === "chat" && (
-            <Chat roomId={room.id} messages={messages} canClear={detail.room.role === "gm"} onDice={() => openDice()} />
+          {hasActiveEncounters && (
+            <section
+              className={`rail-encounter${trackerOpen ? "" : " rail-encounter-collapsed"}`}
+              aria-label="Combat tracker"
+            >
+              <header className="rail-encounter-header">
+                <button
+                  className="rail-encounter-toggle"
+                  aria-expanded={trackerOpen}
+                  aria-controls="rail-encounter-body"
+                  title={trackerOpen ? "Collapse the tracker" : "Expand the tracker"}
+                  onClick={() => setTrackerOpen((current) => !current)}
+                >
+                  {trackerOpen ? <ChevronDown aria-hidden="true" /> : <ChevronRight aria-hidden="true" />}
+                  <Swords aria-hidden="true" />
+                  <span>Combat</span>
+                </button>
+                {/* Switching encounters, in the same drop-down the table's tabs use. */}
+                <button
+                  ref={combatPicker.toggleRef}
+                  className={`rail-encounter-switch${combatPicker.open ? " picker-open" : ""}`}
+                  aria-haspopup="listbox"
+                  aria-expanded={combatPicker.open}
+                  title="Choose encounter"
+                  onClick={(event) => combatPicker.toggle(event)}
+                >
+                  <span>{railEncounter?.name}</span>
+                  <ChevronDown className={`tab-picker-chevron${encounters.length > 1 ? "" : " picker-empty"}`} />
+                </button>
+              </header>
+              {trackerOpen && (
+                <div className="rail-encounter-body" id="rail-encounter-body">
+                  <CombatTracker
+                    roomId={room.id}
+                    encounter={railEncounter}
+                    viewer={{ accountId, role: detail.room.role }}
+                    onInspect={setInspecting}
+                    onRolled={noteMessage}
+                    traits={systemDefinition.traits}
+                    onChanged={loadEncounters}
+                  />
+                </div>
+              )}
+            </section>
           )}
+          {combatPicker.menu}
+          <Chat
+            roomId={room.id}
+            messages={messages}
+            canClear={detail.room.role === "gm"}
+            traits={systemDefinition.traits}
+            onDice={() => openDice()}
+          />
         </aside>
       </div>
       <nav className="mobile-tabs">
@@ -873,6 +1052,18 @@ function TableRoom({
           <MessageSquare />
           <span>Chat</span>
         </button>
+        {hasActiveEncounters && (
+          <button
+            className={panel === "combat" ? "active" : ""}
+            onClick={() => {
+              setPanel("combat");
+              setTrackerOpen(true);
+            }}
+          >
+            <Swords />
+            <span>Combat</span>
+          </button>
+        )}
         <button onClick={() => setCharactersOpen(true)}>
           <FileText />
           <span>Sheet</span>
@@ -899,6 +1090,8 @@ function TableRoom({
             setCharacterToOpen(undefined);
             openDice(setup);
           }}
+          onRolled={noteMessage}
+          traits={systemDefinition.traits}
           onClose={() => {
             setCharactersOpen(false);
             setCharacterToOpen(undefined);
@@ -938,21 +1131,33 @@ function TableRoom({
           onClose={() => setAppearanceOpen(false)}
         />
       )}
+      {inspecting && (
+        <CombatantSheet
+          combatant={inspecting}
+          system={room.system}
+          characterSheet={sheetDefinitions.character}
+          hirelingSheet={sheetDefinitions.hireling}
+          npcStatblock={selectedEncounter?.npcStatblock}
+          roomId={room.id}
+          encounterId={railEncounter?.id}
+          isGm={detail.room.role === "gm"}
+          onChanged={loadEncounters}
+          onClose={() => setInspecting(undefined)}
+        />
+      )}
       {npcOpen && <NpcModal roomId={room.id} revision={npcRevision} onClose={() => setNpcOpen(false)} />}
+      {spawnedOpen && (
+        <SpawnedNpcModal
+          roomId={room.id}
+          revision={npcRevision + encounters.length}
+          onClose={() => setSpawnedOpen(false)}
+        />
+      )}
       {tablesOpen && (
         <TablesModal
           roomId={room.id}
           isGm={detail.room.role === "gm"}
-          onRolled={(message) =>
-            setMessages((current) =>
-              current.some(
-                (currentMessage) =>
-                  currentMessage.id === message.id && Boolean(currentMessage.private) === Boolean(message.private)
-              )
-                ? current
-                : [...current, message]
-            )
-          }
+          onRolled={noteMessage}
           onClose={() => setTablesOpen(false)}
         />
       )}
@@ -972,14 +1177,7 @@ function TableRoom({
           isGm={detail.room.role === "gm"}
           initialSave={diceInitialSave}
           onRolled={(message) => {
-            setMessages((current) =>
-              current.some(
-                (currentMessage) =>
-                  currentMessage.id === message.id && Boolean(currentMessage.private) === Boolean(message.private)
-              )
-                ? current
-                : [...current, message]
-            );
+            noteMessage(message);
             closeDice();
             setPanel("chat");
           }}
@@ -1018,15 +1216,32 @@ function TableRoom({
   );
 }
 
+/** A roll's bracketed words, with what this system says each of them means. */
+function RollTraits({ traits, written }: { traits: readonly ItemTrait[]; written: string }) {
+  const tip = useHoverTip(
+    describeTraits(written.split(", "), traits)
+      .map((trait) => trait.summary)
+      .join("\n")
+  );
+  return (
+    <span className="message-traits" tabIndex={0} {...tip.props}>
+      [{written}]{tip.node}
+    </span>
+  );
+}
+
 function Chat({
   roomId,
   messages,
   canClear,
+  traits,
   onDice
 }: {
   roomId: number;
   messages: ChatMessage[];
   canClear: boolean;
+  /** The system's own definitions, so a roll's bracketed words can be read. */
+  traits: readonly ItemTrait[];
   onDice: () => void;
 }) {
   const [error, setError] = useState("");
@@ -1102,7 +1317,13 @@ function Chat({
                 </time>
               </span>
             </div>
-            <p>{message.body}</p>
+            <p>
+              {message.kind === "roll"
+                ? rollBodyParts(message.body).map((part, index) =>
+                    part.traits ? <RollTraits traits={traits} written={part.traits} key={index} /> : part.text
+                  )
+                : message.body}
+            </p>
             {message.detail && <small>{message.detail}</small>}
           </article>
         ))}

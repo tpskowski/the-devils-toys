@@ -6,6 +6,7 @@ import type { AuthedRequest } from "./auth.js";
 import { clearSession, createSession, requireAuth } from "./auth.js";
 import { one } from "./db.js";
 import { systems } from "./systems.js";
+import { itemTraitsFor } from "./character-items.js";
 
 /**
  * Signing in, signing out, and asking who you are. These live apart from the
@@ -53,7 +54,10 @@ sessionRouter.get("/status", (_req, res) => {
         defaultTheme,
         rollRulesQuery,
         dice,
-        groupPage: Boolean(groupPage)
+        groupPage: Boolean(groupPage),
+        // What this system's weapon words mean, so anything that shows one can
+        // say so rather than repeating the word back.
+        traits: itemTraitsFor(id)
       })
     ),
     themes: THEME_IDS

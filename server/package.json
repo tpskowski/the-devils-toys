@@ -10,7 +10,9 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "dev:tables": "tsx watch src/tables-server.ts",
-    "start:tables": "node dist/tables-server.js"
+    "start:tables": "node dist/tables-server.js",
+    "build:items": "tsx src/build-items.ts",
+    "build:traits": "tsx src/build-traits.ts"
   },
   "dependencies": {
     "@devils-toys/shared": "0.1.0",

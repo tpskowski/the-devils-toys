@@ -6,6 +6,8 @@
  * to save page space, so a row can describe more than one item.
  */
 
+import { closingParen } from "@devils-toys/shared";
+
 export interface PricedRow {
   category: string;
   cell: string;
@@ -20,19 +22,6 @@ export interface SplitCell {
 
 export function plain(value: string) {
   return value.replace(/\*\*/g, "").replace(/\s+/g, " ").trim();
-}
-
-/** The index closing the parenthetical that opens at `open`, or -1. */
-function closingParen(text: string, open: number) {
-  let depth = 0;
-  for (let index = open; index < text.length; index += 1) {
-    if (text[index] === "(") depth += 1;
-    else if (text[index] === ")") {
-      depth -= 1;
-      if (!depth) return index;
-    }
-  }
-  return -1;
 }
 
 /**
@@ -86,7 +75,7 @@ function headingText(line: string) {
 }
 
 /** The lines belonging to a heading, up to the next heading of the same rank or higher. */
-function sectionLines(lines: readonly string[], heading: string) {
+export function sectionLines(lines: readonly string[], heading: string) {
   const start = lines.findIndex((line) => headingText(line) === heading.toLocaleLowerCase());
   if (start < 0) return [];
   const rootLevel = headingLevel(lines[start])!;

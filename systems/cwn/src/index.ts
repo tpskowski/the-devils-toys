@@ -240,6 +240,15 @@ function numeric(sheet: Record<string, unknown>, key: string) {
   return Number.isFinite(value) ? value : undefined;
 }
 
+/**
+ * Cities Without Number gives a weapon its range in metres — "30/100" for short
+ * and long — and calls the rest melee.
+ */
+const weaponRange = {
+  melee: [String.raw`\bmelee\b`, String.raw`^close$`, String.raw`^touch$`],
+  ranged: [String.raw`^\d+\s*/\s*\d+$`, String.raw`range`, String.raw`\b(?:metres?|meters?)\b`]
+} as const;
+
 export const cwn: GameSystem = {
   id: "cwn",
   name: "Cities Without Number",
@@ -264,6 +273,39 @@ export const cwn: GameSystem = {
   abilities: ["Strength", "Dexterity", "Constitution", "Intelligence", "Wisdom", "Charisma"],
   gmOnlyHeadings: ["5.0.0 Antagonists and NPCs"],
   npcCatalog: { heading: "5.0.0 Antagonists and NPCs", entryLevel: 3, exclude: ["5.2.1 Morale Check Situations"] },
+  initiative: {
+    model: "side",
+    sides: [
+      { id: "party", label: "Party" },
+      { id: "enemies", label: "Enemies" }
+    ],
+    sideOrder: "roll",
+    roll: { dice: "1d8", modifierFrom: "best-dex", label: "Initiative" },
+    tieBreak: "party-wins",
+    allowIndividualVariant: true
+  },
+  rangedWeaponIcon: "gun",
+  npcStatblock: {
+    hitPointsKey: "hp",
+    weaponRange,
+    attacksKey: "dmg",
+    fields: [
+      { key: "hd", label: "HD", kind: "text" },
+      { key: "hp", label: "HP", kind: "number", inSummary: true },
+      { key: "damageSoak", label: "Damage Soak", kind: "number" },
+      { key: "acRanged", label: "Ranged AC", kind: "text", inSummary: true },
+      { key: "acMelee", label: "Melee AC", kind: "text", inSummary: true },
+      { key: "tt", label: "TT", kind: "text" },
+      { key: "skill", label: "Skill", kind: "text" },
+      { key: "save", label: "Save", kind: "text" },
+      { key: "atk", label: "Atk", kind: "text" },
+      { key: "dmg", label: "Dmg", kind: "text" },
+      { key: "shock", label: "Shock", kind: "text" },
+      { key: "move", label: "Move", kind: "text" },
+      { key: "ml", label: "ML", kind: "text" },
+      { key: "gear", label: "Gear", kind: "text" }
+    ]
+  },
   tableCatalog: {
     label: "Cities Without Number tables",
     exclude: [],

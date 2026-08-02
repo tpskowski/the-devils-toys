@@ -7,7 +7,8 @@
 3. Put authoritative source Markdown in `raw/`; preserve its wording exactly except for documented repairs in `raw/corrections.md`.
 4. Mark every content section as `player` or `gm`. Server-side search and direct reads must apply that classification before returning data.
 5. Register the package in `server/src/systems.ts` and add focused tests for defaults, dice rules, character fields, and access filtering.
-6. Do not add runtime installation. Systems are compiled into the application.
+6. Add `systems/<slug>/items.json` containing `{"system":"<slug>","source":"","lists":{}}` and `systems/<slug>/traits.json` containing `{"system":"<slug>","source":"","traits":[]}`, then run `npm run build:items` and `npm run build:traits` to fill them. The placeholders are needed first because the generators load the system definition. Both commands are one-offs: they seed an empty catalogue and never touch a filled one. See "The item catalogue".
+7. Do not add runtime installation. Systems are compiled into the application.
 
 ## Adding a room theme
 
@@ -23,6 +24,29 @@
 - Hold capacity comes from the chosen size, so no client should restate the size table.
 - Installable parts are read from the system's own parts tables by `server/src/starship-parts.ts` and sent with the group definition, the same way random tables are. A part's second column must be its cost, and a part is bulky when the book says so in its parenthetical.
 - A bulky part occupies the hold after it, written as a continuation line. Installing one is refused when that hold is taken or does not exist, and replacing it frees the hold it was spilling into.
+
+## The item catalogue
+
+- A system's gear lives in `systems/<id>/items.json`. **The catalogue is the authority, not the rulebook.** The book seeds it once and has no say in it afterwards. This is a deliberate exception to the rule below that content is read from the book rather than restated: gear gets fixed, rebalanced, added to, and thrown out, and none of that can survive if the book reseeds it.
+- **`npm run build:items` is a one-off per system.** It seeds a catalogue that has none and then refuses to touch it again, reporting `already seeded — untouched`. Nothing a run can do will reorder, rewrite, or reinstate an entry, so a hand edit needs no defending against the build.
+- `npm run build:items:merge` folds in what a book has gained since — a corrections file, a new printing — and can be narrowed to one system by running it in the server workspace: `npm run build:items --workspace @devils-toys/server -- --merge cwn`. That pass is **additive only**: an entry already held keeps every value it has, a field it has never carried is filled from the book, and an id under `retired` is never offered again. An entry the book no longer offers is reported and left alone, since it is either a deliberate addition or a rename.
+- **Removing an entry means retiring it.** Deleting it from `lists` alone lasts until the next `--merge`, because the book still prices it. Put its id in the catalogue's `retired` array and it stays gone. Monolith's `heavy-weapons` and `stationary-weapons` are the standing example: one priced row each, replaced by the two weapons the row's own description names.
+- To rebuild a catalogue from the book from scratch, delete the file and run the command again. That discards every hand edit in it, which is why it is a deletion and not a flag.
+- Hand-edit `items.json` freely; that is what it is for. It is `.prettierignore`d so nothing reformats it under you, though a run that adds entries rewrites the whole file in the serializer's format.
+- `weaponCategories` on a list is read only while seeding. There is no correction hook in the system definition — an entry the parser reads wrongly is fixed in the catalogue, which nothing will undo. Monolith's Basilisk Gland is the standing example: the parser reads it as ordinary gear because its damage sits in a second parenthetical, and the catalogue records it as a 1D8 weapon.
+- Every item carries an `id` built from the system and the item's name, so anything that needs to point at an item has something stable to point at, and so the seeder can tell a new entry from one already held. Ids are qualified by spec only where a name repeats, so an unrelated table gaining a row cannot move one. `catalogFromRulebook` refuses to produce a duplicate id.
+- The file is reached as `@devils-toys/system-<id>/items`, not through the `GameSystem` definition. The seeder reads those definitions to decide what to offer, so a definition that carried its own catalogue could not be loaded until the catalogue already existed. Adding a system therefore starts with a placeholder `{"system":"<id>","source":"","lists":{}}` before the first `npm run build:items`.
+- esbuild inlines the JSON into the server bundle, so the runtime image needs no extra files. Do not switch it to a runtime `fs` read without also adding it to the Dockerfile.
+- What a system's weapon words mean lives beside the gear in `systems/<id>/traits.json`, on the same terms: `npm run build:traits` seeds it from the definition lists the system names in `traitCatalog.headings`, once, and `npm run build:traits:merge` folds in later additions. A trait a book states in prose rather than in a list — Monolith's bulk and blast, Cairn's bulk — is written in by hand and is never touched. The client reads the catalogue from `/api/status` at start-up, so a change needs a server restart to be seen.
+
+## Weapons and carried items
+
+- An item's mechanics live in the parenthetical the book writes beside its name, and `shared/src/character-items.ts` is the one place that reads them. Both the server's catalogue parser and the client's free-text slots go through it, so a weapon is judged the same way whether it came out of a rulebook table or was typed into a slot.
+- A weapon is either an entry under a category the system declares in `weaponCategories`, or an item whose parenthetical states damage. The first catches weapons with no die — Monolith's stun gun states a save — and the second catches weapons the book files elsewhere, such as its sledgehammer under Tools. A die that counts uses, charges, rounds, or slots is not damage; the exclusions are covered by tests against the real tables and should stay that way.
+- Traits are the remaining comma-separated terms of that parenthetical, kept in the book's own words rather than mapped onto a vocabulary this application invents. Read them from the parenthetical only where the parenthetical is what made the item a weapon: an augment states its socket there, and a socket is not a trait.
+- A rulebook entry the reading cannot get right is corrected once, in `items.json`, not left for each player to mark on their own slot. Prefer that to loosening the parser for a single unusual row: the parser runs over two whole books, and the catalogue is where a one-off belongs.
+- Slots hold plain strings, and that is deliberate — a sheet is free text a player can overwrite. Anything known about a slot's weapon beyond its text lives in a parallel array under `weaponOverrideKey(listKey)`, holding a `SlotWeaponDetail` per slot. Only what disagrees with the reading is stored, so an ordinary weapon keeps following its own notation.
+- The slot's text and its weapon record must be written together. `setListItem` on the character sheet and `setHirelingListItem` on the group page are the only writers; both clear the record when the text changes, because a record keyed by position would otherwise be inherited by whatever was stowed next.
 
 ## Random tables
 

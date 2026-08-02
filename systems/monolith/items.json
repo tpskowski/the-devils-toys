@@ -1,0 +1,1355 @@
+{
+  "system": "monolith",
+  "source": "Monolith.md",
+  "lists": {
+    "equipment": [
+      {
+        "id": "monolith/unarmed",
+        "category": "STANDARD WEAPONS",
+        "name": "Unarmed",
+        "spec": "D4 melee, -1 if opponent has armor",
+        "detail": "",
+        "cost": "-",
+        "bulky": false,
+        "weapon": true,
+        "damage": "D4",
+        "traits": [
+          "melee",
+          "-1 if opponent has armor"
+        ],
+        "range": "Melee",
+        "label": "Unarmed (D4 melee, -1 if opponent has armor)"
+      },
+      {
+        "id": "monolith/small-melee",
+        "category": "STANDARD WEAPONS",
+        "name": "Small Melee",
+        "spec": "D6",
+        "detail": "Dagger, club, fist weapon.",
+        "cost": "100",
+        "bulky": false,
+        "weapon": true,
+        "damage": "D6",
+        "range": "Melee",
+        "label": "Small Melee (D6)"
+      },
+      {
+        "id": "monolith/medium-melee",
+        "category": "STANDARD WEAPONS",
+        "name": "Medium Melee",
+        "spec": "D8",
+        "detail": "Vibrablades, plasma axes, shock staves.",
+        "cost": "200",
+        "bulky": false,
+        "weapon": true,
+        "damage": "D8",
+        "range": "Melee",
+        "label": "Medium Melee (D8)"
+      },
+      {
+        "id": "monolith/large-melee",
+        "category": "STANDARD WEAPONS",
+        "name": "Large Melee",
+        "spec": "D10, bulky",
+        "detail": "Energy glaives, chain-blades.",
+        "cost": "300",
+        "bulky": true,
+        "weapon": true,
+        "damage": "D10",
+        "traits": [
+          "bulky"
+        ],
+        "range": "Melee",
+        "label": "Large Melee (D10, bulky)"
+      },
+      {
+        "id": "monolith/stun-gun",
+        "category": "STANDARD WEAPONS",
+        "name": "Stun Gun",
+        "spec": "DEX Save vs Impaired 1 round, S-R, recharges in 1 round",
+        "detail": "",
+        "cost": "100",
+        "bulky": false,
+        "weapon": true,
+        "traits": [
+          "DEX Save vs Impaired 1 round",
+          "S-R",
+          "recharges in 1 round"
+        ],
+        "range": "S-R",
+        "label": "Stun Gun (DEX Save vs Impaired 1 round, S-R, recharges in 1 round)"
+      },
+      {
+        "id": "monolith/tranquilizer-gun",
+        "category": "STANDARD WEAPONS",
+        "name": "Tranquilizer Gun",
+        "spec": "STR Save vs Impaired 1 round, S-R, must spend a round reloading",
+        "detail": "",
+        "cost": "100",
+        "bulky": false,
+        "weapon": true,
+        "traits": [
+          "STR Save vs Impaired 1 round",
+          "S-R",
+          "must spend a round reloading"
+        ],
+        "range": "S-R",
+        "label": "Tranquilizer Gun (STR Save vs Impaired 1 round, S-R, must spend a round reloading)"
+      },
+      {
+        "id": "monolith/junky-blaster",
+        "category": "STANDARD WEAPONS",
+        "name": "Junky Blaster",
+        "spec": "D6, Cheap, S-R",
+        "detail": "Ballistic rounds, junky pulse rounds.",
+        "cost": "100",
+        "bulky": false,
+        "weapon": true,
+        "damage": "D6",
+        "traits": [
+          "Cheap",
+          "S-R"
+        ],
+        "range": "S-R",
+        "label": "Junky Blaster (D6, Cheap, S-R)"
+      },
+      {
+        "id": "monolith/junky-rifle",
+        "category": "STANDARD WEAPONS",
+        "name": "Junky Rifle",
+        "spec": "D8, Cheap, mid-range",
+        "detail": "Ballistic rounds, junky pulse rounds.",
+        "cost": "150",
+        "bulky": false,
+        "weapon": true,
+        "damage": "D8",
+        "traits": [
+          "Cheap",
+          "mid-range"
+        ],
+        "range": "mid-range",
+        "label": "Junky Rifle (D8, Cheap, mid-range)"
+      },
+      {
+        "id": "monolith/blaster",
+        "category": "STANDARD WEAPONS",
+        "name": "Blaster",
+        "spec": "D6, short/mid-range",
+        "detail": "Particle beam energy bolts.",
+        "cost": "300",
+        "bulky": false,
+        "weapon": true,
+        "damage": "D6",
+        "traits": [
+          "short/mid-range"
+        ],
+        "range": "short/mid-range",
+        "label": "Blaster (D6, short/mid-range)"
+      },
+      {
+        "id": "monolith/rifle",
+        "category": "STANDARD WEAPONS",
+        "name": "Rifle",
+        "spec": "D8, bulky, mid/long-range",
+        "detail": "Particle beam energy bolts.",
+        "cost": "500",
+        "bulky": true,
+        "weapon": true,
+        "damage": "D8",
+        "traits": [
+          "bulky",
+          "mid/long-range"
+        ],
+        "range": "mid/long-range",
+        "label": "Rifle (D8, bulky, mid/long-range)"
+      },
+      {
+        "id": "monolith/uzi",
+        "category": "STANDARD WEAPONS",
+        "name": "Uzi",
+        "spec": "D6 blast, mid-range",
+        "detail": "Particle beam energy bolts.",
+        "cost": "800",
+        "bulky": false,
+        "weapon": true,
+        "damage": "D6",
+        "traits": [
+          "blast",
+          "mid-range"
+        ],
+        "range": "mid-range",
+        "label": "Uzi (D6 blast, mid-range)"
+      },
+      {
+        "id": "monolith/shotgun",
+        "category": "STANDARD WEAPONS",
+        "name": "Shotgun",
+        "spec": "D6 Blast, bulky, close/ short range",
+        "detail": "Particle beam energy scatterbolts.",
+        "cost": "500",
+        "bulky": true,
+        "weapon": true,
+        "damage": "D6",
+        "traits": [
+          "Blast",
+          "bulky",
+          "close/ short range"
+        ],
+        "range": "close/short-range",
+        "label": "Shotgun (D6 Blast, bulky, close/ short range)"
+      },
+      {
+        "id": "monolith/sniper-rifle",
+        "category": "STANDARD WEAPONS",
+        "name": "Sniper Rifle",
+        "spec": "D10, STR damage when hidden, bulky, long-range",
+        "detail": "Particle beam energy bolts.",
+        "cost": "1,000",
+        "bulky": true,
+        "weapon": true,
+        "damage": "D10",
+        "traits": [
+          "STR damage when hidden",
+          "bulky",
+          "long-range"
+        ],
+        "range": "long-range",
+        "label": "Sniper Rifle (D10, STR damage when hidden, bulky, long-range)"
+      },
+      {
+        "id": "monolith/repeater",
+        "category": "STANDARD WEAPONS",
+        "name": "Repeater",
+        "spec": "D10 or D8 blast, bulky, mid-range",
+        "detail": "Particle beam energy bolts.",
+        "cost": "1,200",
+        "bulky": true,
+        "weapon": true,
+        "damage": "D10",
+        "traits": [
+          "blast",
+          "bulky",
+          "mid-range"
+        ],
+        "range": "mid-range",
+        "label": "Repeater (D10 or D8 blast, bulky, mid-range)"
+      },
+      {
+        "id": "monolith/flamethrower",
+        "category": "STANDARD WEAPONS",
+        "name": "Flamethrower",
+        "spec": "D10 blast, thermal, bulky, short-range",
+        "detail": "Fire!",
+        "cost": "1,500",
+        "bulky": true,
+        "weapon": true,
+        "damage": "D10",
+        "traits": [
+          "blast",
+          "thermal",
+          "bulky",
+          "short-range"
+        ],
+        "range": "short-range",
+        "label": "Flamethrower (D10 blast, thermal, bulky, short-range)"
+      },
+      {
+        "id": "monolith/particle-beamer",
+        "category": "STANDARD WEAPONS",
+        "name": "Particle Beamer",
+        "spec": "D10 blast, bulky, mid/long-range",
+        "detail": "",
+        "cost": "1,500",
+        "bulky": true,
+        "weapon": true,
+        "damage": "D10",
+        "traits": [
+          "blast",
+          "bulky",
+          "mid/long-range"
+        ],
+        "range": "mid/long-range",
+        "label": "Particle Beamer (D10 blast, bulky, mid/long-range)"
+      },
+      {
+        "id": "monolith/mini-gun",
+        "category": "STANDARD WEAPONS",
+        "name": "Mini Gun",
+        "spec": "D8 blast, bulky, mid/long-range",
+        "detail": "",
+        "cost": "1,500",
+        "bulky": true,
+        "weapon": true,
+        "damage": "D8",
+        "traits": [
+          "blast",
+          "bulky",
+          "mid/long-range"
+        ],
+        "range": "mid/long-range",
+        "label": "Mini Gun (D8 blast, bulky, mid/long-range)"
+      },
+      {
+        "id": "monolith/mounted-machine-gun",
+        "category": "STANDARD WEAPONS",
+        "name": "Mounted Machine Gun",
+        "spec": "D10 blast, stationary, mid/long-range",
+        "detail": "",
+        "cost": "2,000",
+        "bulky": false,
+        "weapon": true,
+        "damage": "D10",
+        "traits": [
+          "blast",
+          "stationary",
+          "mid/long-range"
+        ],
+        "range": "mid/long-range",
+        "label": "Mounted Machine Gun (D10 blast, stationary, mid/long-range)"
+      },
+      {
+        "id": "monolith/cannon-emplacement",
+        "category": "STANDARD WEAPONS",
+        "name": "Cannon Emplacement",
+        "spec": "D12 blast, stationary, long-range",
+        "detail": "",
+        "cost": "2,000",
+        "bulky": false,
+        "weapon": true,
+        "damage": "D12",
+        "traits": [
+          "blast",
+          "stationary",
+          "long-range"
+        ],
+        "range": "long-range",
+        "label": "Cannon Emplacement (D12 blast, stationary, long-range)"
+      },
+      {
+        "id": "monolith/high-energy-blaster",
+        "category": "HIGH ENERGY WEAPONS",
+        "name": "High-Energy Blaster",
+        "spec": "2D4",
+        "detail": "",
+        "cost": "600",
+        "bulky": false,
+        "weapon": true,
+        "damage": "2D4",
+        "range": "short/mid-range",
+        "label": "High-Energy Blaster (2D4)"
+      },
+      {
+        "id": "monolith/high-energy-uzi",
+        "category": "HIGH ENERGY WEAPONS",
+        "name": "High-Energy Uzi",
+        "spec": "2D4 blast",
+        "detail": "",
+        "cost": "1,600",
+        "bulky": false,
+        "weapon": true,
+        "damage": "2D4",
+        "traits": [
+          "blast"
+        ],
+        "range": "mid-range",
+        "label": "High-Energy Uzi (2D4 blast)"
+      },
+      {
+        "id": "monolith/high-energy-shotgun",
+        "category": "HIGH ENERGY WEAPONS",
+        "name": "High-Energy Shotgun",
+        "spec": "2D4 blast, Bulky",
+        "detail": "",
+        "cost": "1,000",
+        "bulky": true,
+        "weapon": true,
+        "damage": "2D4",
+        "traits": [
+          "blast",
+          "Bulky"
+        ],
+        "range": "close/short-range",
+        "label": "High-Energy Shotgun (2D4 blast, Bulky)"
+      },
+      {
+        "id": "monolith/high-energy-rifle",
+        "category": "HIGH ENERGY WEAPONS",
+        "name": "High-Energy Rifle",
+        "spec": "2D6, bulky",
+        "detail": "",
+        "cost": "1,000",
+        "bulky": true,
+        "weapon": true,
+        "damage": "2D6",
+        "traits": [
+          "bulky"
+        ],
+        "range": "mid/long-range",
+        "label": "High-Energy Rifle (2D6, bulky)"
+      },
+      {
+        "id": "monolith/high-energy-repeater",
+        "category": "HIGH ENERGY WEAPONS",
+        "name": "High-Energy Repeater",
+        "spec": "2D6 or 2D4 blast, bulky",
+        "detail": "",
+        "cost": "2,000",
+        "bulky": true,
+        "weapon": true,
+        "damage": "2D6",
+        "traits": [
+          "blast",
+          "bulky"
+        ],
+        "range": "mid-range",
+        "label": "High-Energy Repeater (2D6 or 2D4 blast, bulky)"
+      },
+      {
+        "id": "monolith/high-energy-sniper-rifle",
+        "category": "HIGH ENERGY WEAPONS",
+        "name": "High-Energy Sniper Rifle",
+        "spec": "2D8, vs STR when hidden, bulky",
+        "detail": "",
+        "cost": "2,000",
+        "bulky": true,
+        "weapon": true,
+        "damage": "2D8",
+        "traits": [
+          "vs STR when hidden",
+          "bulky"
+        ],
+        "range": "long-range",
+        "label": "High-Energy Sniper Rifle (2D8, vs STR when hidden, bulky)"
+      },
+      {
+        "id": "monolith/arc-ray",
+        "category": "HIGH ENERGY WEAPONS",
+        "name": "Arc-Ray",
+        "spec": "2D6 shock, bulky",
+        "detail": "",
+        "cost": "2,000",
+        "bulky": true,
+        "weapon": true,
+        "damage": "2D6",
+        "traits": [
+          "shock",
+          "bulky"
+        ],
+        "range": "close/short-range",
+        "label": "Arc-Ray (2D6 shock, bulky)"
+      },
+      {
+        "id": "monolith/pulse-axe",
+        "category": "HIGH ENERGY WEAPONS",
+        "name": "Pulse Axe",
+        "spec": "2D4 Cryo",
+        "detail": "Melee handle with torch-like energy blades.",
+        "cost": "1,000",
+        "bulky": false,
+        "weapon": true,
+        "damage": "2D4",
+        "traits": [
+          "Cryo"
+        ],
+        "range": "Melee",
+        "label": "Pulse Axe (2D4 Cryo)"
+      },
+      {
+        "id": "monolith/smart-blaster",
+        "category": "SMART WEAPONS",
+        "name": "Smart Blaster",
+        "spec": "D6+D6",
+        "detail": "",
+        "cost": "+200",
+        "bulky": false,
+        "weapon": true,
+        "damage": "D6+D6",
+        "range": "short/mid-range",
+        "label": "Smart Blaster (D6+D6)"
+      },
+      {
+        "id": "monolith/smart-uzi",
+        "category": "SMART WEAPONS",
+        "name": "Smart Uzi",
+        "spec": "D6+D4 blast",
+        "detail": "",
+        "cost": "+300",
+        "bulky": false,
+        "weapon": true,
+        "damage": "D6+D4",
+        "traits": [
+          "blast"
+        ],
+        "range": "mid-range",
+        "label": "Smart Uzi (D6+D4 blast)"
+      },
+      {
+        "id": "monolith/smart-shotgun",
+        "category": "SMART WEAPONS",
+        "name": "Smart Shotgun",
+        "spec": "D6+D6 blast, Bulky",
+        "detail": "",
+        "cost": "+200",
+        "bulky": true,
+        "weapon": true,
+        "damage": "D6+D6",
+        "traits": [
+          "blast",
+          "Bulky"
+        ],
+        "range": "close/short-range",
+        "label": "Smart Shotgun (D6+D6 blast, Bulky)"
+      },
+      {
+        "id": "monolith/smart-rifle",
+        "category": "SMART WEAPONS",
+        "name": "Smart Rifle",
+        "spec": "D8+D8, bulky",
+        "detail": "",
+        "cost": "+200",
+        "bulky": true,
+        "weapon": true,
+        "damage": "D8+D8",
+        "traits": [
+          "bulky"
+        ],
+        "range": "mid/long-range",
+        "label": "Smart Rifle (D8+D8, bulky)"
+      },
+      {
+        "id": "monolith/smart-sniper-rifle",
+        "category": "SMART WEAPONS",
+        "name": "Smart Sniper Rifle",
+        "spec": "D10+D10, enhanced when hidden, bulky",
+        "detail": "",
+        "cost": "+300",
+        "bulky": true,
+        "weapon": true,
+        "damage": "D10+D10",
+        "traits": [
+          "enhanced when hidden",
+          "bulky"
+        ],
+        "range": "long-range",
+        "label": "Smart Sniper Rifle (D10+D10, enhanced when hidden, bulky)"
+      },
+      {
+        "id": "monolith/smart-repeater",
+        "category": "SMART WEAPONS",
+        "name": "Smart Repeater",
+        "spec": "D10+D10, or D8+D8 blast",
+        "detail": "",
+        "cost": "+300",
+        "bulky": false,
+        "weapon": true,
+        "damage": "D10+D10",
+        "traits": [
+          "or D8+D8 blast"
+        ],
+        "range": "mid-range",
+        "label": "Smart Repeater (D10+D10, or D8+D8 blast)"
+      },
+      {
+        "id": "monolith/high-energy-cells",
+        "category": "AMMO",
+        "name": "High-Energy Cells",
+        "spec": "",
+        "detail": "",
+        "cost": "200",
+        "bulky": false,
+        "weapon": false,
+        "label": "High-Energy Cells"
+      },
+      {
+        "id": "monolith/smart-cartridges",
+        "category": "AMMO",
+        "name": "Smart-Cartridges",
+        "spec": "",
+        "detail": "",
+        "cost": "100",
+        "bulky": false,
+        "weapon": false,
+        "label": "Smart-Cartridges"
+      },
+      {
+        "id": "monolith/specialty-ammo-fuel",
+        "category": "AMMO",
+        "name": "Specialty Ammo/Fuel",
+        "spec": "",
+        "detail": "",
+        "cost": "1-300",
+        "bulky": false,
+        "weapon": false,
+        "label": "Specialty Ammo/Fuel"
+      },
+      {
+        "id": "monolith/vac-suit",
+        "category": "ARMOR",
+        "name": "Vac-Suit",
+        "spec": "Armor 1, bulky",
+        "detail": "Allows for breathing in hostile environments.",
+        "cost": "200",
+        "bulky": true,
+        "weapon": false,
+        "label": "Vac-Suit (Armor 1, bulky)"
+      },
+      {
+        "id": "monolith/light-vest",
+        "category": "ARMOR",
+        "name": "Light Vest",
+        "spec": "Armor 1",
+        "detail": "",
+        "cost": "500",
+        "bulky": false,
+        "weapon": false,
+        "label": "Light Vest (Armor 1)"
+      },
+      {
+        "id": "monolith/combat-suit",
+        "category": "ARMOR",
+        "name": "Combat Suit",
+        "spec": "Armor 2, bulky",
+        "detail": "",
+        "cost": "1,000",
+        "bulky": true,
+        "weapon": false,
+        "label": "Combat Suit (Armor 2, bulky)"
+      },
+      {
+        "id": "monolith/heavy-combat-suit",
+        "category": "ARMOR",
+        "name": "Heavy Combat Suit",
+        "spec": "Armor 3, bulky",
+        "detail": "",
+        "cost": "2,000",
+        "bulky": true,
+        "weapon": false,
+        "label": "Heavy Combat Suit (Armor 3, bulky)"
+      },
+      {
+        "id": "monolith/shield-generator",
+        "category": "ARMOR",
+        "name": "Shield Generator",
+        "spec": "+1 Armor",
+        "detail": "",
+        "cost": "500",
+        "bulky": false,
+        "weapon": false,
+        "label": "Shield Generator (+1 Armor)"
+      },
+      {
+        "id": "monolith/helm",
+        "category": "ARMOR",
+        "name": "Helm",
+        "spec": "+1 Armor",
+        "detail": "",
+        "cost": "500",
+        "bulky": false,
+        "weapon": false,
+        "label": "Helm (+1 Armor)"
+      },
+      {
+        "id": "monolith/rebreather-helm",
+        "category": "ARMOR",
+        "name": "Rebreather Helm",
+        "spec": "+1 Armor",
+        "detail": "Allows for breathing in hostile environments.",
+        "cost": "800",
+        "bulky": false,
+        "weapon": false,
+        "label": "Rebreather Helm (+1 Armor)"
+      },
+      {
+        "id": "monolith/flash-grenade",
+        "category": "EXPLOSIVES",
+        "name": "Flash Grenade",
+        "spec": "DEX save or stunned for 1D4 rounds",
+        "detail": "Ineffective against machines and smart helmets or eye protection.",
+        "cost": "50",
+        "bulky": false,
+        "weapon": true,
+        "traits": [
+          "DEX save or stunned for 1D4 rounds"
+        ],
+        "range": "short-range",
+        "label": "Flash Grenade (DEX save or stunned for 1D4 rounds)"
+      },
+      {
+        "id": "monolith/thermal-detonator",
+        "category": "EXPLOSIVES",
+        "name": "Thermal Detonator",
+        "spec": "d6, blast, thermal",
+        "detail": "Beep...beep...boom.",
+        "cost": "50",
+        "bulky": false,
+        "weapon": true,
+        "damage": "d6",
+        "traits": [
+          "blast",
+          "thermal"
+        ],
+        "range": "short-range",
+        "label": "Thermal Detonator (d6, blast, thermal)"
+      },
+      {
+        "id": "monolith/claymore",
+        "category": "EXPLOSIVES",
+        "name": "Claymore",
+        "spec": "d8 blast",
+        "detail": "Set the charge and stick to most solid surfaces. Anyone who moves within 5’ will activate the explosive.",
+        "cost": "150",
+        "bulky": false,
+        "weapon": true,
+        "damage": "d8",
+        "traits": [
+          "blast"
+        ],
+        "range": "Melee",
+        "label": "Claymore (d8 blast)"
+      },
+      {
+        "id": "monolith/blast-putty",
+        "category": "EXPLOSIVES",
+        "name": "Blast Putty",
+        "spec": "d6 blast, thermal",
+        "detail": "Must be applied to a surface. Triggered by interaction.",
+        "cost": "100",
+        "bulky": false,
+        "weapon": true,
+        "damage": "d6",
+        "traits": [
+          "blast",
+          "thermal"
+        ],
+        "range": "Melee",
+        "label": "Blast Putty (d6 blast, thermal)"
+      },
+      {
+        "id": "monolith/adrenaline-injection",
+        "category": "CONSUMABLES",
+        "name": "Adrenaline Injection",
+        "spec": "",
+        "detail": "(1 use) Inject directly into heart. Clears 1 fatigue. Using more than 1 a day may cause heart issues.",
+        "cost": "200",
+        "bulky": false,
+        "weapon": false,
+        "label": "Adrenaline Injection"
+      },
+      {
+        "id": "monolith/combat-stims",
+        "category": "CONSUMABLES",
+        "name": "Combat Stims",
+        "spec": "",
+        "detail": "(1 use) Gain 1D6 temporary HP for 10 minutes.",
+        "cost": "300",
+        "bulky": false,
+        "weapon": false,
+        "label": "Combat Stims"
+      },
+      {
+        "id": "monolith/smart-meds",
+        "category": "CONSUMABLES",
+        "name": "Smart Meds",
+        "spec": "",
+        "detail": "(1 use) Heals 1D4 STR or 1 fatigue. Overuse may cause addiction.",
+        "cost": "300",
+        "bulky": false,
+        "weapon": false,
+        "label": "Smart Meds"
+      },
+      {
+        "id": "monolith/antivirus-exe",
+        "category": "CONSUMABLES",
+        "name": "Antivirus.Exe",
+        "spec": "1 use",
+        "detail": "Insert chip into machine to clear 1 fatigue. Using more than 1 a day may cause operating system bugs.",
+        "cost": "300",
+        "bulky": false,
+        "weapon": false,
+        "label": "Antivirus.Exe (1 use)"
+      },
+      {
+        "id": "monolith/data-comm",
+        "category": "GEAR",
+        "name": "Data-Comm",
+        "spec": "",
+        "detail": "Handheld device that can make short range calls (planetary), access local data networks, and perform basic everyday functions like analyzing data chips, making transactions, and recording information.",
+        "cost": "100",
+        "bulky": false,
+        "weapon": false,
+        "label": "Data-Comm"
+      },
+      {
+        "id": "monolith/gasmask",
+        "category": "GEAR",
+        "name": "Gasmask",
+        "spec": "",
+        "detail": "Protection against breathable hazards. Filtration d8 usage.",
+        "cost": "250",
+        "bulky": false,
+        "weapon": false,
+        "label": "Gasmask"
+      },
+      {
+        "id": "monolith/flashlight",
+        "category": "TOOLS",
+        "name": "Flashlight",
+        "spec": "80’ light, directional",
+        "detail": "",
+        "cost": "200",
+        "bulky": false,
+        "weapon": false,
+        "label": "Flashlight (80’ light, directional)"
+      },
+      {
+        "id": "monolith/auto-saw",
+        "category": "TOOLS",
+        "name": "Auto-saw",
+        "spec": "1D6 uses",
+        "detail": "",
+        "cost": "80",
+        "bulky": false,
+        "weapon": false,
+        "label": "Auto-saw (1D6 uses)"
+      },
+      {
+        "id": "monolith/glo-torch",
+        "category": "TOOLS",
+        "name": "Glo-torch",
+        "spec": "40’ light/40’ dim light",
+        "detail": "",
+        "cost": "50",
+        "bulky": false,
+        "weapon": false,
+        "label": "Glo-torch (40’ light/40’ dim light)"
+      },
+      {
+        "id": "monolith/grappling-gun",
+        "category": "TOOLS",
+        "name": "Grappling Gun",
+        "spec": "",
+        "detail": "",
+        "cost": "250",
+        "bulky": false,
+        "weapon": false,
+        "label": "Grappling Gun"
+      },
+      {
+        "id": "monolith/rations",
+        "category": "TOOLS",
+        "name": "Rations",
+        "spec": "1 days worth, small",
+        "detail": "",
+        "cost": "10",
+        "bulky": false,
+        "weapon": false,
+        "label": "Rations (1 days worth, small)"
+      },
+      {
+        "id": "monolith/compass",
+        "category": "TOOLS",
+        "name": "Compass",
+        "spec": "",
+        "detail": "",
+        "cost": "25",
+        "bulky": false,
+        "weapon": false,
+        "label": "Compass"
+      },
+      {
+        "id": "monolith/fiber-rope",
+        "category": "TOOLS",
+        "name": "Fiber Rope",
+        "spec": "50’",
+        "detail": "",
+        "cost": "25",
+        "bulky": false,
+        "weapon": false,
+        "label": "Fiber Rope (50’)"
+      },
+      {
+        "id": "monolith/binocs",
+        "category": "TOOLS",
+        "name": "Binocs",
+        "spec": "",
+        "detail": "",
+        "cost": "75",
+        "bulky": false,
+        "weapon": false,
+        "label": "Binocs"
+      },
+      {
+        "id": "monolith/drill",
+        "category": "TOOLS",
+        "name": "Drill",
+        "spec": "",
+        "detail": "",
+        "cost": "100",
+        "bulky": false,
+        "weapon": false,
+        "label": "Drill"
+      },
+      {
+        "id": "monolith/drone-cam",
+        "category": "TOOLS",
+        "name": "Drone Cam",
+        "spec": "",
+        "detail": "",
+        "cost": "125",
+        "bulky": false,
+        "weapon": false,
+        "label": "Drone Cam"
+      },
+      {
+        "id": "monolith/super-glue",
+        "category": "TOOLS",
+        "name": "Super Glue",
+        "spec": "3 charges, small",
+        "detail": "",
+        "cost": "50",
+        "bulky": false,
+        "weapon": false,
+        "label": "Super Glue (3 charges, small)"
+      },
+      {
+        "id": "monolith/area-scanner",
+        "category": "TOOLS",
+        "name": "Area Scanner",
+        "spec": "",
+        "detail": "",
+        "cost": "100",
+        "bulky": false,
+        "weapon": false,
+        "label": "Area Scanner"
+      },
+      {
+        "id": "monolith/auto-lock-slicer",
+        "category": "TOOLS",
+        "name": "Auto Lock-Slicer",
+        "spec": "1D4 uses",
+        "detail": "",
+        "cost": "125",
+        "bulky": false,
+        "weapon": false,
+        "label": "Auto Lock-Slicer (1D4 uses)"
+      },
+      {
+        "id": "monolith/duct-tape",
+        "category": "TOOLS",
+        "name": "Duct Tape",
+        "spec": "",
+        "detail": "",
+        "cost": "10",
+        "bulky": false,
+        "weapon": false,
+        "label": "Duct Tape"
+      },
+      {
+        "id": "monolith/mag-boots",
+        "category": "TOOLS",
+        "name": "Mag-Boots",
+        "spec": "",
+        "detail": "",
+        "cost": "150",
+        "bulky": false,
+        "weapon": false,
+        "label": "Mag-Boots"
+      },
+      {
+        "id": "monolith/blowtorch",
+        "category": "TOOLS",
+        "name": "Blowtorch",
+        "spec": "1D6 uses",
+        "detail": "",
+        "cost": "150",
+        "bulky": false,
+        "weapon": false,
+        "label": "Blowtorch (1D6 uses)"
+      },
+      {
+        "id": "monolith/rebreather",
+        "category": "TOOLS",
+        "name": "Rebreather",
+        "spec": "oxygen recycler",
+        "detail": "",
+        "cost": "100",
+        "bulky": false,
+        "weapon": false,
+        "label": "Rebreather (oxygen recycler)"
+      },
+      {
+        "id": "monolith/bolt-cutters",
+        "category": "TOOLS",
+        "name": "Bolt Cutters",
+        "spec": "",
+        "detail": "",
+        "cost": "50",
+        "bulky": false,
+        "weapon": false,
+        "label": "Bolt Cutters"
+      },
+      {
+        "id": "monolith/medkit",
+        "category": "TOOLS",
+        "name": "Medkit",
+        "spec": "",
+        "detail": "",
+        "cost": "50",
+        "bulky": false,
+        "weapon": false,
+        "label": "Medkit"
+      },
+      {
+        "id": "monolith/duffle-bag",
+        "category": "TOOLS",
+        "name": "Duffle Bag",
+        "spec": "4 inventory slots",
+        "detail": "",
+        "cost": "50",
+        "bulky": false,
+        "weapon": false,
+        "label": "Duffle Bag (4 inventory slots)"
+      },
+      {
+        "id": "monolith/electrical-or-engineering-tools",
+        "category": "TOOLS",
+        "name": "Electrical or Engineering Tools",
+        "spec": "",
+        "detail": "",
+        "cost": "100",
+        "bulky": false,
+        "weapon": false,
+        "label": "Electrical or Engineering Tools"
+      },
+      {
+        "id": "monolith/fake-id",
+        "category": "TOOLS",
+        "name": "Fake ID",
+        "spec": "small",
+        "detail": "",
+        "cost": "200",
+        "bulky": false,
+        "weapon": false,
+        "label": "Fake ID (small)"
+      },
+      {
+        "id": "monolith/flare-gun",
+        "category": "TOOLS",
+        "name": "Flare Gun",
+        "spec": "3 uses, D6 thermal",
+        "detail": "",
+        "cost": "150",
+        "bulky": false,
+        "weapon": true,
+        "damage": "D6",
+        "traits": [
+          "3 uses",
+          "thermal"
+        ],
+        "range": "mid/long-range",
+        "label": "Flare Gun (3 uses, D6 thermal)"
+      },
+      {
+        "id": "monolith/manacles-mag-cuffs",
+        "category": "TOOLS",
+        "name": "Manacles/Mag-Cuffs",
+        "spec": "",
+        "detail": "",
+        "cost": "40",
+        "bulky": false,
+        "weapon": false,
+        "label": "Manacles/Mag-Cuffs"
+      },
+      {
+        "id": "monolith/sledgehammer",
+        "category": "TOOLS",
+        "name": "Sledgehammer",
+        "spec": "D8, bulky",
+        "detail": "",
+        "cost": "50",
+        "bulky": true,
+        "weapon": true,
+        "damage": "D8",
+        "traits": [
+          "bulky"
+        ],
+        "range": "Melee",
+        "label": "Sledgehammer (D8, bulky)"
+      },
+      {
+        "id": "monolith/shovel",
+        "category": "TOOLS",
+        "name": "Shovel",
+        "spec": "",
+        "detail": "",
+        "cost": "20",
+        "bulky": false,
+        "weapon": false,
+        "label": "Shovel"
+      },
+      {
+        "id": "monolith/infrared-visor",
+        "category": "TOOLS",
+        "name": "Infrared Visor",
+        "spec": "",
+        "detail": "",
+        "cost": "50",
+        "bulky": false,
+        "weapon": false,
+        "label": "Infrared Visor"
+      },
+      {
+        "id": "monolith/starship-fuel",
+        "category": "TOOLS",
+        "name": "Starship Fuel",
+        "spec": "1 tank",
+        "detail": "",
+        "cost": "200",
+        "bulky": false,
+        "weapon": false,
+        "label": "Starship Fuel (1 tank)"
+      }
+    ],
+    "augmentations": [
+      {
+        "id": "monolith/standard-brain-jack",
+        "category": "CYBERWARE & IMPLANTS",
+        "name": "Standard Brain-Jack",
+        "spec": "Neural Socket",
+        "detail": "Installs advanced neural processor and external hardware input. Allows for installation of cerebral software packages.",
+        "cost": "500",
+        "bulky": false,
+        "weapon": false,
+        "allowedSlotTypes": [
+          "neural"
+        ],
+        "label": "Standard Brain-Jack (Neural Socket)"
+      },
+      {
+        "id": "monolith/auto-babel-brainstem",
+        "category": "CYBERWARE & IMPLANTS",
+        "name": "Auto-Babel Brainstem",
+        "spec": "Neural Socket",
+        "detail": "A brainstem implant and smart software to understand all languages. Who knows what would happen if it malfunctioned…",
+        "cost": "1,000",
+        "bulky": false,
+        "weapon": false,
+        "allowedSlotTypes": [
+          "neural"
+        ],
+        "label": "Auto-Babel Brainstem (Neural Socket)"
+      },
+      {
+        "id": "monolith/bionic-oculus",
+        "category": "CYBERWARE & IMPLANTS",
+        "name": "Bionic Oculus",
+        "spec": "Eyes Socket",
+        "detail": "Computerized eyes overlaid with augmented reality interface, including quick-referencing faces to local database searches, locating other networked devices (such as security cameras), and limited zoom and camera features.",
+        "cost": "800",
+        "bulky": false,
+        "weapon": false,
+        "allowedSlotTypes": [
+          "eyes"
+        ],
+        "label": "Bionic Oculus (Eyes Socket)"
+      },
+      {
+        "id": "monolith/backup-heart",
+        "category": "CYBERWARE & IMPLANTS",
+        "name": "Backup Heart",
+        "spec": "Internal Socket",
+        "detail": "If you would die, automatically survive but this Augment is destroyed and the socket is permanently disabled. Stabilize and restore all HP. Backup heart will only keep you alive for 1D6 hours, so seek immediate medical attention.",
+        "cost": "1,750",
+        "bulky": false,
+        "weapon": false,
+        "allowedSlotTypes": [
+          "internal"
+        ],
+        "label": "Backup Heart (Internal Socket)"
+      },
+      {
+        "id": "monolith/bionic-tendons",
+        "category": "CYBERWARE & IMPLANTS",
+        "name": "Bionic Tendons",
+        "spec": "2 Leg Sockets",
+        "detail": "Allows you to fall from up to 50 feet and land gracefully without any consequences. Falls up to 100 feet also get ADV on Saves.",
+        "cost": "500",
+        "bulky": false,
+        "weapon": false,
+        "allowedSlotTypes": [
+          "leg"
+        ],
+        "label": "Bionic Tendons (2 Leg Sockets)"
+      },
+      {
+        "id": "monolith/mag-steel-arm",
+        "category": "CYBERWARE & IMPLANTS",
+        "name": "Mag-Steel Arm",
+        "spec": "Arm Socket",
+        "detail": "Requires losing your entire arm, otherwise elective replacement permanently removes 1 WIL score from the trauma. Advantage with STR saves. Can effortlessly crush most small or medium objects.",
+        "cost": "1,300",
+        "bulky": false,
+        "weapon": false,
+        "allowedSlotTypes": [
+          "arm"
+        ],
+        "label": "Mag-Steel Arm (Arm Socket)"
+      },
+      {
+        "id": "monolith/shiva-harness",
+        "category": "CYBERWARE & IMPLANTS",
+        "name": "Shiva Harness",
+        "spec": "Torso Socket",
+        "detail": "Back plate that connects to your sympathetic nervous system. Can open to reveal a mechanical arm on each side.",
+        "cost": "2,000",
+        "bulky": false,
+        "weapon": false,
+        "allowedSlotTypes": [
+          "torso"
+        ],
+        "label": "Shiva Harness (Torso Socket)"
+      },
+      {
+        "id": "monolith/plasti-scale-skin-graft",
+        "category": "GENETIC MODIFICATION",
+        "name": "Plasti-Scale Skin Graft",
+        "spec": "Skin Socket, requires severe burn damage",
+        "detail": "Spray-on synthetic skin from sea-creature DNA. Only adheres to burn wounds. +3 Armor vs Thermal/Heat/ Fire.",
+        "cost": "1,500",
+        "bulky": false,
+        "weapon": false,
+        "allowedSlotTypes": [
+          "skin"
+        ],
+        "label": "Plasti-Scale Skin Graft (Skin Socket, requires severe burn damage)"
+      },
+      {
+        "id": "monolith/frog-tongue-mutation",
+        "category": "GENETIC MODIFICATION",
+        "name": "Frog Tongue Mutation",
+        "spec": "Lower Face Socket",
+        "detail": "You have a long sticky tongue that extends 20 feet. 1D6 damage and can grab small objects.",
+        "cost": "Play",
+        "bulky": false,
+        "weapon": true,
+        "damage": "1D6",
+        "range": "short-range",
+        "allowedSlotTypes": [
+          "lower-face"
+        ],
+        "label": "Frog Tongue Mutation (Lower Face Socket)"
+      },
+      {
+        "id": "monolith/edited-pheromones",
+        "category": "GENETIC MODIFICATION",
+        "name": "Edited Pheromones",
+        "spec": "Internal Socket",
+        "detail": "You have a pleasing fragrance to most other humanoid species, giving you +2 to reaction rolls.",
+        "cost": "900",
+        "bulky": false,
+        "weapon": false,
+        "allowedSlotTypes": [
+          "internal"
+        ],
+        "label": "Edited Pheromones (Internal Socket)"
+      },
+      {
+        "id": "monolith/self-sterilizing-liver",
+        "category": "GENETIC MODIFICATION",
+        "name": "Self-Sterilizing Liver",
+        "spec": "Internal Socket",
+        "detail": "You are immune to all ingested poisons.",
+        "cost": "400",
+        "bulky": false,
+        "weapon": false,
+        "allowedSlotTypes": [
+          "internal"
+        ],
+        "label": "Self-Sterilizing Liver (Internal Socket)"
+      },
+      {
+        "id": "monolith/basilisk-gland",
+        "category": "GENETIC MODIFICATION",
+        "name": "Basilisk Gland",
+        "spec": "Lower Face Socket",
+        "detail": "Spit acid in a cone once a day (1D8 biological, blast, 30 feet)",
+        "cost": "900",
+        "bulky": false,
+        "weapon": true,
+        "allowedSlotTypes": [
+          "lower-face"
+        ],
+        "label": "Basilisk Gland (Lower Face Socket)",
+        "damage": "1D8",
+        "traits": [
+          "biological",
+          "blast",
+          "30 feet"
+        ],
+        "range": "30 feet"
+      },
+      {
+        "id": "monolith/star-slug",
+        "category": "UNKNOWABLE CHANGES",
+        "name": "Star Slug",
+        "spec": "Neural Socket",
+        "detail": "You are the symbiotic host to an alien slug. It crawls into your ear and tells you things. The star slug lets you talk to any creature of animal intelligence. Must eat something living every 7 days or the Star Slug will die, permanently lowering your WIL by 1.",
+        "cost": "3,000",
+        "bulky": false,
+        "weapon": false,
+        "allowedSlotTypes": [
+          "neural"
+        ],
+        "label": "Star Slug (Neural Socket)"
+      },
+      {
+        "id": "monolith/servant-of-the-dead-moon",
+        "category": "UNKNOWABLE CHANGES",
+        "name": "Servant of the Dead Moon",
+        "spec": "2 Internal Sockets",
+        "detail": "You willingly let an otherworldly force enter your mind, sharing knowledge with your bones and blood. Under a full moon, your skin glows with a soft light. You can project your voice into the minds of others up to 100’",
+        "cost": "Play",
+        "bulky": false,
+        "weapon": false,
+        "allowedSlotTypes": [
+          "internal"
+        ],
+        "label": "Servant of the Dead Moon (2 Internal Sockets)"
+      },
+      {
+        "id": "monolith/devil-leopard-mutation",
+        "category": "UNKNOWABLE CHANGES",
+        "name": "Devil-Leopard Mutation",
+        "spec": "1 Internal & Skin Sockets",
+        "detail": "Exposure to alien bacteria has mutated your skin crimson red with dark indigo spots. You can crack most metal and bones with your teeth.",
+        "cost": "Play",
+        "bulky": false,
+        "weapon": false,
+        "allowedSlotTypes": [
+          "internal",
+          "skin"
+        ],
+        "label": "Devil-Leopard Mutation (1 Internal & Skin Sockets)"
+      },
+      {
+        "id": "monolith/mask-of-pale-starlight",
+        "category": "UNKNOWABLE CHANGES",
+        "name": "Mask of Pale Starlight",
+        "spec": "Eyes and Lower Face Socket",
+        "detail": "Splash your face with this silvery liquid. Your face can change at will. Save against corruption.",
+        "cost": "Play",
+        "bulky": false,
+        "weapon": false,
+        "allowedSlotTypes": [
+          "eyes",
+          "lower-face"
+        ],
+        "label": "Mask of Pale Starlight (Eyes and Lower Face Socket)"
+      }
+    ]
+  },
+  "retired": [
+    "monolith/heavy-weapons",
+    "monolith/stationary-weapons"
+  ]
+}

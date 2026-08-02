@@ -14,6 +14,7 @@ import "@fontsource/unbounded/600.css";
 import "@devils-toys/shared/theme.css";
 import "./styles.css";
 import "./media.css";
+import "./tab-picker.css";
 import "./table-media.css";
 import "./audio.css";
 import "./rules-links.css";

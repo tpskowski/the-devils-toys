@@ -4,3 +4,4 @@ raw
 PLAN.md
 PLAN.md.orig
 package-lock.json
+systems/*/items.json

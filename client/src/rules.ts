@@ -137,3 +137,17 @@ export function rulesSystemFromPath(pathname: string): SystemId | null {
   const match = /^\/rules\/([^/]+)\/?$/.exec(pathname);
   return match && SYSTEM_IDS.includes(match[1] as SystemId) ? (match[1] as SystemId) : null;
 }
+
+/**
+ * The rule behind one field, where it is narrower than the section's own. Shared
+ * by the character sheet and the hireling sheets, which show the same fields and
+ * should point at the same reading of them.
+ */
+export function rulesQueryForField(key: string) {
+  if (key === "level") return "Leveling Up";
+  if (key === "xp") return "Experience Points";
+  // The CORRUPTION heading is only a divider; GAINING CORRUPTION carries the rule.
+  if (key === "corruption") return "Gaining Corruption";
+  if (key === "criticalDamage") return "Critical Damage";
+  return undefined;
+}

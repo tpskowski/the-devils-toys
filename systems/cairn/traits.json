@@ -1,0 +1,12 @@
+{
+  "system": "cairn",
+  "source": "Cairn.md",
+  "traits": [
+    {
+      "id": "bulky",
+      "label": "Bulky",
+      "description": "Takes up two slots, and is typically two-handed or awkward to carry.",
+      "category": "Inventory"
+    }
+  ]
+}

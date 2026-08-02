@@ -26,11 +26,13 @@ import { tableSetRouter } from "./table-sets.js";
 import { tablesLinkRouter } from "./tables-link.js";
 import { asyncRoute, parse, publicAccount, sessionRouter } from "./session-routes.js";
 import { groupRouter } from "./group.js";
+import { encounterRouter } from "./encounters.js";
 import { mapNotationRouter } from "./map-notations.js";
 import { projectFile } from "./paths.js";
 import { rulesMarkdown, systems } from "./systems.js";
 import {
   calendarNowMessage,
+  damageExpression,
   SYSTEM_IDS,
   THEME_IDS,
   type AccountRole,
@@ -62,6 +64,7 @@ app.use("/api", tableSetRouter);
 app.use("/api", tagRouter);
 app.use("/api", tablesLinkRouter);
 app.use("/api", groupRouter);
+app.use("/api", encounterRouter);
 app.use("/api", roomAdminRouter);
 app.use("/api", managementRouter);
 app.use("/api", sessionRouter);
@@ -574,7 +577,7 @@ app.post("/api/rooms/:roomId/rolls", requireAuth, (req: AuthedRequest, res) => {
   if (!role) return res.status(404).json({ error: "Room not found." });
   const body = parse(
     z.object({
-      expression: z.string().min(1).max(24),
+      expression: z.string().min(1).max(24).optional(),
       private: z.boolean().default(false),
       /** Stricter than private: the room is not even told a roll happened. */
       invisible: z.boolean().default(false),
@@ -590,12 +593,26 @@ app.post("/api/rooms/:roomId/rolls", requireAuth, (req: AuthedRequest, res) => {
           difficulty: z.number().int().min(1).max(30),
           label: z.string().trim().min(1).max(40)
         })
+        .optional(),
+      /**
+       * A weapon's damage as the book writes it. The system decides what that
+       * means — Cairn and Monolith count only the highest die of an attack — so
+       * the caller sends the notation rather than an expression it worked out.
+       */
+      attack: z
+        .object({
+          // Long enough for a holder, a weapon, its die, and what the book says
+          // the weapon does: "Captain · Laser Rifle (D8) [thermal]".
+          label: z.string().trim().min(1).max(100),
+          damage: z.string().trim().min(1).max(24)
+        })
         .optional()
     }),
     req.body,
     res
   );
   if (!body) return;
+  if (!body.expression && !body.attack) return res.status(400).json({ error: "Give a dice expression to roll." });
   const hidden = body.private || body.invisible;
   // Anyone may keep a roll between themselves and the GM. Leaving no trace at
   // all stays the GM's own privilege.
@@ -609,11 +626,20 @@ app.post("/api/rooms/:roomId/rolls", requireAuth, (req: AuthedRequest, res) => {
     return res.status(400).json({
       error: `${systems[system].name} does not define ${body.save.position} for saves.`
     });
+  let attackExpression;
+  if (body.attack) {
+    attackExpression = damageExpression(body.attack.damage, diceRules.damage?.multipleRolls);
+    if (!attackExpression)
+      return res.status(400).json({
+        error: `${body.attack.damage} is not one roll; roll it in the dice builder.`
+      });
+  }
   let rolled;
   let saveOutcome;
   let checkOutcome;
   try {
-    rolled = rollDice(body.save ? "1d20" : body.expression);
+    rolled = rollDice(body.save ? "1d20" : (attackExpression ?? body.expression!));
+    if (body.attack) rolled = { ...rolled, detail: `${rolled.detail} · ${body.attack.damage}` };
     if (body.save) {
       saveOutcome = evaluateSave(rolled.total, body.save.target, body.save.position, diceRules);
       rolled = {
@@ -636,7 +662,9 @@ app.post("/api/rooms/:roomId/rolls", requireAuth, (req: AuthedRequest, res) => {
     ? `${body.save.label} save${body.save.position === "normal" ? "" : ` (${body.save.position === "advantage" ? "ADV" : "DIS"})`}`
     : body.check
       ? body.check.label
-      : rolled.expression;
+      : body.attack
+        ? body.attack.label
+        : rolled.expression;
   if (hidden) {
     const visibility = body.invisible ? "invisible" : "private";
     const result = db

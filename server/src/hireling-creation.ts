@@ -4,7 +4,13 @@ import { parseCompactRollTables } from "./roll-tables.js";
 
 type CreationRoll = NonNullable<NonNullable<GroupPageDefinition["hirelings"]>["creationRoll"]>;
 
-export function rollHirelingCreation(definition: CreationRoll, markdown: string, random: () => number = Math.random) {
+export function rollHirelingCreation(
+  definition: CreationRoll,
+  markdown: string,
+  random: () => number = Math.random,
+  /** Where the starting weapon is stowed, so it can be drawn like any other. */
+  weaponList?: string
+) {
   const generated: Record<string, unknown> = {};
 
   for (const ability of definition.abilities) {
@@ -16,7 +22,10 @@ export function rollHirelingCreation(definition: CreationRoll, markdown: string,
   const hp = rollDice(definition.hitProtection.dice, random).total;
   generated[definition.hitProtection.currentKey] = hp;
   generated[definition.hitProtection.maximumKey] = hp;
-  generated.weapon = definition.weapon;
+  // The weapon goes into the first slot rather than into a field of its own: a
+  // hireling draws from what they are carrying, exactly as a character does.
+  if (weaponList) generated[weaponList] = [definition.weapon];
+  else generated.weapon = definition.weapon;
 
   const finishing = definition.finishingTouches;
   if (!finishing) return generated;
