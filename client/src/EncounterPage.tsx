@@ -9,6 +9,7 @@ import type {
   SystemId
 } from "@devils-toys/shared";
 import { api } from "./api";
+import { EncounterMap } from "./EncounterMap";
 import { EncounterZones } from "./EncounterZones";
 import type { ReadOnlyCharacter } from "./ReadOnlyCharacterSheet";
 
@@ -41,6 +42,8 @@ export interface EncounterCombatant {
   imageUrl?: string | null;
   /** The zone they are standing in, where the encounter is laid out in zones. */
   zoneId?: number | null;
+  /** Normalized coordinates on the encounter map, or absent while in its roster. */
+  mapPosition?: { x: number; y: number } | null;
   /** Present for a character the viewer is allowed to see in full. */
   character?: ReadOnlyCharacter;
   /** The hireling's flat sheet fields, as stored in the group blob. */
@@ -281,11 +284,7 @@ export function EncounterPage({
       {encounter.display === "zones" ? (
         <EncounterZones roomId={roomId} encounter={encounter} isGm={isGm} viewerId={viewerId} onChanged={onChanged} />
       ) : encounter.media ? (
-        <img
-          className="encounter-image"
-          src={encounter.media.url}
-          alt={encounter.media.displayName ?? encounter.media.filename}
-        />
+        <EncounterMap roomId={roomId} encounter={encounter} isGm={isGm} viewerId={viewerId} onChanged={onChanged} />
       ) : (
         <p className="encounter-zones-empty">
           {isGm ? "Choose a map above, or lay the encounter out in zones." : "The GM has not put up a map."}

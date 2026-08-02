@@ -367,13 +367,16 @@ mediaRouter.delete("/rooms/:roomId/media/:mediaId", requireAuth, (req: AuthedReq
 });
 
 mediaRouter.get("/media/:mediaId/file", requireAuth, (req: AuthedRequest, res) => {
-  const row = one<MediaRow>(
-    `SELECT id, room_id, COALESCE(category, kind) AS kind, filename, display_name, stored_name, visible, mime_type, size, created_at
-     FROM media WHERE id = ?`,
+  const row = one<MediaRow & { music_enabled: number }>(
+    `SELECT media.id, media.room_id, COALESCE(media.category, media.kind) AS kind, media.filename,
+            media.display_name, media.stored_name, media.visible, media.mime_type, media.size, media.created_at,
+            rooms.music_enabled
+     FROM media JOIN rooms ON rooms.id = media.room_id WHERE media.id = ?`,
     Number(req.params.mediaId)
   );
   if (!row) return res.status(404).json({ error: "Media not found." });
   const role = roomRole(req.account!.id, row.room_id);
+  if (row.kind === "audio" && !row.music_enabled) return res.status(404).json({ error: "Media not found." });
   const allowed = role === "gm" || (role === "player" && (row.kind === "audio" || Boolean(row.visible)));
   if (!allowed) return res.status(404).json({ error: "Media not found." });
   if (path.basename(row.stored_name) !== row.stored_name)

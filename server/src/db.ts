@@ -21,6 +21,10 @@ const roomsColumns = `
     system TEXT NOT NULL CHECK(system IN (${systemCheckList})),
     theme TEXT NOT NULL CHECK(theme IN (${themeCheckList})),
     archived INTEGER NOT NULL DEFAULT 0,
+    calendar_enabled INTEGER NOT NULL DEFAULT 0,
+    calendar_json TEXT,
+    map_notation_enabled INTEGER NOT NULL DEFAULT 0,
+    music_enabled INTEGER NOT NULL DEFAULT 0,
     created_by INTEGER NOT NULL REFERENCES accounts(id),
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP`;
 
@@ -214,6 +218,8 @@ db.exec(`
     statblock_json TEXT NOT NULL DEFAULT '{}',
     conditions TEXT NOT NULL DEFAULT '',
     included INTEGER NOT NULL DEFAULT 1,
+    map_x REAL,
+    map_y REAL,
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CHECK (
@@ -247,15 +253,26 @@ if (
   (SYSTEM_IDS.some((system) => !roomsSchema.includes(`'${system}'`)) ||
     THEME_IDS.some((theme) => !roomsSchema.includes(`'${theme}'`)))
 ) {
+  const preservedColumns = [
+    "id",
+    "name",
+    "system",
+    "theme",
+    "archived",
+    "calendar_enabled",
+    "calendar_json",
+    "map_notation_enabled",
+    "music_enabled",
+    "created_by",
+    "created_at"
+  ].filter((column) => hasColumn("rooms", column));
   db.exec("PRAGMA foreign_keys = OFF");
   db.exec("BEGIN IMMEDIATE");
   try {
     db.exec(`CREATE TABLE rooms_rebuilt (${roomsColumns}
     )`);
-    db.exec(
-      `INSERT INTO rooms_rebuilt (id, name, system, theme, archived, created_by, created_at)
-       SELECT id, name, system, theme, archived, created_by, created_at FROM rooms`
-    );
+    db.exec(`INSERT INTO rooms_rebuilt (${preservedColumns.join(", ")})
+             SELECT ${preservedColumns.join(", ")} FROM rooms`);
     db.exec("DROP TABLE rooms");
     db.exec("ALTER TABLE rooms_rebuilt RENAME TO rooms");
     db.exec("COMMIT");
@@ -286,6 +303,9 @@ if (!hasColumn("rooms", "calendar_json")) {
 }
 if (!hasColumn("rooms", "map_notation_enabled")) {
   db.exec("ALTER TABLE rooms ADD COLUMN map_notation_enabled INTEGER NOT NULL DEFAULT 0");
+}
+if (!hasColumn("rooms", "music_enabled")) {
+  db.exec("ALTER TABLE rooms ADD COLUMN music_enabled INTEGER NOT NULL DEFAULT 0");
 }
 if (!hasColumn("accounts", "created_by"))
   db.exec("ALTER TABLE accounts ADD COLUMN created_by INTEGER REFERENCES accounts(id) ON DELETE SET NULL");
@@ -379,6 +399,10 @@ if (!hasColumn("encounter_combatants", "zone_id"))
   db.exec(
     "ALTER TABLE encounter_combatants ADD COLUMN zone_id INTEGER REFERENCES encounter_zones(id) ON DELETE SET NULL"
   );
+// Coordinates are normalized against the image so a token stays in place as
+// the encounter map scales from a desktop table to a phone.
+if (!hasColumn("encounter_combatants", "map_x")) db.exec("ALTER TABLE encounter_combatants ADD COLUMN map_x REAL");
+if (!hasColumn("encounter_combatants", "map_y")) db.exec("ALTER TABLE encounter_combatants ADD COLUMN map_y REAL");
 if (!hasColumn("room_state", "map_id"))
   db.exec("ALTER TABLE room_state ADD COLUMN map_id INTEGER REFERENCES media(id)");
 if (!hasColumn("room_state", "group_json"))

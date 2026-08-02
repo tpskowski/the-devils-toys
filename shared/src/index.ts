@@ -9,7 +9,7 @@ export * from "./table-tags.js";
 export * from "./calendar.js";
 
 export const SYSTEM_IDS = ["cairn", "monolith", "cwn"] as const;
-export const THEME_IDS = ["heroic", "digital", "used", "grim", "shinji"] as const;
+export const THEME_IDS = ["heroic", "digital", "used", "grim", "shinji", "production-type"] as const;
 
 export type SystemId = (typeof SYSTEM_IDS)[number];
 export type ThemeId = (typeof THEME_IDS)[number];
@@ -32,6 +32,7 @@ export interface RoomSummary {
   archived: boolean;
   calendarEnabled: boolean;
   mapNotationEnabled: boolean;
+  musicEnabled: boolean;
 }
 
 export const MAP_NOTATION_COLORS = ["#e53935", "#ffb300", "#43a047", "#1e88e5", "#8e24aa", "#f5f5f5"] as const;

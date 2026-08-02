@@ -1000,13 +1000,146 @@ button:disabled {
   flex: 1;
   min-width: 0;
 }
-.encounter-image {
-  display: block;
-  width: min(100%, 760px);
-  max-height: 44vh;
-  object-fit: contain;
-  object-position: left center;
+.encounter-map-layout {
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  gap: 12px;
   margin: 0 0 18px;
+}
+.encounter-map-roster {
+  min-height: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  padding: 10px;
+  border: 1px dashed var(--line);
+  background: color-mix(in srgb, var(--surface), transparent 35%);
+}
+.encounter-map-roster .eyebrow {
+  margin: 0 0 3px;
+}
+.encounter-map-roster small,
+.encounter-map-roster-tokens > span {
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.4;
+}
+.encounter-map-roster-tokens {
+  flex: 1 1 220px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.encounter-map-stage {
+  position: relative;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  background: var(--rail);
+  line-height: 0;
+  user-select: none;
+}
+.encounter-map-stage > img {
+  display: block;
+  width: 100%;
+  height: auto;
+  pointer-events: none;
+}
+.encounter-map-target {
+  cursor: crosshair;
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.encounter-map-token {
+  width: 66px;
+  display: grid;
+  justify-items: center;
+  gap: 3px;
+  padding: 3px 2px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text);
+  font-size: 9px;
+  line-height: 1.2;
+}
+.encounter-map-roster .encounter-map-token {
+  background: color-mix(in srgb, var(--rail), transparent 12%);
+}
+.encounter-map-stage .encounter-map-token {
+  position: absolute;
+  z-index: 1;
+  transform: translate(-50%, -50%);
+}
+.encounter-map-token-movable {
+  cursor: grab;
+  touch-action: none;
+}
+.encounter-map-token:disabled {
+  cursor: default;
+  opacity: 0.72;
+}
+.encounter-map-token .combatant-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: 2px solid var(--line);
+  box-shadow: 0 1px 6px rgb(0 0 0 / 45%);
+}
+.encounter-map-token.combat-side-friendly .combatant-avatar {
+  border-color: var(--friendly);
+}
+.encounter-map-token.combat-side-hostile .combatant-avatar {
+  border-color: var(--hostile);
+}
+.encounter-map-token span {
+  max-width: 100%;
+  overflow: hidden;
+  padding: 1px 3px;
+  background: color-mix(in srgb, var(--rail), transparent 12%);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.encounter-map-token-movable:hover,
+.encounter-map-token:focus-visible,
+.encounter-map-token-carried {
+  border-color: var(--accent);
+  z-index: 2;
+}
+.encounter-map-token-carried {
+  cursor: grabbing;
+  opacity: 0.78;
+}
+.encounter-map-token-carried .combatant-avatar {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.encounter-map-remove {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 0;
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  cursor: pointer;
+  font-size: 10px;
+  text-align: left;
+}
+.encounter-map-remove svg {
+  width: 12px;
+  height: 12px;
+}
+.encounter-map-error {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+@media (max-width: 640px) {
+  .encounter-map-roster {
+    align-items: flex-start;
+  }
 }
 .encounter-roster {
   display: grid;
@@ -2532,22 +2665,205 @@ button:disabled {
   gap: 20px;
 }
 
+.theme-field {
+  position: relative;
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+  font:
+    600 11px "DM Mono",
+    monospace;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.theme-picker {
+  position: relative;
+  min-width: 0;
+}
+.theme-picker summary,
+.theme-picker-option {
+  height: 48px;
+  min-width: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  cursor: pointer;
+}
+.theme-picker summary {
+  display: block;
+  list-style: none;
+}
+.theme-picker summary::-webkit-details-marker {
+  display: none;
+}
+.theme-picker summary:hover,
+.theme-picker[open] summary {
+  border-color: var(--accent);
+}
+.theme-picker summary:focus-visible,
+.theme-picker-option:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.theme-picker-menu {
+  position: absolute;
+  z-index: 12;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  display: grid;
+  gap: 5px;
+  padding: 5px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  box-shadow: 0 18px 42px #0006;
+  animation: theme-picker-in 0.14s ease-out both;
+}
+@keyframes theme-picker-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+.theme-picker-option {
+  position: relative;
+  width: 100%;
+  border-color: transparent;
+}
+.theme-picker-option:hover {
+  z-index: 1;
+  border-color: var(--accent);
+}
+.theme-picker-option.selected {
+  z-index: 1;
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+.theme-palette {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  width: 100%;
+  height: 100%;
+}
+.theme-palette-main {
+  background: var(--bg);
+}
+.theme-palette-accent {
+  background: var(--accent);
+}
+.theme-palette-hostile {
+  background: var(--hostile);
+}
+.theme-palette-text {
+  background: var(--text);
+}
+.theme-palette-friendly {
+  background: var(--friendly);
+}
+@media (prefers-reduced-motion: reduce) {
+  .theme-picker-menu {
+    animation: none;
+  }
+}
+
 .toggle-row {
-  display: flex !important;
-  flex-direction: row !important;
-  align-items: flex-start;
-  gap: 0.75rem;
-  padding: 0.85rem;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 1rem;
+  min-width: 0;
+  padding: 0.9rem 1rem;
   border: 1px solid var(--line);
   border-radius: 10px;
+  background: transparent;
+  cursor: pointer;
+  transition:
+    opacity 0.18s ease,
+    border-color 0.18s ease,
+    background 0.18s ease;
 }
-.toggle-row input {
-  width: auto;
-  margin-top: 0.2rem;
+.toggle-row:not(.enabled) {
+  opacity: 0.62;
 }
-.toggle-row span {
+.toggle-row.enabled {
+  border-color: color-mix(in srgb, var(--accent), var(--line) 35%);
+  background: color-mix(in srgb, var(--accent), transparent 88%);
+}
+.toggle-row:hover {
+  opacity: 1;
+  border-color: color-mix(in srgb, var(--accent), var(--line) 45%);
+}
+.toggle-row:focus-within {
+  opacity: 1;
+}
+.toggle-copy {
   display: grid;
-  gap: 0.2rem;
+  min-width: 0;
+  gap: 0.3rem;
+}
+.toggle-copy strong {
+  color: var(--text);
+  font-size: 11px;
+  line-height: 1.2;
+}
+.toggle-copy small {
+  color: var(--muted);
+  font:
+    500 10px/1.45 "DM Mono",
+    monospace;
+  letter-spacing: 0.06em;
+}
+.toggle-control {
+  position: relative;
+  width: 42px;
+  height: 24px;
+  flex: 0 0 auto;
+}
+.toggle-control input {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.toggle-control > span {
+  position: absolute;
+  inset: 0;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--surface), var(--bg) 28%);
+  transition:
+    border-color 0.18s ease,
+    background 0.18s ease;
+}
+.toggle-control > span::after {
+  content: "";
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--muted);
+  transition:
+    translate 0.18s ease,
+    background 0.18s ease;
+}
+.toggle-control input:checked + span {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent), var(--surface) 68%);
+}
+.toggle-control input:checked + span::after {
+  translate: 18px 0;
+  background: var(--accent);
+}
+.toggle-control input:focus-visible + span {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 .calendar-scrim {
   z-index: 70;

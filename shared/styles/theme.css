@@ -34,7 +34,8 @@
 }
 .theme-digital,
 .theme-grim,
-.theme-shinji {
+.theme-shinji,
+.theme-production-type {
   color-scheme: dark;
 }
 
@@ -89,4 +90,17 @@
   --button-text: #1d1a2f;
   --friendly: #8bd450;
   --hostile: #e2557f;
+}
+.theme-production-type {
+  --bg: #291d2d;
+  --surface: #3a2a3f;
+  --rail: #1c1420;
+  --text: #fbe5e5;
+  --muted: #f99d53;
+  --line: #6a4650;
+  --accent: #ea8532;
+  --accent-soft: #5c3432;
+  --button-text: #291d2d;
+  --friendly: #f99d53;
+  --hostile: #ec2323;
 }
