@@ -11,13 +11,17 @@ import { api } from "./api";
 import {
   appendNotationPoint,
   applyMapNotationEvent,
+  labelArea,
+  notationArea,
   notationPoint,
+  type NotationArea,
   type NotationBounds,
   type NotationTransform
 } from "./map-notation";
 
 type Tool = "draw" | "label" | "box" | "circle" | "erase";
 type Point = { x: number; y: number };
+type LabelDraft = { area: NotationArea; text: string; editing: boolean };
 
 export function MapNotationLayer({
   roomId,
@@ -40,13 +44,14 @@ export function MapNotationLayer({
   const [tool, setTool] = useState<Tool>();
   const [color, setColor] = useState<MapNotationColor>(MAP_NOTATION_COLORS[0]);
   const [fontSize, setFontSize] = useState(10);
-  const [labelDraft, setLabelDraft] = useState<{ point: Point; text: string }>();
+  const [labelDraft, setLabelDraft] = useState<LabelDraft>();
   const [error, setError] = useState("");
   const gesture = useRef<
     { start: Point; points: Point[]; bounds: NotationBounds; transform: NotationTransform } | undefined
   >(undefined);
   const draftLine = useRef<SVGPolylineElement>(null);
   const draftFrame = useRef<number | undefined>(undefined);
+  const cancelLabel = useRef(false);
   const nextOptimisticId = useRef(-1);
   const mutationSequence = useRef(1);
   const pendingMutations = useRef(new Map<string, number>());
@@ -105,12 +110,18 @@ export function MapNotationLayer({
   function finishLabel() {
     const draft = labelDraft;
     setLabelDraft(undefined);
-    if (draft?.text.trim())
+    if (cancelLabel.current) {
+      cancelLabel.current = false;
+      return;
+    }
+    if (draft?.editing && draft.text.trim())
       add({
         kind: "label",
         color,
-        x: draft.point.x,
-        y: draft.point.y,
+        x: draft.area.x,
+        y: draft.area.y,
+        width: draft.area.width,
+        height: draft.area.height,
         text: draft.text.trim(),
         fontSize
       });
@@ -155,8 +166,14 @@ export function MapNotationLayer({
     const transform = { scale, x: offset.x, y: offset.y };
     const start = notationPoint(event.clientX, event.clientY, bounds, transform);
     if (tool === "label") {
-      if (labelDraft) finishLabel();
-      setLabelDraft({ point: start, text: "" });
+      // Clicking away commits the active editor through blur. It deliberately
+      // does not also begin another drag in the same pointer event, which would
+      // let that blur clear the new draft.
+      if (labelDraft?.editing) return;
+      event.preventDefault();
+      event.currentTarget.setPointerCapture(event.pointerId);
+      gesture.current = { start, points: [start], bounds, transform };
+      setLabelDraft({ area: { x: start.x, y: start.y, width: 0, height: 0 }, text: "", editing: false });
       return;
     }
     event.preventDefault();
@@ -169,7 +186,16 @@ export function MapNotationLayer({
     if (!tool) return;
     event.stopPropagation();
     const current = gesture.current;
-    if (!current || tool !== "draw") return;
+    if (!current) return;
+    if (tool === "label") {
+      event.preventDefault();
+      const end = notationPoint(event.clientX, event.clientY, current.bounds, current.transform);
+      setLabelDraft((draft) =>
+        draft && !draft.editing ? { ...draft, area: notationArea(current.start, end) } : draft
+      );
+      return;
+    }
+    if (tool !== "draw") return;
     event.preventDefault();
     const native = event.nativeEvent;
     const samples = typeof native.getCoalescedEvents === "function" ? native.getCoalescedEvents() : [native];
@@ -191,15 +217,16 @@ export function MapNotationLayer({
     clearDraft();
     if (!current) return;
     const end = notationPoint(event.clientX, event.clientY, current.bounds, current.transform);
+    if (tool === "label") {
+      setLabelDraft({ area: labelArea(current.start, end), text: "", editing: true });
+      return;
+    }
     if (tool === "draw") {
       appendNotationPoint(current.points, end);
       if (current.points.length > 1) add({ kind: "line", color, points: current.points });
     }
     if (tool === "box" || tool === "circle") {
-      const x = Math.min(current.start.x, end.x),
-        y = Math.min(current.start.y, end.y);
-      const width = Math.abs(end.x - current.start.x),
-        height = Math.abs(end.y - current.start.y);
+      const { x, y, width, height } = notationArea(current.start, end);
       if (width > 0.005 && height > 0.005) add({ kind: tool, color, x, y, width, height });
     }
   }
@@ -207,6 +234,7 @@ export function MapNotationLayer({
   function cancel(event: PointerEvent<HTMLDivElement>) {
     event.stopPropagation();
     gesture.current = undefined;
+    if (labelDraft && !labelDraft.editing) setLabelDraft(undefined);
     clearDraft();
   }
 
@@ -278,44 +306,62 @@ export function MapNotationLayer({
               item.kind === "label" && (
                 <span
                   key={item.id}
-                  className="map-notation-label"
+                  className={`map-notation-label${item.width && item.height ? " map-notation-label-box" : ""}`}
                   data-notation-id={item.id}
                   style={{
                     left: `${item.x * 100}%`,
                     top: `${item.y * 100}%`,
                     color: item.color,
-                    fontSize: `${item.fontSize}px`
+                    fontSize: `${item.fontSize}px`,
+                    width: item.width ? `${item.width * 100}%` : undefined,
+                    minHeight: item.height ? `${item.height * 100}%` : undefined
                   }}
                 >
                   {item.text}
                 </span>
               )
           )}
-          {labelDraft && (
-            <input
+          {labelDraft && !labelDraft.editing && (
+            <div
+              className="map-notation-label-draft"
+              aria-hidden="true"
+              style={{
+                left: `${labelDraft.area.x * 100}%`,
+                top: `${labelDraft.area.y * 100}%`,
+                width: `${labelDraft.area.width * 100}%`,
+                height: `${labelDraft.area.height * 100}%`,
+                color
+              }}
+            />
+          )}
+          {labelDraft?.editing && (
+            <textarea
               autoFocus
-              className="map-notation-label map-notation-label-editor"
+              className="map-notation-label map-notation-label-box map-notation-label-editor"
               aria-label="Map label text"
               value={labelDraft.text}
-              placeholder="Type label"
+              maxLength={200}
+              placeholder="Type here · Ctrl+Enter to place"
               style={{
-                left: `${labelDraft.point.x * 100}%`,
-                top: `${labelDraft.point.y * 100}%`,
+                left: `${labelDraft.area.x * 100}%`,
+                top: `${labelDraft.area.y * 100}%`,
                 color,
                 fontSize: `${fontSize}px`,
-                width: `${Math.max(6, labelDraft.text.length + 1)}ch`
+                width: `${labelDraft.area.width * 100}%`,
+                height: `${labelDraft.area.height * 100}%`
               }}
               onPointerDown={(event) => event.stopPropagation()}
               onChange={(event) => setLabelDraft((current) => current && { ...current, text: event.target.value })}
               onBlur={finishLabel}
               onKeyDown={(event) => {
-                if (event.key === "Enter") {
+                if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
                   event.preventDefault();
                   event.currentTarget.blur();
                 }
                 if (event.key === "Escape") {
                   event.preventDefault();
-                  setLabelDraft(undefined);
+                  cancelLabel.current = true;
+                  event.currentTarget.blur();
                 }
               }}
             />
@@ -347,7 +393,7 @@ export function MapNotationLayer({
           <Pencil />
         </ToolButton>
         <ToolButton
-          title="Add label"
+          title="Add text box"
           selected={tool === "label"}
           onClick={() => setTool(tool === "label" ? undefined : "label")}
         >

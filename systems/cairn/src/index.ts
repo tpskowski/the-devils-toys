@@ -38,6 +38,7 @@ export const cairn: GameSystem = {
     {
       id: "cairn",
       markdownFile: "Cairn.md",
+      tablesFile: "cairn.json",
       correctionsFile: "corrections.md",
       license: "CC BY-SA 4.0"
     }

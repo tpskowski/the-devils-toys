@@ -10,7 +10,7 @@ import {
 import type { AuthedRequest } from "./auth.js";
 import { requireAuth, roomRole } from "./auth.js";
 import { db, one } from "./db.js";
-import { availableSets, findSet } from "./table-sets.js";
+import { availableSets, findSet, tablesForSystem } from "./table-sets.js";
 import { rollDice } from "./dice.js";
 import { inGameDisplayName } from "./display-name.js";
 import { rowForRoll, rowText } from "./roll-tables.js";
@@ -144,6 +144,27 @@ tableRouter.get("/rooms/:roomId/tables/:setId/:tableId", requireAuth, (req: Auth
   // Where the table sits in its Markdown is the editor's business, not the roller's.
   const { source, ...rest } = table;
   res.json({ table: rest });
+});
+
+tableRouter.get("/rooms/:roomId/rules-tables/:setId/:tableId", requireAuth, (req: AuthedRequest, res) => {
+  const roomId = Number(req.params.roomId);
+  const role = Number.isInteger(roomId) ? roomRole(req.account!.id, roomId) : undefined;
+  if (!role) return res.status(403).json({ error: "Join this room to read its rules tables." });
+  const room = one<{ system: SystemId }>("SELECT system FROM rooms WHERE id = ?", roomId);
+  if (!room || req.params.setId !== `system:${room.system}`)
+    return res.status(404).json({ error: "Rules table not found." });
+  const table = tablesForSystem(room.system).find((entry) => entry.id === req.params.tableId);
+  if (!table) return res.status(404).json({ error: "Rules table not found." });
+  if (role === "player" && (table as { classification?: string }).classification !== "player")
+    return res.status(403).json({ error: "That rules table is not available to players." });
+  const {
+    source: _source,
+    classification: _classification,
+    ...rest
+  } = table as typeof table & {
+    classification?: string;
+  };
+  return res.json({ table: rest });
 });
 
 tableRouter.post("/rooms/:roomId/tables/roll", requireAuth, (req: AuthedRequest, res) => {

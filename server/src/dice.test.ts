@@ -19,6 +19,11 @@ describe("dice expressions", () => {
     expect(rollDice("2d6+1", () => 0).total).toBe(3);
   });
 
+  it("rolls a d30 across its full range", () => {
+    expect(rollDice("d30", () => 0).total).toBe(1);
+    expect(rollDice("d30", () => 0.999)).toMatchObject({ expression: "1d30", total: 30, rolls: [30] });
+  });
+
   it("rolls d44 and d66 as separate tens and ones dice", () => {
     const d44 = rollDice("d44", sequence(0, 0.99));
     expect(d44).toMatchObject({

@@ -1790,7 +1790,7 @@ button:disabled {
   justify-content: space-between;
   align-items: baseline;
 }
-.message strong {
+.message > div > strong {
   font-size: 12px;
 }
 .message time {
@@ -1875,7 +1875,7 @@ button:disabled {
   padding: 8px 0 8px 13px;
   border-left: 2px solid color-mix(in srgb, var(--accent), var(--line) 45%);
 }
-.message-system strong {
+.message-system > div > strong {
   color: var(--muted);
 }
 .message-system p {

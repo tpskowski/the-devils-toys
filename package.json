@@ -21,6 +21,7 @@
     "test:e2e": "playwright test",
     "playwright:install": "playwright install --with-deps chromium",
     "format:check": "prettier --check .",
+    "tables:check": "tsx scripts/tables-md-to-json.ts --all --check",
     "smoke": "node scripts/smoke.mjs && node scripts/characters-smoke.mjs && node scripts/management-smoke.mjs && node scripts/capacity-smoke.mjs && node scripts/media-smoke.mjs && node scripts/audio-smoke.mjs && node scripts/npc-smoke.mjs && node scripts/dice-smoke.mjs && node scripts/tables-smoke.mjs && node scripts/tables-editor-smoke.mjs && node scripts/encounter-smoke.mjs",
     "dev:tables-client": "npm run dev --workspace @devils-toys/tables-client",
     "dev:tables-server": "npm run dev:tables --workspace @devils-toys/server",
@@ -35,6 +36,7 @@
     "@playwright/test": "^1.62.1",
     "concurrently": "^9.2.0",
     "prettier": "^3.6.2",
+    "tsx": "^4.23.1",
     "typescript": "^5.8.3"
   },
   "engines": {

@@ -186,7 +186,7 @@ export function tablesFromCsv(text: string): CsvImport {
       problems.push({ line: 1, message: `"${name}" needs a die; its rows do not say which one.` });
       continue;
     }
-    if (!/^d(100|66|44|20|12|10|8|6|4)$/.test(dice)) {
+    if (!/^d(100|66|44|30|20|12|10|8|6|4)$/.test(dice)) {
       problems.push({ line: 1, message: `"${name}" asks for ${dice}, which is not a die this can roll.` });
       continue;
     }

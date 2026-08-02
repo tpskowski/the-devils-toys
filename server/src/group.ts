@@ -282,7 +282,7 @@ groupRouter.post("/rooms/:roomId/group/hirelings/roll", requireAuth, (req: Authe
     res.json({
       hireling: rollHirelingCreation(
         creationRoll,
-        systemMarkdown(context.system),
+        context.system,
         undefined,
         context.definition.hirelings?.sheet.lists[0]?.key
       )

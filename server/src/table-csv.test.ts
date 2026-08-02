@@ -46,6 +46,13 @@ describe("turning CSV into tables", () => {
     expect(guessed[0].dice).toBe("d6");
   });
 
+  it("accepts and infers d30 tables", () => {
+    const rows = Array.from({ length: 30 }, (_, index) => `Omens,,,${index + 1},result ${index + 1}`);
+    const { tables: guessed, problems } = tablesFromCsv(`table,dice,tags,roll,Result\n${rows.join("\n")}\n`);
+    expect(problems).toEqual([]);
+    expect(guessed[0].dice).toBe("d30");
+  });
+
   it("asks for a die when the values do not name one", () => {
     const { tables: none, problems: found } = tablesFromCsv("table,dice,tags,roll,Result\nOmens,,,1,a\nOmens,,,2,b\n");
     expect(none).toEqual([]);

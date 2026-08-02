@@ -12,6 +12,7 @@ import {
   type TableTagDefinition
 } from "@devils-toys/shared";
 import { api } from "./api";
+import { InlineMarkdown } from "./InlineMarkdown";
 import {
   categoryOpensTable,
   countTablesByTag,
@@ -214,7 +215,12 @@ export function TablesModal({
       const result = await api<{ set: { id: number; name: string; markdown: string; tags: TableTag[] } }>(
         `/api/table-sets/${numericId}`
       );
-      setDraft({ id: result.set.id, name: result.set.name, markdown: result.set.markdown, tags: result.set.tags });
+      setDraft({
+        id: result.set.id,
+        name: result.set.name,
+        markdown: result.set.markdown,
+        tags: result.set.tags
+      });
       setManaging(true);
     } catch (cause) {
       setError((cause as Error).message);
@@ -541,7 +547,9 @@ export function TablesModal({
                   <div className="tables-result" role="status">
                     <span className="tables-result-total">{rolled.total}</span>
                     <span>
-                      <strong>{rolled.text || `No entry for ${rolled.total}`}</strong>
+                      <span className="tables-result-text">
+                        <InlineMarkdown>{rolled.text || `No entry for ${rolled.total}`}</InlineMarkdown>
+                      </span>
                       <small>
                         {rollTableLabel(table.name, table.dice)}
                         {rolled.visibility === "public"
@@ -580,7 +588,9 @@ export function TablesModal({
                         <tr>
                           <th>{table.dice}</th>
                           {table.columns.map((column, index) => (
-                            <th key={`${column}-${index}`}>{column}</th>
+                            <th key={`${column}-${index}`}>
+                              <InlineMarkdown>{column}</InlineMarkdown>
+                            </th>
                           ))}
                         </tr>
                       </thead>
@@ -589,7 +599,9 @@ export function TablesModal({
                           <tr key={row.label} className={rolled && row.label === rolled.label ? "rolled" : ""}>
                             <th scope="row">{row.label}</th>
                             {row.cells.map((cell, index) => (
-                              <td key={index}>{cell}</td>
+                              <td key={index}>
+                                <InlineMarkdown>{cell}</InlineMarkdown>
+                              </td>
                             ))}
                           </tr>
                         ))}

@@ -193,7 +193,7 @@ characterRouter.get("/rooms/:roomId/characters", requireAuth, (req: AuthedReques
     partyLabel: systems[context.system].partyLabel,
     sheetDefinition: systems[context.system].characterSheet,
     itemCatalogue: characterItemsFor(context.system),
-    viceCatalogue: context.system === "monolith" ? characterVicesFor(systemMarkdown("monolith")) : []
+    viceCatalogue: context.system === "monolith" ? characterVicesFor("monolith") : []
   });
 });
 

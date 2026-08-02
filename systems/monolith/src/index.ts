@@ -40,6 +40,7 @@ export const monolith: GameSystem = {
     {
       id: "monolith",
       markdownFile: "Monolith.md",
+      tablesFile: "monolith.json",
       correctionsFile: "corrections.md",
       license: "CC BY-SA 4.0"
     }

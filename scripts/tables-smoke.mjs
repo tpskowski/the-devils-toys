@@ -1,16 +1,29 @@
 import assert from "node:assert/strict";
 import { runSmoke } from "./harness.mjs";
 
-const customMarkdown = `### Rumours in the market (d6)
+const customTable = {
+  id: "rumours-in-the-market-d6",
+  name: "Rumours in the market (d6)",
+  section: "",
+  category: "Rumours in the market (d6)",
+  dice: "d6",
+  columns: ["Rumour"],
+  tags: [],
+  rows: [
+    "The well has gone bitter.",
+    "A tax collector has vanished.",
+    "Lights move in the barrow field.",
+    "The miller is buying silver.",
+    "Someone is paying for wolf pelts.",
+    "A stranger asks after the old road."
+  ].map((text, index) => ({ label: String(index + 1), min: index + 1, max: index + 1, cells: [text] }))
+};
+
+const customMarkdown = `## Rumours in the market (d6)
 
 | d6 | Rumour |
 | --- | --- |
-| 1 | The well has gone bitter. |
-| 2 | A tax collector has vanished. |
-| 3 | Lights move in the barrow field. |
-| 4 | The miller is buying silver. |
-| 5 | Someone is paying for wolf pelts. |
-| 6 | A stranger asks after the old road. |
+${customTable.rows.map((row) => `| ${row.label} | ${row.cells[0]} |`).join("\n")}
 `;
 
 await runSmoke(
@@ -205,7 +218,7 @@ await runSmoke(
     );
     assert.equal(customRoll.body.roll.setName, "House rumours");
     assert.ok(customRoll.body.roll.total >= 1 && customRoll.body.roll.total <= 6);
-    assert.ok(customMarkdown.includes(customRoll.body.roll.text));
+    assert.ok(customTable.rows.some((row) => row.cells.includes(customRoll.body.roll.text)));
 
     const numericId = Number(customId.replace("custom:", ""));
     await json(

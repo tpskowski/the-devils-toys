@@ -44,7 +44,16 @@ interface MapNotationBase {
 
 export type MapNotation =
   | (MapNotationBase & { kind: "line"; points: { x: number; y: number }[] })
-  | (MapNotationBase & { kind: "label"; x: number; y: number; text: string; fontSize: number })
+  | (MapNotationBase & {
+      kind: "label";
+      x: number;
+      y: number;
+      /** Optional for labels created before drag-sized text boxes were introduced. */
+      width?: number;
+      height?: number;
+      text: string;
+      fontSize: number;
+    })
   | (MapNotationBase & { kind: "box" | "circle"; x: number; y: number; width: number; height: number });
 
 export type NewMapNotation = MapNotation extends infer Notation
@@ -71,6 +80,8 @@ export interface CalendarEvent {
 }
 
 export interface RoomCalendar {
+  /** Monotonic server revision used to reject stale editor saves. */
+  revision: number;
   year: number;
   month: number;
   day: number;
@@ -394,6 +405,8 @@ export interface SystemSourceDocument {
   canonicalFile?: string;
   /** Human-readable ledger of intentional differences from the canonical source. */
   correctionsFile?: string;
+  /** Extracted rollable tables for this document, under raw/tables/. */
+  tablesFile?: string;
   license: string;
 }
 
@@ -445,6 +458,8 @@ export interface RollTableRow {
 export interface RollTableSource {
   /** The heading that owns the table, when the table has one above it. */
   heading: { line: number; level: number; text: string } | null;
+  /** Full heading path above the table, used for provenance and access classification. */
+  headingPath: readonly string[];
   /** The line holding this table's `<!-- tags: ... -->` comment, when it has one. */
   tagsLine: number | null;
   /** The table's header row. */

@@ -20,17 +20,16 @@ import type { Permissions } from "./session";
 interface StoredSet {
   id: number | string;
   name: string;
-  markdown: string;
+  markdown?: string;
+  tables?: RollTable[];
   tags: TableTag[];
   updatedAt: string | null;
   readOnly: boolean;
 }
 
 /**
- * A whole set. The Markdown is the set — the grid is a view onto it, parsed with
- * exactly the parser the roller uses, so what is shown is what will be rolled.
- * Applying an edit splices that one table back into the document and leaves
- * every other line of it alone.
+ * A whole set. Custom tables are always derived from the stored Markdown; grid
+ * edits splice only the parsed source range back into that document.
  */
 export function SetEditor({
   setId,
@@ -49,7 +48,8 @@ export function SetEditor({
 }) {
   const [name, setName] = useState("");
   const [tags, setTags] = useState<TableTag[]>([]);
-  const [markdown, setMarkdown] = useState("");
+  const [markdown, setMarkdown] = useState<string>();
+  const [systemTables, setSystemTables] = useState<RollTable[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [locked, setLocked] = useState(false);
   const [dirty, setDirty] = useState(false);
@@ -61,7 +61,10 @@ export function SetEditor({
 
   const [tagFilter, setTagFilter] = useState<TableTag | "">("");
 
-  const tables = useMemo(() => parseRollTables(markdown), [markdown]);
+  const tables = useMemo(
+    () => (markdown === undefined ? systemTables : parseRollTables(markdown)),
+    [markdown, systemTables]
+  );
   const tallies = useMemo(() => tagTallies(tables, tags, vocabulary), [tables, tags, vocabulary]);
   const shown = useMemo(() => tablesWithTag(tables, tags, tagFilter), [tables, tags, tagFilter]);
   const customId = setId.startsWith("custom:") ? Number(setId.replace("custom:", "")) : undefined;
@@ -79,6 +82,7 @@ export function SetEditor({
         setName(result.set.name);
         setTags(result.set.tags);
         setMarkdown(result.set.markdown);
+        setSystemTables(result.set.tables ?? []);
         setLocked(result.set.readOnly);
         setLoaded(true);
         setDirty(false);
@@ -97,7 +101,11 @@ export function SetEditor({
 
   function applyEdit() {
     if (!editing) return;
-    setMarkdown((current) => spliceTable(current, editing));
+    if (!editing.source) {
+      setError("That table has no source range and cannot be edited in place.");
+      return;
+    }
+    setMarkdown((current) => (current === undefined ? current : spliceTable(current, editing)));
     setDirty(true);
     setEditing(undefined);
     setEditingId("");
@@ -105,7 +113,7 @@ export function SetEditor({
 
   function addTable() {
     const table = blankTable(`New table ${tables.length + 1}`);
-    setMarkdown((current) => (current.trim() ? appendTable(current, table) : serializeSet([table])));
+    setMarkdown((current) => appendTable(current ?? "", table));
     setDirty(true);
   }
 
@@ -114,7 +122,10 @@ export function SetEditor({
     setSaving(true);
     setError("");
     try {
-      await api(`/api/table-sets/${customId}`, { method: "PATCH", body: JSON.stringify({ name, markdown, tags }) });
+      await api(`/api/table-sets/${customId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ name, markdown: markdown ?? "", tags })
+      });
       setDirty(false);
       onSaved();
     } catch (cause) {
@@ -190,20 +201,22 @@ export function SetEditor({
 
       {raw ? (
         <label className="set-editor-raw">
-          <span className="nav-label">Markdown</span>
+          <span className="nav-label">Markdown source</span>
           <textarea
-            value={markdown}
+            value={markdown ?? serializeSet(systemTables, name)}
             rows={24}
             readOnly={readOnly}
-            spellCheck={false}
             onChange={(event) => {
               setMarkdown(event.target.value);
               setDirty(true);
+              setEditing(undefined);
+              setEditingId("");
             }}
+            spellCheck={false}
           />
           <p className="empty-note">
-            A table is found when its first column is a die and its rows are keyed by die values, exactly as the system
-            books are written. Tags for a single table live in a <code>&lt;!-- tags: … --&gt;</code> comment above it.
+            The grid and roller are derived from this document. Grid changes replace only the selected table's source
+            lines, leaving surrounding notes and formatting intact.
           </p>
         </label>
       ) : (
