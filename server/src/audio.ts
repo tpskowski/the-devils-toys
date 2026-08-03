@@ -8,9 +8,12 @@ import type { AudioPlaybackState, MediaAsset, RoomAudioState } from "@devils-toy
 import type { AuthedRequest } from "./auth.js";
 import { requireAuth, roomRole } from "./auth.js";
 import { config } from "./config.js";
+import { storedUploadBytes } from "./upload-usage.js";
 import { all, db, one } from "./db.js";
 import { broadcastRoom } from "./realtime.js";
 import { readMp3Metadata } from "./mp3-metadata.js";
+import { playlistsFor } from "./playlists.js";
+import { roomAccessRole } from "./room-config-permissions.js";
 
 export const audioRouter = express.Router();
 const uploadsDir = path.join(config.dataDir, "uploads");
@@ -78,7 +81,7 @@ function withMetadata(row: AudioRow) {
 
 function requireGm(req: AuthedRequest, res: express.Response) {
   const roomId = Number(req.params.roomId);
-  if (!Number.isInteger(roomId) || roomRole(req.account!.id, roomId) !== "gm") {
+  if (!Number.isInteger(roomId) || roomAccessRole(req.account!, roomId) !== "gm") {
     res.status(403).json({ error: "Only the room GM can manage shared audio." });
     return;
   }
@@ -124,6 +127,9 @@ function storedPlayback(roomId: number): AudioPlaybackState {
     position: Math.max(0, Number(state.position ?? 0) + elapsed),
     repeat: state.repeat === "all" || state.repeat === "one" ? state.repeat : "off",
     shuffle: Boolean(state.shuffle),
+    // Which playlist the room is playing through, or null for its whole
+    // library. A blob with a tolerant reader, so nothing needs migrating.
+    playlistId: typeof state.playlistId === "number" ? state.playlistId : null,
     updatedAt: new Date().toISOString()
   };
 }
@@ -149,7 +155,7 @@ export function pauseRoomAudio(roomId: number) {
 
 audioRouter.get("/rooms/:roomId/audio", requireAuth, (req: AuthedRequest, res) => {
   const roomId = Number(req.params.roomId);
-  if (!roomRole(req.account!.id, roomId)) return res.status(404).json({ error: "Room not found." });
+  if (!roomAccessRole(req.account!, roomId)) return res.status(404).json({ error: "Room not found." });
   if (!roomMusicEnabled(roomId)) return res.status(409).json({ error: "Music playback is not enabled for this room." });
   const tracks = all<AudioRow>(
     `SELECT id, room_id, kind, filename, stored_name, mime_type, artist, title, metadata_loaded, size, created_at
@@ -161,7 +167,11 @@ audioRouter.get("/rooms/:roomId/audio", requireAuth, (req: AuthedRequest, res) =
   const playback = storedPlayback(roomId);
   if (playback.trackId && !tracks.some((track) => track.id === playback.trackId))
     Object.assign(playback, { trackId: null, playing: false, position: 0 });
-  res.json({ tracks, playback } satisfies RoomAudioState);
+  const playlists = playlistsFor(roomId);
+  // A playlist deleted while the room was playing through it leaves the room on
+  // its whole library rather than on nothing.
+  if (playback.playlistId && !playlists.some((entry) => entry.id === playback.playlistId)) playback.playlistId = null;
+  res.json({ tracks, playback, playlists } satisfies RoomAudioState);
 });
 
 audioRouter.post(
@@ -179,14 +189,7 @@ audioRouter.post(
       removeUpload(req.file);
       return res.status(415).json({ error: "The file contents do not match MP3 audio." });
     }
-    const mediaBytes = one<{ size: number }>("SELECT COALESCE(SUM(size), 0) AS size FROM media")?.size ?? 0;
-    const portraitBytes =
-      one<{ size: number }>("SELECT COALESCE(SUM(portrait_size), 0) AS size FROM characters")?.size ?? 0;
-    const starshipBytes =
-      one<{ size: number }>("SELECT COALESCE(SUM(size), 0) AS size FROM starship_images")?.size ?? 0;
-    const hirelingBytes =
-      one<{ size: number }>("SELECT COALESCE(SUM(size), 0) AS size FROM hireling_images")?.size ?? 0;
-    const used = mediaBytes + portraitBytes + starshipBytes + hirelingBytes;
+    const used = storedUploadBytes();
     if (used + req.file.size > config.uploadLimitMb * 1024 * 1024) {
       removeUpload(req.file);
       return res.status(413).json({ error: "The server upload-storage allowance has been reached." });
@@ -226,7 +229,8 @@ audioRouter.patch("/rooms/:roomId/audio/playback", requireAuth, (req: AuthedRequ
       playing: z.boolean(),
       position: z.number().finite().min(0).max(86400),
       repeat: z.enum(["off", "all", "one"]).optional(),
-      shuffle: z.boolean().optional()
+      shuffle: z.boolean().optional(),
+      playlistId: z.number().int().positive().nullable().optional()
     })
     .safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "Choose a valid track and playback position." });
@@ -241,7 +245,8 @@ audioRouter.patch("/rooms/:roomId/audio/playback", requireAuth, (req: AuthedRequ
     playing: parsed.data.trackId ? parsed.data.playing : false,
     position: parsed.data.trackId ? parsed.data.position : 0,
     repeat: parsed.data.repeat ?? current.repeat,
-    shuffle: parsed.data.shuffle ?? current.shuffle
+    shuffle: parsed.data.shuffle ?? current.shuffle,
+    playlistId: parsed.data.playlistId === undefined ? current.playlistId : parsed.data.playlistId
   });
   broadcastRoom(roomId, { type: "audio-playback", playback });
   res.json({ playback });
@@ -264,7 +269,8 @@ audioRouter.delete("/rooms/:roomId/audio/:mediaId", requireAuth, (req: AuthedReq
       playing: false,
       position: 0,
       repeat: playback.repeat,
-      shuffle: playback.shuffle
+      shuffle: playback.shuffle,
+      playlistId: playback.playlistId
     });
   db.prepare("DELETE FROM media WHERE id = ?").run(row.id);
   if (path.basename(row.stored_name) === row.stored_name)

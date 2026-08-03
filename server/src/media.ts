@@ -6,10 +6,12 @@ import multer from "multer";
 import { z } from "zod";
 import type { MediaAsset } from "@devils-toys/shared";
 import type { AuthedRequest } from "./auth.js";
-import { requireAuth, roomRole } from "./auth.js";
+import { requireAuth } from "./auth.js";
 import { config } from "./config.js";
+import { storedUploadBytes } from "./upload-usage.js";
 import { all, db, one } from "./db.js";
 import { broadcastRoom } from "./realtime.js";
+import { roomAccessRole } from "./room-config-permissions.js";
 
 export const mediaRouter = express.Router();
 
@@ -102,7 +104,7 @@ function validMarkdownFile(file: Express.Multer.File) {
 
 function requireGm(req: AuthedRequest, res: express.Response) {
   const roomId = Number(req.params.roomId);
-  if (!Number.isInteger(roomId) || roomRole(req.account!.id, roomId) !== "gm") {
+  if (!Number.isInteger(roomId) || roomAccessRole(req.account!, roomId) !== "gm") {
     res.status(403).json({ error: "Only the room GM can manage media." });
     return;
   }
@@ -127,7 +129,7 @@ function setActiveMedia(roomId: number, kind: "map" | "scene", mediaId: number |
 
 mediaRouter.get("/rooms/:roomId/media", requireAuth, (req: AuthedRequest, res) => {
   const roomId = Number(req.params.roomId);
-  const role = roomRole(req.account!.id, roomId);
+  const role = roomAccessRole(req.account!, roomId);
   if (!role) return res.status(404).json({ error: "Room not found." });
   const roomState = one<{ map_id: number | null; scene_id: number | null }>(
     "SELECT map_id, scene_id FROM room_state WHERE room_id = ?",
@@ -220,14 +222,7 @@ mediaRouter.post(
           : "The file contents do not match a supported image format."
       });
     }
-    const mediaBytes = one<{ size: number }>("SELECT COALESCE(SUM(size), 0) AS size FROM media")?.size ?? 0;
-    const portraitBytes =
-      one<{ size: number }>("SELECT COALESCE(SUM(portrait_size), 0) AS size FROM characters")?.size ?? 0;
-    const starshipBytes =
-      one<{ size: number }>("SELECT COALESCE(SUM(size), 0) AS size FROM starship_images")?.size ?? 0;
-    const hirelingBytes =
-      one<{ size: number }>("SELECT COALESCE(SUM(size), 0) AS size FROM hireling_images")?.size ?? 0;
-    const used = mediaBytes + portraitBytes + starshipBytes + hirelingBytes;
+    const used = storedUploadBytes();
     if (used + req.file.size > config.uploadLimitMb * 1024 * 1024) {
       removeUploaded(req.file);
       return res.status(413).json({ error: "The server upload-storage allowance has been reached." });
@@ -294,6 +289,107 @@ mediaRouter.patch("/rooms/:roomId/scene", requireAuth, (req: AuthedRequest, res)
   setActiveMedia(roomId, "scene", parsed.data.mediaId);
   broadcastRoom(roomId, { type: "media-updated" });
   res.status(204).end();
+});
+
+/**
+ * Bulk category and visibility, for Room Config's Library. Registered above the
+ * `:mediaId` routes so "bulk" is never read as an id.
+ *
+ * Every id is checked against the room before anything is written, so a request
+ * naming one asset from another room changes nothing rather than changing all
+ * but that one.
+ */
+const bulkSelectionSchema = z.object({ ids: z.array(z.number().int().positive()).min(1).max(500) });
+
+function selectedRoomMedia(roomId: number, ids: number[]) {
+  const rows = all<MediaRow>(
+    `SELECT id, room_id, COALESCE(category, kind) AS kind, filename, display_name, stored_name, visible, mime_type, size, created_at
+     FROM media WHERE room_id = ? AND COALESCE(category, kind) IN ('map', 'scene', 'reference')
+       AND id IN (${ids.map(() => "?").join(",")})`,
+    roomId,
+    ...ids
+  );
+  return rows.length === new Set(ids).size ? rows : undefined;
+}
+
+/** An asset that stops being a map or a scene cannot stay the room's active one. */
+function clearActiveMedia(roomId: number, mediaIds: number[]) {
+  for (const column of ["map_id", "scene_id"] as const)
+    db.prepare(
+      `UPDATE room_state SET ${column} = NULL, updated_at = CURRENT_TIMESTAMP
+       WHERE room_id = ? AND ${column} IN (${mediaIds.map(() => "?").join(",")})`
+    ).run(roomId, ...mediaIds);
+}
+
+mediaRouter.patch("/rooms/:roomId/media/bulk", requireAuth, (req: AuthedRequest, res) => {
+  const roomId = requireGm(req, res);
+  if (!roomId) return;
+  const parsed = bulkSelectionSchema
+    .extend({
+      category: z.enum(["map", "scene", "reference"]).optional(),
+      visible: z.boolean().optional()
+    })
+    .refine((value) => value.category !== undefined || value.visible !== undefined)
+    .safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: "Choose assets and what to change about them." });
+  const rows = selectedRoomMedia(roomId, parsed.data.ids);
+  if (!rows) return res.status(404).json({ error: "One of those assets is not in this room." });
+  const { category, visible } = parsed.data;
+  // A Markdown reference has no image to show as a map or a scene, which is the
+  // same rule the upload applies when it refuses to file one anywhere else.
+  if (category && category !== "reference" && rows.some((row) => row.mime_type === "text/markdown"))
+    return res.status(400).json({ error: "Markdown files can only be References." });
+  db.exec("BEGIN IMMEDIATE");
+  try {
+    const ids = rows.map((row) => row.id);
+    const placeholders = ids.map(() => "?").join(",");
+    if (category) {
+      // `kind` predates `category` and a map is stored as a scene under it; the
+      // upload writes the pair this way and so must anything that changes it.
+      db.prepare(`UPDATE media SET kind = ?, category = ? WHERE room_id = ? AND id IN (${placeholders})`).run(
+        category === "map" ? "scene" : category,
+        category,
+        roomId,
+        ...ids
+      );
+      clearActiveMedia(roomId, ids);
+    }
+    if (visible !== undefined)
+      db.prepare(`UPDATE media SET visible = ? WHERE room_id = ? AND id IN (${placeholders})`).run(
+        visible ? 1 : 0,
+        roomId,
+        ...ids
+      );
+    if (visible === false) clearActiveMedia(roomId, ids);
+    db.exec("COMMIT");
+  } catch (error) {
+    db.exec("ROLLBACK");
+    throw error;
+  }
+  broadcastRoom(roomId, { type: "media-updated" });
+  res.status(204).end();
+});
+
+/**
+ * A POST rather than a DELETE because the selection travels in the body, and a
+ * body on a DELETE is the kind of thing an intermediary is entitled to drop.
+ * Losing it would turn "delete these three" into a request naming nothing, so
+ * the method is chosen to make that impossible rather than unlikely.
+ */
+mediaRouter.post("/rooms/:roomId/media/bulk-delete", requireAuth, (req: AuthedRequest, res) => {
+  const roomId = requireGm(req, res);
+  if (!roomId) return;
+  const parsed = bulkSelectionSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: "Choose the assets to delete." });
+  const rows = selectedRoomMedia(roomId, parsed.data.ids);
+  if (!rows) return res.status(404).json({ error: "One of those assets is not in this room." });
+  const ids = rows.map((row) => row.id);
+  db.prepare(`DELETE FROM media WHERE room_id = ? AND id IN (${ids.map(() => "?").join(",")})`).run(roomId, ...ids);
+  for (const row of rows)
+    if (path.basename(row.stored_name) === row.stored_name)
+      fs.rmSync(path.join(uploadsDir, row.stored_name), { force: true });
+  broadcastRoom(roomId, { type: "media-updated" });
+  res.json({ deleted: ids.length });
 });
 
 mediaRouter.patch("/rooms/:roomId/media/:mediaId/visibility", requireAuth, (req: AuthedRequest, res) => {
@@ -375,7 +471,7 @@ mediaRouter.get("/media/:mediaId/file", requireAuth, (req: AuthedRequest, res) =
     Number(req.params.mediaId)
   );
   if (!row) return res.status(404).json({ error: "Media not found." });
-  const role = roomRole(req.account!.id, row.room_id);
+  const role = roomAccessRole(req.account!, row.room_id);
   if (row.kind === "audio" && !row.music_enabled) return res.status(404).json({ error: "Media not found." });
   const allowed = role === "gm" || (role === "player" && (row.kind === "audio" || Boolean(row.visible)));
   if (!allowed) return res.status(404).json({ error: "Media not found." });

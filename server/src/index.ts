@@ -28,6 +28,10 @@ import { asyncRoute, parse, publicAccount, sessionRouter } from "./session-route
 import { groupRouter } from "./group.js";
 import { encounterRouter } from "./encounters.js";
 import { mapNotationRouter } from "./map-notations.js";
+import { roomConfigRouter } from "./room-config.js";
+import { roomItemRouter } from "./room-item-routes.js";
+import { playlistRouter } from "./playlists.js";
+import { roomAccessRole } from "./room-config-permissions.js";
 import { projectFile } from "./paths.js";
 import { rulesMarkdown, systems } from "./systems.js";
 import {
@@ -69,6 +73,9 @@ app.use("/api", roomAdminRouter);
 app.use("/api", managementRouter);
 app.use("/api", sessionRouter);
 app.use("/api", mapNotationRouter);
+app.use("/api", roomConfigRouter);
+app.use("/api", roomItemRouter);
+app.use("/api", playlistRouter);
 function publicMessage(row: {
   id: number;
   room_id: number;
@@ -413,7 +420,7 @@ app.get("/api/rooms/:roomId", requireAuth, (req: AuthedRequest, res) => {
 
 app.patch("/api/rooms/:roomId", requireAuth, (req: AuthedRequest, res) => {
   const roomId = Number(req.params.roomId);
-  if (roomRole(req.account!.id, roomId) !== "gm")
+  if (roomAccessRole(req.account!, roomId) !== "gm")
     return res.status(403).json({ error: "Only the room GM can change room settings." });
   const body = parse(
     z
@@ -471,7 +478,7 @@ app.patch("/api/rooms/:roomId", requireAuth, (req: AuthedRequest, res) => {
 
 app.put("/api/rooms/:roomId/calendar", requireAuth, (req: AuthedRequest, res) => {
   const roomId = Number(req.params.roomId);
-  if (roomRole(req.account!.id, roomId) !== "gm")
+  if (roomAccessRole(req.account!, roomId) !== "gm")
     return res.status(403).json({ error: "Only the room GM can configure the calendar." });
   const parsedCalendar = parse(calendarSchema, calendarInput(req.body), res);
   if (!parsedCalendar) return;

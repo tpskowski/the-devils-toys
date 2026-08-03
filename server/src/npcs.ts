@@ -2,9 +2,10 @@ import express from "express";
 import { z } from "zod";
 import type { SystemId } from "@devils-toys/shared";
 import type { AuthedRequest } from "./auth.js";
-import { requireAuth, roomRole } from "./auth.js";
+import { requireAuth } from "./auth.js";
 import { all, db, one } from "./db.js";
 import { broadcastRoom } from "./realtime.js";
+import { roomAccessRole, roomConfigAccess } from "./room-config-permissions.js";
 import { systemMarkdown, systems } from "./systems.js";
 import { parseNpcStatblock } from "./npc-statblocks.js";
 
@@ -60,7 +61,7 @@ function validateStatblock(system: SystemId, value: Record<string, string | numb
 
 function room(req: AuthedRequest, res: express.Response) {
   const roomId = Number(req.params.roomId);
-  if (roomRole(req.account!.id, roomId) !== "gm") {
+  if (roomAccessRole(req.account!, roomId) !== "gm") {
     res.status(403).json({ error: "The NPC catalog is reserved for the room GM." });
     return;
   }
@@ -196,6 +197,46 @@ npcRouter.post("/rooms/:roomId/npcs/:npcId/clone", requireAuth, (req: AuthedRequ
     npc: {
       id: Number(result.lastInsertRowid),
       name,
+      notes: source.notes,
+      statblock: parseStatblock(source.statblock_json)
+    }
+  });
+});
+
+/**
+ * Copies an NPC into another room, which is the first write in this application
+ * that reaches across two of them. Its whole safety is the double check: the
+ * account must be able to configure the room it is reading from *and* the room
+ * it is writing to, each judged on its own. Sharing a system is required too,
+ * since a statblock is validated against its system's fields and a Cairn NPC
+ * dropped into a Monolith room would be a record nothing can read.
+ */
+npcRouter.post("/rooms/:roomId/npcs/:npcId/copy-to", requireAuth, (req: AuthedRequest, res) => {
+  const roomId = room(req, res);
+  if (!roomId) return;
+  const parsed = z.object({ roomId: z.number().int().positive() }).safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: "Choose a room to copy into." });
+  const targetId = parsed.data.roomId;
+  if (targetId === roomId) return res.status(400).json({ error: "That is the room it is already in." });
+  if (!roomConfigAccess(req.account!, targetId)) return res.status(404).json({ error: "Room not found." });
+  const source = one<{ name: string; notes: string; statblock_json: string }>(
+    "SELECT name, notes, statblock_json FROM custom_npcs WHERE id = ? AND room_id = ? AND spawned = 0",
+    Number(req.params.npcId),
+    roomId
+  );
+  if (!source) return res.status(404).json({ error: "Custom NPC not found." });
+  const systemOf = (id: number) => one<{ system: SystemId }>("SELECT system FROM rooms WHERE id = ?", id)!.system;
+  if (systemOf(roomId) !== systemOf(targetId))
+    return res.status(409).json({ error: "Both rooms must run the same system." });
+  const result = db
+    .prepare("INSERT INTO custom_npcs (room_id, created_by, name, notes, statblock_json) VALUES (?, ?, ?, ?, ?)")
+    .run(targetId, req.account!.id, source.name, source.notes, source.statblock_json);
+  broadcastRoom(targetId, { type: "npcs-updated" });
+  res.status(201).json({
+    npc: {
+      id: Number(result.lastInsertRowid),
+      roomId: targetId,
+      name: source.name,
       notes: source.notes,
       statblock: parseStatblock(source.statblock_json)
     }

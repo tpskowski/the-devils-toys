@@ -1,0 +1,1059 @@
+/*
+ * Room Config: the GM control panel, in its own tab. Desktop-first, per the
+ * engineering constraints — it reflows to one column on a phone and stays
+ * usable, but the wide layout is the one it is designed for.
+ */
+
+.room-config {
+  min-height: 100svh;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.room-config-open {
+  display: grid;
+  grid-template-columns: minmax(220px, 268px) minmax(0, 1fr);
+  align-items: stretch;
+}
+
+.room-config-eyebrow {
+  margin: 0;
+  color: var(--muted);
+  font:
+    400 10px "DM Mono",
+    monospace;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.room-config h1 {
+  margin: 10px 0 12px;
+  font-family: "Unbounded", sans-serif;
+  font-size: clamp(26px, 3.4vw, 44px);
+  line-height: 1.04;
+  letter-spacing: -0.04em;
+}
+
+.room-config-lede {
+  max-width: 62ch;
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.room-config-muted {
+  color: var(--muted);
+}
+
+.room-config-error {
+  margin: 20px 0 0;
+  padding: 12px 16px;
+  border-left: 3px solid var(--hostile, var(--accent));
+  background: color-mix(in srgb, var(--hostile, var(--accent)), transparent 90%);
+}
+
+/* The selector, shown when the address names no room. */
+
+.room-config-selector {
+  max-width: 760px;
+  padding: clamp(40px, 7vw, 96px) clamp(24px, 5vw, 64px);
+}
+
+.room-config-room-list {
+  margin: 32px 0 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--line);
+}
+
+.room-config-room-list button {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 20px;
+  width: 100%;
+  padding: 17px 4px;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.room-config-room-list button:hover {
+  color: var(--accent);
+}
+
+.room-config-room-name {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  font-weight: 600;
+  font-size: 17px;
+}
+
+.room-config-room-name em {
+  color: var(--muted);
+  font:
+    400 9px "DM Mono",
+    monospace;
+  font-style: normal;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.room-config-room-list small {
+  color: var(--muted);
+  font:
+    400 11px "DM Mono",
+    monospace;
+}
+
+.room-config-empty {
+  max-width: 560px;
+  padding: clamp(40px, 8vw, 110px) clamp(24px, 5vw, 64px);
+}
+
+/* The rail of sections. */
+
+.room-config-rail {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 24px 14px;
+  border-right: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.room-config-rail nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 10px;
+}
+
+.room-config-switcher,
+.room-config-section-button {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  width: 100%;
+  padding: 11px 12px;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.room-config-switcher {
+  border: 1px solid var(--line);
+  font-weight: 600;
+}
+
+.room-config-switcher span,
+.room-config-section-button span {
+  min-width: 0;
+  font-size: 14px;
+}
+
+.room-config-switcher small,
+.room-config-section-button small {
+  display: block;
+  margin-top: 3px;
+  overflow: hidden;
+  color: var(--muted);
+  font:
+    400 10px "DM Mono",
+    monospace;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.room-config-section-button:hover {
+  background: color-mix(in srgb, var(--accent), transparent 92%);
+}
+
+.room-config-section-button.is-current {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent), transparent 88%);
+  box-shadow: inset 2px 0 var(--accent);
+}
+
+.room-config-section-button.is-off {
+  color: var(--muted);
+}
+
+.room-config-rail footer {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: auto;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+}
+
+.room-config-badge {
+  align-self: flex-start;
+  padding: 5px 9px;
+  border: 1px solid var(--line);
+  color: var(--muted);
+  font:
+    400 9px "DM Mono",
+    monospace;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+.room-config-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--accent);
+  font-size: 13px;
+  text-decoration: none;
+}
+
+.room-config-link:hover {
+  text-decoration: underline;
+}
+
+/* The section body. */
+
+.room-config-body {
+  min-width: 0;
+  padding: clamp(30px, 4vw, 60px) clamp(24px, 4vw, 60px) 72px;
+}
+
+.room-config-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 28px;
+  padding-bottom: 28px;
+  border-bottom: 1px solid var(--line);
+}
+
+.room-config-glyph {
+  flex: 0 0 auto;
+  color: var(--accent);
+  font-size: clamp(30px, 4vw, 48px);
+  line-height: 1;
+}
+
+.room-config-panel {
+  margin-top: 32px;
+  padding: 26px 28px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.room-config-panel h2 {
+  margin: 0 0 10px;
+  font-family: "Unbounded", sans-serif;
+  font-size: 19px;
+  letter-spacing: -0.02em;
+}
+
+.room-config-panel p {
+  max-width: 62ch;
+  margin: 0 0 8px;
+  line-height: 1.6;
+}
+
+.room-config-off button {
+  margin-top: 14px;
+  padding: 10px 16px;
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: var(--button-text);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.room-config-off button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* Sections. Shared controls first, then what each one needs of its own. */
+
+.room-config-section {
+  margin-top: 28px;
+}
+
+.rc-notice {
+  margin: 0 0 14px;
+  padding: 10px 14px;
+  border-left: 3px solid var(--friendly, var(--accent));
+  background: color-mix(in srgb, var(--friendly, var(--accent)), transparent 90%);
+}
+
+.room-config-section input[type="text"],
+.room-config-section input:not([type]),
+.room-config-section textarea,
+.room-config-section select {
+  height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 0;
+  background: var(--surface);
+  color: var(--text);
+  font:
+    400 13px "Inter",
+    sans-serif;
+  min-width: 0;
+}
+
+.room-config-section select option {
+  background: var(--surface);
+  color: var(--text);
+}
+
+.room-config-section textarea {
+  height: auto;
+  padding: 10px;
+  line-height: 1.55;
+  resize: vertical;
+}
+
+.room-config-section button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 13px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.room-config-section button:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.room-config-section button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.room-config-section button.rc-primary {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--button-text);
+  font-weight: 600;
+}
+
+.room-config-section button.rc-danger:hover:not(:disabled) {
+  border-color: var(--hostile, var(--accent));
+  color: var(--hostile, var(--accent));
+}
+
+.rc-search {
+  width: 100%;
+}
+
+.rc-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.rc-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0;
+}
+
+.rc-filters button {
+  border-right-width: 0;
+}
+
+.rc-filters button:last-child {
+  border-right-width: 1px;
+}
+
+.rc-filters button.is-current {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent), transparent 88%);
+}
+
+.rc-toolbar .rc-search {
+  flex: 1 1 200px;
+  width: auto;
+}
+
+.rc-upload {
+  display: flex;
+  gap: 8px;
+}
+
+.rc-bulk {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+  padding: 10px 14px;
+  border: 1px solid var(--accent);
+  background: color-mix(in srgb, var(--accent), transparent 92%);
+}
+
+.rc-bulk > span {
+  margin-right: auto;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+/* Library table. */
+
+.rc-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--line);
+}
+
+.rc-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.rc-table th {
+  padding: 11px 12px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--muted);
+  font:
+    400 9px "DM Mono",
+    monospace;
+  letter-spacing: 0.11em;
+  text-align: left;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.rc-table td {
+  padding: 9px 12px;
+  border-bottom: 1px solid color-mix(in srgb, var(--line), transparent 45%);
+  vertical-align: middle;
+}
+
+.rc-table tr:last-child td {
+  border-bottom: 0;
+}
+
+.rc-table tr.is-selected td {
+  background: color-mix(in srgb, var(--accent), transparent 93%);
+}
+
+.rc-table .rc-check {
+  width: 34px;
+  padding-right: 0;
+}
+
+.rc-table .rc-actions-column {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.rc-table small {
+  display: block;
+  margin-top: 2px;
+  color: var(--muted);
+  font:
+    400 10px "DM Mono",
+    monospace;
+}
+
+button.rc-name {
+  height: auto;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.rc-rename {
+  width: 100%;
+  max-width: 280px;
+}
+
+.rc-empty {
+  margin: 0;
+  padding: 22px 14px;
+}
+
+/* NPCs: two lists beside one editor. */
+
+.rc-npcs {
+  display: grid;
+  grid-template-columns: minmax(240px, 340px) minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+
+.rc-npc-lists {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+}
+
+.rc-panel-block {
+  min-width: 0;
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.rc-panel-block > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.rc-panel-block h3 {
+  margin: 0;
+  font-family: "Unbounded", sans-serif;
+  font-size: 14px;
+  letter-spacing: -0.01em;
+}
+
+.rc-list {
+  margin: 12px 0 0;
+  padding: 0;
+  max-height: 320px;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.rc-list li {
+  display: flex;
+  align-items: stretch;
+  gap: 4px;
+  border-bottom: 1px solid color-mix(in srgb, var(--line), transparent 50%);
+}
+
+.rc-list li > button:first-child {
+  flex: 1 1 auto;
+  display: block;
+  height: auto;
+  min-width: 0;
+  padding: 9px 8px;
+  border: 0;
+  background: transparent;
+  text-align: left;
+}
+
+.rc-list li > button:first-child > span {
+  display: block;
+  overflow: hidden;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rc-list small {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 3px;
+  overflow: hidden;
+  color: var(--muted);
+  font:
+    400 10px "DM Mono",
+    monospace;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rc-list button.is-current {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent), transparent 88%);
+  box-shadow: inset 2px 0 var(--accent);
+}
+
+.rc-inline-action {
+  flex: 0 0 auto;
+  align-self: center;
+  padding: 0 9px;
+}
+
+.rc-npc-editor {
+  min-width: 0;
+}
+
+.rc-title-input {
+  flex: 1 1 auto;
+  font-weight: 600 !important;
+  font-size: 15px !important;
+}
+
+.rc-statblock {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 12px;
+  margin: 4px 0 18px;
+}
+
+.rc-statblock label,
+.rc-notes {
+  display: block;
+  min-width: 0;
+}
+
+.rc-statblock span,
+.rc-notes > span {
+  display: block;
+  margin-bottom: 5px;
+  color: var(--muted);
+  font:
+    400 9px "DM Mono",
+    monospace;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+.rc-statblock input,
+.rc-notes textarea {
+  width: 100%;
+}
+
+.rc-npc-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+
+.rc-copy-to {
+  display: flex;
+  gap: 6px;
+}
+
+.rc-reading {
+  max-height: 60svh;
+  overflow-y: auto;
+}
+
+/* Rosters: hirelings and shared property, on one layout because on rows they
+   are the same thing. */
+
+.rc-roster {
+  display: grid;
+  grid-template-columns: minmax(220px, 320px) minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+
+.rc-roster-list > select {
+  width: 100%;
+  margin-bottom: 4px;
+}
+
+.rc-roster-add {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.rc-roster-editor {
+  min-width: 0;
+}
+
+.rc-portrait {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  margin: 4px 0 20px;
+}
+
+.rc-portrait-frame {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 96px;
+  height: 96px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  color: var(--muted);
+}
+
+.rc-portrait-frame img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.rc-portrait-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.rc-sheet-section {
+  margin-bottom: 20px;
+}
+
+.rc-sheet-section h4 {
+  margin: 0 0 10px;
+  color: var(--muted);
+  font:
+    400 9px "DM Mono",
+    monospace;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.rc-wide-field {
+  grid-column: 1 / -1;
+  display: block;
+  min-width: 0;
+}
+
+.rc-wide-field > span {
+  display: block;
+  margin-bottom: 5px;
+  color: var(--muted);
+  font:
+    400 9px "DM Mono",
+    monospace;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+.rc-wide-field textarea {
+  width: 100%;
+}
+
+.rc-wide-field p {
+  margin: 0;
+  font-size: 12px;
+}
+
+.rc-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  align-self: end;
+  padding-bottom: 8px;
+  font-size: 13px;
+}
+
+.rc-checkbox input {
+  width: auto;
+  height: auto;
+}
+
+.rc-slot-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rc-slot-list li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 0;
+}
+
+.rc-slot-list .rc-ordinal {
+  width: 96px;
+  text-align: left;
+}
+
+.rc-slot-list input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* Items: the room's additions to its system's gear. */
+
+.rc-items {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.rc-item-form .rc-field-grid {
+  margin-bottom: 14px;
+}
+
+.rc-reading {
+  margin: 14px 0 0;
+  padding: 10px 14px;
+  border-left: 3px solid var(--line);
+  background: color-mix(in srgb, var(--accent), transparent 94%);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.rc-weapon {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--accent);
+}
+
+.rc-items .rc-table td strong {
+  display: block;
+}
+
+.rc-items .rc-actions-column button {
+  margin-left: 6px;
+}
+
+/* Playlists. */
+
+.rc-playlists {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.rc-track-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rc-playlists .rc-slot-list li button {
+  flex: 0 0 auto;
+  padding: 0 8px;
+}
+
+.rc-playlists .rc-table input {
+  width: 100%;
+  min-width: 110px;
+}
+
+/* Calendar. */
+
+.rc-calendar {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.rc-calendar-columns {
+  display: grid;
+  grid-template-columns: minmax(280px, 400px) minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+
+.rc-calendar-names {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 20px;
+  align-items: start;
+}
+
+.rc-subheader {
+  margin-top: 22px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+
+.rc-field-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 12px;
+}
+
+.rc-field-grid label {
+  display: block;
+  min-width: 0;
+}
+
+.rc-field-grid span {
+  display: block;
+  margin-bottom: 5px;
+  color: var(--muted);
+  font:
+    400 9px "DM Mono",
+    monospace;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+.rc-field-grid input,
+.rc-field-grid select {
+  width: 100%;
+}
+
+.rc-warnings {
+  margin: 18px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rc-warnings li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 0;
+  border-top: 1px solid color-mix(in srgb, var(--line), transparent 50%);
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.rc-warnings svg {
+  flex: 0 0 auto;
+  margin-top: 2px;
+}
+
+.rc-name-list ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rc-name-list li {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 0;
+}
+
+.rc-name-list li input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.rc-name-list li button {
+  flex: 0 0 auto;
+  padding: 0 7px;
+}
+
+.rc-ordinal {
+  flex: 0 0 auto;
+  width: 20px;
+  color: var(--muted);
+  font:
+    400 10px "DM Mono",
+    monospace;
+  text-align: right;
+}
+
+.rc-name-list > button:last-child {
+  margin-top: 10px;
+}
+
+.rc-clash {
+  padding: 16px 18px;
+  border: 1px solid var(--hostile, var(--accent));
+  background: color-mix(in srgb, var(--hostile, var(--accent)), transparent 92%);
+}
+
+.rc-clash h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 8px;
+  font-family: "Unbounded", sans-serif;
+  font-size: 14px;
+}
+
+.rc-clash p {
+  max-width: 70ch;
+  margin: 0;
+  line-height: 1.6;
+}
+
+.rc-clash-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.rc-save-bar {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 0;
+  border-top: 1px solid var(--line);
+  background: var(--bg);
+}
+
+.rc-save-bar > span:last-child {
+  margin-left: auto;
+  font:
+    400 10px "DM Mono",
+    monospace;
+}
+
+.rc-calendar .rc-table input,
+.rc-calendar .rc-table select {
+  width: 100%;
+  min-width: 90px;
+}
+
+@media (max-width: 1100px) {
+  .rc-calendar-columns,
+  .rc-roster {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .rc-npcs {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .rc-npc-lists {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .rc-npc-lists > * {
+    flex: 1 1 280px;
+  }
+}
+
+@media (max-width: 860px) {
+  .room-config-open {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .room-config-rail {
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .room-config-rail nav {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  }
+
+  .room-config-rail footer {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+}

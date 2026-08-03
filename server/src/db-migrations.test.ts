@@ -153,9 +153,119 @@ function seedEncounterPlacementDatabase(directory: string) {
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
       updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
+    ALTER TABLE room_state ADD COLUMN group_json TEXT NOT NULL DEFAULT '{}';
+    UPDATE room_state SET group_json = '{"hirelings":[{"id":"old-hireling","name":"Old hireling"}]}' WHERE room_id = 1;
     INSERT INTO encounters (id, room_id, name, created_by) VALUES (1, 1, 'Old encounter', 1);
     INSERT INTO encounter_combatants (id, encounter_id, kind, hireling_id, name)
       VALUES (1, 1, 'hireling', 'old-hireling', 'Old hireling');
+  `);
+  legacy.close();
+}
+
+/**
+ * A database from before hirelings, ships, and obligations became rows: the
+ * whole roster inside `room_state.group_json`, portraits in side tables keyed by
+ * the blob's string ids, and combatants pointing at those strings.
+ *
+ * Room 1 carries the array shapes; room 2 carries the two older ones that are
+ * still in real databases — a single `starship` object and a `groupDebt` string.
+ */
+function seedGroupBlobDatabase(directory: string) {
+  seedLegacyDatabase(directory);
+  const legacy = new DatabaseSync(path.join(directory, "devils-toys.sqlite"));
+  legacy.exec("PRAGMA foreign_keys = OFF");
+  const groupOne = JSON.stringify({
+    creed: "Owe nothing",
+    hirelings: [
+      { id: "hire-a", name: "Vetch", hp: 4, weapons: ["Shiv"] },
+      { name: "Nameless", hp: 2 },
+      { id: "hire-c", name: "Orsk", hp: 7 }
+    ],
+    starships: [{ id: "ship-a", name: "Desdemona", size: "frigate" }],
+    obligations: [{ id: "debt-a", name: "The Guild", owedTo: "Mother Kell", amount: "10k", details: "Due at thaw" }]
+  });
+  const groupTwo = JSON.stringify({ starship: { name: "Old Bird", size: "cutter" }, groupDebt: "  Two favours  " });
+  legacy.exec(`
+    INSERT INTO rooms (id, name, system, theme, archived, created_by)
+      VALUES (2, 'Second Table', 'monolith', 'grim', 0, 1);
+    INSERT INTO room_state (room_id, audio_json) VALUES (2, '{}');
+    ALTER TABLE room_state ADD COLUMN group_json TEXT NOT NULL DEFAULT '{}';
+    UPDATE room_state SET group_json = '${groupOne.replace(/'/g, "''")}' WHERE room_id = 1;
+    UPDATE room_state SET group_json = '${groupTwo.replace(/'/g, "''")}' WHERE room_id = 2;
+
+    CREATE TABLE hireling_images (
+      room_id INTEGER NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
+      hireling_id TEXT NOT NULL,
+      filename TEXT NOT NULL,
+      stored_name TEXT NOT NULL,
+      mime_type TEXT NOT NULL,
+      size INTEGER NOT NULL,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY(room_id, hireling_id)
+    );
+    CREATE TABLE starship_images (
+      room_id INTEGER NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
+      starship_id TEXT NOT NULL,
+      filename TEXT NOT NULL,
+      stored_name TEXT NOT NULL,
+      mime_type TEXT NOT NULL,
+      size INTEGER NOT NULL,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY(room_id, starship_id)
+    );
+    INSERT INTO hireling_images (room_id, hireling_id, filename, stored_name, mime_type, size)
+      VALUES (1, 'hire-c', 'orsk.png', 'stored-orsk.png', 'image/png', 4096);
+    INSERT INTO starship_images (room_id, starship_id, filename, stored_name, mime_type, size)
+      VALUES (1, 'ship-a', 'desdemona.png', 'stored-ship.png', 'image/png', 8192);
+
+    CREATE TABLE encounters (
+      id INTEGER PRIMARY KEY,
+      room_id INTEGER NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
+      name TEXT NOT NULL,
+      active INTEGER NOT NULL DEFAULT 0,
+      media_id INTEGER,
+      notes TEXT NOT NULL DEFAULT '',
+      individual_initiative INTEGER NOT NULL DEFAULT 0,
+      created_by INTEGER NOT NULL REFERENCES accounts(id),
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE TABLE encounter_combatants (
+      id INTEGER PRIMARY KEY,
+      encounter_id INTEGER NOT NULL REFERENCES encounters(id) ON DELETE CASCADE,
+      kind TEXT NOT NULL CHECK (kind IN ('character', 'hireling', 'npc')),
+      character_id INTEGER,
+      npc_id INTEGER,
+      hireling_id TEXT,
+      name TEXT NOT NULL,
+      side TEXT NOT NULL DEFAULT 'enemies',
+      initiative INTEGER,
+      acts_first_turn INTEGER,
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      hp_current INTEGER,
+      hp_max INTEGER,
+      statblock_json TEXT NOT NULL DEFAULT '{}',
+      conditions TEXT NOT NULL DEFAULT '',
+      included INTEGER NOT NULL DEFAULT 1,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      CHECK (
+        (kind = 'character' AND character_id IS NOT NULL AND npc_id IS NULL AND hireling_id IS NULL) OR
+        (kind = 'npc' AND npc_id IS NOT NULL AND character_id IS NULL AND hireling_id IS NULL) OR
+        (kind = 'hireling' AND hireling_id IS NOT NULL AND character_id IS NULL AND npc_id IS NULL)
+      )
+    );
+    INSERT INTO encounters (id, room_id, name, created_by) VALUES (7, 1, 'The ambush', 1);
+    INSERT INTO encounter_combatants (id, encounter_id, kind, hireling_id, name, hp_current)
+      VALUES (1, 7, 'hireling', 'hire-a', 'Vetch', 3);
+    -- Its hireling was deleted from the blob long ago; the encounter view has
+    -- been skipping it ever since.
+    INSERT INTO encounter_combatants (id, encounter_id, kind, hireling_id, name)
+      VALUES (2, 7, 'hireling', 'ghost', 'Someone who left');
+    -- The positional fallback: an entry with no id of its own was addressed as
+    -- "hireling-2" by its place in the array.
+    INSERT INTO encounter_combatants (id, encounter_id, kind, hireling_id, name)
+      VALUES (3, 7, 'hireling', 'hireling-2', 'Nameless');
   `);
   legacy.close();
 }
@@ -492,5 +602,155 @@ describe("database migrations", () => {
 
     for (const theme of THEME_IDS) expect(roomsSchema(loaded)).toContain(`'${theme}'`);
     expect(tableNames(loaded)).toEqual(expect.arrayContaining(["accounts", "rooms", "memberships", "messages"]));
+  });
+});
+
+describe("moving the group roster out of its blob", () => {
+  interface HirelingRow {
+    id: number;
+    room_id: number;
+    name: string;
+    sort_order: number;
+    sheet_json: string;
+    legacy_id: string | null;
+    portrait_stored_name: string | null;
+    portrait_size: number | null;
+  }
+
+  it("turns each array entry into a row, in the order the array had them", async () => {
+    const directory = dataDir();
+    seedGroupBlobDatabase(directory);
+    const loaded = await openDatabase(directory);
+
+    const hirelings = loaded.all<HirelingRow>("SELECT * FROM group_hirelings WHERE room_id = 1 ORDER BY sort_order");
+    expect(hirelings.map((row) => row.name)).toEqual(["Vetch", "Nameless", "Orsk"]);
+    expect(hirelings.map((row) => row.legacy_id)).toEqual(["hire-a", "hireling-2", "hire-c"]);
+    expect(hirelings.map((row) => row.sort_order)).toEqual([0, 1, 2]);
+    // The rest of the entry becomes the row's own sheet, in the shape a
+    // character's already is.
+    expect(JSON.parse(hirelings[0].sheet_json)).toEqual({ hp: 4, weapons: ["Shiv"] });
+  });
+
+  it("moves the two older shapes real databases still hold", async () => {
+    const directory = dataDir();
+    seedGroupBlobDatabase(directory);
+    const loaded = await openDatabase(directory);
+
+    const ships = loaded.all<{ name: string; legacy_id: string; kind: string; sheet_json: string }>(
+      "SELECT * FROM group_assets WHERE room_id = 2"
+    );
+    expect(ships).toHaveLength(1);
+    expect(ships[0]).toMatchObject({ name: "Old Bird", legacy_id: "legacy-starship", kind: "starship" });
+    expect(JSON.parse(ships[0].sheet_json)).toEqual({ size: "cutter" });
+
+    const debts = loaded.all<{ name: string; details: string }>("SELECT * FROM group_obligations WHERE room_id = 2");
+    expect(debts).toEqual([expect.objectContaining({ name: "Group debt", details: "Two favours" })]);
+  });
+
+  it("keeps the group's own fields in the blob and takes the moved keys out", async () => {
+    const directory = dataDir();
+    seedGroupBlobDatabase(directory);
+    const loaded = await openDatabase(directory);
+
+    const kept = JSON.parse(
+      loaded.all<{ group_json: string }>("SELECT group_json FROM room_state WHERE room_id = 1")[0].group_json
+    );
+    expect(kept).toEqual({ creed: "Owe nothing" });
+  });
+
+  it("folds the portrait tables onto their rows and drops them", async () => {
+    const directory = dataDir();
+    seedGroupBlobDatabase(directory);
+    const loaded = await openDatabase(directory);
+
+    expect(tableNames(loaded)).not.toContain("hireling_images");
+    expect(tableNames(loaded)).not.toContain("starship_images");
+    expect(
+      loaded.all<HirelingRow>("SELECT * FROM group_hirelings WHERE room_id = 1 AND legacy_id = 'hire-c'")[0]
+    ).toMatchObject({ portrait_stored_name: "stored-orsk.png", portrait_size: 4096 });
+    expect(
+      loaded.all<{ portrait_stored_name: string | null }>("SELECT * FROM group_assets WHERE legacy_id = 'ship-a'")[0]
+        .portrait_stored_name
+    ).toBe("stored-ship.png");
+    // A hireling that never had one is left with none rather than blanked.
+    expect(
+      loaded.all<HirelingRow>("SELECT * FROM group_hirelings WHERE legacy_id = 'hire-a'")[0].portrait_stored_name
+    ).toBeNull();
+  });
+
+  it("rebuilds combatants onto a real foreign key, dropping the ones that resolve to nothing", async () => {
+    const directory = dataDir();
+    seedGroupBlobDatabase(directory);
+    const loaded = await openDatabase(directory);
+
+    const schema = loaded.all<{ sql: string }>(
+      "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'encounter_combatants'"
+    )[0].sql;
+    expect(schema).toContain("hireling_id INTEGER REFERENCES group_hirelings(id) ON DELETE CASCADE");
+
+    const combatants = loaded.all<{ id: number; name: string; hireling_id: number | null; hp_current: number | null }>(
+      "SELECT id, name, hireling_id, hp_current FROM encounter_combatants ORDER BY id"
+    );
+    expect(combatants.map((row) => row.name)).toEqual(["Vetch", "Nameless"]);
+    expect(combatants[0].hp_current).toBe(3);
+    const vetch = loaded.all<HirelingRow>("SELECT * FROM group_hirelings WHERE legacy_id = 'hire-a'")[0];
+    expect(combatants[0].hireling_id).toBe(vetch.id);
+    // The positional id resolved to the same row its place named.
+    const nameless = loaded.all<HirelingRow>("SELECT * FROM group_hirelings WHERE legacy_id = 'hireling-2'")[0];
+    expect(combatants[1].hireling_id).toBe(nameless.id);
+  });
+
+  it("keeps both partial unique indexes after the rebuild", async () => {
+    const directory = dataDir();
+    seedGroupBlobDatabase(directory);
+    const loaded = await openDatabase(directory);
+
+    const indexes = loaded
+      .all<{ name: string }>("SELECT name FROM sqlite_master WHERE type = 'index'")
+      .map((row) => row.name);
+    expect(indexes).toEqual(
+      expect.arrayContaining(["encounter_combatants_character", "encounter_combatants_hireling"])
+    );
+  });
+
+  it("deletes a hireling's combatants with it, which nothing enforced before", async () => {
+    const directory = dataDir();
+    seedGroupBlobDatabase(directory);
+    const loaded = await openDatabase(directory);
+
+    const vetch = loaded.all<HirelingRow>("SELECT * FROM group_hirelings WHERE legacy_id = 'hire-a'")[0];
+    loaded.db.prepare("DELETE FROM group_hirelings WHERE id = ?").run(vetch.id);
+    expect(loaded.all("SELECT id FROM encounter_combatants WHERE name = 'Vetch'")).toEqual([]);
+  });
+
+  it("changes nothing when it runs a second time", async () => {
+    const directory = dataDir();
+    seedGroupBlobDatabase(directory);
+    const first = await openDatabase(directory);
+    const snapshot = (loaded: LoadedDatabase) =>
+      JSON.stringify({
+        hirelings: loaded.all("SELECT * FROM group_hirelings ORDER BY id"),
+        assets: loaded.all("SELECT * FROM group_assets ORDER BY id"),
+        obligations: loaded.all("SELECT * FROM group_obligations ORDER BY id"),
+        combatants: loaded.all("SELECT * FROM encounter_combatants ORDER BY id"),
+        state: loaded.all("SELECT room_id, group_json FROM room_state ORDER BY room_id")
+      });
+    const before = snapshot(first);
+    first.db.close();
+    opened.splice(opened.indexOf(first), 1);
+
+    const second = await openDatabase(directory);
+    expect(snapshot(second)).toBe(before);
+    expect(tableNames(second)).not.toContain("encounter_combatants_rebuilt");
+  });
+
+  it("creates a new database with the rows and none of the retired tables", async () => {
+    const loaded = await openDatabase(dataDir());
+
+    expect(tableNames(loaded)).toEqual(
+      expect.arrayContaining(["group_hirelings", "group_assets", "group_obligations"])
+    );
+    expect(tableNames(loaded)).not.toContain("hireling_images");
+    expect(tableNames(loaded)).not.toContain("starship_images");
   });
 });
