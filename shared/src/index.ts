@@ -35,6 +35,112 @@ export interface RoomSummary {
   musicEnabled: boolean;
 }
 
+/**
+ * Room Config: the GM control panel that opens in its own tab. Its sections are
+ * named here because the server decides which of them a room has and the client
+ * deep-links to them by name, so the two must agree on the spelling.
+ */
+export const ROOM_CONFIG_SECTIONS = [
+  "library",
+  "npcs",
+  "items",
+  "calendar",
+  "playlists",
+  "hirelings",
+  "assets"
+] as const;
+
+export type RoomConfigSectionId = (typeof ROOM_CONFIG_SECTIONS)[number];
+
+/**
+ * How an account reaches a room's configuration. This is not a membership role:
+ * an admin configures a room without belonging to it, and is never a member of
+ * it as a result.
+ */
+export type RoomConfigAccess = "gm" | "admin";
+
+/** The room setting a switched-off section is waiting on. */
+export type RoomConfigToggle = "calendarEnabled" | "musicEnabled";
+
+export interface RoomConfigSection {
+  id: RoomConfigSectionId;
+  label: string;
+  hint: string;
+  /**
+   * False for a section the room has switched off. It is still listed, carrying
+   * the setting that turns it on, because the panel is where a GM goes looking
+   * for it. A section the system does not have at all is left out entirely.
+   */
+  enabled: boolean;
+  enabledBy?: RoomConfigToggle;
+}
+
+export interface RoomConfigRoom {
+  id: number;
+  name: string;
+  system: SystemId;
+  theme: ThemeId;
+  archived: boolean;
+  calendarEnabled: boolean;
+  mapNotationEnabled: boolean;
+  musicEnabled: boolean;
+  access: RoomConfigAccess;
+}
+
+export interface RoomConfigPayload {
+  room: RoomConfigRoom;
+  system: {
+    id: SystemId;
+    name: string;
+    shortName: string;
+    glyph: string;
+    partyLabel: string;
+    /** The fields an NPC of this system has, so the panel edits a real statblock. */
+    npcStatblock: NpcStatblockDefinition;
+  };
+  sections: RoomConfigSection[];
+  /**
+   * The room's calendar, sent whether or not the room has switched it on, so the
+   * panel can show what is already configured behind a switch that is off.
+   */
+  calendar: RoomCalendar;
+}
+
+/**
+ * The written guides. Three are one per account role, and a fourth covers The
+ * Devil's Tables, the table editor that runs beside the game. The ids are the
+ * addresses the help pages are reached at, so the server and the client must
+ * spell them the same way — and an account's role only picks which one opens
+ * first. Any of them can be read by anyone signed in.
+ */
+export const HELP_GUIDES = ["player", "gm", "admin", "tables"] as const;
+
+export type HelpGuideId = (typeof HELP_GUIDES)[number];
+
+export interface HelpPage {
+  /** Its address within the guide; "overview" is the guide's own README. */
+  slug: string;
+  title: string;
+  markdown: string;
+}
+
+export interface HelpGuide {
+  id: HelpGuideId;
+  label: string;
+  pages: HelpPage[];
+}
+
+export interface HelpPayload {
+  /** The guide that opens first, from the reader's own account role. */
+  viewerRole: AccountRole;
+  guides: HelpGuide[];
+}
+
+/** The guide an account sees first. Roles and guides share their names but not their meaning. */
+export function helpGuideForRole(role: AccountRole): HelpGuideId {
+  return role === "admin" ? "admin" : role === "gm" ? "gm" : "player";
+}
+
 export const MAP_NOTATION_COLORS = ["#e53935", "#ffb300", "#43a047", "#1e88e5", "#8e24aa", "#f5f5f5"] as const;
 export type MapNotationColor = (typeof MAP_NOTATION_COLORS)[number];
 
@@ -108,6 +214,9 @@ export interface MediaAsset {
   displayName?: string | null;
   artist?: string | null;
   title?: string | null;
+  album?: string | null;
+  /** The track's place on its album, which is the order an album plays in. */
+  trackNo?: number | null;
   mimeType: string;
   size: number;
   visible: boolean;
@@ -123,12 +232,38 @@ export interface AudioPlaybackState {
   position: number;
   repeat: AudioRepeatMode;
   shuffle: boolean;
+  /** The playlist being played through, or null for the room's whole library. */
+  playlistId: number | null;
   updatedAt: string;
+}
+
+/** A named, ordered selection of the room's music. */
+export interface RoomPlaylist {
+  id: number;
+  name: string;
+  sortOrder: number;
+  trackIds: number[];
 }
 
 export interface RoomAudioState {
   tracks: MediaAsset[];
   playback: AudioPlaybackState;
+  playlists: RoomPlaylist[];
+}
+
+/**
+ * What the room plays through: the chosen playlist in its own order, or every
+ * track when none is chosen. A playlist naming a track that has since gone is
+ * simply shorter, so a deleted track never leaves a hole in the running order.
+ */
+export function playlistTracks(
+  tracks: readonly MediaAsset[],
+  playlists: readonly RoomPlaylist[],
+  playlistId: number | null
+) {
+  const chosen = playlistId ? playlists.find((entry) => entry.id === playlistId) : undefined;
+  if (!chosen) return [...tracks];
+  return chosen.trackIds.flatMap((id) => tracks.filter((track) => track.id === id));
 }
 
 export interface ChatMessage {
@@ -329,6 +464,42 @@ export interface StarshipSheetDefinition extends CharacterSheetDefinition {
   parts?: readonly StarshipPart[];
 }
 
+/**
+ * One kind of property a party shares. Ships are the only kind any system
+ * declares today; a stronghold would be a second, and needs nothing but an entry
+ * here — the storage keeps the kind on the row and the editors are drawn from
+ * whatever sheet the kind names.
+ */
+export interface GroupAssetDefinition {
+  /** Stable, and stored on every row of this kind. */
+  kind: string;
+  label: string;
+  singularLabel: string;
+  /** What an empty roster of them says. */
+  emptyHint?: string;
+  sheet: StarshipSheetDefinition;
+}
+
+/**
+ * The asset kinds a system declares, in the order they should be offered.
+ * Reads `groupAssets` where a system states one and falls back to the older
+ * `starshipSheet`, so no system package has to change on the day a second kind
+ * arrives.
+ */
+export function groupAssetDefinitions(definition: GroupPageDefinition | undefined): GroupAssetDefinition[] {
+  if (definition?.groupAssets?.length) return [...definition.groupAssets];
+  if (!definition?.starshipSheet) return [];
+  return [
+    {
+      kind: "starship",
+      label: "Starships",
+      singularLabel: "Starship",
+      emptyHint: "The party has no ship yet.",
+      sheet: definition.starshipSheet
+    }
+  ];
+}
+
 export interface GroupPageDefinition {
   sections: readonly GroupSheetSection[];
   hirelings?: {
@@ -358,7 +529,14 @@ export interface GroupPageDefinition {
     sheet: CharacterSheetDefinition;
     levelUpHint: string;
   };
+  /**
+   * The one asset kind that predates `groupAssets`. Kept because every system
+   * package states it, and because `groupAssetDefinitions` reads it as the
+   * `starship` kind; a system gaining a second kind states `groupAssets` instead.
+   */
   starshipSheet?: StarshipSheetDefinition;
+  /** Every kind of shared property this system's party can own. */
+  groupAssets?: readonly GroupAssetDefinition[];
 }
 
 export type SavePosition = "normal" | "advantage" | "disadvantage";
@@ -583,8 +761,13 @@ export interface NpcStatblockField {
 export interface NpcStatblockDefinition {
   hitPointsKey: string;
   armorKey?: string;
-  /** The field holding what the creature attacks with, where the system states one. */
-  attacksKey?: string;
+  /**
+   * The fields holding what the creature fights with, in the order it brings
+   * them to bear. The first is what it leads with and the second is its other
+   * hand, which is the pair a character carries and the pair the rail draws.
+   * A system that states one weapon and no more names one key.
+   */
+  weaponKeys?: readonly string[];
   /** How the statblock states an attack's reach, in the system's own words. */
   weaponRange?: WeaponRangeRules;
   fields: readonly NpcStatblockField[];

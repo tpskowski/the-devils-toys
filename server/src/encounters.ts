@@ -19,14 +19,19 @@ import {
   updateCharacter,
   type CharacterRow
 } from "./characters.js";
+import { characterItemsFor } from "./character-items.js";
 import { rollDice } from "./dice.js";
-import { parseGroupState, updateHireling } from "./group.js";
+import { roomHirelings } from "./group.js";
+import { groupRow, publicHireling, type SheetRow } from "./group-rows.js";
 import { broadcastRoom } from "./realtime.js";
 import { npcCatalog } from "./npcs.js";
 import { parseNpcStatblock } from "./npc-statblocks.js";
 import { systems } from "./systems.js";
 
 export const encounterRouter = express.Router();
+
+/** The room's gear as its pickers offer it, resolved once and passed along. */
+type RoomCatalogue = ReturnType<typeof characterItemsFor>;
 
 interface EncounterRow {
   id: number;
@@ -48,7 +53,7 @@ interface CombatantRow {
   kind: "character" | "hireling" | "npc";
   character_id: number | null;
   npc_id: number | null;
-  hireling_id: string | null;
+  hireling_id: number | null;
   name: string;
   side: string;
   initiative: number | null;
@@ -220,11 +225,34 @@ function sheetWeapons(system: SystemId, sheet: Record<string, unknown>, hireling
   };
 }
 
-/** What a creature attacks with, from the one statblock field that says so. */
-function statblockWeapon(system: SystemId, fields: Record<string, unknown>) {
+/**
+ * A weapon the room's own pickers offer, matched by the label they write. This
+ * is how a creature given a weapon from the catalogue carries it on exactly the
+ * terms a character's slot does — the entry's own damage, traits, and reach,
+ * rather than a second reading of the text those were written from. It is the
+ * same preference `catalogueClassification` applies to a filled slot.
+ */
+function catalogueWeapon(catalogue: RoomCatalogue, label: string) {
+  for (const items of Object.values(catalogue)) {
+    const item = items.find((entry) => entry.label === label);
+    if (!item?.weapon) continue;
+    return {
+      name: item.name.slice(0, 60),
+      ...(item.damage ? { damage: item.damage } : {}),
+      ...(item.traits?.length ? { traits: item.traits } : {}),
+      ...(item.range ? { range: item.range } : {})
+    };
+  }
+  return undefined;
+}
+
+/** What a creature fights with, from one of the statblock fields that say so. */
+function statblockWeapon(system: SystemId, catalogue: RoomCatalogue, fields: Record<string, unknown>, key: string) {
   const statblock = systems[system].npcStatblock;
-  const attacks = statblock.attacksKey ? String(fields[statblock.attacksKey] ?? "").trim() : "";
+  const attacks = String(fields[key] ?? "").trim();
   if (!attacks) return undefined;
+  const chosen = catalogueWeapon(catalogue, attacks);
+  if (chosen) return chosen;
   const weaponRange = statblock.weaponRange;
   const { name, spec, trailing } = splitItemLabel(attacks);
   // A statblock usually writes an attack the way a slot does — "Laser Rifle
@@ -249,31 +277,32 @@ function statblockWeapon(system: SystemId, fields: Record<string, unknown>) {
   };
 }
 
+/**
+ * Both of a creature's weapons, as the same pair a sheet hands over: what it
+ * leads with, and the other hand where it has one. A slot left empty is absent
+ * rather than blank, so the rail draws one mark for one weapon.
+ */
+function statblockWeapons(system: SystemId, catalogue: RoomCatalogue, fields: Record<string, unknown>) {
+  const [first, second] = systems[system].npcStatblock.weaponKeys ?? [];
+  const weapon = first ? statblockWeapon(system, catalogue, fields, first) : undefined;
+  const offhand = second ? statblockWeapon(system, catalogue, fields, second) : undefined;
+  return {
+    ...(weapon ? { weapon } : {}),
+    ...(offhand ? { offhand } : {})
+  };
+}
+
 function statblock(value: string | null | undefined) {
   return jsonObject(value);
 }
 
-function hirelingFromState(state: Record<string, unknown>, id: string) {
-  if (!Array.isArray(state.hirelings)) return;
-  return state.hirelings.find((entry): entry is Record<string, unknown> =>
-    Boolean(entry && typeof entry === "object" && !Array.isArray(entry) && entry.id === id)
-  );
-}
-
 /**
- * Hireling portraits, keyed by hireling id. They live in their own table rather
- * than the group blob, so the roster has to look them up separately.
+ * The room's hirelings by id. A hireling is a row with its own sheet and its own
+ * portrait, so one lookup answers both — where this used to scan the group blob
+ * for a string and then ask a second table for the picture.
  */
-function hirelingImages(roomId: number) {
-  return new Map(
-    all<{ hireling_id: string; stored_name: string }>(
-      "SELECT hireling_id, stored_name FROM hireling_images WHERE room_id = ?",
-      roomId
-    ).map((row) => [
-      row.hireling_id,
-      `/api/rooms/${roomId}/group/hirelings/${encodeURIComponent(row.hireling_id)}/image?v=${encodeURIComponent(row.stored_name)}`
-    ])
-  );
+function hirelingsById(roomId: number) {
+  return new Map(roomHirelings(roomId).map((row) => [row.id, publicHireling(row)]));
 }
 
 /**
@@ -301,14 +330,15 @@ export function visibleEncounter(accountId: number, roomId: number, encounterId:
   if (!context) return;
   const encounter = one<EncounterRow>("SELECT * FROM encounters WHERE id = ? AND room_id = ?", encounterId, roomId);
   if (!encounter || (context.role === "player" && !encounter.active)) return;
-  const state = parseGroupState(
-    one<{ group_json: string }>("SELECT group_json FROM room_state WHERE room_id = ?", roomId)?.group_json
-  );
+  const hirelings = hirelingsById(roomId);
+  // Built once here rather than per weapon per combatant: resolving the room's
+  // overlay costs two queries and a copy of the whole catalogue, and a fight
+  // with a dozen creatures asked for it two dozen times.
+  const catalogue = characterItemsFor(context.system, roomId);
   const rows = all<CombatantRow>(
     "SELECT * FROM encounter_combatants WHERE encounter_id = ? ORDER BY sort_order, id",
     encounterId
   );
-  const portraits = hirelingImages(roomId);
   const combatants: Record<string, unknown>[] = rows.flatMap((row): Record<string, unknown>[] => {
     const common = {
       id: row.id,
@@ -351,21 +381,23 @@ export function visibleEncounter(accountId: number, roomId: number, encounterId:
     }
     if (row.kind === "hireling") {
       if (!row.hireling_id) return [];
-      const hireling = hirelingFromState(state, row.hireling_id);
+      const hireling = hirelings.get(row.hireling_id);
+      // A foreign key keeps this from happening now; the guard stays because a
+      // missing hireling should thin the roster rather than fail the request.
       if (!hireling) return [];
-      const sheet = hireling;
+      const sheet = hireling.sheet;
       return [
         {
           ...common,
           sourceId: row.hireling_id,
-          name: String(hireling.name ?? row.name),
-          imageUrl: portraits.get(row.hireling_id) ?? null,
+          name: hireling.name || row.name,
+          imageUrl: hireling.imageUrl,
           hpCurrent: sheet.hpCurrent ?? null,
           hpMax: sheet.hpMax ?? null,
           armor: sheetArmor(context.system, sheet, true),
           criticalDamage: markedCritical(context.system, sheet),
           ...sheetWeapons(context.system, sheet, true),
-          hireling: context.role === "gm" ? hireling : undefined
+          hireling: context.role === "gm" ? { id: hireling.id, name: hireling.name, ...sheet } : undefined
         }
       ];
     }
@@ -383,7 +415,7 @@ export function visibleEncounter(accountId: number, roomId: number, encounterId:
         // is not, and stays with the rest of its statblock.
         armor: statblockArmor(context.system, statblock(row.statblock_json)),
         criticalDamage: markedCritical(context.system, statblock(row.statblock_json)),
-        weapon: statblockWeapon(context.system, statblock(row.statblock_json)),
+        ...statblockWeapons(context.system, catalogue, statblock(row.statblock_json)),
         statblock: context.role === "gm" ? statblock(row.statblock_json) : undefined,
         npcId: context.role === "gm" ? row.npc_id : undefined
       }
@@ -693,7 +725,7 @@ encounterRouter.post("/rooms/:roomId/encounters/:encounterId/combatants", requir
     .object({
       kind: z.enum(["character", "hireling", "npc"]),
       characterId: z.number().int().positive().optional(),
-      hirelingId: z.string().min(1).max(120).optional(),
+      hirelingId: z.number().int().positive().optional(),
       npcId: z.number().int().positive().optional(),
       catalogName: z.string().trim().min(1).max(200).optional(),
       name: z.string().trim().min(1).max(120).optional(),
@@ -713,12 +745,9 @@ encounterRouter.post("/rooms/:roomId/encounters/:encounterId/combatants", requir
   if (body.kind === "npc" && body.npcId === undefined && body.catalogName === undefined)
     return res.status(400).json({ error: "Choose an NPC." });
 
-  const groupState = parseGroupState(
-    one<{ group_json: string }>("SELECT group_json FROM room_state WHERE room_id = ?", roomId)?.group_json
-  );
   let sourceName = body.name ?? "Combatant";
   let characterId: number | null = null;
-  let hirelingId: string | null = null;
+  let hirelingId: number | null = null;
   let npcId: number | null = null;
   let snapshot: Record<string, unknown> = {};
   let catalogMarkdown: string | undefined;
@@ -729,10 +758,10 @@ encounterRouter.post("/rooms/:roomId/encounters/:encounterId/combatants", requir
     sourceName = body.name ?? visible.row.name;
     if (body.side === "enemies") return res.status(400).json({ error: "Characters must be on the party side." });
   } else if (body.kind === "hireling") {
-    const hireling = hirelingFromState(groupState, body.hirelingId!);
+    const hireling = groupRow<SheetRow>("group_hirelings", roomId, body.hirelingId!);
     if (!hireling) return res.status(404).json({ error: "Hireling not found." });
-    hirelingId = body.hirelingId!;
-    sourceName = body.name ?? String(hireling.name ?? "Hireling");
+    hirelingId = hireling.id;
+    sourceName = body.name ?? hireling.name ?? "Hireling";
     if (body.side === "enemies") return res.status(400).json({ error: "Hirelings must be on the party side." });
   } else {
     if (body.catalogName !== undefined) {
@@ -913,8 +942,30 @@ encounterRouter.patch(
         const result = updateCharacter(req.account!.id, roomId, row.character_id!, { sheetPatch: scores });
         if ("error" in result) return res.status(result.status).json({ error: result.error });
       } else if (row.kind === "hireling") {
-        const result = updateHireling(roomId, row.hireling_id!, scores);
-        if ("error" in result) return res.status(result.status).json({ error: result.error });
+        // Straight onto the hireling's own row, but read and written inside one
+        // transaction: two hits landing together would otherwise each merge into
+        // the sheet they read before the other wrote, and the first would be
+        // lost. Damage is applied rather than proposed, so this serialises the
+        // two rather than refusing the second.
+        let missing = false;
+        db.exec("BEGIN IMMEDIATE");
+        try {
+          const hireling = groupRow<SheetRow>("group_hirelings", roomId, row.hireling_id!);
+          if (!hireling) {
+            missing = true;
+          } else {
+            const sheet = { ...publicHireling(hireling).sheet, ...scores };
+            db.prepare(
+              "UPDATE group_hirelings SET sheet_json = ?, revision = revision + 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?"
+            ).run(JSON.stringify(sheet), hireling.id);
+          }
+          db.exec("COMMIT");
+        } catch (error) {
+          db.exec("ROLLBACK");
+          throw error;
+        }
+        if (missing) return res.status(404).json({ error: "Hireling not found." });
+        broadcastRoom(roomId, { type: "group-updated" });
       } else {
         // A statblock states one number per score. The first time one is spent,
         // what it was is recorded beside it, so the dialog can show how much of

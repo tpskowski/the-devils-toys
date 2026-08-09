@@ -28,6 +28,51 @@ const roomsColumns = `
     created_by INTEGER NOT NULL REFERENCES accounts(id),
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP`;
 
+/**
+ * A combatant points at whichever of the three kinds of participant it is, and
+ * the CHECK is what keeps it pointing at exactly one. Declared here rather than
+ * inline so the migration that rebuilt `hireling_id` into a real foreign key
+ * derives its replacement table from the same text the schema does.
+ */
+const encounterCombatantColumns = `
+    id INTEGER PRIMARY KEY,
+    encounter_id INTEGER NOT NULL REFERENCES encounters(id) ON DELETE CASCADE,
+    kind TEXT NOT NULL CHECK (kind IN ('character', 'hireling', 'npc')),
+    character_id INTEGER REFERENCES characters(id) ON DELETE CASCADE,
+    npc_id INTEGER REFERENCES custom_npcs(id) ON DELETE CASCADE,
+    hireling_id INTEGER REFERENCES group_hirelings(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    side TEXT NOT NULL DEFAULT 'enemies',
+    initiative INTEGER,
+    acts_first_turn INTEGER,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    hp_current INTEGER,
+    hp_max INTEGER,
+    statblock_json TEXT NOT NULL DEFAULT '{}',
+    conditions TEXT NOT NULL DEFAULT '',
+    included INTEGER NOT NULL DEFAULT 1,
+    zone_id INTEGER REFERENCES encounter_zones(id) ON DELETE SET NULL,
+    map_x REAL,
+    map_y REAL,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CHECK (
+      (kind = 'character' AND character_id IS NOT NULL AND npc_id IS NULL AND hireling_id IS NULL) OR
+      (kind = 'npc' AND npc_id IS NOT NULL AND character_id IS NULL AND hireling_id IS NULL) OR
+      (kind = 'hireling' AND hireling_id IS NOT NULL AND character_id IS NULL AND npc_id IS NULL)
+    )`;
+
+/**
+ * Portrait columns, in the shape `characters` already carries them. A hireling
+ * and a ship own their picture the same way a character does, rather than
+ * through a side table keyed by a string nothing enforces.
+ */
+const portraitColumns = `
+    portrait_filename TEXT,
+    portrait_stored_name TEXT,
+    portrait_mime_type TEXT,
+    portrait_size INTEGER`;
+
 db.exec(`
   CREATE TABLE IF NOT EXISTS accounts (
     id INTEGER PRIMARY KEY,
@@ -108,6 +153,8 @@ db.exec(`
     stored_name TEXT NOT NULL,
     artist TEXT,
     title TEXT,
+    album TEXT,
+    track_no INTEGER,
     metadata_loaded INTEGER NOT NULL DEFAULT 0,
     visible INTEGER NOT NULL DEFAULT 0,
     mime_type TEXT NOT NULL,
@@ -129,26 +176,6 @@ db.exec(`
     notation_json TEXT NOT NULL,
     created_by INTEGER REFERENCES accounts(id) ON DELETE SET NULL,
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-  );
-  CREATE TABLE IF NOT EXISTS starship_images (
-    room_id INTEGER NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
-    starship_id TEXT NOT NULL,
-    filename TEXT NOT NULL,
-    stored_name TEXT NOT NULL,
-    mime_type TEXT NOT NULL,
-    size INTEGER NOT NULL,
-    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY(room_id, starship_id)
-  );
-  CREATE TABLE IF NOT EXISTS hireling_images (
-    room_id INTEGER NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
-    hireling_id TEXT NOT NULL,
-    filename TEXT NOT NULL,
-    stored_name TEXT NOT NULL,
-    mime_type TEXT NOT NULL,
-    size INTEGER NOT NULL,
-    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY(room_id, hireling_id)
   );
   CREATE TABLE IF NOT EXISTS revealed_references (
     room_id INTEGER NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
@@ -183,6 +210,77 @@ db.exec(`
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
   );
+  CREATE TABLE IF NOT EXISTS room_playlists (
+    id INTEGER PRIMARY KEY,
+    room_id INTEGER NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+  );
+  CREATE TABLE IF NOT EXISTS room_playlist_tracks (
+    playlist_id INTEGER NOT NULL REFERENCES room_playlists(id) ON DELETE CASCADE,
+    media_id INTEGER NOT NULL REFERENCES media(id) ON DELETE CASCADE,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY(playlist_id, media_id)
+  );
+  CREATE INDEX IF NOT EXISTS room_playlists_room ON room_playlists (room_id, sort_order);
+  CREATE TABLE IF NOT EXISTS room_items (
+    id INTEGER PRIMARY KEY,
+    room_id INTEGER NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
+    item_id TEXT NOT NULL,
+    list_key TEXT NOT NULL,
+    item_json TEXT NOT NULL,
+    created_by INTEGER REFERENCES accounts(id) ON DELETE SET NULL,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+  );
+  CREATE UNIQUE INDEX IF NOT EXISTS room_items_id ON room_items (room_id, item_id);
+  CREATE TABLE IF NOT EXISTS room_retired_items (
+    room_id INTEGER NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
+    item_id TEXT NOT NULL,
+    retired_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY(room_id, item_id)
+  );
+  CREATE TABLE IF NOT EXISTS group_hirelings (
+    id INTEGER PRIMARY KEY,
+    room_id INTEGER NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
+    name TEXT NOT NULL DEFAULT '',
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    sheet_json TEXT NOT NULL DEFAULT '{}',${portraitColumns},
+    legacy_id TEXT,
+    revision INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+  );
+  CREATE TABLE IF NOT EXISTS group_assets (
+    id INTEGER PRIMARY KEY,
+    room_id INTEGER NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
+    kind TEXT NOT NULL DEFAULT 'starship',
+    name TEXT NOT NULL DEFAULT '',
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    sheet_json TEXT NOT NULL DEFAULT '{}',${portraitColumns},
+    legacy_id TEXT,
+    revision INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+  );
+  CREATE TABLE IF NOT EXISTS group_obligations (
+    id INTEGER PRIMARY KEY,
+    room_id INTEGER NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
+    name TEXT NOT NULL DEFAULT '',
+    owed_to TEXT NOT NULL DEFAULT '',
+    amount TEXT NOT NULL DEFAULT '',
+    details TEXT NOT NULL DEFAULT '',
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    legacy_id TEXT,
+    revision INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+  );
+  CREATE INDEX IF NOT EXISTS group_hirelings_room ON group_hirelings (room_id, sort_order);
+  CREATE INDEX IF NOT EXISTS group_assets_room ON group_assets (room_id, kind, sort_order);
+  CREATE INDEX IF NOT EXISTS group_obligations_room ON group_obligations (room_id, sort_order);
   CREATE TABLE IF NOT EXISTS encounters (
     id INTEGER PRIMARY KEY,
     room_id INTEGER NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
@@ -201,38 +299,13 @@ db.exec(`
     initiative INTEGER,
     PRIMARY KEY (encounter_id, side)
   );
-  CREATE TABLE IF NOT EXISTS encounter_combatants (
-    id INTEGER PRIMARY KEY,
-    encounter_id INTEGER NOT NULL REFERENCES encounters(id) ON DELETE CASCADE,
-    kind TEXT NOT NULL CHECK (kind IN ('character', 'hireling', 'npc')),
-    character_id INTEGER REFERENCES characters(id) ON DELETE CASCADE,
-    npc_id INTEGER REFERENCES custom_npcs(id) ON DELETE CASCADE,
-    hireling_id TEXT,
-    name TEXT NOT NULL,
-    side TEXT NOT NULL DEFAULT 'enemies',
-    initiative INTEGER,
-    acts_first_turn INTEGER,
-    sort_order INTEGER NOT NULL DEFAULT 0,
-    hp_current INTEGER,
-    hp_max INTEGER,
-    statblock_json TEXT NOT NULL DEFAULT '{}',
-    conditions TEXT NOT NULL DEFAULT '',
-    included INTEGER NOT NULL DEFAULT 1,
-    map_x REAL,
-    map_y REAL,
-    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CHECK (
-      (kind = 'character' AND character_id IS NOT NULL AND npc_id IS NULL AND hireling_id IS NULL) OR
-      (kind = 'npc' AND npc_id IS NOT NULL AND character_id IS NULL AND hireling_id IS NULL) OR
-      (kind = 'hireling' AND hireling_id IS NOT NULL AND character_id IS NULL AND npc_id IS NULL)
-    )
-  );
   CREATE TABLE IF NOT EXISTS encounter_zones (
     id INTEGER PRIMARY KEY,
     encounter_id INTEGER NOT NULL REFERENCES encounters(id) ON DELETE CASCADE,
     name TEXT NOT NULL,
     sort_order INTEGER NOT NULL DEFAULT 0
+  );
+  CREATE TABLE IF NOT EXISTS encounter_combatants (${encounterCombatantColumns}
   );
   CREATE UNIQUE INDEX IF NOT EXISTS encounter_combatants_character
     ON encounter_combatants (encounter_id, character_id) WHERE character_id IS NOT NULL;
@@ -242,6 +315,14 @@ db.exec(`
 
 function hasColumn(table: string, column: string) {
   return (db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[]).some((item) => item.name === column);
+}
+
+function storedSchema(table: string) {
+  return one<{ sql: string }>("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?", table)?.sql ?? "";
+}
+
+function tableExists(table: string) {
+  return Boolean(storedSchema(table));
 }
 
 // A system or theme added after a database was created is still rejected by the
@@ -328,6 +409,15 @@ if (!hasColumn("media", "category")) db.exec("ALTER TABLE media ADD COLUMN categ
 if (!hasColumn("media", "display_name")) db.exec("ALTER TABLE media ADD COLUMN display_name TEXT");
 if (!hasColumn("media", "artist")) db.exec("ALTER TABLE media ADD COLUMN artist TEXT");
 if (!hasColumn("media", "title")) db.exec("ALTER TABLE media ADD COLUMN title TEXT");
+// Album and track number arrived after rooms already held music, and every one
+// of those tracks is marked as read. Marking them unread sends them back
+// through the tag reader once; it fills only what is missing, so an artist or a
+// title the GM corrected by hand survives the second pass.
+if (!hasColumn("media", "album")) {
+  db.exec("ALTER TABLE media ADD COLUMN album TEXT");
+  db.exec("ALTER TABLE media ADD COLUMN track_no INTEGER");
+  db.exec("UPDATE media SET metadata_loaded = 0 WHERE kind = 'audio'");
+}
 if (!hasColumn("table_sets", "tags_json"))
   db.exec("ALTER TABLE table_sets ADD COLUMN tags_json TEXT NOT NULL DEFAULT '[]'");
 // A short-lived JSON migration stored the original Markdown alongside its JSON.
@@ -407,6 +497,216 @@ if (!hasColumn("room_state", "map_id"))
   db.exec("ALTER TABLE room_state ADD COLUMN map_id INTEGER REFERENCES media(id)");
 if (!hasColumn("room_state", "group_json"))
   db.exec("ALTER TABLE room_state ADD COLUMN group_json TEXT NOT NULL DEFAULT '{}'");
+
+/*
+ * Hirelings, ships, and obligations were array entries inside `room_state`'s
+ * `group_json` blob, identified by a string the browser minted and that nothing
+ * enforced. They are rows now, each with its own sheet in the shape `characters`
+ * already uses. Three steps, each idempotent and each detectable from the stored
+ * schema rather than from a version counter.
+ */
+
+/** One row per entry, in the order the array had them. */
+function backfillGroupRows() {
+  const rows = all<{ room_id: number; group_json: string }>("SELECT room_id, group_json FROM room_state");
+  const record = (value: unknown) =>
+    value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : undefined;
+
+  const insertHireling = db.prepare(
+    `INSERT INTO group_hirelings (room_id, name, sort_order, sheet_json, legacy_id) VALUES (?, ?, ?, ?, ?)`
+  );
+  const insertAsset = db.prepare(
+    `INSERT INTO group_assets (room_id, kind, name, sort_order, sheet_json, legacy_id) VALUES (?, 'starship', ?, ?, ?, ?)`
+  );
+  const insertObligation = db.prepare(
+    `INSERT INTO group_obligations (room_id, name, owed_to, amount, details, sort_order, legacy_id)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`
+  );
+  const writeState = db.prepare("UPDATE room_state SET group_json = ? WHERE room_id = ?");
+
+  for (const row of rows) {
+    const state = record(JSON.parse(row.group_json || "{}")) ?? {};
+    // Two shapes predate the arrays and are still in real databases: one ship
+    // under `starship`, and the whole of a group's debt as one `groupDebt`
+    // string. This is the last thing that ever has to know about either.
+    const hirelings = Array.isArray(state.hirelings) ? state.hirelings : [];
+    const legacyShip = record(state.starship);
+    const ships = Array.isArray(state.starships)
+      ? state.starships
+      : legacyShip && Object.keys(legacyShip).length
+        ? [{ ...legacyShip, id: "legacy-starship" }]
+        : [];
+    const legacyDebt = typeof state.groupDebt === "string" ? state.groupDebt.trim() : "";
+    const obligations = Array.isArray(state.obligations)
+      ? state.obligations
+      : legacyDebt
+        ? [{ id: "legacy-debt", name: "Group debt", details: legacyDebt }]
+        : [];
+    if (!("hirelings" in state) && !ships.length && !obligations.length && !("starship" in state)) {
+      if (!("groupDebt" in state)) continue;
+    }
+
+    hirelings.forEach((entry, index) => {
+      const hireling = record(entry);
+      if (!hireling) return;
+      const { id, name, ...sheet } = hireling;
+      insertHireling.run(
+        row.room_id,
+        String(name ?? ""),
+        index,
+        JSON.stringify(sheet),
+        String(id || `hireling-${index + 1}`)
+      );
+    });
+    ships.forEach((entry, index) => {
+      const ship = record(entry);
+      if (!ship) return;
+      const { id, name, ...sheet } = ship;
+      insertAsset.run(
+        row.room_id,
+        String(name ?? ""),
+        index,
+        JSON.stringify(sheet),
+        String(id || `starship-${index + 1}`)
+      );
+    });
+    obligations.forEach((entry, index) => {
+      const obligation = record(entry);
+      if (!obligation) return;
+      insertObligation.run(
+        row.room_id,
+        String(obligation.name ?? ""),
+        String(obligation.owedTo ?? ""),
+        String(obligation.amount ?? ""),
+        String(obligation.details ?? ""),
+        index,
+        String(obligation.id || `obligation-${index + 1}`)
+      );
+    });
+
+    // Stripping the moved keys is what makes this idempotent: a second run finds
+    // nothing left to move, so it cannot duplicate a roster.
+    const { hirelings: _h, starships: _s, starship: _ss, obligations: _o, groupDebt: _d, ...kept } = state;
+    writeState.run(JSON.stringify(kept), row.room_id);
+  }
+}
+
+// Detected by the blob still holding one of the keys. Old rows keep them until
+// they are moved; a database created today has none and does no work.
+const blobsToMove =
+  one<{ count: number }>(
+    `SELECT COUNT(*) AS count FROM room_state
+      WHERE group_json LIKE '%"hirelings"%' OR group_json LIKE '%"starships"%' OR group_json LIKE '%"starship"%'
+         OR group_json LIKE '%"obligations"%' OR group_json LIKE '%"groupDebt"%'`
+  )?.count ?? 0;
+if (blobsToMove) {
+  db.exec("BEGIN IMMEDIATE");
+  try {
+    backfillGroupRows();
+    db.exec("COMMIT");
+  } catch (cause) {
+    db.exec("ROLLBACK");
+    throw cause;
+  }
+}
+
+/**
+ * Portraits move onto the rows they belong to, and the side tables go. Their
+ * absence from `sqlite_master` is what says this has run.
+ */
+for (const [table, target, key] of [
+  ["hireling_images", "group_hirelings", "hireling_id"],
+  ["starship_images", "group_assets", "starship_id"]
+] as const) {
+  if (!tableExists(table)) continue;
+  db.exec("BEGIN IMMEDIATE");
+  try {
+    db.exec(`UPDATE ${target} SET
+      portrait_filename = (SELECT filename FROM ${table} i WHERE i.room_id = ${target}.room_id AND i.${key} = ${target}.legacy_id),
+      portrait_stored_name = (SELECT stored_name FROM ${table} i WHERE i.room_id = ${target}.room_id AND i.${key} = ${target}.legacy_id),
+      portrait_mime_type = (SELECT mime_type FROM ${table} i WHERE i.room_id = ${target}.room_id AND i.${key} = ${target}.legacy_id),
+      portrait_size = (SELECT size FROM ${table} i WHERE i.room_id = ${target}.room_id AND i.${key} = ${target}.legacy_id)
+      WHERE EXISTS (SELECT 1 FROM ${table} i WHERE i.room_id = ${target}.room_id AND i.${key} = ${target}.legacy_id)`);
+    db.exec(`DROP TABLE ${table}`);
+    db.exec("COMMIT");
+  } catch (cause) {
+    db.exec("ROLLBACK");
+    throw cause;
+  }
+}
+
+/*
+ * `encounter_combatants.hireling_id` was a bare TEXT column naming a string in
+ * the blob, with no foreign key and nothing to stop it outliving what it named.
+ * It becomes an integer reference that cascades. Changing a column's type, its
+ * CHECK, and its foreign key all at once is the rooms-style rebuild.
+ */
+if (
+  tableExists("encounter_combatants") &&
+  !storedSchema("encounter_combatants").includes("REFERENCES group_hirelings")
+) {
+  const preserved = [
+    "id",
+    "encounter_id",
+    "kind",
+    "character_id",
+    "npc_id",
+    "name",
+    "side",
+    "initiative",
+    "acts_first_turn",
+    "sort_order",
+    "hp_current",
+    "hp_max",
+    "statblock_json",
+    "conditions",
+    "included",
+    "zone_id",
+    "map_x",
+    "map_y",
+    "created_at",
+    "updated_at"
+  ].filter((column) => hasColumn("encounter_combatants", column));
+  db.exec("PRAGMA foreign_keys = OFF");
+  db.exec("BEGIN IMMEDIATE");
+  try {
+    db.exec(`CREATE TABLE encounter_combatants_rebuilt (${encounterCombatantColumns}
+    )`);
+    // A combatant whose hireling no longer resolves is dropped rather than
+    // carried across. It was already invisible: the encounter view scanned the
+    // blob for its id and skipped it when nothing answered.
+    db.exec(`INSERT INTO encounter_combatants_rebuilt (${preserved.join(", ")}, hireling_id)
+             SELECT ${preserved.map((column) => `c.${column}`).join(", ")},
+                    CASE WHEN c.kind = 'hireling' THEN (
+                      SELECT h.id FROM group_hirelings h
+                       JOIN encounters e ON e.id = c.encounter_id
+                       WHERE h.room_id = e.room_id AND h.legacy_id = c.hireling_id
+                    ) END
+               FROM encounter_combatants c
+              WHERE c.kind <> 'hireling' OR EXISTS (
+                    SELECT 1 FROM group_hirelings h
+                     JOIN encounters e ON e.id = c.encounter_id
+                     WHERE h.room_id = e.room_id AND h.legacy_id = c.hireling_id)`);
+    db.exec("DROP TABLE encounter_combatants");
+    db.exec("ALTER TABLE encounter_combatants_rebuilt RENAME TO encounter_combatants");
+    db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS encounter_combatants_character
+               ON encounter_combatants (encounter_id, character_id) WHERE character_id IS NOT NULL`);
+    db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS encounter_combatants_hireling
+               ON encounter_combatants (encounter_id, hireling_id) WHERE hireling_id IS NOT NULL`);
+    db.exec("COMMIT");
+  } catch (cause) {
+    db.exec("ROLLBACK");
+    throw cause;
+  } finally {
+    db.exec("PRAGMA foreign_keys = ON");
+  }
+}
+
+// These tables arrived with the roster migration, so only a database made
+// between that change and this one lacks the counter that replaced comparing
+// timestamps a second apart.
+for (const table of ["group_hirelings", "group_assets", "group_obligations"])
+  if (!hasColumn(table, "revision")) db.exec(`ALTER TABLE ${table} ADD COLUMN revision INTEGER NOT NULL DEFAULT 0`);
 
 // The tag vocabulary is editable, so the tags shipped with the application are
 // seeded rather than fixed. Ignoring a conflict leaves a tag that has since been

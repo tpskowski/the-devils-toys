@@ -411,3 +411,40 @@
     display: none;
   }
 }
+
+/* Which running order the room is playing through, above the track list. */
+.audio-playlist-picker {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+.audio-playlist-picker > span {
+  color: var(--muted);
+  font:
+    400 9px "DM Mono",
+    monospace;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+.audio-playlist-picker select {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 0;
+  background: var(--surface);
+  color: var(--text);
+  font:
+    400 13px "Inter",
+    sans-serif;
+}
+
+.audio-playlist-picker select option {
+  background: var(--surface);
+  color: var(--text);
+}

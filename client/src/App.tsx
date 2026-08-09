@@ -28,8 +28,10 @@ import {
   Music,
   ChevronRight,
   Plus,
+  LifeBuoy,
   ScrollText,
   Settings2,
+  SlidersHorizontal,
   Sparkles,
   Skull,
   RotateCcw,
@@ -64,6 +66,8 @@ import type { AudioPlaybackState, RoomAudioState } from "@devils-toys/shared";
 import { InviteScreen } from "./InviteScreen";
 import { CharacterModal } from "./CharacterModal";
 import { extractRuleTocHeadings, filterRules, rulesPath } from "./rules";
+import { roomConfigPath } from "./room-config";
+import { helpPath } from "./help";
 import { MediaModal, type RoomMediaState } from "./MediaModal";
 import { LibraryModal } from "./LibraryModal";
 import { RulesMarkdown } from "./RulesMarkdown";
@@ -141,12 +145,14 @@ const themeNames: Record<ThemeId, string> = {
 function emptyRoomAudio(): RoomAudioState {
   return {
     tracks: [],
+    playlists: [],
     playback: {
       trackId: null,
       playing: false,
       position: 0,
       repeat: "off",
       shuffle: false,
+      playlistId: null,
       updatedAt: new Date(0).toISOString()
     }
   };
@@ -407,6 +413,25 @@ function Workspace({ account, status, onLogout }: { account: Account; status: St
                   <small>Company setup</small>
                 </span>
               </button>
+              {/*
+                Room Config is a page of this same application at an address of
+                its own, so it opens in a new tab beside the game rather than
+                replacing it — and carries the open room, since configuring the
+                room you are sitting in is the ordinary case.
+              */}
+              <a
+                className="management-nav-button"
+                href={roomConfigPath(active?.id)}
+                target="_blank"
+                rel="noreferrer"
+                title="Room Config, the GM control panel"
+              >
+                <SlidersHorizontal size={18} />
+                <span>
+                  Room Config
+                  <small>{active ? active.name : "Choose a room"}</small>
+                </span>
+              </a>
               {tablesUrl &&
                 // The editor is its own application on its own port, so a link
                 // leaves the game rather than opening a screen inside it. When
@@ -446,6 +471,14 @@ function Workspace({ account, status, onLogout }: { account: Account; status: St
           )}
         </nav>
         <div className="rail-footer">
+          {/*
+            The written guides, at an address of their own so they open beside
+            the game rather than over it. Which one opens is read from the
+            account's role, and any of them can be switched to from the page.
+          */}
+          <a href={helpPath()} target="_blank" rel="noreferrer" title="Help and guides">
+            <LifeBuoy size={16} /> <span>Help</span>
+          </a>
           <button onClick={() => setDocument("credits")} title="Credits">
             <Sparkles size={16} /> <span>Credits</span>
           </button>
@@ -569,7 +602,7 @@ function Lobby({
     <section className="lobby">
       <div className="lobby-copy">
         <h2>“Those who play with the devil’s toys will be brought by degrees to wield his sword.”</h2>
-        <p>— R. Buckminster Fuller</p>
+        <p>— Thomas Fuller</p>
         {canCreate && (
           <button className="primary-button" onClick={onCreate}>
             <Plus size={18} /> Create a room
@@ -829,6 +862,13 @@ function TableRoom({
         if (data.type === "group-updated") {
           setGroupRevision((current) => current + 1);
           loadEncounters();
+        }
+        // The room's own gear changed in Room Config; the sheet and group
+        // pickers read it from their payloads, so both are refetched.
+        if (data.type === "items-updated") {
+          setCharactersRevision((current) => current + 1);
+          setGroupRevision((current) => current + 1);
+          load();
         }
         if (data.type === "encounters-updated") {
           loadEncounters();

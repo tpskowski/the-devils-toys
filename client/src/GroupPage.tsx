@@ -34,9 +34,16 @@ import { characterItemsForSlot, weaponTraitSuggestions } from "./character-items
 import { WeaponMark } from "./WeaponMark";
 import { WeaponSelector } from "./WeaponSelector";
 import { rollableDamage, rollWeapon } from "./weapon-roll";
-import { parseGroupObligations, type GroupObligation } from "./group-obligations";
-import { parseGroupHirelings, type GroupHireling } from "./group-hirelings";
-import { parseGroupStarships, type GroupStarship } from "./group-starships";
+import {
+  flattenRow,
+  flattenRows,
+  splitRow,
+  type GroupAsset as GroupStarship,
+  type GroupEntry,
+  type GroupHireling,
+  type GroupObligation,
+  type GroupSheetRow
+} from "./group-rows";
 import { Modal } from "./Modal";
 import { otherPartyMembers, partyMemberIsOnline } from "./party-members";
 import { ReadOnlyCharacterSheet, type ReadOnlyCharacter } from "./ReadOnlyCharacterSheet";
@@ -51,21 +58,20 @@ interface GroupResponse {
   definition: GroupPageDefinition;
   /** The system's own gear, keyed by sheet list, for filling a hireling's slots. */
   itemCatalogue?: Record<string, CharacterItem[]>;
-  images?: StarshipImage[];
-  hirelingImages?: HirelingImage[];
+  hirelings?: GroupSheetRow[];
+  assets?: GroupSheetRow[];
+  obligations?: GroupObligation[];
   updatedAt: string | null;
 }
 
-interface StarshipImage {
-  starshipId: string;
-  url: string;
-  filename: string;
-}
+/** Which roster a row belongs to, and so which routes reach it. */
+type RosterKind = "hirelings" | "assets" | "obligations";
 
-interface HirelingImage {
-  hirelingId: string;
-  url: string;
-  filename: string;
+/** What a row route answers with, whichever roster it was. */
+interface SavedRow {
+  hireling?: GroupSheetRow;
+  asset?: GroupSheetRow;
+  obligation?: GroupObligation;
 }
 
 interface PartyCharacterResponse {
@@ -123,15 +129,9 @@ export function defaultGroupView(system: SystemId): GroupView {
   return "party";
 }
 
-type GroupObligationField = Exclude<keyof GroupObligation, "id">;
-
-function newObligationId() {
-  return globalThis.crypto?.randomUUID?.() ?? `obligation-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-}
-
-function newStarshipId() {
-  return globalThis.crypto?.randomUUID?.() ?? `starship-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-}
+// Ids come from the database now, so the browser no longer mints one and hopes
+// nothing else picked the same.
+type GroupObligationField = Exclude<keyof GroupObligation, "id" | "sortOrder" | "updatedAt">;
 
 export function GroupPage({
   roomId,
@@ -170,24 +170,28 @@ export function GroupPage({
   // The group page covers the room's log, so a roll made here reports back.
   const [rolled, setRolled] = useState("");
   const [editingHold, setEditingHold] = useState<{ index: number; value: string }>();
-  const [editingStarshipId, setEditingStarshipId] = useState<string>();
+  const [editingStarshipId, setEditingStarshipId] = useState<number>();
   const [starshipExpansion, setStarshipExpansion] = useState<Record<string, boolean>>(() => {
     const storage = typeof localStorage === "undefined" ? undefined : localStorage;
     return readStarshipExpansion(storage, roomId, viewerId);
   });
-  const [starshipImages, setStarshipImages] = useState<StarshipImage[]>([]);
-  const [busyStarshipImageId, setBusyStarshipImageId] = useState<string>();
+  const [hirelings, setHirelings] = useState<GroupHireling[]>([]);
+  const [starships, setStarships] = useState<GroupStarship[]>([]);
+  const [obligations, setObligations] = useState<GroupObligation[]>([]);
+  const [busyStarshipImageId, setBusyStarshipImageId] = useState<number>();
   const [partyCharacters, setPartyCharacters] = useState<ReadOnlyCharacter[]>([]);
   const [partyDefinition, setPartyDefinition] = useState<CharacterSheetDefinition>();
   const [partyLabel, setPartyLabel] = useState("Party");
   const [partyLoading, setPartyLoading] = useState(true);
   const [partyError, setPartyError] = useState("");
   const [expandedPartyMembers, setExpandedPartyMembers] = useState<ReadonlySet<number>>(new Set());
-  const [expandedHirelings, setExpandedHirelings] = useState<ReadonlySet<string>>(new Set());
+  const [expandedHirelings, setExpandedHirelings] = useState<ReadonlySet<number>>(new Set());
   const [editingHirelingMaximums, setEditingHirelingMaximums] = useState<string>();
-  const [editingHirelingSlot, setEditingHirelingSlot] = useState<{ id: string; listKey: string; index: number }>();
-  const [hirelingImages, setHirelingImages] = useState<HirelingImage[]>([]);
-  const [busyHirelingImageId, setBusyHirelingImageId] = useState<string>();
+  // One pending save per row, so editing two hirelings at once never makes one
+  // wait on the other and never sends one row's fields under another's id.
+  const rowSaveTimers = useRef(new Map<string, number>());
+  const [editingHirelingSlot, setEditingHirelingSlot] = useState<{ id: number; listKey: string; index: number }>();
+  const [busyHirelingImageId, setBusyHirelingImageId] = useState<number>();
   const [rollingHireling, setRollingHireling] = useState(false);
   const [holdError, setHoldError] = useState("");
   const saveTimerRef = useRef<number | undefined>(undefined);
@@ -203,8 +207,9 @@ export function GroupPage({
     setDefinition(response.definition);
     setItemCatalogue(response.itemCatalogue ?? {});
     setState(response.state);
-    setStarshipImages(response.images ?? []);
-    setHirelingImages(response.hirelingImages ?? []);
+    setHirelings(flattenRows(response.hirelings ?? []));
+    setStarships(flattenRows(response.assets ?? []));
+    setObligations(response.obligations ?? []);
     latestStateRef.current = response.state;
     updatedAtRef.current = response.updatedAt;
     dirtyRef.current = false;
@@ -299,42 +304,138 @@ export function GroupPage({
     updateState((current) => ({ ...current, [key]: value }));
   }
 
-  function updateObligations(updater: (current: GroupObligation[]) => GroupObligation[]) {
-    updateState((current) => {
-      const next: Record<string, unknown> = {
-        ...current,
-        obligations: updater(parseGroupObligations(current))
-      };
-      delete next.groupDebt;
-      return next;
-    });
-  }
-
-  function addObligation() {
-    updateObligations((current) => [
-      ...current,
-      { id: newObligationId(), name: "", owedTo: "", amount: "", details: "" }
-    ]);
-  }
-
-  function setObligationField(id: string, field: GroupObligationField, value: string) {
-    updateObligations((current) =>
-      current.map((obligation) => (obligation.id === id ? { ...obligation, [field]: value } : obligation))
+  /**
+   * Save one row, a moment after the typing stops. The debounce is per row, so
+   * two rows edited together are two requests rather than one that has to carry
+   * both — which is what having rows instead of one document buys.
+   */
+  function queueRowSave(kind: RosterKind, id: number, body: () => Record<string, unknown>) {
+    if (!canEditGroup) return;
+    const key = `${kind}:${id}`;
+    // Marked dirty for as long as anything is pending, so a change reported over
+    // the socket does not reload the roster on top of what is still being typed.
+    dirtyRef.current = true;
+    setStatus("Unsaved");
+    setError("");
+    window.clearTimeout(rowSaveTimers.current.get(key));
+    rowSaveTimers.current.set(
+      key,
+      window.setTimeout(() => {
+        rowSaveTimers.current.delete(key);
+        setStatus("Saving…");
+        api<SavedRow>(`/api/rooms/${roomId}/group/${kind}/${id}`, { method: "PATCH", body: JSON.stringify(body()) })
+          .then((result) => {
+            // Carry the revision the write produced, so the next save is judged
+            // against it rather than against the one this row was loaded with.
+            const saved = result.hireling ?? result.asset ?? result.obligation;
+            if (saved) noteRevision(kind, id, saved.revision);
+            const idle = rowSaveTimers.current.size === 0;
+            if (idle) dirtyRef.current = false;
+            setStatus(idle ? "Saved" : "Unsaved");
+          })
+          .catch((cause: Error) => {
+            // Still dirty: the edit is on the page and not in the database, so a
+            // reload must not be allowed to quietly replace it.
+            setStatus("Unsaved");
+            setError(cause.message);
+          });
+      }, 650)
     );
   }
 
-  function removeObligation(id: string) {
-    updateObligations((current) => current.filter((obligation) => obligation.id !== id));
+  /** Records the revision a write returned, on whichever roster the row is in. */
+  function noteRevision(kind: RosterKind, id: number, revision: number) {
+    const bump = <T extends { id: number; revision: number }>(rows: T[]) =>
+      rows.map((row) => (row.id === id ? { ...row, revision } : row));
+    if (kind === "hirelings") setHirelings(bump);
+    else if (kind === "assets") setStarships(bump);
+    else setObligations(bump);
   }
 
-  function updateHirelings(updater: (current: GroupHireling[]) => GroupHireling[]) {
-    updateState((current) => ({ ...current, hirelings: updater(parseGroupHirelings(current)) }));
+  /** Change one entry in a roster locally, then save that row and only that row. */
+  function editEntry(
+    kind: "hirelings" | "assets",
+    setRows: typeof setHirelings,
+    id: number,
+    change: (entry: GroupEntry) => GroupEntry
+  ) {
+    if (!canEditGroup) return;
+    let saved: GroupEntry | undefined;
+    setRows((current) =>
+      current.map((entry) => {
+        if (entry.id !== id) return entry;
+        saved = change(entry);
+        return saved;
+      })
+    );
+    queueRowSave(kind, id, () => ({ ...splitRow(saved!), revision: saved!.revision }));
   }
 
-  function addHireling() {
-    const id = globalThis.crypto?.randomUUID?.() ?? `hireling-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    updateHirelings((current) => [...current, { id, name: "" }]);
-    setExpandedHirelings((current) => new Set(current).add(id));
+  function updateObligations(updater: (current: GroupObligation[]) => GroupObligation[]) {
+    if (!canEditGroup) return;
+    setObligations(updater);
+  }
+
+  async function addObligation() {
+    if (!canEditGroup) return;
+    setError("");
+    try {
+      const result = await api<{ obligation: GroupObligation }>(`/api/rooms/${roomId}/group/obligations`, {
+        method: "POST",
+        body: JSON.stringify({})
+      });
+      setObligations((current) => [...current, result.obligation]);
+    } catch (cause) {
+      setError((cause as Error).message);
+    }
+  }
+
+  function setObligationField(id: number, field: GroupObligationField, value: string) {
+    if (!canEditGroup) return;
+    // The whole row goes, not the field last touched: the save is debounced per
+    // row, so typing a name and then an amount within one window would otherwise
+    // send only the amount and leave the name behind.
+    let saved: GroupObligation | undefined;
+    updateObligations((current) =>
+      current.map((obligation) => {
+        if (obligation.id !== id) return obligation;
+        saved = { ...obligation, [field]: value };
+        return saved;
+      })
+    );
+    queueRowSave("obligations", id, () => ({
+      name: saved!.name,
+      owedTo: saved!.owedTo,
+      amount: saved!.amount,
+      details: saved!.details,
+      revision: saved!.revision
+    }));
+  }
+
+  async function removeObligation(id: number) {
+    if (!canEditGroup) return;
+    setError("");
+    try {
+      await api(`/api/rooms/${roomId}/group/obligations/${id}`, { method: "DELETE" });
+      setObligations((current) => current.filter((obligation) => obligation.id !== id));
+    } catch (cause) {
+      setError((cause as Error).message);
+    }
+  }
+
+  async function addHireling() {
+    if (!canEditGroup) return;
+    setError("");
+    try {
+      const result = await api<{ hireling: GroupSheetRow }>(`/api/rooms/${roomId}/group/hirelings`, {
+        method: "POST",
+        body: JSON.stringify({})
+      });
+      setHirelings((current) => [...current, flattenRow(result.hireling)]);
+      setExpandedHirelings((current) => new Set(current).add(result.hireling.id));
+    } catch (cause) {
+      setError((cause as Error).message);
+    }
   }
 
   async function rollHireling() {
@@ -345,12 +446,13 @@ export function GroupPage({
       const response = await api<{ hireling: Record<string, unknown> }>(`/api/rooms/${roomId}/group/hirelings/roll`, {
         method: "POST"
       });
-      const id = globalThis.crypto?.randomUUID?.() ?? `hireling-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-      updateHirelings((current) => [
-        ...current,
-        { ...response.hireling, id, name: String(response.hireling.name ?? "") }
-      ]);
-      setExpandedHirelings((current) => new Set(current).add(id));
+      const { name, ...sheet } = response.hireling;
+      const created = await api<{ hireling: GroupSheetRow }>(`/api/rooms/${roomId}/group/hirelings`, {
+        method: "POST",
+        body: JSON.stringify({ name: String(name ?? ""), sheet })
+      });
+      setHirelings((current) => [...current, flattenRow(created.hireling)]);
+      setExpandedHirelings((current) => new Set(current).add(created.hireling.id));
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Freelancer creation failed.");
     } finally {
@@ -358,8 +460,8 @@ export function GroupPage({
     }
   }
 
-  function setHirelingField(id: string, key: string, value: unknown) {
-    updateHirelings((current) => current.map((entry) => (entry.id === id ? { ...entry, [key]: value } : entry)));
+  function setHirelingField(id: number, key: string, value: unknown) {
+    editEntry("hirelings", setHirelings, id, (entry) => ({ ...entry, [key]: value }));
   }
 
   /** Slot text and its weapon record move together, as they do on a character sheet. */
@@ -375,19 +477,16 @@ export function GroupPage({
     }
   }
 
-  function setHirelingListItem(id: string, key: string, index: number, value: string, weapon?: SlotWeaponDetail) {
-    updateHirelings((current) =>
-      current.map((entry) => {
-        if (entry.id !== id) return entry;
-        const list = Array.isArray(entry[key]) ? [...(entry[key] as unknown[])] : [];
-        list[index] = value;
-        const records = setSlotWeapon(entry, key, index, weapon);
-        return { ...entry, [key]: list, [weaponOverrideKey(key)]: records.length ? records : undefined };
-      })
-    );
+  function setHirelingListItem(id: number, key: string, index: number, value: string, weapon?: SlotWeaponDetail) {
+    editEntry("hirelings", setHirelings, id, (entry) => {
+      const list = Array.isArray(entry[key]) ? [...(entry[key] as unknown[])] : [];
+      list[index] = value;
+      const records = setSlotWeapon(entry, key, index, weapon);
+      return { ...entry, [key]: list, [weaponOverrideKey(key)]: records.length ? records : undefined };
+    });
   }
 
-  function toggleHireling(id: string) {
+  function toggleHireling(id: number) {
     setExpandedHirelings((current) => {
       const next = new Set(current);
       if (next.has(id)) next.delete(id);
@@ -396,7 +495,7 @@ export function GroupPage({
     });
   }
 
-  async function uploadHirelingImage(hirelingId: string, file?: File) {
+  async function uploadHirelingImage(hirelingId: number, file?: File) {
     if (!canEditGroup) return;
     if (!file) return;
     if (file.size > groupImageLimitBytes) {
@@ -413,11 +512,16 @@ export function GroupPage({
     try {
       const body = new FormData();
       body.append("file", file);
-      const result = await api<{ image: HirelingImage }>(
-        `/api/rooms/${roomId}/group/hirelings/${encodeURIComponent(hirelingId)}/image`,
-        { method: "POST", body }
+      const result = await api<{ hireling: GroupSheetRow }>(
+        `/api/rooms/${roomId}/group/hirelings/${hirelingId}/image`,
+        {
+          method: "POST",
+          body
+        }
       );
-      setHirelingImages((current) => [...current.filter((image) => image.hirelingId !== hirelingId), result.image]);
+      setHirelings((current) =>
+        current.map((entry) => (entry.id === hirelingId ? flattenRow(result.hireling) : entry))
+      );
     } catch (cause) {
       setError((cause as Error).message);
     } finally {
@@ -425,15 +529,15 @@ export function GroupPage({
     }
   }
 
-  async function removeHirelingImage(hirelingId: string) {
+  async function removeHirelingImage(hirelingId: number) {
     if (!canEditGroup) return;
     setBusyHirelingImageId(hirelingId);
     setError("");
     try {
-      await api<void>(`/api/rooms/${roomId}/group/hirelings/${encodeURIComponent(hirelingId)}/image`, {
-        method: "DELETE"
-      });
-      setHirelingImages((current) => current.filter((image) => image.hirelingId !== hirelingId));
+      await api<void>(`/api/rooms/${roomId}/group/hirelings/${hirelingId}/image`, { method: "DELETE" });
+      setHirelings((current) =>
+        current.map((entry) => (entry.id === hirelingId ? { ...entry, imageUrl: null } : entry))
+      );
     } catch (cause) {
       setError((cause as Error).message);
     } finally {
@@ -441,52 +545,46 @@ export function GroupPage({
     }
   }
 
-  async function removeHireling(hirelingId: string) {
+  async function removeHireling(hirelingId: number) {
     if (!canEditGroup) return;
     setError("");
     try {
-      await api(`/api/rooms/${roomId}/group/hirelings/${encodeURIComponent(hirelingId)}`, { method: "DELETE" });
-      setHirelingImages((current) => current.filter((image) => image.hirelingId !== hirelingId));
+      await api(`/api/rooms/${roomId}/group/hirelings/${hirelingId}`, { method: "DELETE" });
+      setHirelings((current) => current.filter((entry) => entry.id !== hirelingId));
       setEditingHirelingMaximums((current) => (current?.startsWith(`${hirelingId}:`) ? undefined : current));
-      await load();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Hireling removal failed.");
     }
   }
 
-  function updateStarships(updater: (current: GroupStarship[]) => GroupStarship[]) {
-    updateState((current) => {
-      const next: Record<string, unknown> = {
-        ...current,
-        starships: updater(parseGroupStarships(current))
-      };
-      delete next.starship;
-      return next;
+  async function addStarship() {
+    if (!canEditGroup) return;
+    setError("");
+    try {
+      const result = await api<{ asset: GroupSheetRow }>(`/api/rooms/${roomId}/group/assets`, {
+        method: "POST",
+        body: JSON.stringify({ kind: "starship" })
+      });
+      setStarships((current) => [...current, flattenRow(result.asset)]);
+      setEditingStarshipId(result.asset.id);
+    } catch (cause) {
+      setError((cause as Error).message);
+    }
+  }
+
+  function setStarshipField(shipId: number, key: string, value: unknown) {
+    editEntry("assets", setStarships, shipId, (ship) => ({ ...ship, [key]: value }));
+  }
+
+  function setStarshipListItem(shipId: number, key: string, index: number, value: string) {
+    editEntry("assets", setStarships, shipId, (ship) => {
+      const list = Array.isArray(ship[key]) ? [...(ship[key] as unknown[])] : [];
+      list[index] = value;
+      return { ...ship, [key]: list };
     });
   }
 
-  function addStarship() {
-    const id = newStarshipId();
-    updateStarships((current) => [...current, { id, name: "" }]);
-    setEditingStarshipId(id);
-  }
-
-  function setStarshipField(shipId: string, key: string, value: unknown) {
-    updateStarships((current) => current.map((ship) => (ship.id === shipId ? { ...ship, [key]: value } : ship)));
-  }
-
-  function setStarshipListItem(shipId: string, key: string, index: number, value: string) {
-    updateStarships((current) =>
-      current.map((ship) => {
-        if (ship.id !== shipId) return ship;
-        const list = Array.isArray(ship[key]) ? [...(ship[key] as unknown[])] : [];
-        list[index] = value;
-        return { ...ship, [key]: list };
-      })
-    );
-  }
-
-  function toggleStarship(shipId: string) {
+  function toggleStarship(shipId: number) {
     setStarshipExpansion((current) => {
       const next = { ...current, [shipId]: !(current[shipId] ?? true) };
       const storage = typeof localStorage === "undefined" ? undefined : localStorage;
@@ -510,7 +608,7 @@ export function GroupPage({
     setHoldError("");
   }
 
-  async function uploadStarshipImage(shipId: string, file?: File) {
+  async function uploadStarshipImage(shipId: number, file?: File) {
     if (!canEditGroup) return;
     if (!file) return;
     if (file.size > groupImageLimitBytes) {
@@ -527,11 +625,11 @@ export function GroupPage({
     try {
       const body = new FormData();
       body.append("file", file);
-      const result = await api<{ image: StarshipImage }>(
-        `/api/rooms/${roomId}/group/starships/${encodeURIComponent(shipId)}/image`,
-        { method: "POST", body }
-      );
-      setStarshipImages((current) => [...current.filter((image) => image.starshipId !== shipId), result.image]);
+      const result = await api<{ asset: GroupSheetRow }>(`/api/rooms/${roomId}/group/assets/${shipId}/image`, {
+        method: "POST",
+        body
+      });
+      setStarships((current) => current.map((ship) => (ship.id === shipId ? flattenRow(result.asset) : ship)));
     } catch (cause) {
       setError((cause as Error).message);
     } finally {
@@ -539,14 +637,12 @@ export function GroupPage({
     }
   }
 
-  async function removeStarshipImage(shipId: string) {
+  async function removeStarshipImage(shipId: number) {
     setBusyStarshipImageId(shipId);
     setError("");
     try {
-      await api<void>(`/api/rooms/${roomId}/group/starships/${encodeURIComponent(shipId)}/image`, {
-        method: "DELETE"
-      });
-      setStarshipImages((current) => current.filter((image) => image.starshipId !== shipId));
+      await api<void>(`/api/rooms/${roomId}/group/assets/${shipId}/image`, { method: "DELETE" });
+      setStarships((current) => current.map((ship) => (ship.id === shipId ? { ...ship, imageUrl: null } : ship)));
     } catch (cause) {
       setError((cause as Error).message);
     } finally {
@@ -556,7 +652,7 @@ export function GroupPage({
 
   /** Installs a part through the hold rules, reporting a refusal rather than forcing it. */
   function installHold(
-    shipId: string,
+    shipId: number,
     list: CharacterListDefinition,
     index: number,
     value: string,
@@ -571,9 +667,7 @@ export function GroupPage({
       slotName: (position) => list.slots[position] ?? `Hold ${position + 1}`
     });
     if (!result.ok) return setHoldError(result.error);
-    updateStarships((current) =>
-      current.map((entry) => (entry.id === shipId ? { ...entry, [list.key]: result.slots } : entry))
-    );
+    editEntry("assets", setStarships, shipId, (entry) => ({ ...entry, [list.key]: result.slots }));
     setEditingHold(undefined);
     setHoldError("");
   }
@@ -666,11 +760,10 @@ export function GroupPage({
           value={chosen?.id ?? ""}
           disabled={!canEditGroup}
           onChange={(event) =>
-            updateStarships((current) =>
-              current.map((entry) =>
-                entry.id === ship.id ? { ...applyStarshipSize(entry, sheet, event.target.value), id: entry.id } : entry
-              )
-            )
+            editEntry("assets", setStarships, ship.id, (entry) => ({
+              ...entry,
+              ...applyStarshipSize(entry, sheet, event.target.value)
+            }))
           }
         >
           <option value="">Choose a size…</option>
@@ -747,12 +840,12 @@ export function GroupPage({
   function renderStarshipReadout(ship: GroupStarship) {
     const sheet = definition?.starshipSheet;
     const capacity = starshipHolds(sheet, ship.size);
-    const image = starshipImages.find((candidate) => candidate.starshipId === ship.id);
+    const imageUrl = ship.imageUrl;
     const shipName = String(ship.name || "").trim() || "Starship";
     return (
       <div className="group-starship-readout">
-        <div className={`group-starship-image-frame${image ? " has-image" : ""}`}>
-          {image ? <img src={image.url} alt={`${shipName} starship`} /> : <Rocket aria-hidden="true" />}
+        <div className={`group-starship-image-frame${imageUrl ? " has-image" : ""}`}>
+          {imageUrl ? <img src={imageUrl} alt={`${shipName} starship`} /> : <Rocket aria-hidden="true" />}
         </div>
         <div className="group-starship-readout-sections">
           {sheet?.sections.map((section) => (
@@ -813,18 +906,14 @@ export function GroupPage({
       </div>
     );
 
-  const starships = parseGroupStarships(state);
   const editingStarship = starships.find((ship) => ship.id === editingStarshipId);
   const editingHoldCapacity = editingStarship
     ? starshipHolds(definition.starshipSheet, editingStarship.size)
     : undefined;
-  const editingStarshipImage = editingStarship
-    ? starshipImages.find((image) => image.starshipId === editingStarship.id)
-    : undefined;
+  const editingStarshipImage = editingStarship?.imageUrl ?? undefined;
   const partsList = definition.starshipSheet?.partsList;
   const isMonolith = system === "monolith";
-  const obligations = parseGroupObligations(state);
-  const hirelings = parseGroupHirelings(state);
+
   const pageTitle =
     view === "party"
       ? "Party Members"
@@ -1037,7 +1126,7 @@ export function GroupPage({
               {hirelings.map((hireling, index) => {
                 const expanded = expandedHirelings.has(hireling.id);
                 const label = String(hireling.name).trim() || `${definition.hirelings!.singularLabel} ${index + 1}`;
-                const image = hirelingImages.find((candidate) => candidate.hirelingId === hireling.id);
+                const imageUrl = hireling.imageUrl;
                 return (
                   <article className={`group-hireling-entry${expanded ? " expanded" : ""}`} key={hireling.id}>
                     <header>
@@ -1067,12 +1156,16 @@ export function GroupPage({
                     </header>
                     {expanded && (
                       <div className="group-hireling-sheet" id={`group-hireling-${hireling.id}`}>
-                        <div className={`group-hireling-image-frame${image ? " has-image" : ""}`}>
-                          {image ? <img src={image.url} alt={`${label} portrait`} /> : <UserRound aria-hidden="true" />}
+                        <div className={`group-hireling-image-frame${imageUrl ? " has-image" : ""}`}>
+                          {imageUrl ? (
+                            <img src={imageUrl} alt={`${label} portrait`} />
+                          ) : (
+                            <UserRound aria-hidden="true" />
+                          )}
                           <div className="group-image-actions">
-                            <label title={image ? `Replace ${label} portrait` : `Upload ${label} portrait`}>
+                            <label title={imageUrl ? `Replace ${label} portrait` : `Upload ${label} portrait`}>
                               <ImagePlus aria-hidden="true" />
-                              <span>{image ? "Replace" : "Upload image"}</span>
+                              <span>{imageUrl ? "Replace" : "Upload image"}</span>
                               <input
                                 type="file"
                                 accept="image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp"
@@ -1084,7 +1177,7 @@ export function GroupPage({
                                 }}
                               />
                             </label>
-                            {image && (
+                            {imageUrl && (
                               <button
                                 type="button"
                                 onClick={() => void removeHirelingImage(hireling.id)}
@@ -1365,7 +1458,7 @@ export function GroupPage({
             >
               {editingStarshipImage ? (
                 <img
-                  src={editingStarshipImage.url}
+                  src={editingStarshipImage}
                   alt={`${String(editingStarship.name || "").trim() || "Starship"} starship`}
                 />
               ) : (

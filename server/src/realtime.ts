@@ -2,16 +2,26 @@ import type { IncomingMessage } from "node:http";
 import type { Server } from "node:http";
 import { parse } from "cookie";
 import { WebSocketServer, WebSocket } from "ws";
+import type { AuthAccount } from "./auth.js";
 import { accountForSession, roomRole } from "./auth.js";
 import { all } from "./db.js";
 import { inGameDisplayName, roomDisplayName } from "./display-name.js";
 import { logger } from "./logger.js";
+import { roomConfigAccess } from "./room-config-permissions.js";
 
 interface Client {
   socket: WebSocket;
+  account: AuthAccount;
   accountId: number;
   username: string;
   roomId?: number;
+  /**
+   * A room this connection watches without being in: Room Config, open in its
+   * own tab. Set instead of `roomId`, never alongside it, so a panel never puts
+   * anyone in a room's presence — including the GM, who may have the panel open
+   * long after leaving the table.
+   */
+  watchingRoomId?: number;
 }
 
 const clients = new Set<Client>();
@@ -20,6 +30,16 @@ let scenePingId = 1;
 
 function send(client: Client, event: unknown) {
   if (client.socket.readyState === WebSocket.OPEN) client.socket.send(JSON.stringify(event));
+}
+
+/**
+ * What a watching connection is sent: the coarse "something changed, refetch"
+ * events, and nothing else. Chat, rolls, pings, and presence belong to the
+ * people at the table, and an admin configuring a room is not one of them.
+ */
+function watcherMayReceive(event: unknown) {
+  const type = (event as { type?: unknown } | null | undefined)?.type;
+  return typeof type === "string" && type.endsWith("-updated");
 }
 
 function roomMembers(roomId: number) {
@@ -82,7 +102,10 @@ function hasOtherRoomConnection(roomId: number, accountId: number, excluded: Cli
 }
 
 export function broadcastRoom(roomId: number, event: unknown) {
-  for (const client of clients) if (client.roomId === roomId) send(client, event);
+  for (const client of clients) {
+    if (client.roomId === roomId) send(client, event);
+    else if (client.watchingRoomId === roomId && watcherMayReceive(event)) send(client, event);
+  }
 }
 
 /**
@@ -110,6 +133,11 @@ export function disconnectAccount(accountId: number) {
 
 export function refreshRoomAccess(roomId: number) {
   for (const client of clients) {
+    if (client.watchingRoomId === roomId && !roomConfigAccess(client.account, roomId)) {
+      send(client, { type: "room-access-removed", roomId });
+      client.watchingRoomId = undefined;
+      continue;
+    }
     if (client.roomId !== roomId) continue;
     if (!roomRole(client.accountId, roomId)) {
       send(client, { type: "room-access-removed", roomId });
@@ -132,8 +160,8 @@ export function attachRealtime(server: Server) {
     wss.handleUpgrade(request, socket, head, (ws) => wss.emit("connection", ws, request, account));
   });
 
-  wss.on("connection", (socket: WebSocket, _request: IncomingMessage, account: { id: number; username: string }) => {
-    const client: Client = { socket, accountId: account.id, username: account.username };
+  wss.on("connection", (socket: WebSocket, _request: IncomingMessage, account: AuthAccount) => {
+    const client: Client = { socket, account, accountId: account.id, username: account.username };
     clients.add(client);
     send(client, { type: "ready" });
 
@@ -157,7 +185,24 @@ export function attachRealtime(server: Server) {
           return;
         }
 
-        if (message.type !== "join" || !Number.isInteger(message.roomId) || !roomRole(account.id, message.roomId!))
+        // Room Config watches a room rather than joining it, so the panel can
+        // follow edits made at the table without anyone appearing to be there.
+        if (message.type === "watch") {
+          // A connection is either at the table or watching from the panel. They
+          // are separate tabs and so separate sockets; refusing the mixture is
+          // what keeps "watching never touches presence" true.
+          if (client.roomId !== undefined) return;
+          if (!Number.isInteger(message.roomId) || !roomConfigAccess(account, message.roomId!)) return;
+          client.watchingRoomId = Number(message.roomId);
+          return;
+        }
+
+        if (
+          message.type !== "join" ||
+          client.watchingRoomId !== undefined ||
+          !Number.isInteger(message.roomId) ||
+          !roomRole(account.id, message.roomId!)
+        )
           return;
         const roomId = Number(message.roomId);
         const previous = client.roomId;

@@ -18,6 +18,7 @@ import {
   X
 } from "lucide-react";
 import type { AudioPlaybackState, MediaAsset, RoomAudioState } from "@devils-toys/shared";
+import { playlistTracks } from "@devils-toys/shared";
 import { api } from "./api";
 import {
   adjacentTrackId,
@@ -38,6 +39,7 @@ function playbackCommand(playback: AudioPlaybackState, changes: Partial<Playback
     position: playback.position,
     repeat: playback.repeat,
     shuffle: playback.shuffle,
+    playlistId: playback.playlistId,
     ...changes
   };
 }
@@ -100,6 +102,7 @@ export function AudioDock({
   const [minimized, setMinimized] = useState(false);
   const [position, setPosition] = useState(audio.playback.position);
   const [duration, setDuration] = useState(0);
+  const playing = playlistTracks(audio.tracks, audio.playlists, audio.playback.playlistId);
   const track = audio.tracks.find((item) => item.id === audio.playback.trackId);
   const label = track ? audioTrackLabel(track) : isGm ? "Choose shared audio" : "No shared audio";
   const artist = track?.artist?.trim() || (track ? "Unknown artist" : "Shared audio");
@@ -162,7 +165,9 @@ export function AudioDock({
       await onPlayback(liveCommand({ playing: true, position: 0 }));
       return;
     }
-    const nextId = adjacentTrackId(audio.tracks, track.id, {
+    // Advance through the chosen playlist rather than the whole library, so
+    // "the combat music" is a running order and not just a filter.
+    const nextId = adjacentTrackId(playing, track.id, {
       direction,
       shuffle: audio.playback.shuffle,
       wrap: automatic ? audio.playback.repeat === "all" : true
@@ -306,6 +311,7 @@ export function AudioModal({
   livePosition?: () => number;
 }) {
   const [uploadProgress, setUploadProgress] = useState<{ current: number; total: number }>();
+  const shown = playlistTracks(audio.tracks, audio.playlists, audio.playback.playlistId);
   const busy = Boolean(uploadProgress);
   const [error, setError] = useState("");
 
@@ -337,7 +343,7 @@ export function AudioModal({
     }
   }
 
-  async function command(changes: PlaybackSnapshot) {
+  async function command(changes: Partial<PlaybackCommand>) {
     if (!isGm) return;
     await onPlayback(playbackCommand(audio.playback, changes));
     await onChanged();
@@ -376,14 +382,40 @@ export function AudioModal({
           </label>
         )}
         {error && <p className="form-error audio-error">{error}</p>}
+        {audio.playlists.length > 0 && (
+          <label className="audio-playlist-picker">
+            <span>Playing through</span>
+            <select
+              value={audio.playback.playlistId ?? ""}
+              disabled={!isGm}
+              onChange={(event) =>
+                // Changing the running order stops what is playing rather than
+                // carrying a track out of one list into another.
+                command({
+                  playlistId: event.target.value ? Number(event.target.value) : null,
+                  trackId: null,
+                  playing: false,
+                  position: 0
+                })
+              }
+            >
+              <option value="">Everything in the room</option>
+              {audio.playlists.map((entry) => (
+                <option key={entry.id} value={entry.id}>
+                  {entry.name} ({entry.trackIds.length})
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
         <div className="audio-playlist">
-          {!audio.tracks.length && (
+          {!shown.length && (
             <div className="audio-empty">
               <Music />
-              <p>No tracks have been added.</p>
+              <p>{audio.tracks.length ? "That playlist has no tracks yet." : "No tracks have been added."}</p>
             </div>
           )}
-          {audio.tracks.map((track) => {
+          {shown.map((track) => {
             const active = audio.playback.trackId === track.id;
             const sounding = active && audio.playback.playing;
             return (

@@ -289,7 +289,10 @@ export const cwn: GameSystem = {
   npcStatblock: {
     hitPointsKey: "hp",
     weaponRange,
-    attacksKey: "dmg",
+    // One weapon, and its own column's name. The rest of this statblock is the
+    // book's Atk/Dmg/Shock row transcribed, so `dmg` is not renamed to sit in a
+    // numbered pair that the row it belongs to does not have.
+    weaponKeys: ["dmg"],
     fields: [
       { key: "hd", label: "HD", kind: "text" },
       { key: "hp", label: "HP", kind: "number", inSummary: true },

@@ -13,6 +13,7 @@ import cairnTraits from "@devils-toys/system-cairn/traits";
 import cwnTraits from "@devils-toys/system-cwn/traits";
 import monolithTraits from "@devils-toys/system-monolith/traits";
 import { readPricedRows, splitPricedCell } from "./rules-tables.js";
+import { applyRoomOverlay } from "./room-items.js";
 
 /** Reads socket names from parentheticals such as "2 Leg Sockets" or "Internal & Skin Sockets". */
 export function allowedSlotTypes(spec: string) {
@@ -111,14 +112,20 @@ export function itemTraitsFor(system: SystemId) {
   return traitCatalogs[system].traits;
 }
 
-/** The picker contents for every list on a sheet, keyed by list. */
-export function characterItemsFor(system: SystemId) {
-  return catalogs[system].lists;
+/**
+ * The picker contents for every list on a sheet, keyed by list.
+ *
+ * Given a room, the room's own additions and retirements are applied over the
+ * system's catalogue. Given none — a character in a pool belongs to no room —
+ * the system's catalogue is what it has always been.
+ */
+export function characterItemsFor(system: SystemId, roomId?: number) {
+  return applyRoomOverlay(catalogs[system].lists, roomId);
 }
 
 /** One item wherever it sits, for anything holding an id rather than a slot's text. */
-export function characterItem(system: SystemId, id: string) {
-  for (const items of Object.values(catalogs[system].lists)) {
+export function characterItem(system: SystemId, id: string, roomId?: number) {
+  for (const items of Object.values(characterItemsFor(system, roomId))) {
     const found = items.find((item) => item.id === id);
     if (found) return found;
   }

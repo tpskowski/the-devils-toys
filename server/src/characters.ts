@@ -7,6 +7,7 @@ import type { SystemId } from "@devils-toys/shared";
 import type { AuthedRequest } from "./auth.js";
 import { requireAuth, roomRole } from "./auth.js";
 import { config } from "./config.js";
+import { storedUploadBytes } from "./upload-usage.js";
 import { characterItemsFor } from "./character-items.js";
 import { all, db, one } from "./db.js";
 import { inGameDisplayName } from "./display-name.js";
@@ -192,7 +193,7 @@ characterRouter.get("/rooms/:roomId/characters", requireAuth, (req: AuthedReques
     activeCharacterId: activeCharacterId ?? null,
     partyLabel: systems[context.system].partyLabel,
     sheetDefinition: systems[context.system].characterSheet,
-    itemCatalogue: characterItemsFor(context.system),
+    itemCatalogue: characterItemsFor(context.system, roomId),
     viceCatalogue: context.system === "monolith" ? characterVicesFor("monolith") : []
   });
 });
@@ -326,18 +327,9 @@ characterRouter.post(
       removeUploadedPortrait(req.file);
       return res.status(415).json({ error: "The file contents do not match a supported image format." });
     }
-    const mediaBytes = one<{ size: number }>("SELECT COALESCE(SUM(size), 0) AS size FROM media")?.size ?? 0;
-    const portraitBytes =
-      one<{ size: number }>("SELECT COALESCE(SUM(portrait_size), 0) AS size FROM characters")?.size ?? 0;
-    const starshipBytes =
-      one<{ size: number }>("SELECT COALESCE(SUM(size), 0) AS size FROM starship_images")?.size ?? 0;
-    const hirelingBytes =
-      one<{ size: number }>("SELECT COALESCE(SUM(size), 0) AS size FROM hireling_images")?.size ?? 0;
+    const used = storedUploadBytes();
     const replacedBytes = accessible.row.portrait_size ?? 0;
-    if (
-      mediaBytes + portraitBytes + starshipBytes + hirelingBytes - replacedBytes + req.file.size >
-      config.uploadLimitMb * 1024 * 1024
-    ) {
+    if (used - replacedBytes + req.file.size > config.uploadLimitMb * 1024 * 1024) {
       removeUploadedPortrait(req.file);
       return res.status(413).json({ error: "The server upload-storage allowance has been reached." });
     }

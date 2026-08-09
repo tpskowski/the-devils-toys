@@ -535,7 +535,10 @@ button:disabled {
   display: grid;
   gap: 2px;
 }
-.rail-footer > button {
+/* Help is a link because it opens in its own tab; the rest are buttons. They
+   sit in the same row of the footer and must look the same. */
+.rail-footer > button,
+.rail-footer > a {
   border: 0;
   background: none;
   color: #88877f;
@@ -545,8 +548,10 @@ button:disabled {
   padding: 8px;
   text-align: left;
   font-size: 12px;
+  text-decoration: none;
 }
-.rail-footer > button:hover {
+.rail-footer > button:hover,
+.rail-footer > a:hover {
   color: #fff;
 }
 .account-chip {

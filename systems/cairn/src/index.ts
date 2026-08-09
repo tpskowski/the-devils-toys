@@ -90,7 +90,10 @@ export const cairn: GameSystem = {
   npcStatblock: {
     hitPointsKey: "hp",
     weaponRange,
-    attacksKey: "attacks",
+    // `attacks` is what the bestiary's own line is read into and what every
+    // creature already written down carries, so it stays the first weapon
+    // rather than being renamed under them.
+    weaponKeys: ["attacks", "secondWeapon"],
     armorKey: "armor",
     fields: [
       { key: "hp", label: "HP", kind: "number", inSummary: true },
@@ -98,7 +101,8 @@ export const cairn: GameSystem = {
       { key: "str", label: "STR", kind: "number" },
       { key: "dex", label: "DEX", kind: "number", inSummary: true },
       { key: "wil", label: "WIL", kind: "number" },
-      { key: "attacks", label: "Attacks", kind: "text" }
+      { key: "attacks", label: "Weapon 1", kind: "text" },
+      { key: "secondWeapon", label: "Weapon 2", kind: "text" }
     ]
   },
   attributeDamage: {

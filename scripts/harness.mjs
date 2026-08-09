@@ -167,7 +167,12 @@ export async function runSmoke(name, run, { env = {}, withTablesServer = false }
     return json(pathname, { method: "POST", headers: { cookie }, body: form }, expected);
   }
 
-  async function connect(cookie, roomId) {
+  /**
+   * A socket at the table (`join`), or one watching from Room Config (`watch`).
+   * A watcher is sent change notices and nothing else, and never enters the
+   * room's presence, so the two modes are worth telling apart here.
+   */
+  async function connect(cookie, roomId, { mode = "join" } = {}) {
     const events = [];
     const socket = new WebSocket(`ws://127.0.0.1:${port}/ws`, { headers: { Cookie: cookie } });
     sockets.push(socket);
@@ -176,7 +181,7 @@ export async function runSmoke(name, run, { env = {}, withTablesServer = false }
       socket.once("open", resolve);
       socket.once("error", reject);
     });
-    socket.send(JSON.stringify({ type: "join", roomId }));
+    socket.send(JSON.stringify({ type: mode, roomId }));
     return { socket, events };
   }
 

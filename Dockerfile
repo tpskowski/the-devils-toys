@@ -26,7 +26,8 @@ COPY --from=build /app/server/dist ./server/dist
 COPY --from=build /app/server/package.json ./server/package.json
 COPY --from=build /app/raw/*.md ./raw/
 COPY --from=build /app/raw/tables/*.json ./raw/tables/
-COPY --from=build /app/credits.md /app/changelog.md /app/roadmap.md /app/devils-tables.md ./
+COPY --from=build /app/docs/guide ./docs/guide
+COPY --from=build /app/credits.md /app/changelog.md /app/roadmap.md /app/devils-tables.md /app/NOTICE.md ./
 VOLUME ["/data"]
 EXPOSE 4000
 CMD ["npm", "start"]
