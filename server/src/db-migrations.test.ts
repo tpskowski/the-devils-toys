@@ -117,6 +117,38 @@ function seedFeatureFlagDatabase(directory: string) {
   legacy.close();
 }
 
+/** A room whose music predates the album columns and is already marked as read. */
+function seedPreAlbumMusicDatabase(directory: string) {
+  seedLegacyDatabase(directory);
+  const legacy = new DatabaseSync(path.join(directory, "devils-toys.sqlite"));
+  legacy.exec(`
+    CREATE TABLE media (
+      id INTEGER PRIMARY KEY,
+      room_id INTEGER NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
+      uploaded_by INTEGER NOT NULL REFERENCES accounts(id),
+      kind TEXT NOT NULL CHECK(kind IN ('scene','reference','audio')),
+      category TEXT,
+      filename TEXT NOT NULL,
+      display_name TEXT,
+      stored_name TEXT NOT NULL,
+      artist TEXT,
+      title TEXT,
+      metadata_loaded INTEGER NOT NULL DEFAULT 0,
+      visible INTEGER NOT NULL DEFAULT 0,
+      mime_type TEXT NOT NULL,
+      size INTEGER NOT NULL,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+    INSERT INTO media (id, room_id, uploaded_by, kind, filename, stored_name, artist, title,
+                       metadata_loaded, mime_type, size)
+      VALUES (1, 1, 1, 'audio', 'dirge.mp3', 'a.mp3', 'The Wake', 'Dirge', 1, 'audio/mpeg', 10);
+    INSERT INTO media (id, room_id, uploaded_by, kind, category, filename, stored_name, metadata_loaded,
+                       visible, mime_type, size)
+      VALUES (2, 1, 1, 'scene', 'map', 'harbour.png', 'b.png', 1, 1, 'image/png', 20);
+  `);
+  legacy.close();
+}
+
 function seedEncounterPlacementDatabase(directory: string) {
   seedLegacyDatabase(directory);
   const legacy = new DatabaseSync(path.join(directory, "devils-toys.sqlite"));
@@ -476,6 +508,26 @@ describe("database migrations", () => {
         map_notation_enabled: 1,
         music_enabled: 0
       }
+    ]);
+  });
+
+  it("sends existing music back through the tag reader once, for its album", async () => {
+    const directory = dataDir();
+    seedPreAlbumMusicDatabase(directory);
+    const loaded = await openDatabase(directory);
+
+    const columns = loaded.all<{ name: string }>("PRAGMA table_info(media)").map((column) => column.name);
+    expect(columns).toContain("album");
+    expect(columns).toContain("track_no");
+    // The track is unread again so the album can be filled in; the artist and
+    // title it already carries are untouched, and the image is left alone.
+    expect(
+      loaded.all<{ id: number; artist: string | null; title: string | null; metadata_loaded: number }>(
+        "SELECT id, artist, title, metadata_loaded FROM media ORDER BY id"
+      )
+    ).toEqual([
+      { id: 1, artist: "The Wake", title: "Dirge", metadata_loaded: 0 },
+      { id: 2, artist: null, title: null, metadata_loaded: 1 }
     ]);
   });
 

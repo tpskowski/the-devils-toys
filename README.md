@@ -1,6 +1,15 @@
 # The Devil's Toys
 
-A local-first virtual tabletop for Cairn, Monolith, and Cities Without Number. The first release focuses on a persistent room, a fast shared table, rules at hand, and useful GM controls without trying to automate the games away.
+A local-first virtual tabletop for Cairn, Monolith, and Cities Without Number. It focuses on a persistent room, a fast shared table, rules at hand, and useful GM controls without trying to automate the games away.
+
+**This is alpha software.** It runs and it is used, but nothing is settled: interfaces move, and data shapes still change between versions — migrations run on start, so keep the backups described under [Backups](#backups).
+
+## Guides
+
+- [Player's Guide](docs/guide/README.md) — joining a table, the sheet, dice, and combat.
+- [GM's Guide](docs/guide/gm/README.md) — your room, Room Config, NPCs and encounters, and running a session.
+- [Admin's Guide](docs/guide/admin/README.md) — first run, accounts and roles, rooms, and operating the server.
+- [The Devil's Tables](devils-tables.md) — using the random-table editor.
 
 ## Requirements
 
@@ -110,7 +119,7 @@ A character's player and room are independent assignments. When setting both, gi
 
 Editable character sheets accept PNG, JPEG, or WebP portraits up to 5 MB. Portraits are stored with the rest of the mutable application data and count toward `DEVILS_TOYS_UPLOAD_LIMIT_MB`.
 
-The room Library accepts PNG, JPEG, or WebP images classified as Maps, Scenes, or References. References may also be UTF-8 Markdown (`.md`) files. The main table separates current Maps, current Scenes, and revealed References into dedicated tabs.
+The room Library accepts PNG, JPEG, or WebP images classified as Maps, Scenes, or References. References may also be UTF-8 Markdown (`.md`) files. The main table gives Maps, Scenes, and revealed References a tab each, alongside the party, the current encounter, and the rules.
 
 Maps and Scenes use `DEVILS_TOYS_SCENE_IMAGE_LIMIT_MB` (60 MB by default); image and Markdown References use `DEVILS_TOYS_REFERENCE_IMAGE_LIMIT_MB` (20 MB by default).
 

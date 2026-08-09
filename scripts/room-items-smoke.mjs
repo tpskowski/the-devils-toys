@@ -169,6 +169,129 @@ await runSmoke("Room item overlay smoke test", async ({ request, json, setup, lo
     "…under an id of that room's own, never the one it came from."
   );
 
+  // --- A creature armed from the pickers carries the entry, not a re-reading ---
+
+  // A weapon by the heading it is filed under rather than by a die in its
+  // parenthetical, which is the case a second reading of the text cannot get
+  // right: nothing in "Stun Baton (shock, c-r)" says it is a weapon at all.
+  const baton = (
+    await request(
+      `/api/rooms/${room.id}/items`,
+      {
+        method: "POST",
+        headers: gm.headers,
+        body: JSON.stringify({
+          listKey,
+          name: "Stun Baton",
+          spec: "shock, c-r",
+          cost: "",
+          detail: "",
+          category: "STANDARD WEAPONS"
+        })
+      },
+      201
+    )
+  ).item;
+  assert.equal(baton.weapon, true, "The heading it is filed under is what makes it a weapon.");
+  assert.equal(baton.label, "Stun Baton (shock, c-r)");
+
+  const guard = (
+    await request(
+      `/api/rooms/${room.id}/npcs`,
+      { method: "POST", headers: gm.headers, body: JSON.stringify({ name: "Dock Guard", notes: "" }) },
+      201
+    )
+  ).npc;
+  await json(
+    `/api/rooms/${room.id}/npcs/${guard.id}`,
+    {
+      method: "PATCH",
+      headers: gm.headers,
+      body: JSON.stringify({
+        name: "Dock Guard",
+        notes: "",
+        // Two weapons, as a character carries two: one out of the pickers and
+        // one written in, so the pair is filled both ways at once.
+        statblock: { hp: 6, attacks: baton.label, secondWeapon: "Slug Pistol (D8, mid-range)" }
+      })
+    },
+    204
+  );
+  const fight = (
+    await request(
+      `/api/rooms/${room.id}/encounters`,
+      { method: "POST", headers: gm.headers, body: JSON.stringify({ name: "On the quay" }) },
+      201
+    )
+  ).encounter;
+  const armed = (
+    await request(
+      `/api/rooms/${room.id}/encounters/${fight.id}/combatants`,
+      { method: "POST", headers: gm.headers, body: JSON.stringify({ kind: "npc", npcId: guard.id }) },
+      201
+    )
+  ).encounter.combatants.find((entry) => entry.kind === "npc");
+  assert.equal(armed.weapon.name, "Stun Baton", "The creature is holding the entry, under the entry's own name.");
+  assert.deepEqual(armed.weapon.traits, ["shock", "c-r"], "…with the traits the catalogue gave it.");
+  assert.equal(armed.weapon.range, "Melee", "…and the reach the catalogue read, not one worked out again here.");
+  assert.equal(armed.offhand.name, "Slug Pistol", "The second slot reaches the rail as the creature's other hand.");
+  assert.equal(armed.offhand.damage, "D8");
+  assert.equal(armed.offhand.range, "mid-range", "…read from its own notation, since it was typed rather than picked.");
+
+  // A creature given one weapon has one, not an empty second mark beside it.
+  const oneHanded = (
+    await request(
+      `/api/rooms/${room.id}/npcs`,
+      { method: "POST", headers: gm.headers, body: JSON.stringify({ name: "Deckhand", notes: "" }) },
+      201
+    )
+  ).npc;
+  await json(
+    `/api/rooms/${room.id}/npcs/${oneHanded.id}`,
+    {
+      method: "PATCH",
+      headers: gm.headers,
+      body: JSON.stringify({ name: "Deckhand", notes: "", statblock: { hp: 3, attacks: baton.label } })
+    },
+    204
+  );
+  const alone = (
+    await request(
+      `/api/rooms/${room.id}/encounters/${fight.id}/combatants`,
+      { method: "POST", headers: gm.headers, body: JSON.stringify({ kind: "npc", npcId: oneHanded.id }) },
+      201
+    )
+  ).encounter.combatants.find((entry) => entry.name === "Deckhand");
+  assert.equal(alone.weapon.name, "Stun Baton");
+  assert.equal(alone.offhand, undefined, "An empty second slot is absent, not a blank weapon.");
+
+  // Anything typed in rather than picked is still read from its own notation.
+  const tough = (
+    await request(
+      `/api/rooms/${room.id}/npcs`,
+      { method: "POST", headers: gm.headers, body: JSON.stringify({ name: "Wharf Tough", notes: "" }) },
+      201
+    )
+  ).npc;
+  await json(
+    `/api/rooms/${room.id}/npcs/${tough.id}`,
+    {
+      method: "PATCH",
+      headers: gm.headers,
+      body: JSON.stringify({ name: "Wharf Tough", notes: "", statblock: { hp: 4, attacks: "Cudgel (D6)" } })
+    },
+    204
+  );
+  const typed = (
+    await request(
+      `/api/rooms/${room.id}/encounters/${fight.id}/combatants`,
+      { method: "POST", headers: gm.headers, body: JSON.stringify({ kind: "npc", npcId: tough.id }) },
+      201
+    )
+  ).encounter.combatants.find((entry) => entry.name === "Wharf Tough");
+  assert.equal(typed.weapon.name, "Cudgel");
+  assert.equal(typed.weapon.damage, "D6");
+
   // --- A character in a pool has no room, and so has the book's catalogue ---
 
   const pooled = await request(`/api/rooms/${twin.id}/characters`, { headers: gm.headers });

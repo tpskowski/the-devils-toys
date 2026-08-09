@@ -28,6 +28,7 @@ import {
   Music,
   ChevronRight,
   Plus,
+  LifeBuoy,
   ScrollText,
   Settings2,
   SlidersHorizontal,
@@ -66,6 +67,7 @@ import { InviteScreen } from "./InviteScreen";
 import { CharacterModal } from "./CharacterModal";
 import { extractRuleTocHeadings, filterRules, rulesPath } from "./rules";
 import { roomConfigPath } from "./room-config";
+import { helpPath } from "./help";
 import { MediaModal, type RoomMediaState } from "./MediaModal";
 import { LibraryModal } from "./LibraryModal";
 import { RulesMarkdown } from "./RulesMarkdown";
@@ -469,6 +471,14 @@ function Workspace({ account, status, onLogout }: { account: Account; status: St
           )}
         </nav>
         <div className="rail-footer">
+          {/*
+            The written guides, at an address of their own so they open beside
+            the game rather than over it. Which one opens is read from the
+            account's role, and any of them can be switched to from the page.
+          */}
+          <a href={helpPath()} target="_blank" rel="noreferrer" title="Help and guides">
+            <LifeBuoy size={16} /> <span>Help</span>
+          </a>
           <button onClick={() => setDocument("credits")} title="Credits">
             <Sparkles size={16} /> <span>Credits</span>
           </button>
@@ -592,7 +602,7 @@ function Lobby({
     <section className="lobby">
       <div className="lobby-copy">
         <h2>“Those who play with the devil’s toys will be brought by degrees to wield his sword.”</h2>
-        <p>— R. Buckminster Fuller</p>
+        <p>— Thomas Fuller</p>
         {canCreate && (
           <button className="primary-button" onClick={onCreate}>
             <Plus size={18} /> Create a room

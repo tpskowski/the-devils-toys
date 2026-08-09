@@ -11,7 +11,7 @@ import { config } from "./config.js";
 import { storedUploadBytes } from "./upload-usage.js";
 import { all, db, one } from "./db.js";
 import { broadcastRoom } from "./realtime.js";
-import { readMp3Metadata } from "./mp3-metadata.js";
+import { readMp3Metadata, type Mp3Metadata } from "./mp3-metadata.js";
 import { playlistsFor } from "./playlists.js";
 import { roomAccessRole } from "./room-config-permissions.js";
 
@@ -27,10 +27,16 @@ interface AudioRow {
   mime_type: string;
   artist: string | null;
   title: string | null;
+  album: string | null;
+  track_no: number | null;
   metadata_loaded: number;
   size: number;
   created_at: string;
 }
+
+/** The columns every read of a track needs, kept in one place. */
+const audioColumns = `id, room_id, kind, filename, stored_name, mime_type, artist, title, album, track_no,
+   metadata_loaded, size, created_at`;
 
 const upload = multer({
   storage: multer.diskStorage({
@@ -54,6 +60,8 @@ function publicAudio(row: AudioRow): MediaAsset {
     filename: row.filename,
     artist: row.artist,
     title: row.title,
+    album: row.album,
+    trackNo: row.track_no,
     mimeType: row.mime_type,
     size: row.size,
     visible: true,
@@ -64,19 +72,29 @@ function publicAudio(row: AudioRow): MediaAsset {
 
 function withMetadata(row: AudioRow) {
   if (row.metadata_loaded) return row;
-  let metadata = { artist: null as string | null, title: null as string | null };
+  let metadata: Mp3Metadata = { artist: null, title: null, album: null, trackNo: null };
   try {
     if (path.basename(row.stored_name) === row.stored_name)
       metadata = readMp3Metadata(path.join(uploadsDir, row.stored_name));
   } catch {
     // A missing or malformed tag must not make the room's playlist unavailable.
   }
-  db.prepare("UPDATE media SET artist = ?, title = ?, metadata_loaded = 1 WHERE id = ?").run(
-    metadata.artist,
-    metadata.title,
+  // The reader fills what the row is missing and never overwrites it, so a row
+  // sent back through this pass keeps whatever a GM has already corrected.
+  const read = {
+    artist: row.artist ?? metadata.artist,
+    title: row.title ?? metadata.title,
+    album: row.album ?? metadata.album,
+    track_no: row.track_no ?? metadata.trackNo
+  };
+  db.prepare("UPDATE media SET artist = ?, title = ?, album = ?, track_no = ?, metadata_loaded = 1 WHERE id = ?").run(
+    read.artist,
+    read.title,
+    read.album,
+    read.track_no,
     row.id
   );
-  return { ...row, ...metadata, metadata_loaded: 1 };
+  return { ...row, ...read, metadata_loaded: 1 };
 }
 
 function requireGm(req: AuthedRequest, res: express.Response) {
@@ -158,8 +176,7 @@ audioRouter.get("/rooms/:roomId/audio", requireAuth, (req: AuthedRequest, res) =
   if (!roomAccessRole(req.account!, roomId)) return res.status(404).json({ error: "Room not found." });
   if (!roomMusicEnabled(roomId)) return res.status(409).json({ error: "Music playback is not enabled for this room." });
   const tracks = all<AudioRow>(
-    `SELECT id, room_id, kind, filename, stored_name, mime_type, artist, title, metadata_loaded, size, created_at
-     FROM media WHERE room_id = ? AND kind = 'audio' ORDER BY id`,
+    `SELECT ${audioColumns} FROM media WHERE room_id = ? AND kind = 'audio' ORDER BY id`,
     roomId
   )
     .map(withMetadata)
@@ -198,8 +215,9 @@ audioRouter.post(
     const result = db
       .prepare(
         `INSERT INTO media
-           (room_id, uploaded_by, kind, filename, stored_name, artist, title, metadata_loaded, mime_type, size)
-         VALUES (?, ?, 'audio', ?, ?, ?, ?, 1, 'audio/mpeg', ?)`
+           (room_id, uploaded_by, kind, filename, stored_name, artist, title, album, track_no,
+            metadata_loaded, mime_type, size)
+         VALUES (?, ?, 'audio', ?, ?, ?, ?, ?, ?, 1, 'audio/mpeg', ?)`
       )
       .run(
         roomId,
@@ -208,13 +226,11 @@ audioRouter.post(
         req.file.filename,
         metadata.artist,
         metadata.title,
+        metadata.album,
+        metadata.trackNo,
         req.file.size
       );
-    const track = one<AudioRow>(
-      `SELECT id, room_id, kind, filename, stored_name, mime_type, artist, title, metadata_loaded, size, created_at
-       FROM media WHERE id = ?`,
-      Number(result.lastInsertRowid)
-    )!;
+    const track = one<AudioRow>(`SELECT ${audioColumns} FROM media WHERE id = ?`, Number(result.lastInsertRowid))!;
     broadcastRoom(roomId, { type: "audio-updated" });
     res.status(201).json({ track: publicAudio(track) });
   }
@@ -256,8 +272,7 @@ audioRouter.delete("/rooms/:roomId/audio/:mediaId", requireAuth, (req: AuthedReq
   const roomId = requireGm(req, res);
   if (!roomId) return;
   const row = one<AudioRow>(
-    `SELECT id, room_id, kind, filename, stored_name, mime_type, artist, title, metadata_loaded, size, created_at
-     FROM media WHERE id = ? AND room_id = ? AND kind = 'audio'`,
+    `SELECT ${audioColumns} FROM media WHERE id = ? AND room_id = ? AND kind = 'audio'`,
     Number(req.params.mediaId),
     roomId
   );

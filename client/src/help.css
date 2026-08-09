@@ -1,0 +1,237 @@
+/*
+ * The written guides, in their own tab. Laid out like the standalone rules
+ * reference — search above, contents on the left, the reading on the right —
+ * because it is the same job and a reader should not have to learn it twice.
+ */
+
+.help-page {
+  /* One definition of the two columns, so the toolbar above the reading and the
+     reading itself cannot drift apart: the guide picker sits over the menu, and
+     the search sits over the page. */
+  --help-columns: minmax(210px, 280px) minmax(0, 1fr);
+  --help-gap: clamp(24px, 4vw, 56px);
+  --help-measure: 76ch;
+
+  min-height: 100svh;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.help-header {
+  padding: 22px clamp(20px, 4vw, 52px);
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+}
+
+/* One line: the application, then which guide this is. */
+.help-page h1 {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0;
+  font-family: "Unbounded", sans-serif;
+  font-size: clamp(20px, 2.4vw, 30px);
+  line-height: 1.1;
+  letter-spacing: -0.035em;
+}
+
+.help-page h1 > svg {
+  flex: 0 0 auto;
+  color: var(--accent);
+}
+
+/* The only way out of the page is the one shown when nobody is signed in. */
+.help-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--accent);
+  font-size: 13px;
+  text-decoration: none;
+}
+
+.help-back:hover {
+  text-decoration: underline;
+}
+
+.help-guide-picker {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.help-guide-picker > span {
+  color: var(--muted);
+  font:
+    400 9px "DM Mono",
+    monospace;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.help-guide-picker select,
+.help-search input {
+  height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 0;
+  background: var(--surface);
+  color: var(--text);
+  font:
+    400 13px "Inter",
+    sans-serif;
+  min-width: 0;
+}
+
+.help-guide-picker select option {
+  background: var(--surface);
+  color: var(--text);
+}
+
+.help-workspace {
+  padding: clamp(20px, 3vw, 36px) clamp(20px, 4vw, 52px) 72px;
+}
+
+.help-toolbar {
+  display: grid;
+  grid-template-columns: var(--help-columns);
+  gap: var(--help-gap);
+  align-items: center;
+  margin-bottom: 22px;
+}
+
+/* In its own column, the label keeps its size and the control takes the rest. */
+.help-toolbar .help-guide-picker select {
+  flex: 1 1 auto;
+}
+
+.help-search {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  /* The same measure the reading is set to, so both edges line up with it. */
+  max-width: var(--help-measure);
+  padding-left: 11px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--muted);
+}
+
+.help-search input {
+  flex: 1 1 auto;
+  border: 0;
+  background: transparent;
+}
+
+.help-layout {
+  display: grid;
+  grid-template-columns: var(--help-columns);
+  gap: var(--help-gap);
+  align-items: start;
+}
+
+.help-menu {
+  position: sticky;
+  top: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.help-menu-label {
+  margin: 0 0 8px;
+  color: var(--muted);
+  font:
+    400 9px "DM Mono",
+    monospace;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.help-menu button {
+  display: block;
+  width: 100%;
+  padding: 9px 11px;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.help-menu button:hover {
+  background: color-mix(in srgb, var(--accent), transparent 92%);
+}
+
+.help-menu button.is-current {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent), transparent 88%);
+  box-shadow: inset 2px 0 var(--accent);
+}
+
+.help-menu button > span {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.help-menu button > small {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.help-menu-empty {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.help-elsewhere {
+  margin-top: 22px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+
+.help-reading {
+  min-width: 0;
+  max-width: var(--help-measure);
+}
+
+/* A worked example is often wider than the column. It scrolls inside its own
+   box, the way a wide table does, so the page itself never scrolls sideways. */
+.help-reading pre {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.help-reading img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 22px 0;
+  border: 1px solid var(--line);
+}
+
+.help-status {
+  color: var(--muted);
+}
+
+.help-empty {
+  max-width: 560px;
+  padding: clamp(40px, 8vw, 110px) clamp(24px, 5vw, 64px);
+}
+
+@media (max-width: 900px) {
+  .help-toolbar,
+  .help-layout {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 14px;
+  }
+
+  .help-menu {
+    position: static;
+  }
+}

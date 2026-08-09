@@ -144,26 +144,42 @@ playlistRouter.delete("/rooms/:roomId/playlists/:playlistId", requireAuth, (req:
 });
 
 /**
- * Renaming a track. The tag reader fills artist and title on upload, and gets
- * them wrong often enough that a GM needs somewhere to fix them.
+ * Renaming a track. The tag reader fills artist, title, album and track number
+ * on upload, and gets them wrong often enough that a GM needs somewhere to fix
+ * them — an album most of all, since it is what the tab groups by.
+ *
+ * A field left out keeps what it had. A field sent empty is cleared, which is
+ * how a track is taken out of an album the reader invented for it.
  */
 playlistRouter.patch("/rooms/:roomId/audio/:mediaId/tags", requireAuth, (req: AuthedRequest, res) => {
   const roomId = Number(req.params.roomId);
   if (roomAccessRole(req.account!, roomId) !== "gm")
     return res.status(403).json({ error: "Only the room GM can manage media." });
+  const text = z.string().trim().max(200).nullable().optional();
   const parsed = z
     .object({
-      artist: z.string().trim().max(200).nullable().optional(),
-      title: z.string().trim().max(200).nullable().optional()
+      artist: text,
+      title: text,
+      album: text,
+      trackNo: z.number().int().min(0).max(9999).nullable().optional()
     })
     .safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "Invalid track details." });
+  const { artist, title, album, trackNo } = parsed.data;
+  const columns: [string, string | number | null | undefined][] = [
+    ["artist", artist],
+    ["title", title],
+    ["album", album],
+    ["track_no", trackNo]
+  ];
+  const fields = columns.filter(([, value]) => value !== undefined).map(([column, value]) => [column, value || null]);
+  if (!fields.length) return res.status(400).json({ error: "Invalid track details." });
   const result = db
     .prepare(
-      `UPDATE media SET artist = COALESCE(?, artist), title = COALESCE(?, title), metadata_loaded = 1
+      `UPDATE media SET ${fields.map(([column]) => `${column} = ?`).join(", ")}, metadata_loaded = 1
        WHERE id = ? AND room_id = ? AND kind = 'audio'`
     )
-    .run(parsed.data.artist ?? null, parsed.data.title ?? null, Number(req.params.mediaId), roomId);
+    .run(...fields.map(([, value]) => value as string | number | null), Number(req.params.mediaId), roomId);
   if (!result.changes) return res.status(404).json({ error: "Track not found." });
   changed(roomId, res, { updated: true });
 });

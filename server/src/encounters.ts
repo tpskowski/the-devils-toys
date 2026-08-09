@@ -19,6 +19,7 @@ import {
   updateCharacter,
   type CharacterRow
 } from "./characters.js";
+import { characterItemsFor } from "./character-items.js";
 import { rollDice } from "./dice.js";
 import { roomHirelings } from "./group.js";
 import { groupRow, publicHireling, type SheetRow } from "./group-rows.js";
@@ -221,11 +222,34 @@ function sheetWeapons(system: SystemId, sheet: Record<string, unknown>, hireling
   };
 }
 
-/** What a creature attacks with, from the one statblock field that says so. */
-function statblockWeapon(system: SystemId, fields: Record<string, unknown>) {
+/**
+ * A weapon the room's own pickers offer, matched by the label they write. This
+ * is how a creature given a weapon from the catalogue carries it on exactly the
+ * terms a character's slot does — the entry's own damage, traits, and reach,
+ * rather than a second reading of the text those were written from. It is the
+ * same preference `catalogueClassification` applies to a filled slot.
+ */
+function catalogueWeapon(system: SystemId, roomId: number, label: string) {
+  for (const items of Object.values(characterItemsFor(system, roomId))) {
+    const item = items.find((entry) => entry.label === label);
+    if (!item?.weapon) continue;
+    return {
+      name: item.name.slice(0, 60),
+      ...(item.damage ? { damage: item.damage } : {}),
+      ...(item.traits?.length ? { traits: item.traits } : {}),
+      ...(item.range ? { range: item.range } : {})
+    };
+  }
+  return undefined;
+}
+
+/** What a creature fights with, from one of the statblock fields that say so. */
+function statblockWeapon(system: SystemId, roomId: number, fields: Record<string, unknown>, key: string) {
   const statblock = systems[system].npcStatblock;
-  const attacks = statblock.attacksKey ? String(fields[statblock.attacksKey] ?? "").trim() : "";
+  const attacks = String(fields[key] ?? "").trim();
   if (!attacks) return undefined;
+  const chosen = catalogueWeapon(system, roomId, attacks);
+  if (chosen) return chosen;
   const weaponRange = statblock.weaponRange;
   const { name, spec, trailing } = splitItemLabel(attacks);
   // A statblock usually writes an attack the way a slot does — "Laser Rifle
@@ -247,6 +271,21 @@ function statblockWeapon(system: SystemId, fields: Record<string, unknown>) {
     name: (bare || attacks).slice(0, 60),
     ...(damage ? { damage } : {}),
     range: itemRange({ name: bare }, weaponRange)
+  };
+}
+
+/**
+ * Both of a creature's weapons, as the same pair a sheet hands over: what it
+ * leads with, and the other hand where it has one. A slot left empty is absent
+ * rather than blank, so the rail draws one mark for one weapon.
+ */
+function statblockWeapons(system: SystemId, roomId: number, fields: Record<string, unknown>) {
+  const [first, second] = systems[system].npcStatblock.weaponKeys ?? [];
+  const weapon = first ? statblockWeapon(system, roomId, fields, first) : undefined;
+  const offhand = second ? statblockWeapon(system, roomId, fields, second) : undefined;
+  return {
+    ...(weapon ? { weapon } : {}),
+    ...(offhand ? { offhand } : {})
   };
 }
 
@@ -369,7 +408,7 @@ export function visibleEncounter(accountId: number, roomId: number, encounterId:
         // is not, and stays with the rest of its statblock.
         armor: statblockArmor(context.system, statblock(row.statblock_json)),
         criticalDamage: markedCritical(context.system, statblock(row.statblock_json)),
-        weapon: statblockWeapon(context.system, statblock(row.statblock_json)),
+        ...statblockWeapons(context.system, roomId, statblock(row.statblock_json)),
         statblock: context.role === "gm" ? statblock(row.statblock_json) : undefined,
         npcId: context.role === "gm" ? row.npc_id : undefined
       }

@@ -106,6 +106,41 @@ export interface RoomConfigPayload {
   calendar: RoomCalendar;
 }
 
+/**
+ * The written guides. Three are one per account role, and a fourth covers The
+ * Devil's Tables, the table editor that runs beside the game. The ids are the
+ * addresses the help pages are reached at, so the server and the client must
+ * spell them the same way — and an account's role only picks which one opens
+ * first. Any of them can be read by anyone signed in.
+ */
+export const HELP_GUIDES = ["player", "gm", "admin", "tables"] as const;
+
+export type HelpGuideId = (typeof HELP_GUIDES)[number];
+
+export interface HelpPage {
+  /** Its address within the guide; "overview" is the guide's own README. */
+  slug: string;
+  title: string;
+  markdown: string;
+}
+
+export interface HelpGuide {
+  id: HelpGuideId;
+  label: string;
+  pages: HelpPage[];
+}
+
+export interface HelpPayload {
+  /** The guide that opens first, from the reader's own account role. */
+  viewerRole: AccountRole;
+  guides: HelpGuide[];
+}
+
+/** The guide an account sees first. Roles and guides share their names but not their meaning. */
+export function helpGuideForRole(role: AccountRole): HelpGuideId {
+  return role === "admin" ? "admin" : role === "gm" ? "gm" : "player";
+}
+
 export const MAP_NOTATION_COLORS = ["#e53935", "#ffb300", "#43a047", "#1e88e5", "#8e24aa", "#f5f5f5"] as const;
 export type MapNotationColor = (typeof MAP_NOTATION_COLORS)[number];
 
@@ -179,6 +214,9 @@ export interface MediaAsset {
   displayName?: string | null;
   artist?: string | null;
   title?: string | null;
+  album?: string | null;
+  /** The track's place on its album, which is the order an album plays in. */
+  trackNo?: number | null;
   mimeType: string;
   size: number;
   visible: boolean;
@@ -723,8 +761,13 @@ export interface NpcStatblockField {
 export interface NpcStatblockDefinition {
   hitPointsKey: string;
   armorKey?: string;
-  /** The field holding what the creature attacks with, where the system states one. */
-  attacksKey?: string;
+  /**
+   * The fields holding what the creature fights with, in the order it brings
+   * them to bear. The first is what it leads with and the second is its other
+   * hand, which is the pair a character carries and the pair the rail draws.
+   * A system that states one weapon and no more names one key.
+   */
+  weaponKeys?: readonly string[];
   /** How the statblock states an attack's reach, in the system's own words. */
   weaponRange?: WeaponRangeRules;
   fields: readonly NpcStatblockField[];

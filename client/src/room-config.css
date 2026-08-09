@@ -451,7 +451,14 @@
   border-bottom: 0;
 }
 
-.rc-table tr.is-selected td {
+/* A row here is two lines deep — a name over its filename — so alternating the
+   ground under it is what says which second line belongs to which first. */
+.rc-table tbody tr:nth-child(even) td {
+  background: color-mix(in srgb, var(--text), transparent 96%);
+}
+
+.rc-table tr.is-selected td,
+.rc-table tbody tr.is-selected:nth-child(even) td {
   background: color-mix(in srgb, var(--accent), transparent 93%);
 }
 
@@ -472,6 +479,28 @@
   font:
     400 10px "DM Mono",
     monospace;
+}
+
+/* The visibility column: an open eye is shown to the room, a closed one is not,
+   and either is a button the GM can turn over. */
+button.rc-eye {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 26px;
+  padding: 0;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--muted);
+}
+
+button.rc-eye.is-open {
+  color: var(--accent);
+}
+
+button.rc-eye:hover:not(:disabled) {
+  border-color: var(--line);
+  background: var(--surface);
 }
 
 button.rc-name {
@@ -629,6 +658,22 @@ button.rc-name {
 .rc-statblock input,
 .rc-notes textarea {
   width: 100%;
+}
+
+/* What a creature attacks with: a weapon out of the room's own pickers, whose
+   names are longer than a stat's, over the box that types one the book never
+   priced. Both are bounded by the cell so a long label cannot widen the grid. */
+.rc-statblock-weapon {
+  grid-column: span 2;
+}
+
+.rc-statblock-weapon select {
+  width: 100%;
+  max-width: 100%;
+}
+
+.rc-statblock-weapon select + input {
+  margin-top: 6px;
 }
 
 .rc-npc-actions {
@@ -847,6 +892,133 @@ button.rc-name {
 .rc-playlists .rc-table input {
   width: 100%;
   min-width: 110px;
+}
+
+/* The running order, which is dragged as well as stepped through. */
+
+.rc-running-order li {
+  padding: 3px 6px;
+  border: 1px solid transparent;
+}
+
+.rc-running-order li.is-dragging {
+  opacity: 0.45;
+}
+
+.rc-running-order li.is-over {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent), transparent 92%);
+}
+
+.rc-running-order .rc-ordinal {
+  width: 28px;
+  color: var(--muted);
+  font:
+    400 11px "DM Mono",
+    monospace;
+}
+
+.rc-grip {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 18px;
+  color: var(--muted);
+  cursor: grab;
+}
+
+.rc-grip:active {
+  cursor: grabbing;
+}
+
+.rc-track-album {
+  flex: 0 1 auto;
+  overflow: hidden;
+  color: var(--muted);
+  font:
+    400 10px "DM Mono",
+    monospace;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Adding to a playlist: everything at once, an album at a time, or a track. */
+
+.rc-playlist-add {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.rc-playlist-add-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.rc-add-album-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.rc-add-album-head strong {
+  font-size: 12px;
+}
+
+.rc-add-tracks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* The room's music, gathered into the albums it came from. */
+
+.rc-music-table .rc-track-no {
+  width: 46px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.rc-music-table .rc-track-no input {
+  min-width: 0;
+  text-align: right;
+}
+
+.rc-album-row th {
+  padding: 9px 12px;
+  border-top: 1px solid var(--line);
+  background: color-mix(in srgb, var(--accent), transparent 92%);
+  color: var(--text);
+  font:
+    600 11px "Inter",
+    sans-serif;
+  letter-spacing: 0.04em;
+  text-transform: none;
+}
+
+.rc-album-row th small {
+  display: inline;
+  margin-left: 10px;
+  color: var(--muted);
+  font:
+    400 10px "DM Mono",
+    monospace;
+}
+
+.rc-playlists .rc-panel-block > header {
+  flex-wrap: wrap;
+}
+
+.rc-playlists .rc-panel-block > header .rc-checkbox {
+  margin-left: auto;
+  padding-bottom: 0;
 }
 
 /* Calendar. */

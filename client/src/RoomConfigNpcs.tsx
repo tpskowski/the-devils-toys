@@ -1,12 +1,28 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { BookOpen, Copy, CopyPlus, Plus, Save, Trash2 } from "lucide-react";
-import type { NpcStatblockDefinition, RoomConfigRoom, SystemId } from "@devils-toys/shared";
+import type { CharacterItem, NpcStatblockDefinition, RoomConfigRoom, SystemId } from "@devils-toys/shared";
 import { api } from "./api";
 import { RulesMarkdown } from "./RulesMarkdown";
 
 interface BuiltInNpc {
   name: string;
   markdown: string;
+}
+
+/** What the select writes for "type your own", which no label can be. */
+const CUSTOM = "";
+
+/**
+ * Every weapon the room can offer, from its system's tables and its own
+ * additions alike, in one alphabetical list. A weapon filed under two headings
+ * is one entry here, since the pickers write a label and the label is what a
+ * creature ends up carrying.
+ */
+function roomWeapons(lists: { items: CharacterItem[] }[]) {
+  const byLabel = new Map<string, CharacterItem>();
+  for (const list of lists)
+    for (const item of list.items) if (item.weapon && !byLabel.has(item.label)) byLabel.set(item.label, item);
+  return [...byLabel.values()].sort((left, right) => left.name.localeCompare(right.name));
 }
 
 interface CustomNpc {
@@ -64,6 +80,12 @@ export function RoomConfigNpcs({
   const definition = system.npcStatblock;
   const [catalog, setCatalog] = useState<BuiltInNpc[]>([]);
   const [custom, setCustom] = useState<CustomNpc[]>([]);
+  const [weapons, setWeapons] = useState<CharacterItem[]>([]);
+  // Which weapon slots the GM has chosen to type into rather than pick from,
+  // which is the only case the stored text cannot say for itself: text matching
+  // no entry is already custom, and text matching one is that entry until this
+  // says otherwise. Kept per slot, since the two are filled independently.
+  const [typingAttack, setTypingAttack] = useState<Record<string, boolean>>({});
   const [selectedId, setSelectedId] = useState<number>();
   const [reading, setReading] = useState<string>();
   // The draft carries the id it was built from. Anything that reloads the roster
@@ -112,7 +134,17 @@ export function RoomConfigNpcs({
 
   useEffect(() => {
     setConfirmingDelete(false);
+    setTypingAttack({});
   }, [selectedId]);
+
+  // The same pickers the room's characters fill their slots from, so a creature
+  // is armed out of the catalogue the table already has rather than a second
+  // list kept beside it. A room whose account cannot read them simply gets none.
+  useEffect(() => {
+    api<{ lists: { items: CharacterItem[] }[] }>(`/api/rooms/${roomId}/items`)
+      .then((result) => setWeapons(roomWeapons(result.lists)))
+      .catch(() => setWeapons([]));
+  }, [roomId, revision]);
 
   const roster = useMemo(() => {
     const needle = query.trim().toLocaleLowerCase();
@@ -321,16 +353,50 @@ export function RoomConfigNpcs({
             </header>
 
             <div className="rc-statblock">
-              {definition.fields.map((field) => (
-                <label key={field.key}>
-                  <span>{field.label}</span>
-                  <input
-                    value={value.statblock[field.key] ?? ""}
-                    inputMode={field.kind === "number" ? "numeric" : "text"}
-                    onChange={(event) => edit({ statblock: { ...value.statblock, [field.key]: event.target.value } })}
-                  />
-                </label>
-              ))}
+              {definition.fields.map((field) => {
+                const held = value.statblock[field.key] ?? "";
+                const setField = (next: string) => edit({ statblock: { ...value.statblock, [field.key]: next } });
+                // The field the system names as what a creature attacks with is
+                // filled from the room's weapons, so the creature carries one on
+                // the terms the catalogue states rather than on a line of text
+                // that has to be read back. Every other field stays free text.
+                const armoury = definition.weaponKeys?.includes(field.key) && weapons.length > 0;
+                const chosen =
+                  !typingAttack[field.key] && weapons.some((weapon) => weapon.label === held) ? held : CUSTOM;
+                return (
+                  <label key={field.key} className={armoury ? "rc-statblock-weapon" : undefined}>
+                    <span>{field.label}</span>
+                    {armoury && (
+                      <select
+                        value={chosen}
+                        aria-label={`${field.label} from the room’s weapons`}
+                        onChange={(event) => {
+                          setTypingAttack((current) => ({
+                            ...current,
+                            [field.key]: event.target.value === CUSTOM
+                          }));
+                          if (event.target.value !== CUSTOM) setField(event.target.value);
+                        }}
+                      >
+                        <option value={CUSTOM}>Custom…</option>
+                        {weapons.map((weapon) => (
+                          <option key={weapon.id} value={weapon.label}>
+                            {weapon.label}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                    {(!armoury || chosen === CUSTOM) && (
+                      <input
+                        value={held}
+                        aria-label={armoury ? `${field.label}, typed in` : undefined}
+                        inputMode={field.kind === "number" ? "numeric" : "text"}
+                        onChange={(event) => setField(event.target.value)}
+                      />
+                    )}
+                  </label>
+                );
+              })}
             </div>
 
             <label className="rc-notes">

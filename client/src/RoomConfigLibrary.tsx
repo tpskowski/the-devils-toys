@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
-import { Check, Eye, EyeOff, FileText, FileUp, Image as ImageIcon, Map as MapIcon, Radio, Trash2 } from "lucide-react";
+import { Eye, EyeOff, FileText, FileUp, Image as ImageIcon, Map as MapIcon, Radio, Trash2 } from "lucide-react";
 import type { MediaAsset } from "@devils-toys/shared";
 import { api } from "./api";
 import { isMarkdownAsset } from "./MediaContent";
@@ -243,7 +243,7 @@ export function RoomConfigLibrary({ roomId, revision }: { roomId: number; revisi
               <th scope="col">Name</th>
               <th scope="col">Filed as</th>
               <th scope="col">Size</th>
-              <th scope="col">Shown</th>
+              <th scope="col">Visible</th>
               <th scope="col">In use</th>
               <th scope="col" className="rc-actions-column">
                 Actions
@@ -299,7 +299,34 @@ export function RoomConfigLibrary({ roomId, revision }: { roomId: number; revisi
                   </td>
                   <td>{mediaKindLabel(asset.kind)}</td>
                   <td>{formatSize(asset.size)}</td>
-                  <td>{asset.visible ? <Check size={14} /> : <span className="room-config-muted">—</span>}</td>
+                  <td>
+                    <button
+                      type="button"
+                      className={`rc-eye${asset.visible ? " is-open" : ""}`}
+                      aria-pressed={asset.visible}
+                      disabled={Boolean(busy)}
+                      title={
+                        asset.visible
+                          ? `Hide ${mediaLabel(asset)} from the room`
+                          : `Show ${mediaLabel(asset)} to the room`
+                      }
+                      aria-label={
+                        asset.visible
+                          ? `Hide ${mediaLabel(asset)} from the room`
+                          : `Show ${mediaLabel(asset)} to the room`
+                      }
+                      onClick={() =>
+                        act(asset.visible ? "Hiding…" : "Showing…", () =>
+                          api(`/api/rooms/${roomId}/media/${asset.id}/visibility`, {
+                            method: "PATCH",
+                            body: JSON.stringify({ visible: !asset.visible })
+                          })
+                        )
+                      }
+                    >
+                      {asset.visible ? <Eye size={15} /> : <EyeOff size={15} />}
+                    </button>
+                  </td>
                   <td className={active ? "" : "room-config-muted"}>{active || "Unused"}</td>
                   <td className="rc-actions-column">
                     {asset.kind !== "reference" ? (

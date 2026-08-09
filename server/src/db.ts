@@ -153,6 +153,8 @@ db.exec(`
     stored_name TEXT NOT NULL,
     artist TEXT,
     title TEXT,
+    album TEXT,
+    track_no INTEGER,
     metadata_loaded INTEGER NOT NULL DEFAULT 0,
     visible INTEGER NOT NULL DEFAULT 0,
     mime_type TEXT NOT NULL,
@@ -407,6 +409,15 @@ if (!hasColumn("media", "category")) db.exec("ALTER TABLE media ADD COLUMN categ
 if (!hasColumn("media", "display_name")) db.exec("ALTER TABLE media ADD COLUMN display_name TEXT");
 if (!hasColumn("media", "artist")) db.exec("ALTER TABLE media ADD COLUMN artist TEXT");
 if (!hasColumn("media", "title")) db.exec("ALTER TABLE media ADD COLUMN title TEXT");
+// Album and track number arrived after rooms already held music, and every one
+// of those tracks is marked as read. Marking them unread sends them back
+// through the tag reader once; it fills only what is missing, so an artist or a
+// title the GM corrected by hand survives the second pass.
+if (!hasColumn("media", "album")) {
+  db.exec("ALTER TABLE media ADD COLUMN album TEXT");
+  db.exec("ALTER TABLE media ADD COLUMN track_no INTEGER");
+  db.exec("UPDATE media SET metadata_loaded = 0 WHERE kind = 'audio'");
+}
 if (!hasColumn("table_sets", "tags_json"))
   db.exec("ALTER TABLE table_sets ADD COLUMN tags_json TEXT NOT NULL DEFAULT '[]'");
 // A short-lived JSON migration stored the original Markdown alongside its JSON.

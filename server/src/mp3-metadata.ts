@@ -3,6 +3,9 @@ import fs from "node:fs";
 export interface Mp3Metadata {
   artist: string | null;
   title: string | null;
+  album: string | null;
+  /** The track's place on its album, read from `TRCK`'s "5" or "5/12". */
+  trackNo: number | null;
 }
 
 function syncSafe(bytes: Uint8Array) {
@@ -41,13 +44,26 @@ function decodeTextFrame(payload: Buffer) {
   return "";
 }
 
+/** A track number, from a bare "5" or from ID3's "5/12". Anything else is none. */
+function trackNumber(value: string) {
+  const digits = /^\s*(\d{1,4})/.exec(value);
+  const parsed = digits ? Number(digits[1]) : 0;
+  return parsed > 0 ? parsed : null;
+}
+
+const empty: Mp3Metadata = { artist: null, title: null, album: null, trackNo: null };
+
 function id3v1(buffer: Buffer): Mp3Metadata {
-  if (buffer.length < 128) return { artist: null, title: null };
+  if (buffer.length < 128) return empty;
   const tag = buffer.subarray(buffer.length - 128);
-  if (tag.subarray(0, 3).toString("ascii") !== "TAG") return { artist: null, title: null };
+  if (tag.subarray(0, 3).toString("ascii") !== "TAG") return empty;
   return {
     title: clean(tag.subarray(3, 33).toString("latin1")) || null,
-    artist: clean(tag.subarray(33, 63).toString("latin1")) || null
+    artist: clean(tag.subarray(33, 63).toString("latin1")) || null,
+    album: clean(tag.subarray(63, 93).toString("latin1")) || null,
+    // ID3v1.1 spends the comment's last two bytes on the track number, and marks
+    // that it has done so by leaving the byte before it zero.
+    trackNo: tag[125] === 0 && tag[126] > 0 ? tag[126] : null
   };
 }
 
@@ -66,6 +82,8 @@ export function parseMp3Metadata(buffer: Buffer): Mp3Metadata {
 
   let artist: string | null = null;
   let title: string | null = null;
+  let album: string | null = null;
+  let trackNo: number | null = null;
   while (offset < tagEnd) {
     const headerSize = version === 2 ? 6 : 10;
     if (offset + headerSize > tagEnd) break;
@@ -83,9 +101,16 @@ export function parseMp3Metadata(buffer: Buffer): Mp3Metadata {
     if (frameSize <= 0 || end > tagEnd) break;
     if (id === "TIT2" || id === "TT2") title = decodeTextFrame(buffer.subarray(start, end)) || title;
     if (id === "TPE1" || id === "TP1") artist = decodeTextFrame(buffer.subarray(start, end)) || artist;
+    if (id === "TALB" || id === "TAL") album = decodeTextFrame(buffer.subarray(start, end)) || album;
+    if (id === "TRCK" || id === "TRK") trackNo = trackNumber(decodeTextFrame(buffer.subarray(start, end))) ?? trackNo;
     offset = end;
   }
-  return { artist: artist ?? fallback.artist, title: title ?? fallback.title };
+  return {
+    artist: artist ?? fallback.artist,
+    title: title ?? fallback.title,
+    album: album ?? fallback.album,
+    trackNo: trackNo ?? fallback.trackNo
+  };
 }
 
 export function readMp3Metadata(filename: string) {
