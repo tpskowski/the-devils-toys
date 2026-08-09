@@ -575,7 +575,8 @@ button.rc-name {
   border-bottom: 1px solid color-mix(in srgb, var(--line), transparent 50%);
 }
 
-.rc-list li > button:first-child {
+.rc-list li > button:first-child,
+.rc-list li > .rc-list-static:first-child {
   flex: 1 1 auto;
   display: block;
   height: auto;
@@ -586,7 +587,8 @@ button.rc-name {
   text-align: left;
 }
 
-.rc-list li > button:first-child > span {
+.rc-list li > button:first-child > span,
+.rc-list li > .rc-list-static:first-child > span {
   display: block;
   overflow: hidden;
   font-weight: 600;

@@ -15,6 +15,8 @@ export interface GroupSheetRow {
   sheet: Record<string, unknown>;
   sortOrder: number;
   imageUrl: string | null;
+  /** Bumped by every write, so a save can be told it is working from a stale copy. */
+  revision: number;
   updatedAt: string;
 }
 
@@ -25,11 +27,17 @@ export interface GroupObligation {
   amount: string;
   details: string;
   sortOrder: number;
+  revision: number;
   updatedAt: string;
 }
 
 /** A row with its sheet's fields alongside its own, which is what a sheet renders from. */
-export type GroupEntry = Record<string, unknown> & { id: number; name: string; imageUrl: string | null };
+export type GroupEntry = Record<string, unknown> & {
+  id: number;
+  name: string;
+  imageUrl: string | null;
+  revision: number;
+};
 
 /** A hireling and a shared asset are the same shape here; only their routes differ. */
 export type GroupHireling = GroupEntry;
@@ -40,10 +48,10 @@ export type GroupAsset = GroupEntry;
  * beside the sheet's fields for rendering, and splitting has to take them back
  * out so they are never written into the sheet as if they were part of it.
  */
-const rowOwnKeys = ["id", "name", "imageUrl", "sortOrder", "updatedAt"] as const;
+const rowOwnKeys = ["id", "name", "imageUrl", "sortOrder", "revision", "updatedAt"] as const;
 
 export function flattenRow(row: GroupSheetRow): GroupEntry {
-  return { ...row.sheet, id: row.id, name: row.name, imageUrl: row.imageUrl };
+  return { ...row.sheet, id: row.id, name: row.name, imageUrl: row.imageUrl, revision: row.revision };
 }
 
 export function splitRow(entry: GroupEntry) {

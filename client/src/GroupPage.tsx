@@ -67,6 +67,13 @@ interface GroupResponse {
 /** Which roster a row belongs to, and so which routes reach it. */
 type RosterKind = "hirelings" | "assets" | "obligations";
 
+/** What a row route answers with, whichever roster it was. */
+interface SavedRow {
+  hireling?: GroupSheetRow;
+  asset?: GroupSheetRow;
+  obligation?: GroupObligation;
+}
+
 interface PartyCharacterResponse {
   characters: ReadOnlyCharacter[];
   activeCharacterId: number | null;
@@ -305,6 +312,9 @@ export function GroupPage({
   function queueRowSave(kind: RosterKind, id: number, body: () => Record<string, unknown>) {
     if (!canEditGroup) return;
     const key = `${kind}:${id}`;
+    // Marked dirty for as long as anything is pending, so a change reported over
+    // the socket does not reload the roster on top of what is still being typed.
+    dirtyRef.current = true;
     setStatus("Unsaved");
     setError("");
     window.clearTimeout(rowSaveTimers.current.get(key));
@@ -313,14 +323,33 @@ export function GroupPage({
       window.setTimeout(() => {
         rowSaveTimers.current.delete(key);
         setStatus("Saving…");
-        api(`/api/rooms/${roomId}/group/${kind}/${id}`, { method: "PATCH", body: JSON.stringify(body()) })
-          .then(() => setStatus(rowSaveTimers.current.size ? "Unsaved" : "Saved"))
+        api<SavedRow>(`/api/rooms/${roomId}/group/${kind}/${id}`, { method: "PATCH", body: JSON.stringify(body()) })
+          .then((result) => {
+            // Carry the revision the write produced, so the next save is judged
+            // against it rather than against the one this row was loaded with.
+            const saved = result.hireling ?? result.asset ?? result.obligation;
+            if (saved) noteRevision(kind, id, saved.revision);
+            const idle = rowSaveTimers.current.size === 0;
+            if (idle) dirtyRef.current = false;
+            setStatus(idle ? "Saved" : "Unsaved");
+          })
           .catch((cause: Error) => {
+            // Still dirty: the edit is on the page and not in the database, so a
+            // reload must not be allowed to quietly replace it.
             setStatus("Unsaved");
             setError(cause.message);
           });
       }, 650)
     );
+  }
+
+  /** Records the revision a write returned, on whichever roster the row is in. */
+  function noteRevision(kind: RosterKind, id: number, revision: number) {
+    const bump = <T extends { id: number; revision: number }>(rows: T[]) =>
+      rows.map((row) => (row.id === id ? { ...row, revision } : row));
+    if (kind === "hirelings") setHirelings(bump);
+    else if (kind === "assets") setStarships(bump);
+    else setObligations(bump);
   }
 
   /** Change one entry in a roster locally, then save that row and only that row. */
@@ -339,7 +368,7 @@ export function GroupPage({
         return saved;
       })
     );
-    queueRowSave(kind, id, () => splitRow(saved!));
+    queueRowSave(kind, id, () => ({ ...splitRow(saved!), revision: saved!.revision }));
   }
 
   function updateObligations(updater: (current: GroupObligation[]) => GroupObligation[]) {
@@ -363,10 +392,24 @@ export function GroupPage({
 
   function setObligationField(id: number, field: GroupObligationField, value: string) {
     if (!canEditGroup) return;
+    // The whole row goes, not the field last touched: the save is debounced per
+    // row, so typing a name and then an amount within one window would otherwise
+    // send only the amount and leave the name behind.
+    let saved: GroupObligation | undefined;
     updateObligations((current) =>
-      current.map((obligation) => (obligation.id === id ? { ...obligation, [field]: value } : obligation))
+      current.map((obligation) => {
+        if (obligation.id !== id) return obligation;
+        saved = { ...obligation, [field]: value };
+        return saved;
+      })
     );
-    queueRowSave("obligations", id, () => ({ [field]: value }));
+    queueRowSave("obligations", id, () => ({
+      name: saved!.name,
+      owedTo: saved!.owedTo,
+      amount: saved!.amount,
+      details: saved!.details,
+      revision: saved!.revision
+    }));
   }
 
   async function removeObligation(id: number) {

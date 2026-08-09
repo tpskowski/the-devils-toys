@@ -321,18 +321,32 @@ function useRoomWatch(roomId: number | undefined, onChange: () => void) {
     if (roomId === undefined) return;
     let stopped = false;
     let retry: number;
+    let attempt = 0;
     let socket: WebSocket;
     const connect = () => {
       const protocol = location.protocol === "https:" ? "wss:" : "ws:";
       socket = new WebSocket(`${protocol}//${location.host}/ws`);
-      socket.onopen = () => socket.send(JSON.stringify({ type: "watch", roomId }));
+      socket.onopen = () => {
+        attempt = 0;
+        socket.send(JSON.stringify({ type: "watch", roomId }));
+      };
       socket.onmessage = (event) => {
-        const data = JSON.parse(event.data) as { type?: string };
+        let data: { type?: string };
+        try {
+          data = JSON.parse(event.data) as { type?: string };
+        } catch {
+          // A frame this page cannot read is not a change it has to act on.
+          return;
+        }
         if (typeof data.type === "string" && data.type.endsWith("-updated")) changed.current();
         if (data.type === "room-access-removed") changed.current();
       };
       socket.onclose = () => {
-        if (!stopped) retry = window.setTimeout(connect, 1500);
+        // The panel is left open for hours at a time, so a server that has gone
+        // away is backed off rather than asked every second and a half forever.
+        if (stopped) return;
+        attempt += 1;
+        retry = window.setTimeout(connect, Math.min(1500 * 2 ** (attempt - 1), 30000));
       };
     };
     connect();

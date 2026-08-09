@@ -7,6 +7,7 @@ const row: GroupSheetRow = {
   sheet: { hpCurrent: 3, hpMax: 4, gear: ["Shiv"] },
   sortOrder: 1,
   imageUrl: "/api/rooms/1/group/hirelings/12/image?v=stored.png",
+  revision: 4,
   updatedAt: "2026-08-02 10:00:00"
 };
 
@@ -16,6 +17,7 @@ describe("a roster row on the sheet", () => {
       id: 12,
       name: "Vetch",
       imageUrl: "/api/rooms/1/group/hirelings/12/image?v=stored.png",
+      revision: 4,
       hpCurrent: 3,
       hpMax: 4,
       gear: ["Shiv"]
@@ -37,10 +39,9 @@ describe("a roster row on the sheet", () => {
     });
   });
 
-  it("does not carry sortOrder or updatedAt into the sheet even when they are handed back", () => {
-    expect(splitRow({ ...flattenRow(row), sortOrder: 9, updatedAt: "later" } as never).sheet).not.toHaveProperty(
-      "sortOrder"
-    );
+  it("does not carry the row's own fields into the sheet even when they are handed back", () => {
+    const sheet = splitRow({ ...flattenRow(row), sortOrder: 9, updatedAt: "later" } as never).sheet;
+    for (const key of ["sortOrder", "updatedAt", "revision", "imageUrl", "id"]) expect(sheet).not.toHaveProperty(key);
   });
 
   it("treats a row with no picture as having none rather than as having an empty one", () => {

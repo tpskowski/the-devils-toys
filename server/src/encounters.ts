@@ -30,6 +30,9 @@ import { systems } from "./systems.js";
 
 export const encounterRouter = express.Router();
 
+/** The room's gear as its pickers offer it, resolved once and passed along. */
+type RoomCatalogue = ReturnType<typeof characterItemsFor>;
+
 interface EncounterRow {
   id: number;
   room_id: number;
@@ -229,8 +232,8 @@ function sheetWeapons(system: SystemId, sheet: Record<string, unknown>, hireling
  * rather than a second reading of the text those were written from. It is the
  * same preference `catalogueClassification` applies to a filled slot.
  */
-function catalogueWeapon(system: SystemId, roomId: number, label: string) {
-  for (const items of Object.values(characterItemsFor(system, roomId))) {
+function catalogueWeapon(catalogue: RoomCatalogue, label: string) {
+  for (const items of Object.values(catalogue)) {
     const item = items.find((entry) => entry.label === label);
     if (!item?.weapon) continue;
     return {
@@ -244,11 +247,11 @@ function catalogueWeapon(system: SystemId, roomId: number, label: string) {
 }
 
 /** What a creature fights with, from one of the statblock fields that say so. */
-function statblockWeapon(system: SystemId, roomId: number, fields: Record<string, unknown>, key: string) {
+function statblockWeapon(system: SystemId, catalogue: RoomCatalogue, fields: Record<string, unknown>, key: string) {
   const statblock = systems[system].npcStatblock;
   const attacks = String(fields[key] ?? "").trim();
   if (!attacks) return undefined;
-  const chosen = catalogueWeapon(system, roomId, attacks);
+  const chosen = catalogueWeapon(catalogue, attacks);
   if (chosen) return chosen;
   const weaponRange = statblock.weaponRange;
   const { name, spec, trailing } = splitItemLabel(attacks);
@@ -279,10 +282,10 @@ function statblockWeapon(system: SystemId, roomId: number, fields: Record<string
  * leads with, and the other hand where it has one. A slot left empty is absent
  * rather than blank, so the rail draws one mark for one weapon.
  */
-function statblockWeapons(system: SystemId, roomId: number, fields: Record<string, unknown>) {
+function statblockWeapons(system: SystemId, catalogue: RoomCatalogue, fields: Record<string, unknown>) {
   const [first, second] = systems[system].npcStatblock.weaponKeys ?? [];
-  const weapon = first ? statblockWeapon(system, roomId, fields, first) : undefined;
-  const offhand = second ? statblockWeapon(system, roomId, fields, second) : undefined;
+  const weapon = first ? statblockWeapon(system, catalogue, fields, first) : undefined;
+  const offhand = second ? statblockWeapon(system, catalogue, fields, second) : undefined;
   return {
     ...(weapon ? { weapon } : {}),
     ...(offhand ? { offhand } : {})
@@ -328,6 +331,10 @@ export function visibleEncounter(accountId: number, roomId: number, encounterId:
   const encounter = one<EncounterRow>("SELECT * FROM encounters WHERE id = ? AND room_id = ?", encounterId, roomId);
   if (!encounter || (context.role === "player" && !encounter.active)) return;
   const hirelings = hirelingsById(roomId);
+  // Built once here rather than per weapon per combatant: resolving the room's
+  // overlay costs two queries and a copy of the whole catalogue, and a fight
+  // with a dozen creatures asked for it two dozen times.
+  const catalogue = characterItemsFor(context.system, roomId);
   const rows = all<CombatantRow>(
     "SELECT * FROM encounter_combatants WHERE encounter_id = ? ORDER BY sort_order, id",
     encounterId
@@ -408,7 +415,7 @@ export function visibleEncounter(accountId: number, roomId: number, encounterId:
         // is not, and stays with the rest of its statblock.
         armor: statblockArmor(context.system, statblock(row.statblock_json)),
         criticalDamage: markedCritical(context.system, statblock(row.statblock_json)),
-        ...statblockWeapons(context.system, roomId, statblock(row.statblock_json)),
+        ...statblockWeapons(context.system, catalogue, statblock(row.statblock_json)),
         statblock: context.role === "gm" ? statblock(row.statblock_json) : undefined,
         npcId: context.role === "gm" ? row.npc_id : undefined
       }
@@ -935,14 +942,29 @@ encounterRouter.patch(
         const result = updateCharacter(req.account!.id, roomId, row.character_id!, { sheetPatch: scores });
         if ("error" in result) return res.status(result.status).json({ error: result.error });
       } else if (row.kind === "hireling") {
-        // Straight onto the hireling's own row: no document to merge into, and
-        // nothing else on the group page to collide with.
-        const hireling = groupRow<SheetRow>("group_hirelings", roomId, row.hireling_id!);
-        if (!hireling) return res.status(404).json({ error: "Hireling not found." });
-        const sheet = { ...publicHireling(hireling).sheet, ...scores };
-        db.prepare(
-          "UPDATE group_hirelings SET sheet_json = ?, revision = revision + 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?"
-        ).run(JSON.stringify(sheet), hireling.id);
+        // Straight onto the hireling's own row, but read and written inside one
+        // transaction: two hits landing together would otherwise each merge into
+        // the sheet they read before the other wrote, and the first would be
+        // lost. Damage is applied rather than proposed, so this serialises the
+        // two rather than refusing the second.
+        let missing = false;
+        db.exec("BEGIN IMMEDIATE");
+        try {
+          const hireling = groupRow<SheetRow>("group_hirelings", roomId, row.hireling_id!);
+          if (!hireling) {
+            missing = true;
+          } else {
+            const sheet = { ...publicHireling(hireling).sheet, ...scores };
+            db.prepare(
+              "UPDATE group_hirelings SET sheet_json = ?, revision = revision + 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?"
+            ).run(JSON.stringify(sheet), hireling.id);
+          }
+          db.exec("COMMIT");
+        } catch (error) {
+          db.exec("ROLLBACK");
+          throw error;
+        }
+        if (missing) return res.status(404).json({ error: "Hireling not found." });
         broadcastRoom(roomId, { type: "group-updated" });
       } else {
         // A statblock states one number per score. The first time one is spent,

@@ -87,7 +87,16 @@ roomItemRouter.patch("/rooms/:roomId/items/:itemId", requireAuth, (req: AuthedRe
   const parsed = roomItemInput.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Invalid item." });
   const system = systemOf(roomId);
+  // The same check the create route makes: a list the sheet does not have would
+  // store an entry nothing ever offers.
+  if (!systems[system].characterSheet.lists.some((list) => list.key === parsed.data.listKey))
+    return res.status(400).json({ error: "That is not a list this system's sheet has." });
   const item = readRoomItem(system, roomId, parsed.data);
+  // An id is made from the name, so two names can slug to one id — "Bone Saw"
+  // and "bone saw" among them. Renaming onto an id another entry already holds
+  // would upsert over it, so it is refused the way a duplicate create is.
+  if (item.id !== itemId && roomItemRows(roomId).some((row) => row.item_id === item.id))
+    return res.status(409).json({ error: "This room already has an item by that name." });
   db.exec("BEGIN IMMEDIATE");
   try {
     // Renaming changes the id, because an id is derived from the name. The old

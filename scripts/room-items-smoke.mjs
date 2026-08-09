@@ -148,6 +148,51 @@ await runSmoke("Room item overlay smoke test", async ({ request, json, setup, lo
     "The new one is there."
   );
 
+  // A rename onto a name another entry already slugs to is refused, rather than
+  // upserting over that entry.
+  const rival = (
+    await request(
+      `/api/rooms/${room.id}/items`,
+      {
+        method: "POST",
+        headers: gm.headers,
+        body: JSON.stringify({ listKey, name: "Rope", spec: "", cost: "1", detail: "", category: "" })
+      },
+      201
+    )
+  ).item;
+  await json(
+    `/api/rooms/${room.id}/items/${encodeURIComponent(renamed.id)}`,
+    {
+      method: "PATCH",
+      headers: gm.headers,
+      body: JSON.stringify({ listKey, name: "rope", spec: "", cost: "1", detail: "", category: "" })
+    },
+    409
+  );
+  assert.ok(
+    (await sheetCatalogue(room.id))[listKey].some((item) => item.id === rival.id),
+    "The entry that already held that id is still there."
+  );
+
+  // A list this system's sheet does not have is refused on edit as on create.
+  await json(
+    `/api/rooms/${room.id}/items/${encodeURIComponent(renamed.id)}`,
+    {
+      method: "PATCH",
+      headers: gm.headers,
+      body: JSON.stringify({
+        listKey: "nowhere",
+        name: "Bone Saw of Ruin",
+        spec: "",
+        cost: "",
+        detail: "",
+        category: ""
+      })
+    },
+    400
+  );
+
   // --- Copying, on the same double gate as an NPC ---
 
   await json(

@@ -328,10 +328,11 @@ export function RoomConfigItems({
           <ul className="rc-list">
             {retiredHere.map(({ item }) => (
               <li key={item.id}>
-                <button type="button" onClick={() => undefined}>
+                {/* Nothing to click: a retired entry is read, and the arrow beside it is the action. */}
+                <div className="rc-list-static">
                   <span>{item.name}</span>
                   <small>{item.spec || "—"}</small>
-                </button>
+                </div>
                 <button
                   type="button"
                   className="rc-inline-action"
