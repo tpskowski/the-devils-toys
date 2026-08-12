@@ -10,15 +10,16 @@
  * `npm run build:traits --workspace @devils-toys/server -- --merge cwn`.
  */
 import fs from "node:fs";
-import { SYSTEM_IDS, type SystemId } from "@devils-toys/shared";
+import { BUILTIN_SYSTEM_IDS, type SystemId } from "@devils-toys/shared";
 import { readTraitCatalog, seedTraitCatalog, traitCatalogFile, writeTraitCatalog } from "./trait-catalog.js";
 
 const args = process.argv.slice(2);
 const merge = args.includes("--merge");
 const named = args.filter((arg) => !arg.startsWith("--"));
-const unknown = named.filter((arg) => !SYSTEM_IDS.includes(arg as SystemId));
-if (unknown.length) throw new Error(`No such system: ${unknown.join(", ")}. Try one of ${SYSTEM_IDS.join(", ")}.`);
-const chosen = (named.length ? named : SYSTEM_IDS) as readonly SystemId[];
+const unknown = named.filter((arg) => !(BUILTIN_SYSTEM_IDS as readonly string[]).includes(arg));
+if (unknown.length)
+  throw new Error(`No such system: ${unknown.join(", ")}. Try one of ${BUILTIN_SYSTEM_IDS.join(", ")}.`);
+const chosen = (named.length ? named : BUILTIN_SYSTEM_IDS) as readonly SystemId[];
 
 for (const system of chosen) {
   const seeded = fs.existsSync(traitCatalogFile(system)) && readTraitCatalog(system).traits.length > 0;

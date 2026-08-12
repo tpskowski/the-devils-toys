@@ -5,7 +5,7 @@ import { THEME_IDS, type AccountRole } from "@devils-toys/shared";
 import type { AuthedRequest } from "./auth.js";
 import { clearSession, createSession, requireAuth } from "./auth.js";
 import { one } from "./db.js";
-import { systems } from "./systems.js";
+import { allSystems } from "./systems.js";
 import { itemTraitsFor } from "./character-items.js";
 
 /**
@@ -44,7 +44,7 @@ sessionRouter.get("/status", (_req, res) => {
   const count = one<{ count: number }>("SELECT COUNT(*) AS count FROM accounts")?.count ?? 0;
   res.json({
     initialized: count > 0,
-    systems: Object.values(systems).map(
+    systems: allSystems().map(
       ({ id, name, shortName, glyph, tagline, defaultTheme, rollRulesQuery, dice, groupPage }) => ({
         id,
         name,

@@ -34,11 +34,10 @@ import { playlistRouter } from "./playlists.js";
 import { helpRouter } from "./help.js";
 import { roomAccessRole } from "./room-config-permissions.js";
 import { projectFile } from "./paths.js";
-import { rulesMarkdown, systems } from "./systems.js";
+import { rulesMarkdown, systemIdSchema, systemOrThrow } from "./systems.js";
 import {
   calendarNowMessage,
   damageExpression,
-  SYSTEM_IDS,
   THEME_IDS,
   type AccountRole,
   type SystemId,
@@ -337,14 +336,14 @@ app.post("/api/rooms", requireAuth, (req: AuthedRequest, res) => {
   const body = parse(
     z.object({
       name: z.string().trim().min(2).max(80),
-      system: z.enum(SYSTEM_IDS),
+      system: systemIdSchema,
       theme: z.enum(THEME_IDS).optional()
     }),
     req.body,
     res
   );
   if (!body) return;
-  const theme = body.theme ?? systems[body.system].defaultTheme;
+  const theme = body.theme ?? systemOrThrow(body.system).defaultTheme;
   db.exec("BEGIN");
   try {
     const result = db
@@ -682,12 +681,12 @@ app.post("/api/rooms/:roomId/rolls", requireAuth, (req: AuthedRequest, res) => {
   if (body.invisible && role !== "gm")
     return res.status(403).json({ error: "Invisible rolls are reserved for the GM." });
   const system = one<{ system: SystemId }>("SELECT system FROM rooms WHERE id = ?", roomId)!.system;
-  const diceRules = systems[system].dice;
+  const diceRules = systemOrThrow(system).dice;
   if (body.check && !diceRules.skillCheck)
-    return res.status(400).json({ error: `${systems[system].name} does not define skill checks.` });
+    return res.status(400).json({ error: `${systemOrThrow(system).name} does not define skill checks.` });
   if (body.save && body.save.position !== "normal" && !diceRules.save.outcomes[body.save.position])
     return res.status(400).json({
-      error: `${systems[system].name} does not define ${body.save.position} for saves.`
+      error: `${systemOrThrow(system).name} does not define ${body.save.position} for saves.`
     });
   let attackExpression;
   if (body.attack && !body.save) {

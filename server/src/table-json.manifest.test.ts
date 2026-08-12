@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { unreachableRows } from "@devils-toys/shared";
 import { projectFile } from "./paths.js";
 import { readSetJson } from "./table-json.js";
-import { systems } from "./systems.js";
+import { builtinSystems } from "./systems.js";
 
 function canonicalJson(value: unknown) {
   const sort = (item: unknown): unknown => {
@@ -35,7 +35,7 @@ describe("the frozen table manifest", () => {
 
   it("matches every generated table without changing the baseline", () => {
     const manifest = JSON.parse(fs.readFileSync(projectFile("raw", "tables", "manifest.json"), "utf8"));
-    for (const system of Object.values(systems)) {
+    for (const system of Object.values(builtinSystems)) {
       const source = system.sourceDocuments[0]!;
       const stored = readSetJson(source.tablesFile!);
       const expected = manifest.sets[`system:${system.id}`];

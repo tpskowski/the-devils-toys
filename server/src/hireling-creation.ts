@@ -1,7 +1,7 @@
 import type { GroupPageDefinition, SystemId } from "@devils-toys/shared";
 import { rollDice } from "./dice.js";
 import { compactTables, parseCompactRollTables } from "./roll-tables.js";
-import { systems } from "./systems.js";
+import { hasSystem } from "./systems.js";
 
 type CreationRoll = NonNullable<NonNullable<GroupPageDefinition["hirelings"]>["creationRoll"]>;
 
@@ -32,8 +32,8 @@ export function rollHirelingCreation(
   if (!finishing) return generated;
 
   const tables = new Map(
-    (Object.hasOwn(systems, source)
-      ? compactTables(source as SystemId, finishing.section)
+    (hasSystem(source)
+      ? compactTables(source, finishing.section)
       : parseCompactRollTables(source, finishing.section)
     ).map((table) => [table.name, table])
   );

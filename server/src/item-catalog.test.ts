@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { CharacterItem, SystemItemCatalog } from "@devils-toys/shared";
-import { SYSTEM_IDS } from "@devils-toys/shared";
+import { BUILTIN_SYSTEM_IDS } from "@devils-toys/shared";
 import { catalogFromRulebook, mergeCatalog, readItemCatalog, seedItemCatalog } from "./item-catalog.js";
 import { characterItem, characterItemsFor } from "./character-items.js";
 
@@ -89,7 +89,7 @@ describe("seeding a catalogue from a rulebook", () => {
     expect(twice.catalog).toEqual(once.catalog);
   });
 
-  it.each(SYSTEM_IDS)("has nothing new to fold into %s today", (system) => {
+  it.each(BUILTIN_SYSTEM_IDS)("has nothing new to fold into %s today", (system) => {
     const { added, catalog: merged } = seedItemCatalog(system);
     expect(added).toEqual([]);
     expect(merged).toEqual(readItemCatalog(system));
@@ -97,12 +97,12 @@ describe("seeding a catalogue from a rulebook", () => {
 });
 
 describe("the committed item catalogues", () => {
-  it.each(SYSTEM_IDS)("is what %s serves at runtime", (system) => {
+  it.each(BUILTIN_SYSTEM_IDS)("is what %s serves at runtime", (system) => {
     expect(characterItemsFor(system)).toEqual(readItemCatalog(system).lists);
   });
 
   it("gives every item an id that is unique within its system", () => {
-    for (const system of SYSTEM_IDS) {
+    for (const system of BUILTIN_SYSTEM_IDS) {
       const items = Object.values(readItemCatalog(system).lists).flat();
       const ids = items.map((item) => item.id);
       expect(new Set(ids).size).toBe(ids.length);

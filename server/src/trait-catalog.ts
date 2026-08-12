@@ -3,7 +3,7 @@ import type { ItemTrait, SystemId, SystemTraitCatalog } from "@devils-toys/share
 import { traitId } from "@devils-toys/shared";
 import { sectionLines } from "./rules-tables.js";
 import { projectFile } from "./paths.js";
-import { systems } from "./systems.js";
+import { systemOrThrow } from "./systems.js";
 
 /**
  * A definition list entry, which is how a book states what one of its words
@@ -38,7 +38,7 @@ export function writeTraitCatalog(system: SystemId, catalog: SystemTraitCatalog)
  * in prose, and prose is not a definition anyone can look up by name.
  */
 export function traitsFromRulebook(system: SystemId): SystemTraitCatalog {
-  const definition = systems[system];
+  const definition = systemOrThrow(system);
   const source = definition.sourceDocuments[0];
   if (!source) throw new Error(`${definition.name} has no rules source.`);
   const markdown = fs.readFileSync(projectFile("raw", source.markdownFile), "utf8");

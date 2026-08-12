@@ -19,7 +19,7 @@ import {
   roomItemRows,
   writeRoomItem
 } from "./room-items.js";
-import { systems } from "./systems.js";
+import { systemOrThrow } from "./systems.js";
 
 /**
  * A room's own gear. Every route here is behind `requireRoomConfig`, because the
@@ -38,7 +38,7 @@ roomItemRouter.get("/rooms/:roomId/items", requireAuth, (req: AuthedRequest, res
   const roomId = requireRoomConfig(req, res);
   if (!roomId) return;
   const system = systemOf(roomId);
-  const definition = systems[system].characterSheet;
+  const definition = systemOrThrow(system).characterSheet;
   const retired = new Set(retiredIds(roomId));
   const added = new Set(roomItemRows(roomId).map((row) => row.item_id));
   const lists = characterItemsFor(system, roomId);
@@ -67,7 +67,7 @@ roomItemRouter.post("/rooms/:roomId/items", requireAuth, (req: AuthedRequest, re
   const parsed = roomItemInput.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Invalid item." });
   const system = systemOf(roomId);
-  if (!systems[system].characterSheet.lists.some((list) => list.key === parsed.data.listKey))
+  if (!systemOrThrow(system).characterSheet.lists.some((list) => list.key === parsed.data.listKey))
     return res.status(400).json({ error: "That is not a list this system's sheet has." });
   const item = readRoomItem(system, roomId, parsed.data);
   if (roomItemRows(roomId).some((row) => row.item_id === item.id))
@@ -89,7 +89,7 @@ roomItemRouter.patch("/rooms/:roomId/items/:itemId", requireAuth, (req: AuthedRe
   const system = systemOf(roomId);
   // The same check the create route makes: a list the sheet does not have would
   // store an entry nothing ever offers.
-  if (!systems[system].characterSheet.lists.some((list) => list.key === parsed.data.listKey))
+  if (!systemOrThrow(system).characterSheet.lists.some((list) => list.key === parsed.data.listKey))
     return res.status(400).json({ error: "That is not a list this system's sheet has." });
   const item = readRoomItem(system, roomId, parsed.data);
   // An id is made from the name, so two names can slug to one id — "Bone Saw"

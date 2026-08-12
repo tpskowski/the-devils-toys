@@ -11,7 +11,7 @@ import type { AuthedRequest } from "./auth.js";
 import { requireAuth } from "./auth.js";
 import { all, db, one } from "./db.js";
 import { requireTableAdmin, requireTableEdit, requireTableRead } from "./table-permissions.js";
-import { systems } from "./systems.js";
+import { allSystems } from "./systems.js";
 import { tablesForSetJson } from "./table-json.js";
 
 export const tagRouter = express.Router();
@@ -81,7 +81,7 @@ function allTagUsage() {
     includeTables(parseRollTables(row.markdown), inherited);
   }
 
-  for (const system of Object.values(systems)) {
+  for (const system of allSystems()) {
     includeSet(system.tableCatalog.tags);
     const source = system.sourceDocuments[0];
     if (!source?.tablesFile) continue;

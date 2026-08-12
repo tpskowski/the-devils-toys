@@ -3,7 +3,7 @@ import type { CharacterItem, SystemId, SystemItemCatalog } from "@devils-toys/sh
 import { itemId } from "@devils-toys/shared";
 import { parseCharacterItems } from "./character-items.js";
 import { projectFile } from "./paths.js";
-import { systems } from "./systems.js";
+import { systemOrThrow } from "./systems.js";
 
 /** Where a system's gear lives, beside the package that owns it. */
 export function itemCatalogFile(system: SystemId) {
@@ -33,7 +33,7 @@ export function writeItemCatalog(system: SystemId, catalog: SystemItemCatalog) {
  * the catalogue looks like.
  */
 export function catalogFromRulebook(system: SystemId): SystemItemCatalog {
-  const definition = systems[system];
+  const definition = systemOrThrow(system);
   const source = definition.sourceDocuments[0];
   if (!source) throw new Error(`${definition.name} has no rules source.`);
   const markdown = fs.readFileSync(projectFile("raw", source.markdownFile), "utf8");

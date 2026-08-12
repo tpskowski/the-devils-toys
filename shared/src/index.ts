@@ -8,10 +8,36 @@ export * from "./table-markdown.js";
 export * from "./table-tags.js";
 export * from "./calendar.js";
 
-export const SYSTEM_IDS = ["cairn", "monolith", "cwn"] as const;
+/**
+ * The systems compiled into the application. A server may hold more: an admin
+ * installs one at runtime and it is registered beside these, so this list names
+ * what ships rather than what a given installation offers. Ask the server for
+ * that — `/api/status` reports every system it has.
+ */
+export const BUILTIN_SYSTEM_IDS = ["cairn", "monolith", "cwn"] as const;
 export const THEME_IDS = ["heroic", "digital", "used", "grim", "shinji", "production-type"] as const;
 
-export type SystemId = (typeof SYSTEM_IDS)[number];
+/** One of the three above, for the few places that genuinely mean those three. */
+export type BuiltinSystemId = (typeof BUILTIN_SYSTEM_IDS)[number];
+
+/**
+ * A system's id. Deliberately a string rather than a union: an installed system
+ * has an id this package cannot know, and every consumer resolves one through
+ * the server's registry instead of matching it against a list.
+ */
+export type SystemId = string;
+
+/**
+ * What an installable system's id may look like. Lowercase, starts with a
+ * letter, and short enough to sit in a URL and a filesystem path without
+ * quoting. The same shape the built-in ids already have.
+ */
+export const SYSTEM_ID_PATTERN = /^[a-z][a-z0-9-]{1,31}$/;
+
+export function isSystemId(value: string): boolean {
+  return SYSTEM_ID_PATTERN.test(value);
+}
+
 export type ThemeId = (typeof THEME_IDS)[number];
 export type RoomRole = "gm" | "player";
 export type AccountRole = "admin" | "gm" | "player";

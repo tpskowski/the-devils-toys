@@ -1,9 +1,57 @@
 import { describe, expect, it } from "vitest";
+import { BUILTIN_SYSTEM_IDS } from "@devils-toys/shared";
 import { cairn } from "@devils-toys/system-cairn";
 import { monolith } from "@devils-toys/system-monolith";
 import { cwn } from "@devils-toys/system-cwn";
 import { characterItemsFor } from "./character-items.js";
-import { filterPlayerRules } from "./systems.js";
+import {
+  allSystems,
+  filterPlayerRules,
+  hasSystem,
+  registerSystem,
+  systemIdSchema,
+  systemIds,
+  systemOrThrow,
+  unregisterSystem
+} from "./systems.js";
+
+describe("the system registry", () => {
+  it("holds every compiled system on start", () => {
+    expect(systemIds()).toEqual([...BUILTIN_SYSTEM_IDS]);
+    expect(allSystems().map((system) => system.name)).toEqual(["Cairn", "Monolith", "Cities Without Number"]);
+  });
+
+  it("names the system it was asked for when it does not have one", () => {
+    expect(() => systemOrThrow("monolith-2")).toThrow("No such system: monolith-2.");
+  });
+
+  it("rejects an unknown id through the request schema rather than letting it reach a route", () => {
+    const rejected = systemIdSchema.safeParse("monolith-2");
+    expect(rejected.success).toBe(false);
+    expect(rejected.error?.issues[0]?.message).toBe("No such system: monolith-2.");
+    expect(systemIdSchema.safeParse("monolith").success).toBe(true);
+  });
+
+  it("accepts a system registered after start, without a restart", () => {
+    const installed = { ...monolith, id: "monolith-2", name: "Monolith (installed)" };
+    expect(systemIdSchema.safeParse("monolith-2").success).toBe(false);
+
+    registerSystem(installed);
+    try {
+      expect(hasSystem("monolith-2")).toBe(true);
+      expect(systemIdSchema.safeParse("monolith-2").success).toBe(true);
+      expect(systemOrThrow("monolith-2").name).toBe("Monolith (installed)");
+    } finally {
+      unregisterSystem("monolith-2");
+    }
+    expect(hasSystem("monolith-2")).toBe(false);
+  });
+
+  it("refuses to unregister a compiled system", () => {
+    expect(unregisterSystem("monolith")).toBe(false);
+    expect(hasSystem("monolith")).toBe(true);
+  });
+});
 
 describe("role-filtered rules", () => {
   const source = `# Rules

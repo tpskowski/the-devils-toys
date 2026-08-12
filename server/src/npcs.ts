@@ -6,13 +6,13 @@ import { requireAuth } from "./auth.js";
 import { all, db, one } from "./db.js";
 import { broadcastRoom } from "./realtime.js";
 import { roomAccessRole, roomConfigAccess } from "./room-config-permissions.js";
-import { systemMarkdown, systems } from "./systems.js";
+import { systemMarkdown, systemOrThrow } from "./systems.js";
 import { parseNpcStatblock } from "./npc-statblocks.js";
 
 export const npcRouter = express.Router();
 
 export function npcCatalog(system: SystemId) {
-  const metadata = systems[system].npcCatalog;
+  const metadata = systemOrThrow(system).npcCatalog;
   const lines = systemMarkdown(system).split("\n");
   const rootIndex = lines.findIndex((line) => {
     const match = /^(#+)\s+(.+?)\s*$/.exec(line);
@@ -49,7 +49,7 @@ function parseStatblock(json: string | null | undefined) {
 }
 
 function validateStatblock(system: SystemId, value: Record<string, string | number>) {
-  const definitions = new Map(systems[system].npcStatblock.fields.map((field) => [field.key, field]));
+  const definitions = new Map(systemOrThrow(system).npcStatblock.fields.map((field) => [field.key, field]));
   for (const [key, fieldValue] of Object.entries(value)) {
     const definition = definitions.get(key);
     if (!definition) return "Unknown NPC statblock field.";
@@ -263,7 +263,7 @@ npcRouter.post("/rooms/:roomId/npcs/from-catalog", requireAuth, (req: AuthedRequ
       notes: entry.markdown,
       statblock: parsedStatblock.fields,
       parseWarning:
-        typeof parsedStatblock.fields[systems[system].npcStatblock.hitPointsKey] !== "number"
+        typeof parsedStatblock.fields[systemOrThrow(system).npcStatblock.hitPointsKey] !== "number"
           ? "stats could not be read — fill them in"
           : null
     }

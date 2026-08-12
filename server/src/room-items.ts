@@ -2,7 +2,7 @@ import { z } from "zod";
 import type { CharacterItem, SystemId } from "@devils-toys/shared";
 import { classifyItem } from "@devils-toys/shared";
 import { all, db, one } from "./db.js";
-import { systems } from "./systems.js";
+import { systemOrThrow } from "./systems.js";
 
 /**
  * A room's own additions to its system's gear.
@@ -68,14 +68,14 @@ export type RoomItemInput = z.infer<typeof roomItemInput>;
  * looser reading kept for hand-written gear.
  */
 export function readRoomItem(system: SystemId, roomId: number, input: RoomItemInput): CharacterItem {
-  const definition = systems[system].characterSheet.lists.find((list) => list.key === input.listKey);
+  const definition = systemOrThrow(system).characterSheet.lists.find((list) => list.key === input.listKey);
   const reading = classifyItem({
     name: input.name,
     category: input.category,
     spec: input.spec,
     detail: input.detail,
     weaponCategories: definition?.weaponCategories,
-    weaponRange: systems[system].npcStatblock.weaponRange
+    weaponRange: systemOrThrow(system).npcStatblock.weaponRange
   });
   const label = input.spec ? `${input.name} (${input.spec})` : input.name;
   return {

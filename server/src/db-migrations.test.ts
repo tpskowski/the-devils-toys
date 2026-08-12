@@ -4,7 +4,7 @@ import path from "node:path";
 import { spawn } from "node:child_process";
 import { DatabaseSync } from "node:sqlite";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { BUILTIN_TABLE_TAGS, SYSTEM_IDS, THEME_IDS } from "@devils-toys/shared";
+import { BUILTIN_TABLE_TAGS, BUILTIN_SYSTEM_IDS, THEME_IDS } from "@devils-toys/shared";
 import { removeDataDir } from "./test-setup.js";
 
 // The themes that shipped before `shinji` was added. A database created by that
@@ -25,8 +25,14 @@ function dataDir() {
   return directory;
 }
 
-/** Writes a database with the pre-`shinji` rooms schema and one room in use. */
-function seedLegacyDatabase(directory: string) {
+/**
+ * Writes a database with the pre-`shinji` rooms schema and one room in use.
+ *
+ * `themes` is overridable so a test can isolate one half of the rooms rebuild.
+ * Seeded with the current themes, only the system CHECK is stale, and only the
+ * system half of the predicate can trigger the migration.
+ */
+function seedLegacyDatabase(directory: string, themes: readonly string[] = legacyThemes) {
   const legacy = new DatabaseSync(path.join(directory, "devils-toys.sqlite"));
   legacy.exec(`
     CREATE TABLE accounts (
@@ -40,7 +46,7 @@ function seedLegacyDatabase(directory: string) {
       id INTEGER PRIMARY KEY,
       name TEXT NOT NULL,
       system TEXT NOT NULL CHECK(system IN ('cairn','monolith')),
-      theme TEXT NOT NULL CHECK(theme IN (${legacyThemes.map((theme) => `'${theme}'`).join(",")})),
+      theme TEXT NOT NULL CHECK(theme IN (${themes.map((theme) => `'${theme}'`).join(",")})),
       archived INTEGER NOT NULL DEFAULT 0,
       created_by INTEGER NOT NULL REFERENCES accounts(id),
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -374,19 +380,45 @@ describe("database migrations", () => {
     expect(await lock.exited).toBe(0);
   });
 
+  // Seeded with the current themes so the theme half of the rebuild predicate is
+  // already satisfied. Only the system CHECK is stale, so these two fail if the
+  // system half is removed — which the theme migration would otherwise mask.
+  it("drops the system constraint from a database whose themes are already current", async () => {
+    const directory = dataDir();
+    seedLegacyDatabase(directory, THEME_IDS);
+    const loaded = await openDatabase(directory);
+
+    expect(roomsSchema(loaded)).not.toMatch(/CHECK\s*\(\s*system\s+IN/i);
+  });
+
+  it("accepts a system id this build has never heard of, with themes already current", async () => {
+    const directory = dataDir();
+    seedLegacyDatabase(directory, THEME_IDS);
+    const loaded = await openDatabase(directory);
+
+    // What an installed system is, from the database's point of view: an id no
+    // compiled list contains. The registry decides whether the server has it;
+    // the schema must not have an opinion.
+    loaded.db
+      .prepare("INSERT INTO rooms (name, system, theme, created_by) VALUES ('Installed', 'monolith-2', 'used', 1)")
+      .run();
+    expect(loaded.all<{ system: string }>("SELECT system FROM rooms WHERE name = 'Installed'")).toEqual([
+      { system: "monolith-2" }
+    ]);
+  });
+
   it("accepts every current system in a database created by an older build", async () => {
     const directory = dataDir();
     seedLegacyDatabase(directory);
     const loaded = await openDatabase(directory);
 
-    for (const system of SYSTEM_IDS) expect(roomsSchema(loaded)).toContain(`'${system}'`);
-    for (const [index, system] of SYSTEM_IDS.entries()) {
+    for (const [index, system] of BUILTIN_SYSTEM_IDS.entries()) {
       loaded.db
         .prepare("INSERT INTO rooms (name, system, theme, created_by) VALUES (?, ?, 'used', 1)")
         .run(`System room ${index}`, system);
     }
     expect(loaded.all<{ system: string }>("SELECT system FROM rooms WHERE id > 1").map((row) => row.system)).toEqual([
-      ...SYSTEM_IDS
+      ...BUILTIN_SYSTEM_IDS
     ]);
   });
 

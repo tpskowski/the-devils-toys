@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import { BUILTIN_TABLE_TAGS, defaultTagLabel, serializeSet, SYSTEM_IDS, THEME_IDS } from "@devils-toys/shared";
+import { BUILTIN_TABLE_TAGS, defaultTagLabel, serializeSet, THEME_IDS } from "@devils-toys/shared";
 import { config } from "./config.js";
 
 fs.mkdirSync(config.dataDir, { recursive: true });
@@ -13,12 +13,19 @@ export const db = new DatabaseSync(path.join(config.dataDir, "devils-toys.sqlite
 // waits its turn instead of failing the request outright.
 db.exec("PRAGMA busy_timeout = 5000; PRAGMA foreign_keys = ON; PRAGMA journal_mode = WAL;");
 
-const systemCheckList = SYSTEM_IDS.map((system) => `'${system}'`).join(",");
 const themeCheckList = THEME_IDS.map((theme) => `'${theme}'`).join(",");
+/**
+ * `system` carries no CHECK. It used to list the compiled systems, which meant a
+ * system added to the application rejected every room made on it until the table
+ * had been rebuilt — and an installed system, whose id nothing can know in
+ * advance, could never be listed at all. The registry validates the id on the way
+ * in instead (`systemIdSchema`), which is where a system this server does not
+ * have belongs: in a 400 naming it, not in a constraint violation.
+ */
 const roomsColumns = `
     id INTEGER PRIMARY KEY,
     name TEXT NOT NULL,
-    system TEXT NOT NULL CHECK(system IN (${systemCheckList})),
+    system TEXT NOT NULL,
     theme TEXT NOT NULL CHECK(theme IN (${themeCheckList})),
     archived INTEGER NOT NULL DEFAULT 0,
     calendar_enabled INTEGER NOT NULL DEFAULT 0,
@@ -325,15 +332,21 @@ function tableExists(table: string) {
   return Boolean(storedSchema(table));
 }
 
-// A system or theme added after a database was created is still rejected by the
-// older CHECK constraint, so rebuild rooms whenever its recorded schema is stale.
+/**
+ * Rebuild `rooms` when its recorded schema is stale in either of two ways: a
+ * theme added since the database was made is still rejected by the older CHECK,
+ * or `system` still carries a CHECK at all.
+ *
+ * The system constraint is dropped rather than widened. It listed the compiled
+ * systems, so every release that added one required this rebuild — and an
+ * installed system could never be listed, because its id is not known until an
+ * admin uploads it. Detecting the constraint's presence is what makes this
+ * idempotent: once removed, the condition cannot match again.
+ */
 const roomsSchema =
   one<{ sql: string }>("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'rooms'")?.sql ?? "";
-if (
-  roomsSchema &&
-  (SYSTEM_IDS.some((system) => !roomsSchema.includes(`'${system}'`)) ||
-    THEME_IDS.some((theme) => !roomsSchema.includes(`'${theme}'`)))
-) {
+const roomsConstrainsSystem = /CHECK\s*\(\s*system\s+IN/i.test(roomsSchema);
+if (roomsSchema && (roomsConstrainsSystem || THEME_IDS.some((theme) => !roomsSchema.includes(`'${theme}'`)))) {
   const preservedColumns = [
     "id",
     "name",

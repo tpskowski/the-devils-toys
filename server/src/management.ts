@@ -1,13 +1,13 @@
 import express from "express";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
-import { SYSTEM_IDS, type AccountRole, type SystemId } from "@devils-toys/shared";
+import type { AccountRole, SystemId } from "@devils-toys/shared";
 import type { AuthedRequest, AuthAccount } from "./auth.js";
 import { requireAuth } from "./auth.js";
 import { all, db, one } from "./db.js";
 import { removeStoredPortrait } from "./portrait-files.js";
 import { broadcastRoom, disconnectAccount, refreshRoomAccess } from "./realtime.js";
-import { systems } from "./systems.js";
+import { allSystems, systemIdSchema, systemOrThrow } from "./systems.js";
 import { canCreateAccountRole, requiresRoomTransferConfirmation } from "./account-role-permissions.js";
 
 export const managementRouter = express.Router();
@@ -154,7 +154,7 @@ function publicCharacter(row: ManagedCharacter) {
     ownerUsername: row.owner_username,
     roomId: row.pool_room_id,
     roomName: row.room_name,
-    warnings: systems[row.system].characterWarnings(sheet),
+    warnings: systemOrThrow(row.system).characterWarnings(sheet),
     updatedAt: row.updated_at
   };
 }
@@ -189,7 +189,7 @@ managementRouter.get("/management", requireAuth, (req: AuthedRequest, res) => {
       ownedRooms: req.account!.isAdmin ? managedGameRoomsForAccount(player.id) : []
     })),
     characters: manageableCharacterRows(context, req.account!).map(publicCharacter),
-    systems: Object.values(systems).map(({ id, name, glyph }) => ({ id, name, glyph }))
+    systems: allSystems().map(({ id, name, glyph }) => ({ id, name, glyph }))
   });
 });
 
@@ -385,7 +385,7 @@ managementRouter.post("/management/characters", requireAuth, (req: AuthedRequest
   const parsed = z
     .object({
       name: z.string().trim().min(1).max(80),
-      system: z.enum(SYSTEM_IDS),
+      system: systemIdSchema,
       ownerAccountId: z.number().int().positive().nullable().default(null),
       roomId: z.number().int().positive().nullable().default(null)
     })
