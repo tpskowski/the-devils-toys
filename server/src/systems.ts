@@ -3,7 +3,7 @@ import { z } from "zod";
 import { cairn } from "@devils-toys/system-cairn";
 import { cwn } from "@devils-toys/system-cwn";
 import { monolith } from "@devils-toys/system-monolith";
-import type { GameSystem, SystemId } from "@devils-toys/shared";
+import { evaluateCharacterWarnings, type GameSystem, type SystemId } from "@devils-toys/shared";
 import { projectFile } from "./paths.js";
 import { tablesForSetJson } from "./table-json.js";
 import { substituteTableLinks } from "./rules-substitution.js";
@@ -63,6 +63,11 @@ export const systemIdSchema = z.string().refine(
   (value) => registry.has(value),
   (value) => ({ message: `No such system: ${value}.` })
 );
+
+/** The advisory notes a sheet earns under its system's declared rules. */
+export function characterWarningsFor(system: SystemId, sheet: Record<string, unknown>) {
+  return evaluateCharacterWarnings(systemOrThrow(system).warningRules, sheet);
+}
 
 export function filterPlayerRules(markdown: string, gmOnlyHeadings: readonly string[]) {
   const blocked = new Set(gmOnlyHeadings.map((heading) => heading.trim().toLocaleLowerCase()));

@@ -11,11 +11,6 @@ const statFields = [
   { key: "hpMax", label: "HP maximum", kind: "number" }
 ] as const;
 
-function numeric(sheet: Record<string, unknown>, key: string) {
-  const value = Number(sheet[key]);
-  return Number.isFinite(value) ? value : undefined;
-}
-
 /**
  * Cairn's weapons state damage and bulk and nothing about reach, so almost every
  * one of them reads as unknown until someone records otherwise. The few words the
@@ -220,19 +215,28 @@ export const cairn: GameSystem = {
       }
     }
   },
-  characterWarnings(sheet) {
-    const warnings: string[] = [];
-    if ((numeric(sheet, "armor") ?? 0) > 3) warnings.push("Cairn armor cannot normally exceed 3.");
-    const inventory = Array.isArray(sheet.inventory) ? sheet.inventory : [];
-    if (inventory.filter((item) => String(item ?? "").trim()).length >= 10)
-      warnings.push("A full 10-slot inventory reduces HP to 0.");
-    if (sheet.deprived === true) warnings.push("A deprived character cannot recover HP or ability scores.");
-    for (const key of ["str", "dex", "wil", "hp"]) {
-      const current = numeric(sheet, `${key}Current`);
-      const maximum = numeric(sheet, `${key}Max`);
-      if (current !== undefined && maximum !== undefined && current > maximum)
-        warnings.push(`${key.toUpperCase()} current value is above its recorded maximum.`);
-    }
-    return warnings;
-  }
+  warningRules: [
+    { kind: "range", key: "armor", max: 3, message: "Cairn armor cannot normally exceed 3." },
+    {
+      kind: "list-occupancy",
+      listKey: "inventory",
+      tiers: [{ atLeast: 10, message: "A full 10-slot inventory reduces HP to 0." }]
+    },
+    {
+      kind: "flag",
+      key: "deprived",
+      equals: true,
+      message: "A deprived character cannot recover HP or ability scores."
+    },
+    ...["str", "dex", "wil", "hp"].map(
+      (key) =>
+        ({
+          kind: "compare",
+          key: `${key}Current`,
+          against: `${key}Max`,
+          operator: ">",
+          message: `${key.toUpperCase()} current value is above its recorded maximum.`
+        }) as const
+    )
+  ]
 };

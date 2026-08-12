@@ -19,7 +19,7 @@ import {
   validPortraitFile
 } from "./portrait-files.js";
 import { broadcastRoom, refreshRoomPresence } from "./realtime.js";
-import { systemMarkdown, systemOrThrow } from "./systems.js";
+import { characterWarningsFor, systemMarkdown, systemOrThrow } from "./systems.js";
 import { characterVicesFor } from "./character-vices.js";
 
 export const characterRouter = express.Router();
@@ -99,7 +99,7 @@ export function publicCharacter(row: CharacterRow, roomId: number) {
       ? `/api/rooms/${roomId}/characters/${row.id}/portrait?v=${encodeURIComponent(row.portrait_stored_name)}`
       : null,
     portraitFilename: row.portrait_filename,
-    warnings: systemOrThrow(row.system).characterWarnings(sheet),
+    warnings: characterWarningsFor(row.system, sheet),
     activeBy,
     updatedAt: row.updated_at
   };

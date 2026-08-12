@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { BUILTIN_SYSTEM_IDS } from "@devils-toys/shared";
+import { BUILTIN_SYSTEM_IDS, evaluateCharacterWarnings } from "@devils-toys/shared";
 import { cairn } from "@devils-toys/system-cairn";
 import { monolith } from "@devils-toys/system-monolith";
 import { cwn } from "@devils-toys/system-cwn";
@@ -86,14 +86,19 @@ describe("character system definitions", () => {
       expect.arrayContaining(["background", "strCurrent", "strMax", "hpCurrent", "hpMax", "armor", "deprived"])
     );
     expect(
-      cairn.characterWarnings({
+      evaluateCharacterWarnings(cairn.warningRules, {
         armor: 4,
         deprived: true,
         hpCurrent: 5,
         hpMax: 3,
         inventory: Array.from({ length: 10 }, () => "gear")
       })
-    ).toHaveLength(4);
+    ).toEqual([
+      "Cairn armor cannot normally exceed 3.",
+      "A full 10-slot inventory reduces HP to 0.",
+      "A deprived character cannot recover HP or ability scores.",
+      "HP current value is above its recorded maximum."
+    ]);
   });
 
   it("ships Monolith's weapon classification, corrections included", () => {
@@ -156,7 +161,7 @@ describe("character system definitions", () => {
       label: "Physical"
     });
     expect(
-      cwn.characterWarnings({
+      evaluateCharacterWarnings(cwn.warningRules, {
         hpCurrent: 9,
         hpMax: 4,
         physicalSave: 21,
@@ -166,7 +171,15 @@ describe("character system definitions", () => {
         readiedEncumbrance: 7,
         stowedEncumbrance: 16
       })
-    ).toHaveLength(5);
+      // Readied is over half of STR 11 but within the extra 2; stowed is past
+      // STR by more than 4, so it reports the further of the two sentences.
+    ).toEqual([
+      "Hit points current value is above its recorded maximum.",
+      "Physical save target must be between 1 and 20.",
+      "Alienation above Wisdom leaves the character in cyber-induced psychosis.",
+      "Readied encumbrance is above normal capacity and reduces Move.",
+      "Stowed encumbrance is beyond the normal extended-hauling allowance."
+    ]);
   });
 
   it("describes Monolith's source sheet and reports advisory constraints", () => {
@@ -233,12 +246,18 @@ describe("character system definitions", () => {
     );
     expect(monolith.groupPage?.starshipSheet?.lists.find((list) => list.key === "holds")?.slots).toHaveLength(20);
     expect(
-      monolith.characterWarnings({
+      evaluateCharacterWarnings(monolith.warningRules, {
         strMax: 19,
         strCurrent: 20,
         corruption: 31,
         augmentations: Array.from({ length: 12 }, () => "aug")
       })
-    ).toHaveLength(4);
+      // A full rack reports only the twelfth socket, never also the sixth.
+    ).toEqual([
+      "STR maximum cannot normally exceed 18.",
+      "STR current value is above its recorded maximum.",
+      "Corruption is normally recorded from 1 to 30.",
+      "All 12 augmentation sockets are occupied; reduce WIL by another 1d6."
+    ]);
   });
 });

@@ -1,6 +1,8 @@
 import type { RangedWeaponIcon, WeaponRangeRules } from "./character-items.js";
+import type { CharacterWarningRule } from "./character-warnings.js";
 
 export * from "./character-items.js";
+export * from "./character-warnings.js";
 export * from "./item-traits.js";
 export * from "./roll-tables.js";
 export * from "./table-csv.js";
@@ -876,7 +878,13 @@ export interface GameSystem {
   characterSheet: CharacterSheetDefinition;
   /** Omit this definition to remove the Group tab for a system. */
   groupPage?: GroupPageDefinition;
-  characterWarnings: (sheet: Record<string, unknown>) => string[];
+  /**
+   * The advisory notes this system's sheets earn, declared rather than computed.
+   * A built-in may still build the array with ordinary TypeScript — CWN maps its
+   * six abilities into twelve rules — but what it builds is data, which is what
+   * lets an installed system carry the same thing as JSON.
+   */
+  warningRules: readonly CharacterWarningRule[];
   initiative: InitiativeRules;
   npcStatblock: NpcStatblockDefinition;
   /** Omit for a system where hit points are the only pool damage touches. */

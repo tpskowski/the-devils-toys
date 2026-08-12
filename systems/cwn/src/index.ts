@@ -233,13 +233,6 @@ const contentModules: readonly GameSystemContentModule[] = [
   }
 ];
 
-function numeric(sheet: Record<string, unknown>, key: string) {
-  if (sheet[key] === "" || sheet[key] === null || sheet[key] === undefined || typeof sheet[key] === "boolean")
-    return undefined;
-  const value = Number(sheet[key]);
-  return Number.isFinite(value) ? value : undefined;
-}
-
 /**
  * Cities Without Number gives a weapon its range in metres — "30/100" for short
  * and long — and calls the rest melee.
@@ -356,67 +349,97 @@ export const cwn: GameSystem = {
     ],
     lists: []
   },
-  characterWarnings(sheet) {
-    const warnings: string[] = [];
-
-    for (const prefix of ["str", "dex", "con", "int", "wis", "cha"]) {
-      const score = numeric(sheet, `${prefix}Score`);
-      const modifier = numeric(sheet, `${prefix}Modifier`);
-      if (score !== undefined && (score < 3 || score > 18))
-        warnings.push(`${prefix.toUpperCase()} is normally between 3 and 18.`);
-      if (modifier !== undefined && (modifier < -2 || modifier > 3))
-        warnings.push(`${prefix.toUpperCase()} modifier is normally between -2 and +3.`);
+  warningRules: [
+    // Each ability contributes its score range and its modifier range, in that
+    // order, so the pair reads together the way the sheet lays them out.
+    ...["str", "dex", "con", "int", "wis", "cha"].flatMap(
+      (prefix) =>
+        [
+          {
+            kind: "range",
+            key: `${prefix}Score`,
+            min: 3,
+            max: 18,
+            message: `${prefix.toUpperCase()} is normally between 3 and 18.`
+          },
+          {
+            kind: "range",
+            key: `${prefix}Modifier`,
+            min: -2,
+            max: 3,
+            message: `${prefix.toUpperCase()} modifier is normally between -2 and +3.`
+          }
+        ] as const
+    ),
+    ...skillNames.map(
+      (skill) =>
+        ({
+          kind: "range",
+          key: `skill${skill}`,
+          min: -1,
+          max: 4,
+          message: `${skill} is normally untrained (-1) or level 0 to 4.`
+        }) as const
+    ),
+    ...(
+      [
+        ["Hit points", "hpCurrent", "hpMax"],
+        ["Damage Soak", "damageSoakCurrent", "damageSoakMax"],
+        ["System Strain", "systemStrainCurrent", "systemStrainMax"]
+      ] as const
+    ).map(
+      ([label, currentKey, maximumKey]) =>
+        ({
+          kind: "compare",
+          key: currentKey,
+          against: maximumKey,
+          operator: ">",
+          message: `${label} current value is above its recorded maximum.`
+        }) as const
+    ),
+    ...(
+      [
+        ["Physical", "physicalSave"],
+        ["Evasion", "evasionSave"],
+        ["Mental", "mentalSave"],
+        ["Luck", "luckSave"]
+      ] as const
+    ).map(
+      ([label, key]) =>
+        ({
+          kind: "range",
+          key,
+          min: 1,
+          max: 20,
+          message: `${label} save target must be between 1 and 20.`
+        }) as const
+    ),
+    {
+      kind: "compare",
+      key: "cwn.cyberware.alienation",
+      against: "wisScore",
+      operator: ">",
+      message: "Alienation above Wisdom leaves the character in cyber-induced psychosis."
+    },
+    // Readied capacity is half Strength; stowed is Strength itself. Past either
+    // by enough and the character is beyond hauling it at all, which is what
+    // `beyond` says instead.
+    {
+      kind: "compare",
+      key: "readiedEncumbrance",
+      against: "strScore",
+      scale: 0.5,
+      operator: ">",
+      message: "Readied encumbrance is above normal capacity and reduces Move.",
+      beyond: { offset: 2, message: "Readied encumbrance is beyond the normal extended-hauling allowance." }
+    },
+    {
+      kind: "compare",
+      key: "stowedEncumbrance",
+      against: "strScore",
+      operator: ">",
+      message: "Stowed encumbrance is above normal capacity and reduces Move.",
+      beyond: { offset: 4, message: "Stowed encumbrance is beyond the normal extended-hauling allowance." }
     }
-
-    for (const skill of skillNames) {
-      const value = numeric(sheet, `skill${skill}`);
-      if (value !== undefined && (value < -1 || value > 4))
-        warnings.push(`${skill} is normally untrained (-1) or level 0 to 4.`);
-    }
-
-    for (const [label, currentKey, maximumKey] of [
-      ["Hit points", "hpCurrent", "hpMax"],
-      ["Damage Soak", "damageSoakCurrent", "damageSoakMax"],
-      ["System Strain", "systemStrainCurrent", "systemStrainMax"]
-    ] as const) {
-      const current = numeric(sheet, currentKey);
-      const maximum = numeric(sheet, maximumKey);
-      if (current !== undefined && maximum !== undefined && current > maximum)
-        warnings.push(`${label} current value is above its recorded maximum.`);
-    }
-
-    for (const [label, key] of [
-      ["Physical", "physicalSave"],
-      ["Evasion", "evasionSave"],
-      ["Mental", "mentalSave"],
-      ["Luck", "luckSave"]
-    ] as const) {
-      const target = numeric(sheet, key);
-      if (target !== undefined && (target < 1 || target > 20))
-        warnings.push(`${label} save target must be between 1 and 20.`);
-    }
-
-    const wisdom = numeric(sheet, "wisScore");
-    const alienation = numeric(sheet, "cwn.cyberware.alienation");
-    if (wisdom !== undefined && alienation !== undefined && alienation > wisdom)
-      warnings.push("Alienation above Wisdom leaves the character in cyber-induced psychosis.");
-
-    const strength = numeric(sheet, "strScore");
-    const readied = numeric(sheet, "readiedEncumbrance");
-    const stowed = numeric(sheet, "stowedEncumbrance");
-    if (strength !== undefined && readied !== undefined && readied > Math.floor(strength / 2))
-      warnings.push(
-        readied > Math.floor(strength / 2) + 2
-          ? "Readied encumbrance is beyond the normal extended-hauling allowance."
-          : "Readied encumbrance is above normal capacity and reduces Move."
-      );
-    if (strength !== undefined && stowed !== undefined && stowed > strength)
-      warnings.push(
-        stowed > strength + 4
-          ? "Stowed encumbrance is beyond the normal extended-hauling allowance."
-          : "Stowed encumbrance is above normal capacity and reduces Move."
-      );
-
-    return warnings;
-  }
+  ]
 };

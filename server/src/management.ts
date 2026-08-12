@@ -7,7 +7,7 @@ import { requireAuth } from "./auth.js";
 import { all, db, one } from "./db.js";
 import { removeStoredPortrait } from "./portrait-files.js";
 import { broadcastRoom, disconnectAccount, refreshRoomAccess } from "./realtime.js";
-import { allSystems, systemIdSchema, systemOrThrow } from "./systems.js";
+import { allSystems, characterWarningsFor, systemIdSchema, systemOrThrow } from "./systems.js";
 import { canCreateAccountRole, requiresRoomTransferConfirmation } from "./account-role-permissions.js";
 
 export const managementRouter = express.Router();
@@ -154,7 +154,7 @@ function publicCharacter(row: ManagedCharacter) {
     ownerUsername: row.owner_username,
     roomId: row.pool_room_id,
     roomName: row.room_name,
-    warnings: systemOrThrow(row.system).characterWarnings(sheet),
+    warnings: characterWarningsFor(row.system, sheet),
     updatedAt: row.updated_at
   };
 }

@@ -13,11 +13,6 @@ const statFields = [
   { key: "armorMax", label: "Armor maximum", kind: "number" }
 ] as const;
 
-function numeric(sheet: Record<string, unknown>, key: string) {
-  const value = Number(sheet[key]);
-  return Number.isFinite(value) ? value : undefined;
-}
-
 /**
  * Monolith's range bands, as ARMORY writes them: `C-R`, `S-R`, `M-R`, `F-R`, or
  * spelled out as "mid-range" and "close/ short range". Anything naming a band or
@@ -392,23 +387,42 @@ export const monolith: GameSystem = {
       partsList: "holds"
     }
   },
-  characterWarnings(sheet) {
-    const warnings: string[] = [];
-    for (const key of ["hp", "str", "dex", "wil"]) {
-      const current = numeric(sheet, `${key}Current`);
-      const maximum = numeric(sheet, `${key}Max`);
+  // The cap and the overflow are declared per attribute and in that order, so
+  // each attribute's two notes stay together the way the sheet reads.
+  warningRules: [
+    ...["hp", "str", "dex", "wil"].flatMap((key) => {
       const label = key === "hp" ? "HP" : key.toUpperCase();
-      if (maximum !== undefined && maximum > 18) warnings.push(`${label} maximum cannot normally exceed 18.`);
-      if (current !== undefined && maximum !== undefined && current > maximum)
-        warnings.push(`${label} current value is above its recorded maximum.`);
+      return [
+        {
+          kind: "range",
+          key: `${key}Max`,
+          max: 18,
+          message: `${label} maximum cannot normally exceed 18.`
+        },
+        {
+          kind: "compare",
+          key: `${key}Current`,
+          against: `${key}Max`,
+          operator: ">",
+          message: `${label} current value is above its recorded maximum.`
+        }
+      ] as const;
+    }),
+    {
+      kind: "range",
+      key: "corruption",
+      min: 1,
+      max: 30,
+      message: "Corruption is normally recorded from 1 to 30."
+    },
+    // Exclusive tiers: a full rack does not also report the sixth socket.
+    {
+      kind: "list-occupancy",
+      listKey: "augmentations",
+      tiers: [
+        { atLeast: 12, message: "All 12 augmentation sockets are occupied; reduce WIL by another 1d6." },
+        { atLeast: 6, message: "Six or more augmentation sockets are occupied; reduce WIL by 1d6." }
+      ]
     }
-    const corruption = numeric(sheet, "corruption");
-    if (corruption !== undefined && (corruption < 1 || corruption > 30))
-      warnings.push("Corruption is normally recorded from 1 to 30.");
-    const augmentations = Array.isArray(sheet.augmentations) ? sheet.augmentations : [];
-    const occupied = augmentations.filter((item) => String(item ?? "").trim()).length;
-    if (occupied >= 12) warnings.push("All 12 augmentation sockets are occupied; reduce WIL by another 1d6.");
-    else if (occupied >= 6) warnings.push("Six or more augmentation sockets are occupied; reduce WIL by 1d6.");
-    return warnings;
-  }
+  ]
 };
