@@ -42,7 +42,7 @@ export function tablesForSystem(system: SystemId) {
   if (cached) return cached;
   const source = systemOrThrow(system).sourceDocuments[0];
   if (!source?.tablesFile) throw new Error(`${systemOrThrow(system).name} has no sourceDocument.tablesFile.`);
-  const parsed = tablesForSetJson(source.tablesFile).map((table) => ({
+  const parsed = tablesForSetJson(system, source.tablesFile).map((table) => ({
     ...table,
     tags: mergeTags(systemOrThrow(system).tableCatalog.tags, table.tags, tagVocabulary())
   }));

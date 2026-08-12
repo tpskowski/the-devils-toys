@@ -1,19 +1,12 @@
 import fs from "node:fs";
 import { z } from "zod";
-import { cairn } from "@devils-toys/system-cairn";
-import { cwn } from "@devils-toys/system-cwn";
-import { monolith } from "@devils-toys/system-monolith";
 import { evaluateCharacterWarnings, type GameSystem, type SystemId } from "@devils-toys/shared";
-import { projectFile } from "./paths.js";
+import { builtinSystems, isBuiltinSystem } from "./builtin-systems.js";
+import { systemRulesFile } from "./system-content.js";
 import { tablesForSetJson } from "./table-json.js";
 import { substituteTableLinks } from "./rules-substitution.js";
 
-/**
- * The systems compiled into this build. They are registered on start beside any
- * an admin has installed, and are otherwise ordinary members of the registry —
- * nothing may index this object to reach one.
- */
-export const builtinSystems: Record<string, GameSystem> = { cairn, monolith, cwn };
+export { builtinSystems, isBuiltinSystem };
 
 /**
  * Every system this server has, built-in and installed alike. A `Map` rather
@@ -49,7 +42,7 @@ export function registerSystem(definition: GameSystem) {
 
 /** Removes an installed system. A built-in is never removed. */
 export function unregisterSystem(system: SystemId) {
-  if (system in builtinSystems) return false;
+  if (isBuiltinSystem(system)) return false;
   return registry.delete(system);
 }
 
@@ -89,7 +82,7 @@ export function systemMarkdown(system: SystemId) {
   const definition = systemOrThrow(system);
   const source = definition.sourceDocuments[0];
   if (!source) throw new Error(`${definition.name} has no rules source.`);
-  return fs.readFileSync(projectFile("raw", source.markdownFile), "utf8");
+  return fs.readFileSync(systemRulesFile(system, source.markdownFile), "utf8");
 }
 
 export function systemTablesFile(system: SystemId) {
@@ -107,7 +100,7 @@ export function rulesMarkdown(system: SystemId, role: "gm" | "player") {
     linked = substituteTableLinks(
       systemMarkdown(system),
       `system:${system}`,
-      tablesForSetJson(systemTablesFile(system))
+      tablesForSetJson(system, systemTablesFile(system))
     );
     linkedRules.set(system, linked);
   }

@@ -2,8 +2,10 @@ import fs from "node:fs";
 import type { ItemTrait, SystemId, SystemTraitCatalog } from "@devils-toys/shared";
 import { traitId } from "@devils-toys/shared";
 import { sectionLines } from "./rules-tables.js";
-import { projectFile } from "./paths.js";
-import { systemOrThrow } from "./systems.js";
+import { traitCatalogFile } from "./system-content.js";
+import { systemMarkdown, systemOrThrow } from "./systems.js";
+
+export { traitCatalogFile };
 
 /**
  * A definition list entry, which is how a book states what one of its words
@@ -13,11 +15,6 @@ import { systemOrThrow } from "./systems.js";
  */
 const DEFINITION = /^-\s+\*\*(.+?):?\*\*:?\s*(.*)$/;
 const CONDITION = /^\((.+?)\)\s*/;
-
-/** Where a system's trait definitions live, beside the package that owns them. */
-export function traitCatalogFile(system: SystemId) {
-  return projectFile("systems", system, "traits.json");
-}
 
 export function readTraitCatalog(system: SystemId): SystemTraitCatalog {
   return JSON.parse(fs.readFileSync(traitCatalogFile(system), "utf8"));
@@ -41,7 +38,7 @@ export function traitsFromRulebook(system: SystemId): SystemTraitCatalog {
   const definition = systemOrThrow(system);
   const source = definition.sourceDocuments[0];
   if (!source) throw new Error(`${definition.name} has no rules source.`);
-  const markdown = fs.readFileSync(projectFile("raw", source.markdownFile), "utf8");
+  const markdown = systemMarkdown(system);
   const lines = markdown.split("\n");
 
   const traits: ItemTrait[] = [];

@@ -37,7 +37,7 @@ describe("the frozen table manifest", () => {
     const manifest = JSON.parse(fs.readFileSync(projectFile("raw", "tables", "manifest.json"), "utf8"));
     for (const system of Object.values(builtinSystems)) {
       const source = system.sourceDocuments[0]!;
-      const stored = readSetJson(source.tablesFile!);
+      const stored = readSetJson(system.id, source.tablesFile!);
       const expected = manifest.sets[`system:${system.id}`];
       expect(expected.tableCount).toBe(stored.tables.length);
       expect(stored.tables.map((table) => table.id)).toEqual(expected.tables.map((table: { id: string }) => table.id));
