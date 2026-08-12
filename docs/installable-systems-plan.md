@@ -248,13 +248,21 @@ Per the section above. Independent of Phase 0 and done alongside it.
 
 The three tests that asserted `toHaveLength(n)` now assert the exact sentences in order, since a count cannot tell a faithful conversion from a reworded one.
 
-### Phase 2 — Resolve content by system, not by path
+### Phase 2 — Resolve content by system, not by path — **done**
 
 - Add `server/src/system-content.ts`: `rulesFile(system, name)`, `tablesFile(system, name)`, `itemsFile(system)`, `traitsFile(system)`. Each checks the system's origin and returns either `projectFile("raw", …)` / `projectFile("systems", id, …)` or `path.join(config.dataDir, "systems", id, …)`.
 - Route the six existing readers through it: `systems.ts:31`, `table-json.ts:40`, `item-catalog.ts:10`, `trait-catalog.ts:19`, `item-catalog.ts:39`, `trait-catalog.ts:44`.
 - Installed items and traits are read from disk, not inlined — which is why `AGENTS.md:39` warns about the esbuild inlining. Built-ins keep the inlined path; only installed systems hit the filesystem.
 
-**Acceptance:** with no system installed, every content read resolves to the same file it does today. A test asserts this by comparing resolved paths for all three built-ins.
+**Acceptance met:** `server/src/system-content.test.ts` pins every resolved path for all three built-ins to the literal path the module it replaced was building. 359 unit tests and all 16 smoke tests pass.
+
+**What the phase actually needed beyond the sketch above:**
+
+- **`builtin-systems.ts`, to break a cycle.** The resolver must know whether a system is compiled in; the registry must know where its content lives. The three static imports and that one question moved into their own module, which both import.
+- **`isBuiltinSystem` uses `Object.hasOwn`, not `in`** — which is what `unregisterSystem` had been using. `"constructor" in builtinSystems` is `true`, so a system with that id would have had its content looked for in the repository, and `unregisterSystem` would have refused to remove it. Neither is reachable today, because `SYSTEM_ID_PATTERN` permits both spellings and nothing else stops them. There is a test.
+- **`readSetJson` takes the system and keys its cache on it.** The filename alone was enough while every set lived in `raw/tables`; two installed systems may both call their set `tables.json`. `forgetSetJson` is the Phase 4 invalidation hook, written now because the cache key was already being changed.
+- **The catalogues stopped reading the rulebook themselves.** `catalogFromRulebook` and `traitsFromRulebook` each held their own copy of the three lines `systemMarkdown` already had; both now call it, so the resolver only has to be right in one place.
+- **`characterVicesFor` asks the registry** whether it was handed a system or Markdown, rather than naming the three systems it knew about. One of the hardcoded branches Phase 3 was going to have to remove, removed early because its call site was already being touched.
 
 ### Phase 3 — The registry table and the install route
 
