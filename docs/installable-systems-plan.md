@@ -264,7 +264,7 @@ The three tests that asserted `toHaveLength(n)` now assert the exact sentences i
 - **The catalogues stopped reading the rulebook themselves.** `catalogFromRulebook` and `traitsFromRulebook` each held their own copy of the three lines `systemMarkdown` already had; both now call it, so the resolver only has to be right in one place.
 - **`characterVicesFor` asks the registry** whether it was handed a system or Markdown, rather than naming the three systems it knew about. One of the hardcoded branches Phase 3 was going to have to remove, removed early because its call site was already being touched.
 
-### Phase 3 — The registry table and the install route
+### Phase 3 — The registry table and the install route — **done**
 
 ```sql
 CREATE TABLE IF NOT EXISTS systems (
@@ -300,9 +300,22 @@ Validation, in order, each with its own message:
 5. `defaultTheme` ∈ `THEME_IDS`; every `sourceDocuments[].markdownFile` and `.tablesFile` is present in the archive; every `characterSheet.lists[].key` is unique; `npcStatblock.hitPointsKey` names a declared field; `warningRules` reference declared keys.
 6. Table JSON parses with the existing `readSetJson` validator.
 
-**Acceptance:** each numbered check has a test that feeds it a bundle failing only that check and asserts the message.
+**Acceptance met:** each numbered check has a test feeding it a bundle that fails only that check, in `system-bundles.test.ts` and `system-install.test.ts`. Both check modules are tested first against all three compiled systems, renamed and bundled — a rule Monolith itself fails is a wrong rule, not a bad system. 405 unit tests and all 17 smoke tests pass.
 
-### Phase 4 — Reload without a restart
+**`scripts/systems-smoke.mjs` is the phase's real acceptance**, and it is the plan's `monolith-2` in full: export, install on a running server, check the sheet definition, party label, vices, gear, dice, traits, and theme against Monolith's, read the rules as GM and as player, then retire, fail to delete, restore, replace, and delete.
+
+**What the sketch above missed:**
+
+- **`character-items.ts` held a hardcoded map of the three esbuild-inlined catalogues.** An installed system's items and traits were simply absent, and `/api/status` returned 500 the moment one existed. This is the case `AGENTS.md:39` warns about from the other direction: built-ins keep the inlined path so the Docker image still needs no extra files, and only an installed system reads from disk. Found by the smoke test, not by any unit test — nothing below the route had ever asked for a system that was not compiled in.
+- **Phase 4's cache invalidation had to come with it.** An install that needed a restart is not an install, so `forgetSystemContent` and the four hooks landed here rather than in their own phase.
+- **The tables server needs `loadInstalledSystems()` too.** It lists one table set per system and starts independently of the game server, so it would otherwise have shown an installed system's rooms but not its tables.
+- **Retirement had to reach three places, not one**: `/api/status` stops offering the system, `POST /api/rooms` refuses it with a 409, and the admin list still shows it. Only the first was in the sketch.
+- **`renameSystem` must leave a capability namespace alone.** CWN's modules provide `without-number/core@1`, which names a family rather than a system; rewriting it would have broken the very compatibility declaration it exists for.
+- **The exported rules differ from the original by design.** `rulesMarkdown` mints table anchors as `system:<id>` at read time and writes them URL-encoded, so `monolith-2`'s book is Monolith's byte for byte apart from those. The smoke test normalises exactly that and nothing else, which is a stronger assertion than equality would have been.
+
+### Phase 4 — Reload without a restart — **mostly done in Phase 3**
+
+The four invalidation hooks and `forgetSystemContent` landed with the install route, because an install that does not take effect is not one. What remains is the `systems-updated` realtime broadcast, so a client with the room list open notices a new system without a refresh.
 
 Four caches assume a system's content cannot change:
 
