@@ -123,14 +123,16 @@ export function repositoryTablesForSetJson(
 ): CatalogRollTable[] {
   const key = `repository\u0000${file}`;
   const cached = cache.get(key);
-  const parsed = cached ?? (() => {
-    const source = JSON.parse(fs.readFileSync(projectFile("raw", "tables", file), "utf8")) as StoredSet;
-    if (source.formatVersion !== 1 || !Array.isArray(source.tables)) throw new Error(`Invalid table JSON: ${file}`);
-    if (source.tables.some((table) => !table.id || !table.name || !Array.isArray(table.rows)))
-      throw new Error(`Invalid table entry in ${file}`);
-    cache.set(key, source);
-    return source;
-  })();
+  const parsed =
+    cached ??
+    (() => {
+      const source = JSON.parse(fs.readFileSync(projectFile("raw", "tables", file), "utf8")) as StoredSet;
+      if (source.formatVersion !== 1 || !Array.isArray(source.tables)) throw new Error(`Invalid table JSON: ${file}`);
+      if (source.tables.some((table) => !table.id || !table.name || !Array.isArray(table.rows)))
+        throw new Error(`Invalid table entry in ${file}`);
+      cache.set(key, source);
+      return source;
+    })();
   const tables = parsed.tables.map(({ origin, classification, ...table }) => ({
     ...table,
     ...(origin ? { source: origin } : {}),
