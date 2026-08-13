@@ -164,7 +164,10 @@ await runSmoke("Installable system smoke test", async ({ request, json, bytes, s
   );
   assert.ok(installedGroup.definition.hirelings, "It declares freelancers.");
   assert.equal(installedGroup.definition.hirelings.label, "Freelancers");
-  assert.ok(installedGroup.definition.groupAssets?.some((asset) => asset.kind === "starship"), "It owns ships.");
+  assert.ok(
+    installedGroup.definition.groupAssets?.some((asset) => asset.kind === "starship"),
+    "It owns ships."
+  );
   assert.ok(
     installedGroup.definition.starshipSheet.parts.length > 0,
     "Its starship parts are read from its own book, not from Monolith's."
