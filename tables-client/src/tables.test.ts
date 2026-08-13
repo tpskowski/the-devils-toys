@@ -11,6 +11,7 @@ import {
   removeRow,
   setCell,
   setDice,
+  setNextTable,
   setRowLabel,
   tableWarnings,
   tagTallies,
@@ -54,6 +55,12 @@ describe("editing rows", () => {
     const edited = setCell(wide, 1, 1, "Note");
     expect(edited.rows[1].cells).toEqual(["A stranger asks after you", "Note"]);
     expect(edited.rows[0].cells).toEqual(["The well has gone bitter", ""]);
+  });
+
+  it("links and unlinks a follow-up table without changing the result text", () => {
+    const linked = setNextTable(table, 0, "injuries-d8");
+    expect(linked.rows[0]).toMatchObject({ cells: ["The well has gone bitter"], nextTableId: "injuries-d8" });
+    expect(setNextTable(linked, 0, "").rows[0].nextTableId).toBeUndefined();
   });
 });
 

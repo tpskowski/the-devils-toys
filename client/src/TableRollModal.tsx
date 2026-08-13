@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Dices, X } from "lucide-react";
-import type { RollTable, TableRollVisibility } from "@devils-toys/shared";
+import type { RollTable, TableRollResult, TableRollVisibility } from "@devils-toys/shared";
 import { api } from "./api";
 import { InlineMarkdown } from "./InlineMarkdown";
 import { visibilityNotice } from "./tables";
@@ -19,7 +19,7 @@ export function TableRollModal({
   onClose: () => void;
 }) {
   const [table, setTable] = useState<RollTable>();
-  const [result, setResult] = useState<{ total: number; text: string }>();
+  const [results, setResults] = useState<TableRollResult[]>([]);
   const [error, setError] = useState("");
   const [rollError, setRollError] = useState("");
   const closeButton = useRef<HTMLButtonElement>(null);
@@ -43,11 +43,14 @@ export function TableRollModal({
     if (!table || !isGm) return;
     setRollError("");
     try {
-      const response = await api<{ roll: { total: number; text: string } }>(`/api/rooms/${roomId}/tables/roll`, {
-        method: "POST",
-        body: JSON.stringify({ setId, tableId, visibility })
-      });
-      setResult(response.roll);
+      const response = await api<{ roll: TableRollResult; followUps: TableRollResult[] }>(
+        `/api/rooms/${roomId}/tables/roll`,
+        {
+          method: "POST",
+          body: JSON.stringify({ setId, tableId, visibility })
+        }
+      );
+      setResults([response.roll, ...response.followUps]);
     } catch (cause) {
       setRollError((cause as Error).message);
     }
@@ -86,12 +89,20 @@ export function TableRollModal({
                 ))}
               </div>
             )}
-            {result && (
-              <div className="tables-result" role="status">
-                <span className="tables-result-total">{result.total}</span>
-                <span className="tables-result-text">
-                  <InlineMarkdown>{result.text || `No entry for ${result.total}`}</InlineMarkdown>
-                </span>
+            {results.length > 0 && (
+              <div className="tables-results" role="status">
+                {results.map((result, index) => (
+                  <div className="tables-result" key={`${result.tableId}-${index}`}>
+                    <span className="tables-result-step">{index + 1}</span>
+                    <span className="tables-result-total">{result.total}</span>
+                    <span>
+                      <span className="tables-result-text">
+                        <InlineMarkdown>{result.text || `No entry for ${result.total}`}</InlineMarkdown>
+                      </span>
+                      <small>{result.tableName}</small>
+                    </span>
+                  </div>
+                ))}
               </div>
             )}
             {rollError && <p className="form-error tables-error">{rollError}</p>}

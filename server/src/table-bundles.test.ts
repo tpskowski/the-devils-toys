@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { unzipSync, strFromU8, strToU8, zipSync } from "fflate";
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { spawnSync } from "node:child_process";
 import { parseRollTables } from "@devils-toys/shared";
 import { buildBundle, buildRepoBundle, compareToExisting, readBundle } from "./table-bundles.js";
 
@@ -114,24 +118,98 @@ describe("comparing a bundle with what is already here", () => {
 
 describe("a repository bundle", () => {
   const tables = parseRollTables(markdown);
-  const archive = unzipSync(buildRepoBundle("Market Rumours", tables, ["fantasy"]));
+  const archiveBytes = buildRepoBundle([{ name: "Market Rumours", tables }]);
+  const archive = unzipSync(archiveBytes);
 
-  it("holds the Markdown under raw/ and the instructions beside it", () => {
-    expect(Object.keys(archive).sort()).toEqual(["MERGE.md", "raw/Market Rumours.md"]);
+  it("holds JSON sets, a manifest, and the confirmation-based importer", () => {
+    expect(Object.keys(archive).sort()).toEqual([
+      "README.md",
+      "import-tables.mjs",
+      "manifest.json",
+      "sets/market-rumours.json"
+    ]);
+    expect(strFromU8(archive["import-tables.mjs"])).toContain("Confirm Y/N?");
   });
 
-  it("writes Markdown the parser reads back as the same tables", () => {
-    const parsed = parseRollTables(strFromU8(archive["raw/Market Rumours.md"]));
-    expect(parsed.map((table) => [table.name, table.dice, table.tags])).toEqual([["Rumours", "d6", ["fantasy"]]]);
+  it("writes runtime JSON without Markdown source locations", () => {
+    const set = JSON.parse(strFromU8(archive["sets/market-rumours.json"]));
+    expect(set).toMatchObject({ formatVersion: 1, setName: "Market Rumours" });
+    expect(set.tables.map((table: { name: string; dice: string; tags: string[] }) => [table.name, table.dice, table.tags]))
+      .toEqual([["Rumours", "d6", ["fantasy"]]]);
+    expect(set.tables[0]).not.toHaveProperty("source");
   });
 
-  it("names the real files and the tags in its instructions", () => {
-    const merge = strFromU8(archive["MERGE.md"]);
-    expect(merge).toContain("sourceDocuments");
-    expect(merge).toContain("contentModules");
-    expect(merge).toContain("imports");
-    expect(merge).toContain("server/src/systems.ts");
-    expect(merge).toContain('tags: ["fantasy"]');
-    expect(merge).toContain("systems/market-rumours/");
+  it("previews updates and new sets, then leaves the repository untouched on N", () => {
+    const root = mkdtempSync(join(tmpdir(), "devils-repo-import-"));
+    try {
+      const repo = join(root, "repo");
+      const bundle = join(root, "bundle");
+      mkdirSync(join(repo, "raw", "tables"), { recursive: true });
+      mkdirSync(join(bundle, "sets"), { recursive: true });
+      writeFileSync(join(repo, "package.json"), '{"name":"the-devils-toys"}\n');
+      writeFileSync(
+        join(repo, "raw", "tables", "repository-sets.json"),
+        JSON.stringify({ formatVersion: 1, sets: [{ id: "market-rumours", name: "Market Rumours", file: "market-rumours.json" }] }, null, 2) + "\n"
+      );
+      const incoming = JSON.parse(strFromU8(archive["sets/market-rumours.json"]));
+      const before = structuredClone(incoming);
+      before.tables[0].rows[0].cells[0] = "Old rumour";
+      writeFileSync(join(repo, "raw", "tables", "market-rumours.json"), JSON.stringify(before, null, 2) + "\n");
+      for (const [name, contents] of Object.entries(archive)) {
+        const target = join(bundle, name);
+        mkdirSync(join(target, ".."), { recursive: true });
+        writeFileSync(target, contents);
+      }
+
+      const run = spawnSync(process.execPath, [join(bundle, "import-tables.mjs"), repo], {
+        input: "n\n",
+        encoding: "utf8"
+      });
+      expect(run.status).toBe(0);
+      expect(run.stdout).toContain("This will update the Market Rumours table set.");
+      expect(run.stdout).toContain("Confirm Y/N?");
+      expect(run.stdout).toContain("No files changed.");
+      expect(JSON.parse(readFileSync(join(repo, "raw", "tables", "market-rumours.json"), "utf8"))).toEqual(before);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("imports confirmed updates and new sets into the repository registry", () => {
+    const second = parseRollTables(markdown.replace("Rumours", "Portents"));
+    const files = unzipSync(buildRepoBundle([
+      { name: "Market Rumours", tables },
+      { name: "New Portents", tables: second }
+    ]));
+    const root = mkdtempSync(join(tmpdir(), "devils-repo-import-"));
+    try {
+      const repo = join(root, "repo");
+      const bundle = join(root, "bundle");
+      mkdirSync(join(repo, "raw", "tables"), { recursive: true });
+      mkdirSync(join(bundle, "sets"), { recursive: true });
+      writeFileSync(join(repo, "package.json"), '{"name":"the-devils-toys"}\n');
+      writeFileSync(
+        join(repo, "raw", "tables", "repository-sets.json"),
+        JSON.stringify({ formatVersion: 1, sets: [{ id: "market-rumours", name: "Market Rumours", file: "market-rumours.json" }] }, null, 2) + "\n"
+      );
+      writeFileSync(join(repo, "raw", "tables", "market-rumours.json"), '{"formatVersion":1,"setName":"Market Rumours","tables":[]}\n');
+      for (const [name, contents] of Object.entries(files)) {
+        const target = join(bundle, name);
+        mkdirSync(join(target, ".."), { recursive: true });
+        writeFileSync(target, contents);
+      }
+
+      const run = spawnSync(process.execPath, [join(bundle, "import-tables.mjs"), repo], {
+        input: "y\n",
+        encoding: "utf8"
+      });
+      expect(run.status).toBe(0);
+      expect(run.stdout).toContain("update the Market Rumours table set, as well as add the new New Portents table set");
+      const registry = JSON.parse(readFileSync(join(repo, "raw", "tables", "repository-sets.json"), "utf8"));
+      expect(registry.sets.map((entry: { name: string }) => entry.name)).toEqual(["Market Rumours", "New Portents"]);
+      expect(JSON.parse(readFileSync(join(repo, "raw", "tables", "new-portents.json"), "utf8")).tables).toHaveLength(1);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
   });
 });

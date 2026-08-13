@@ -27,4 +27,17 @@ describe("custom table JSON compatibility", () => {
     const value = JSON.stringify({ formatVersion: 1, tables: [{ ...table, tags: ["undeclared"] }] });
     expect(() => parseCustomSet(value, "Imported", vocabulary)).toThrow(/Unknown table tag/);
   });
+
+  it("keeps linked-table targets in JSON rows", () => {
+    const [normalized] = normalizeCustomTables(
+      [
+        {
+          ...table,
+          rows: [{ ...table.rows[0], nextTableId: "follow-up" }]
+        }
+      ],
+      vocabulary
+    );
+    expect(normalized.rows[0].nextTableId).toBe("follow-up");
+  });
 });

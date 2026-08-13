@@ -3,6 +3,7 @@ import { ChevronLeft, Code, Download, Plus, Save } from "lucide-react";
 import {
   appendTable,
   parseRollTables,
+  retargetTableLinks,
   serializeSet,
   spliceTable,
   tagLabel,
@@ -105,7 +106,16 @@ export function SetEditor({
       setError("That table has no source range and cannot be edited in place.");
       return;
     }
-    setMarkdown((current) => (current === undefined ? current : spliceTable(current, editing)));
+    setMarkdown((current) => {
+      if (current === undefined) return current;
+      let revised = spliceTable(current, editing);
+      const replacement = parseRollTables(revised).find(
+        (table) => table.source?.heading?.line === editing.source?.heading?.line
+      );
+      if (editingId && replacement && replacement.id !== editingId)
+        revised = retargetTableLinks(revised, editingId, replacement.id);
+      return revised;
+    });
     setDirty(true);
     setEditing(undefined);
     setEditingId("");
@@ -162,7 +172,7 @@ export function SetEditor({
         {permissions.canAdminister && (
           <button
             type="button"
-            title="A zip shaped for the repository, with instructions for folding it in"
+            title="Table JSON plus a CLI importer that previews and confirms repository changes"
             onClick={() =>
               download(
                 `/api/table-sets/${encodeURIComponent(setId)}/repo-bundle`,
@@ -170,7 +180,7 @@ export function SetEditor({
               ).catch((cause: Error) => setError(cause.message))
             }
           >
-            <Download size={15} aria-hidden /> Repo bundle
+            <Download size={15} aria-hidden /> Repo JSON + importer
           </button>
         )}
         {!readOnly && (
@@ -288,6 +298,7 @@ export function SetEditor({
               <>
                 <TableGrid
                   table={editing}
+                  tables={tables}
                   vocabulary={vocabulary}
                   readOnly={readOnly}
                   canRename={editing.source?.soleTable ?? true}

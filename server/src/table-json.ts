@@ -20,6 +20,17 @@ export interface CustomSetDocument {
   tables: StoredCustomTable[];
 }
 
+export interface RepositorySetEntry {
+  id: string;
+  name: string;
+  file: string;
+}
+
+interface RepositorySetRegistry {
+  formatVersion: 1;
+  sets: RepositorySetEntry[];
+}
+
 interface StoredTable extends Omit<RollTable, "source"> {
   classification?: TableClassification;
   origin?: RollTableSource & { markdownFile?: string };
@@ -33,6 +44,24 @@ interface StoredSet {
 }
 
 const cache = new Map<string, StoredSet>();
+
+/** Standalone, checked-in table sets installed by a repository bundle. */
+export function repositorySetEntries(): RepositorySetEntry[] {
+  const file = projectFile("raw", "tables", "repository-sets.json");
+  const parsed = JSON.parse(fs.readFileSync(file, "utf8")) as Partial<RepositorySetRegistry>;
+  if (parsed.formatVersion !== 1 || !Array.isArray(parsed.sets))
+    throw new Error("Invalid repository table-set registry.");
+  return parsed.sets.map((entry) => {
+    if (
+      !entry ||
+      !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(String(entry.id)) ||
+      !String(entry.name).trim() ||
+      !/^[a-z0-9]+(?:-[a-z0-9]+)*\.json$/.test(String(entry.file))
+    )
+      throw new Error("Invalid repository table-set entry.");
+    return { id: String(entry.id), name: String(entry.name), file: String(entry.file) };
+  });
+}
 
 export function readSetJson(file: string): StoredSet {
   const cached = cache.get(file);
@@ -75,7 +104,16 @@ function normalizedRows(table: Record<string, unknown>, columns: readonly string
     if (!Array.isArray(row.cells)) throw new Error(`Table "${String(table.name ?? "")}" has invalid cells.`);
     const cells = row.cells.map((cell) => String(cell));
     while (cells.length < columns.length) cells.push("");
-    return { label, min: range.min, max: range.max, cells: cells.slice(0, columns.length) };
+    const nextTableId = typeof row.nextTableId === "string" ? row.nextTableId.trim() : "";
+    if (nextTableId && !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(nextTableId))
+      throw new Error(`Table "${String(table.name ?? "")}" has an invalid next table id.`);
+    return {
+      label,
+      min: range.min,
+      max: range.max,
+      cells: cells.slice(0, columns.length),
+      ...(nextTableId ? { nextTableId } : {})
+    };
   });
 }
 

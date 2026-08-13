@@ -45,6 +45,15 @@ export function setCell(table: RollTable, index: number, column: number, value: 
   return { ...table, rows };
 }
 
+export function setNextTable(table: RollTable, index: number, nextTableId: string): RollTable {
+  return {
+    ...table,
+    rows: table.rows.map((row, position) =>
+      position === index ? { ...row, nextTableId: nextTableId || undefined } : row
+    )
+  };
+}
+
 /** A new row continuing from the highest value the table already covers. */
 export function addRow(table: RollTable): RollTable {
   const highest = table.rows.reduce((top, row) => Math.max(top, row.max), 0);
