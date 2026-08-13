@@ -89,7 +89,12 @@ export function BundleTools({ permissions, onImported }: { permissions: Permissi
           <button
             type="button"
             title="JSON for raw/tables, plus a CLI importer that previews and confirms changes"
-            onClick={() => download("/api/table-repo-export", "devils-tables-repository.zip")}
+            onClick={() => {
+              setError("");
+              download("/api/table-repo-export", "devils-tables-repository.zip").catch((cause: Error) =>
+                setError(cause.message)
+              );
+            }}
           >
             <Download size={15} aria-hidden /> Export for repository
           </button>

@@ -2,10 +2,42 @@ import {
   diceMaximum,
   diceMinimum,
   parseRowLabel,
+  parseRollTables,
+  spliceTable,
   type RollTable,
   type TableTag,
   type TableTagDefinition
 } from "@devils-toys/shared";
+
+function retargetTableLinkMap(markdown: string, mapping: ReadonlyMap<string, string>) {
+  return markdown.replace(
+    /(<!--\s*next-table:\s*)([a-z0-9][a-z0-9-]*)(\s*-->)/gi,
+    (whole, start: string, id: string, end: string) => {
+      const replacement = mapping.get(id.toLocaleLowerCase());
+      return replacement ? `${start}${replacement}${end}` : whole;
+    }
+  );
+}
+
+/** Applies one grid edit and retargets every identifier changed by reparsing the set. */
+export function applyTableEdit(markdown: string, editingId: string, editing: RollTable) {
+  const before = parseRollTables(markdown);
+  const editedIndex = before.findIndex(
+    (table) => table.id === editingId && table.source?.tableStart === editing.source?.tableStart
+  );
+  if (editedIndex < 0) throw new Error("The edited table could not be matched to the saved set.");
+
+  const revised = spliceTable(markdown, editing);
+  const after = parseRollTables(revised);
+  if (after.length !== before.length || !after[editedIndex])
+    throw new Error("That edit no longer parses as the same set of tables. Fix the invalid table rows and try again.");
+
+  const mapping = new Map<string, string>();
+  for (let index = 0; index < before.length; index += 1) {
+    if (before[index].id !== after[index].id) mapping.set(before[index].id.toLocaleLowerCase(), after[index].id);
+  }
+  return retargetTableLinkMap(revised, mapping);
+}
 
 /**
  * Editing operations on a table, kept apart from the components so they can be

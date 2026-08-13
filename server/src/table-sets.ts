@@ -18,7 +18,12 @@ import { all, db, one } from "./db.js";
 import { knownTags, tagVocabulary } from "./table-tags.js";
 import { requireTableEdit, requireTableRead } from "./table-permissions.js";
 import { systems } from "./systems.js";
-import { repositorySetEntries, tablesForSetJson, type CatalogRollTable } from "./table-json.js";
+import {
+  repositorySetEntries,
+  repositoryTablesForSetJson,
+  tablesForSetJson,
+  type CatalogRollTable
+} from "./table-json.js";
 
 /**
  * The table catalogue itself: what sets exist, and how a set is created, edited,
@@ -94,7 +99,7 @@ export function availableSets(): { set: RollTableSet; tables: RollTable[] }[] {
     };
   });
   const repository = repositorySetEntries().map((entry) => {
-    const tables = tablesForSetJson(entry.file).map((table) => ({
+    const tables = repositoryTablesForSetJson(entry.file, vocabulary).map((table) => ({
       ...table,
       tags: mergeTags([], table.tags, vocabulary)
     }));

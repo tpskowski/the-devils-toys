@@ -46,21 +46,29 @@ interface StoredSet {
 const cache = new Map<string, StoredSet>();
 
 /** Standalone, checked-in table sets installed by a repository bundle. */
-export function repositorySetEntries(): RepositorySetEntry[] {
-  const file = projectFile("raw", "tables", "repository-sets.json");
-  const parsed = JSON.parse(fs.readFileSync(file, "utf8")) as Partial<RepositorySetRegistry>;
+export function parseRepositorySetRegistry(value: string): RepositorySetEntry[] {
+  const parsed = JSON.parse(value) as Partial<RepositorySetRegistry>;
   if (parsed.formatVersion !== 1 || !Array.isArray(parsed.sets))
     throw new Error("Invalid repository table-set registry.");
+  const ids = new Set<string>();
   return parsed.sets.map((entry) => {
+    const id = String(entry?.id);
     if (
       !entry ||
-      !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(String(entry.id)) ||
+      !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(id) ||
+      ids.has(id) ||
       !String(entry.name).trim() ||
       !/^[a-z0-9]+(?:-[a-z0-9]+)*\.json$/.test(String(entry.file))
     )
       throw new Error("Invalid repository table-set entry.");
-    return { id: String(entry.id), name: String(entry.name), file: String(entry.file) };
+    ids.add(id);
+    return { id, name: String(entry.name), file: String(entry.file) };
   });
+}
+
+export function repositorySetEntries(): RepositorySetEntry[] {
+  const file = projectFile("raw", "tables", "repository-sets.json");
+  return parseRepositorySetRegistry(fs.readFileSync(file, "utf8"));
 }
 
 export function readSetJson(file: string): StoredSet {
@@ -81,6 +89,24 @@ export function tablesForSetJson(file: string): CatalogRollTable[] {
     ...(origin ? { source: origin } : {}),
     classification
   }));
+}
+
+/** Repository tables must not silently lose a tag the checked-in JSON names. */
+export function validateRepositoryTableTags<T extends { tags: readonly string[] }>(
+  tables: readonly T[],
+  vocabulary: readonly TableTagDefinition[],
+  file: string
+): T[] {
+  const unknown = tables.flatMap((table) => table.tags).find((tag) => !vocabulary.some((entry) => entry.slug === tag));
+  if (unknown) throw new Error(`Unknown repository table tag "${unknown}" in ${file}.`);
+  return [...tables];
+}
+
+export function repositoryTablesForSetJson(
+  file: string,
+  vocabulary: readonly TableTagDefinition[]
+): CatalogRollTable[] {
+  return validateRepositoryTableTags(tablesForSetJson(file), vocabulary, file);
 }
 
 function tableSlug(value: string) {

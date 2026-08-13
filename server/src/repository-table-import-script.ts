@@ -120,15 +120,29 @@ async function main() {
 
   const planned = [];
   const reservedFiles = new Set(registry.sets.map((entry) => entry.file));
+  const incomingIds = new Set();
+  const incomingNames = new Set();
   for (const incoming of manifest.sets) {
-    if (!incoming || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(String(incoming.id)) || typeof incoming.name !== "string") {
+    if (!incoming || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(String(incoming.id)) || typeof incoming.name !== "string" || !incoming.name.trim()) {
       throw new Error("The bundle manifest contains an invalid table set.");
     }
+    const normalizedId = String(incoming.id).toLocaleLowerCase();
+    const normalizedName = incoming.name.trim().toLocaleLowerCase();
+    if (incomingIds.has(normalizedId)) throw new Error("The bundle manifest contains duplicate table-set id " + incoming.id + ".");
+    if (incomingNames.has(normalizedName)) throw new Error("The bundle manifest contains duplicate table-set name " + incoming.name + ".");
+    incomingIds.add(normalizedId);
+    incomingNames.add(normalizedName);
+  }
+
+  const claimedRegistryEntries = new Set();
+  for (const incoming of manifest.sets) {
     const document = JSON.parse(await fs.readFile(safeBundleFile(incoming.file), "utf8"));
     validateDocument(document, incoming.name);
     const existing = registry.sets.find((entry) => entry.id === incoming.id) ||
       registry.sets.find((entry) => String(entry.name).toLocaleLowerCase() === incoming.name.toLocaleLowerCase());
     if (existing) {
+      if (claimedRegistryEntries.has(existing)) throw new Error("More than one bundled table set resolves to the existing " + existing.name + " table set.");
+      claimedRegistryEntries.add(existing);
       if (!/^[a-z0-9]+(?:-[a-z0-9]+)*\.json$/.test(String(existing.file))) throw new Error("Unsafe repository table filename for " + existing.name + ".");
       const target = path.join(tablesDirectory, existing.file);
       if (!await exists(target)) throw new Error("The registry names a missing file: " + existing.file + ".");

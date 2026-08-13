@@ -3,6 +3,7 @@ import { parseRollTables, spliceTable } from "@devils-toys/shared";
 import {
   addColumn,
   addRow,
+  applyTableEdit,
   blankTable,
   fillRows,
   filterSets,
@@ -137,6 +138,73 @@ describe("a new table", () => {
     const [read] = parseRollTables(document);
     expect(read.name).toBe("Omens");
     expect(read.dice).toBe("d6");
+  });
+});
+
+describe("applying an edit to a linked set", () => {
+  it("keeps links aimed at the correct table when several tables share one heading", () => {
+    const markdown = `### Chooser
+
+| d6 | Result |
+| --- | --- |
+| 1-6 | Go <!-- next-table: encounters-desert --> |
+
+### Encounters
+
+| d6 | Forest |
+| --- | --- |
+| 1-6 | Wolves |
+
+| d6 | Desert |
+| --- | --- |
+| 1-6 | Scorpions |
+`;
+    const before = parseRollTables(markdown);
+    const desert = before.find((entry) => entry.name.endsWith("Desert"))!;
+    expect(desert.source?.heading?.line).toBe(
+      before.find((entry) => entry.name.endsWith("Forest"))!.source?.heading?.line
+    );
+
+    const revised = applyTableEdit(markdown, desert.id, setCell(desert, 0, 0, "Sand worms"));
+    const after = parseRollTables(revised);
+    expect(after[0].rows[0].nextTableId).toBe(after.find((entry) => entry.name.endsWith("Desert"))!.id);
+  });
+
+  it("retargets every changed id when collision suffixes shift", () => {
+    const markdown = `### Chooser
+
+| d6 | Result |
+| --- | --- |
+| 1 | First <!-- next-table: a-b --> |
+| 2-6 | Second <!-- next-table: a-b-2 --> |
+
+### A B
+
+| d6 | Result |
+| --- | --- |
+| 1-6 | One |
+
+### A-B
+
+| d6 | Result |
+| --- | --- |
+| 1-6 | Two |
+`;
+    const before = parseRollTables(markdown);
+    const first = before.find((entry) => entry.id === "a-b")!;
+    const revised = applyTableEdit(markdown, first.id, { ...first, name: "Different" });
+    const chooser = parseRollTables(revised)[0];
+    expect(chooser.rows.map((row) => row.nextTableId)).toEqual(["different", "a-b"]);
+  });
+
+  it("rejects an edit that stops its table from parsing and leaves the source available", () => {
+    const [original] = parseRollTables(source);
+    const invalid = {
+      ...original,
+      rows: original.rows.map((row) => ({ ...row, label: "not a roll" }))
+    };
+    expect(() => applyTableEdit(source, original.id, invalid)).toThrow(/no longer parses as the same set/);
+    expect(parseRollTables(source)).toHaveLength(1);
   });
 });
 

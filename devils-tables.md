@@ -32,7 +32,7 @@ From **Table sets**, open a set and press **+** beside the table count. A new ta
 
 Each table has:
 
-- **Name** — the heading it appears under. Renaming it changes the identifier the table is known by; nothing stored depends on that, but it is worth knowing.
+- **Name** — the heading it appears under. Renaming it can change the table identifier that **Next roll** links store; the editor automatically retargets every affected link in the set when that happens.
 - **Die** — one of d4, d6, d8, d10, d12, d20, d30, d44, d66, or d100. The compound dice (d44, d66) are read as digit pairs, so d44 covers 11–44 using digits 1 to 4.
 - **Columns** — one or more result columns. Add and remove them from the header row.
 - **Rows** — a die value and a cell per column. A value can be a single number (`7`) or a range (`4-14`).

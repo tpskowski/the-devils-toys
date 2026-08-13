@@ -3,9 +3,7 @@ import { ChevronLeft, Code, Download, Plus, Save } from "lucide-react";
 import {
   appendTable,
   parseRollTables,
-  retargetTableLinks,
   serializeSet,
-  spliceTable,
   tagLabel,
   type RollTable,
   type TableTag,
@@ -15,7 +13,7 @@ import { api, download } from "./api";
 import { CsvImport } from "./CsvImport";
 import { TableGrid } from "./TableGrid";
 import { TagPicker } from "./TagPicker";
-import { blankTable, tablesWithTag, tagTallies } from "./tables";
+import { applyTableEdit, blankTable, tablesWithTag, tagTallies } from "./tables";
 import type { Permissions } from "./session";
 
 interface StoredSet {
@@ -106,16 +104,16 @@ export function SetEditor({
       setError("That table has no source range and cannot be edited in place.");
       return;
     }
-    setMarkdown((current) => {
-      if (current === undefined) return current;
-      let revised = spliceTable(current, editing);
-      const replacement = parseRollTables(revised).find(
-        (table) => table.source?.heading?.line === editing.source?.heading?.line
-      );
-      if (editingId && replacement && replacement.id !== editingId)
-        revised = retargetTableLinks(revised, editingId, replacement.id);
-      return revised;
-    });
+    if (markdown === undefined) return;
+    let revised: string;
+    try {
+      revised = applyTableEdit(markdown, editingId, editing);
+    } catch (cause) {
+      setError((cause as Error).message);
+      return;
+    }
+    setMarkdown(revised);
+    setError("");
     setDirty(true);
     setEditing(undefined);
     setEditingId("");

@@ -121,6 +121,46 @@ describe("a repository bundle", () => {
   const archiveBytes = buildRepoBundle([{ name: "Market Rumours", tables }]);
   const archive = unzipSync(archiveBytes);
 
+  function runManifest(
+    manifestSets: { id: string; name: string; file: string }[],
+    registrySets: { id: string; name: string; file: string }[] = []
+  ) {
+    const root = mkdtempSync(join(tmpdir(), "devils-repo-import-"));
+    try {
+      const repo = join(root, "repo");
+      const bundle = join(root, "bundle");
+      mkdirSync(join(repo, "raw", "tables"), { recursive: true });
+      mkdirSync(join(bundle, "sets"), { recursive: true });
+      writeFileSync(join(repo, "package.json"), '{"name":"the-devils-toys"}\n');
+      writeFileSync(
+        join(repo, "raw", "tables", "repository-sets.json"),
+        JSON.stringify({ formatVersion: 1, sets: registrySets }, null, 2) + "\n"
+      );
+      for (const entry of registrySets) {
+        writeFileSync(
+          join(repo, "raw", "tables", entry.file),
+          JSON.stringify({ formatVersion: 1, setName: entry.name, tables: [] }, null, 2) + "\n"
+        );
+      }
+      writeFileSync(join(bundle, "import-tables.mjs"), archive["import-tables.mjs"]);
+      writeFileSync(
+        join(bundle, "manifest.json"),
+        JSON.stringify({ app: "devils-tables-repository", formatVersion: 1, sets: manifestSets }, null, 2) + "\n"
+      );
+      for (const entry of manifestSets) {
+        const target = join(bundle, entry.file);
+        mkdirSync(join(target, ".."), { recursive: true });
+        writeFileSync(target, archive["sets/market-rumours.json"]);
+      }
+      return spawnSync(process.execPath, [join(bundle, "import-tables.mjs"), repo], {
+        input: "n\n",
+        encoding: "utf8"
+      });
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  }
+
   it("holds JSON sets, a manifest, and the confirmation-based importer", () => {
     expect(Object.keys(archive).sort()).toEqual([
       "README.md",
@@ -134,9 +174,40 @@ describe("a repository bundle", () => {
   it("writes runtime JSON without Markdown source locations", () => {
     const set = JSON.parse(strFromU8(archive["sets/market-rumours.json"]));
     expect(set).toMatchObject({ formatVersion: 1, setName: "Market Rumours" });
-    expect(set.tables.map((table: { name: string; dice: string; tags: string[] }) => [table.name, table.dice, table.tags]))
-      .toEqual([["Rumours", "d6", ["fantasy"]]]);
+    expect(
+      set.tables.map((table: { name: string; dice: string; tags: string[] }) => [table.name, table.dice, table.tags])
+    ).toEqual([["Rumours", "d6", ["fantasy"]]]);
     expect(set.tables[0]).not.toHaveProperty("source");
+  });
+
+  it("rejects duplicate normalized ids before importing", () => {
+    const run = runManifest([
+      { id: "omens", name: "First", file: "sets/first.json" },
+      { id: "omens", name: "Second", file: "sets/second.json" }
+    ]);
+    expect(run.status).toBe(1);
+    expect(run.stderr).toContain("duplicate table-set id omens");
+  });
+
+  it("rejects duplicate normalized names before importing", () => {
+    const run = runManifest([
+      { id: "first", name: "Same Name", file: "sets/first.json" },
+      { id: "second", name: " same name ", file: "sets/second.json" }
+    ]);
+    expect(run.status).toBe(1);
+    expect(run.stderr).toContain("duplicate table-set name");
+  });
+
+  it("rejects two incoming entries that claim the same existing set", () => {
+    const run = runManifest(
+      [
+        { id: "existing", name: "Renamed", file: "sets/first.json" },
+        { id: "other", name: "Existing", file: "sets/second.json" }
+      ],
+      [{ id: "existing", name: "Existing", file: "existing.json" }]
+    );
+    expect(run.status).toBe(1);
+    expect(run.stderr).toContain("resolves to the existing Existing table set");
   });
 
   it("previews updates and new sets, then leaves the repository untouched on N", () => {
@@ -149,7 +220,11 @@ describe("a repository bundle", () => {
       writeFileSync(join(repo, "package.json"), '{"name":"the-devils-toys"}\n');
       writeFileSync(
         join(repo, "raw", "tables", "repository-sets.json"),
-        JSON.stringify({ formatVersion: 1, sets: [{ id: "market-rumours", name: "Market Rumours", file: "market-rumours.json" }] }, null, 2) + "\n"
+        JSON.stringify(
+          { formatVersion: 1, sets: [{ id: "market-rumours", name: "Market Rumours", file: "market-rumours.json" }] },
+          null,
+          2
+        ) + "\n"
       );
       const incoming = JSON.parse(strFromU8(archive["sets/market-rumours.json"]));
       const before = structuredClone(incoming);
@@ -177,10 +252,12 @@ describe("a repository bundle", () => {
 
   it("imports confirmed updates and new sets into the repository registry", () => {
     const second = parseRollTables(markdown.replace("Rumours", "Portents"));
-    const files = unzipSync(buildRepoBundle([
-      { name: "Market Rumours", tables },
-      { name: "New Portents", tables: second }
-    ]));
+    const files = unzipSync(
+      buildRepoBundle([
+        { name: "Market Rumours", tables },
+        { name: "New Portents", tables: second }
+      ])
+    );
     const root = mkdtempSync(join(tmpdir(), "devils-repo-import-"));
     try {
       const repo = join(root, "repo");
@@ -190,9 +267,16 @@ describe("a repository bundle", () => {
       writeFileSync(join(repo, "package.json"), '{"name":"the-devils-toys"}\n');
       writeFileSync(
         join(repo, "raw", "tables", "repository-sets.json"),
-        JSON.stringify({ formatVersion: 1, sets: [{ id: "market-rumours", name: "Market Rumours", file: "market-rumours.json" }] }, null, 2) + "\n"
+        JSON.stringify(
+          { formatVersion: 1, sets: [{ id: "market-rumours", name: "Market Rumours", file: "market-rumours.json" }] },
+          null,
+          2
+        ) + "\n"
       );
-      writeFileSync(join(repo, "raw", "tables", "market-rumours.json"), '{"formatVersion":1,"setName":"Market Rumours","tables":[]}\n');
+      writeFileSync(
+        join(repo, "raw", "tables", "market-rumours.json"),
+        '{"formatVersion":1,"setName":"Market Rumours","tables":[]}\n'
+      );
       for (const [name, contents] of Object.entries(files)) {
         const target = join(bundle, name);
         mkdirSync(join(target, ".."), { recursive: true });
@@ -204,7 +288,9 @@ describe("a repository bundle", () => {
         encoding: "utf8"
       });
       expect(run.status).toBe(0);
-      expect(run.stdout).toContain("update the Market Rumours table set, as well as add the new New Portents table set");
+      expect(run.stdout).toContain(
+        "update the Market Rumours table set, as well as add the new New Portents table set"
+      );
       const registry = JSON.parse(readFileSync(join(repo, "raw", "tables", "repository-sets.json"), "utf8"));
       expect(registry.sets.map((entry: { name: string }) => entry.name)).toEqual(["Market Rumours", "New Portents"]);
       expect(JSON.parse(readFileSync(join(repo, "raw", "tables", "new-portents.json"), "utf8")).tables).toHaveLength(1);

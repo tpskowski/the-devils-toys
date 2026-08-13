@@ -12,7 +12,7 @@ import { requireAuth } from "./auth.js";
 import { all, db, one } from "./db.js";
 import { requireTableAdmin, requireTableEdit, requireTableRead } from "./table-permissions.js";
 import { systems } from "./systems.js";
-import { repositorySetEntries, tablesForSetJson } from "./table-json.js";
+import { repositorySetEntries, repositoryTablesForSetJson, tablesForSetJson } from "./table-json.js";
 
 export const tagRouter = express.Router();
 
@@ -91,7 +91,7 @@ function allTagUsage() {
   }
 
   for (const entry of repositorySetEntries()) {
-    const tables = tablesForSetJson(entry.file);
+    const tables = repositoryTablesForSetJson(entry.file, tagVocabulary());
     includeSet(tables.flatMap((table) => table.tags));
     includeTables(tables, []);
   }
