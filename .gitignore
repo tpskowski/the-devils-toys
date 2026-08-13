@@ -44,3 +44,7 @@ desktop.ini
 *.orig
 *.rej
 *.patch
+
+# Exporter files
+/custom-*-repo
+custom-*-repo.zip

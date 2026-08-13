@@ -1,0 +1,363 @@
+{
+  "formatVersion": 1,
+  "setName": "tim's tables",
+  "tables": [
+    {
+      "id": "table-of-mild-mutations-body-part-d4",
+      "name": "Mild Mutations - Body Part",
+      "section": "",
+      "category": "Body part (d4)",
+      "dice": "d4",
+      "columns": [
+        "Result"
+      ],
+      "tags": [],
+      "rows": [
+        {
+          "label": "1",
+          "min": 1,
+          "max": 1,
+          "cells": [
+            "Head"
+          ],
+          "nextTableId": "table-of-mild-mutations-head-neck-d8"
+        },
+        {
+          "label": "2",
+          "min": 2,
+          "max": 2,
+          "cells": [
+            "Torso"
+          ],
+          "nextTableId": "table-of-mild-mutations-torso-back-d8"
+        },
+        {
+          "label": "3",
+          "min": 3,
+          "max": 3,
+          "cells": [
+            "Arms and hands"
+          ],
+          "nextTableId": "table-of-mild-mutations-arms-hands-d8"
+        },
+        {
+          "label": "4",
+          "min": 4,
+          "max": 4,
+          "cells": [
+            "Legs and feet"
+          ],
+          "nextTableId": "table-of-mild-mutations-legs-feet-d8"
+        }
+      ]
+    },
+    {
+      "id": "table-of-mild-mutations-head-neck-d8",
+      "name": "Mild Mutations - Head & Neck",
+      "section": "",
+      "category": "Head & neck (d8)",
+      "dice": "d8",
+      "columns": [
+        "Result"
+      ],
+      "tags": [],
+      "rows": [
+        {
+          "label": "1",
+          "min": 1,
+          "max": 1,
+          "cells": [
+            "Short neck"
+          ]
+        },
+        {
+          "label": "2",
+          "min": 2,
+          "max": 2,
+          "cells": [
+            "Advancing hairline"
+          ]
+        },
+        {
+          "label": "3",
+          "min": 3,
+          "max": 3,
+          "cells": [
+            "Detached left earlobe, attached on the right"
+          ]
+        },
+        {
+          "label": "4",
+          "min": 4,
+          "max": 4,
+          "cells": [
+            "One nostril"
+          ]
+        },
+        {
+          "label": "5",
+          "min": 5,
+          "max": 5,
+          "cells": [
+            "Asymmetric eyebrows"
+          ]
+        },
+        {
+          "label": "6",
+          "min": 6,
+          "max": 6,
+          "cells": [
+            "Heterochromitic lips"
+          ]
+        },
+        {
+          "label": "7",
+          "min": 7,
+          "max": 7,
+          "cells": [
+            "Natural metallic highlights in hair"
+          ]
+        },
+        {
+          "label": "8",
+          "min": 8,
+          "max": 8,
+          "cells": [
+            "A slightly concave adam's apple"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "table-of-mild-mutations-torso-back-d8",
+      "name": "Mild Mutations - Torso & Back",
+      "section": "",
+      "category": "Torso & back (d8)",
+      "dice": "d8",
+      "columns": [
+        "Result"
+      ],
+      "tags": [],
+      "rows": [
+        {
+          "label": "1",
+          "min": 1,
+          "max": 1,
+          "cells": [
+            "Three nipples"
+          ]
+        },
+        {
+          "label": "2",
+          "min": 2,
+          "max": 2,
+          "cells": [
+            "Love handles, but not where you'd expect"
+          ]
+        },
+        {
+          "label": "3",
+          "min": 3,
+          "max": 3,
+          "cells": [
+            "Leathery back"
+          ]
+        },
+        {
+          "label": "4",
+          "min": 4,
+          "max": 4,
+          "cells": [
+            "Unusually hairy navel"
+          ]
+        },
+        {
+          "label": "5",
+          "min": 5,
+          "max": 5,
+          "cells": [
+            "Left breast slightly larger than the right"
+          ]
+        },
+        {
+          "label": "6",
+          "min": 6,
+          "max": 6,
+          "cells": [
+            "Back on the front and front on the back"
+          ]
+        },
+        {
+          "label": "7",
+          "min": 7,
+          "max": 7,
+          "cells": [
+            "A very tiny pair of gossamer wings"
+          ]
+        },
+        {
+          "label": "8",
+          "min": 8,
+          "max": 8,
+          "cells": [
+            "Purple chest hair"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "table-of-mild-mutations-arms-hands-d8",
+      "name": "Mild Mutations - Arms & Hands",
+      "section": "",
+      "category": "Arms & hands (d8)",
+      "dice": "d8",
+      "columns": [
+        "Result"
+      ],
+      "tags": [],
+      "rows": [
+        {
+          "label": "1",
+          "min": 1,
+          "max": 1,
+          "cells": [
+            "Big wrists"
+          ]
+        },
+        {
+          "label": "2",
+          "min": 2,
+          "max": 2,
+          "cells": [
+            "Chubby hands"
+          ]
+        },
+        {
+          "label": "3",
+          "min": 3,
+          "max": 3,
+          "cells": [
+            "Thumbnails on all fingers"
+          ]
+        },
+        {
+          "label": "4",
+          "min": 4,
+          "max": 4,
+          "cells": [
+            "Six fingers on the right hand"
+          ]
+        },
+        {
+          "label": "5",
+          "min": 5,
+          "max": 5,
+          "cells": [
+            "Extra finger joints"
+          ]
+        },
+        {
+          "label": "6",
+          "min": 6,
+          "max": 6,
+          "cells": [
+            "Hair palms"
+          ]
+        },
+        {
+          "label": "7",
+          "min": 7,
+          "max": 7,
+          "cells": [
+            "Slightly green fingernails"
+          ]
+        },
+        {
+          "label": "8",
+          "min": 8,
+          "max": 8,
+          "cells": [
+            "Long pinkies"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "table-of-mild-mutations-legs-feet-d8",
+      "name": "Mild Mutations - Legs & Feet",
+      "section": "",
+      "category": "Legs & feet (d8)",
+      "dice": "d8",
+      "columns": [
+        "Result"
+      ],
+      "tags": [],
+      "rows": [
+        {
+          "label": "1",
+          "min": 1,
+          "max": 1,
+          "cells": [
+            "Two left knees"
+          ]
+        },
+        {
+          "label": "2",
+          "min": 2,
+          "max": 2,
+          "cells": [
+            "Usually short ankles"
+          ]
+        },
+        {
+          "label": "3",
+          "min": 3,
+          "max": 3,
+          "cells": [
+            "Four toes"
+          ]
+        },
+        {
+          "label": "4",
+          "min": 4,
+          "max": 4,
+          "cells": [
+            "High arches requiring corrective footwear"
+          ]
+        },
+        {
+          "label": "5",
+          "min": 5,
+          "max": 5,
+          "cells": [
+            "Feet smell of lilacs and roses"
+          ]
+        },
+        {
+          "label": "6",
+          "min": 6,
+          "max": 6,
+          "cells": [
+            "Skips calf-day"
+          ]
+        },
+        {
+          "label": "7",
+          "min": 7,
+          "max": 7,
+          "cells": [
+            "Wide shinbones"
+          ]
+        },
+        {
+          "label": "8",
+          "min": 8,
+          "max": 8,
+          "cells": [
+            "Hairy toepits"
+          ]
+        }
+      ]
+    }
+  ]
+}

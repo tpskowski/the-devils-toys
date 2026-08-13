@@ -76,7 +76,6 @@ interface GroupResponse {
 
 /** Which roster a row belongs to, and so which routes reach it. */
 type RosterKind = "hirelings" | "assets" | "obligations";
-
 /** What a row route answers with, whichever roster it was. */
 interface SavedRow {
   hireling?: GroupSheetRow;

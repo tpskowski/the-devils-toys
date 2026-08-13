@@ -5,7 +5,8 @@ import {
   TABLE_ROLL_VISIBILITIES,
   type TableRollResult,
   type TableRollVisibility,
-  type SystemId
+  type SystemId,
+  type RollTable
 } from "@devils-toys/shared";
 import type { AuthedRequest } from "./auth.js";
 import { requireAuth, roomRole } from "./auth.js";
@@ -76,7 +77,8 @@ function privateTableMessage(
   label: string,
   rolled: { total: number; detail: string },
   resultText: string,
-  visibility: "private" | "invisible"
+  visibility: "private" | "invisible",
+  headline?: string
 ) {
   const stored = db
     .prepare("INSERT INTO private_rolls (room_id, account_id, expression, result) VALUES (?, ?, ?, ?)")
@@ -120,12 +122,53 @@ function privateTableMessage(
     username: privateRow.username,
     displayName: inGameDisplayName(privateRow.username, privateRow.character_name),
     kind: "roll" as const,
-    body: `${privateRow.expression} → ${result.total}`,
+    body: headline ?? `${privateRow.expression} → ${result.total}`,
     detail: result.detail,
     private: true,
     rollVisibility: result.visibility ?? "private",
     createdAt: privateRow.created_at
   };
+}
+
+export function rollTableSequence(
+  set: { id: string; name: string },
+  tables: readonly RollTable[],
+  first: RollTable,
+  visibility: TableRollVisibility,
+  modifier = 0,
+  random = Math.random
+) {
+  const sequence: TableRollResult[] = [];
+  const visited = new Set<string>();
+  let table: RollTable | undefined = first;
+  while (table && sequence.length < 20 && !visited.has(table.id)) {
+    visited.add(table.id);
+    const expression = `${table.dice}${sequence.length === 0 && modifier ? `${modifier > 0 ? "+" : ""}${modifier}` : ""}`;
+    const rolled = rollDice(expression, random);
+    const row = rowForRoll(table, rolled.total);
+    sequence.push({
+      setId: set.id,
+      setName: set.name,
+      tableId: table.id,
+      tableName: table.name,
+      dice: table.dice,
+      total: rolled.total,
+      detail: rolled.detail,
+      row,
+      text: rowText(table, row),
+      visibility
+    });
+    table = row?.nextTableId ? tables.find((candidate) => candidate.id === row.nextTableId) : undefined;
+  }
+  return sequence;
+}
+
+function sequenceHeadline(sequence: readonly TableRollResult[]) {
+  return sequence.map((roll) => `${rollTableLabel(roll.tableName, roll.dice)} → ${roll.total}`).join(" · ");
+}
+
+function sequenceText(sequence: readonly TableRollResult[]) {
+  return sequence.map((roll) => `${roll.tableName}: ${roll.text || `No entry for ${roll.total}`}`).join(" · ");
 }
 
 tableRouter.get("/rooms/:roomId/tables", requireAuth, (req: AuthedRequest, res) => {
@@ -183,47 +226,33 @@ tableRouter.post("/rooms/:roomId/tables/roll", requireAuth, (req: AuthedRequest,
   const table = found?.tables.find((entry) => entry.id === parsed.data.tableId);
   if (!found || !table) return res.status(404).json({ error: "Table not found." });
 
-  const rolled = rollDice(
-    `${table.dice}${parsed.data.modifier ? `${parsed.data.modifier > 0 ? "+" : ""}${parsed.data.modifier}` : ""}`
-  );
-  const row = rowForRoll(table, rolled.total);
-  const text = rowText(table, row);
   const visibility: TableRollVisibility = parsed.data.visibility;
-  const roll: TableRollResult = {
-    setId: found.set.id,
-    setName: found.set.name,
-    tableId: table.id,
-    tableName: table.name,
-    dice: table.dice,
-    total: rolled.total,
-    detail: rolled.detail,
-    row,
-    text,
-    visibility
-  };
-  const label = rollTableLabel(table.name, table.dice);
-  const headline = `${label} → ${rolled.total}`;
-  const missing = row ? "" : `No entry for ${rolled.total}`;
+  const sequence = rollTableSequence(found.set, found.tables, table, visibility, parsed.data.modifier);
+  const [roll, ...followUps] = sequence;
+  const label = sequence.map((entry) => rollTableLabel(entry.tableName, entry.dice)).join(" → ");
+  const headline = sequenceHeadline(sequence);
+  const resultText = sequenceText(sequence);
+  const rolled = { total: roll.total, detail: sequence.map((entry) => entry.detail).join(" · ") };
 
   if (visibility === "public") {
-    const message = privateTableMessage(roomId, req.account!.id, label, rolled, missing || text, "private");
+    const message = privateTableMessage(roomId, req.account!.id, label, rolled, resultText, "private", headline);
     const notice = publicTableMessage(roomId, req.account!.id, DEFAULT_TABLE_ROLL_NOTICE, null);
     sendToRoomGms(roomId, { type: "message", message });
     sendToRoomPlayers(roomId, { type: "message", message: notice });
-    return res.status(201).json({ roll, message, private: true });
+    return res.status(201).json({ roll, followUps, message, private: true });
   }
   if (visibility === "reveal") {
-    const message = publicTableMessage(roomId, req.account!.id, headline, missing || text || rolled.detail);
+    const message = publicTableMessage(roomId, req.account!.id, headline, resultText || rolled.detail);
     broadcastRoom(roomId, { type: "message", message });
-    return res.status(201).json({ roll, message });
+    return res.status(201).json({ roll, followUps, message });
   }
 
   // Private and invisible rolls stay in the GM's own log; only a private roll
   // tells the room that something was rolled.
-  const message = privateTableMessage(roomId, req.account!.id, label, rolled, missing || text, visibility);
+  const message = privateTableMessage(roomId, req.account!.id, label, rolled, resultText, visibility, headline);
   if (visibility === "private") {
     const notice = publicTableMessage(roomId, req.account!.id, `Rolled privately on ${table.name}`, null);
     broadcastRoom(roomId, { type: "message", message: notice });
   }
-  res.status(201).json({ roll, message, private: true });
+  res.status(201).json({ roll, followUps, message, private: true });
 });

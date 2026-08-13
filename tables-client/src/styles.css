@@ -581,6 +581,29 @@ table.grid td input {
   background: transparent;
   color: inherit;
 }
+.grid-next {
+  min-width: 190px;
+}
+.grid-next select {
+  width: min(240px, 100%);
+  min-width: 0;
+  height: 34px;
+  padding: 0 9px;
+  border: 0;
+  border-radius: 0;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+}
+.grid-next option {
+  background: var(--surface);
+  color: var(--text);
+}
+.grid-next > span {
+  display: block;
+  padding: 7px 9px;
+  color: var(--muted);
+}
 table.grid th input {
   font-weight: 600;
 }

@@ -43,7 +43,7 @@ That link points at this host on `DEVILS_TABLES_PORT`. Set `DEVILS_TABLES_URL` w
 
 It signs in with the same accounts as The Devil's Toys — the session cookie is scoped to the host rather than the port, so signing in to either signs you in to both. Accounts are still created in The Devil's Toys. An admin can do everything; a GM writes tables for this instance; a player can read the catalogue but change nothing.
 
-It edits tables as grids, manages the tag vocabulary, imports CSV against a downloadable template, and produces two kinds of zip archive: a bundle for moving sets into another copy of the application, and a bundle shaped for folding a set into this repository as built-in content.
+It edits tables as grids, manages the tag vocabulary, imports CSV against a downloadable template, and produces two kinds of zip archive: a bundle for moving sets into another copy of the application, and a JSON repository bundle whose CLI previews and confirms changes before installing standalone built-in table sets.
 
 How to use it — adding tables, tagging them, importing CSV, and moving sets between instances — is written up in [devils-tables.md](devils-tables.md), which the editor also serves as its **Guide** page.
 
