@@ -94,6 +94,11 @@ export function systemTablesFile(system: SystemId) {
 
 const linkedRules = new Map<SystemId, string>();
 
+export function forgetLinkedRules(system?: SystemId) {
+  if (system === undefined) linkedRules.clear();
+  else linkedRules.delete(system);
+}
+
 export function rulesMarkdown(system: SystemId, role: "gm" | "player") {
   let linked = linkedRules.get(system);
   if (!linked) {

@@ -25,8 +25,18 @@ export function parseStarshipParts(markdown: string, heading = "STARSHIP PARTS")
   });
 }
 
-/** Parsed once per system, because the raw Markdown cannot change at runtime. */
+/**
+ * Parsed once per system. This used to say the Markdown could not change at
+ * runtime, which was true while every system was compiled in; an installed
+ * system's book is replaced whenever its bundle is, so the cache is cleared
+ * along with everything else remembered about that system.
+ */
 const cache = new Map<SystemId, StarshipPart[]>();
+
+export function forgetStarshipParts(system?: SystemId) {
+  if (system === undefined) cache.clear();
+  else cache.delete(system);
+}
 
 export function starshipPartsFor(system: SystemId) {
   const cached = cache.get(system);

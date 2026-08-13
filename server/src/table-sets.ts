@@ -34,8 +34,13 @@ export interface TableSetRow {
   updated_at: string;
 }
 
-/** Parsed system tables, kept because the raw Markdown cannot change at runtime. */
+/** Parsed system tables. Cleared when a system's content is replaced. */
 const systemTables = new Map<SystemId, CatalogRollTable[]>();
+
+export function forgetSystemTables(system?: SystemId) {
+  if (system === undefined) systemTables.clear();
+  else systemTables.delete(system);
+}
 
 export function tablesForSystem(system: SystemId) {
   const cached = systemTables.get(system);

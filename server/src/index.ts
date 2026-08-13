@@ -25,6 +25,8 @@ import { tagRouter } from "./table-tags.js";
 import { tableSetRouter } from "./table-sets.js";
 import { tablesLinkRouter } from "./tables-link.js";
 import { asyncRoute, parse, publicAccount, sessionRouter } from "./session-routes.js";
+import { systemRouter } from "./system-routes.js";
+import { isSystemOffered, loadInstalledSystems } from "./system-registry.js";
 import { groupRouter } from "./group.js";
 import { encounterRouter } from "./encounters.js";
 import { mapNotationRouter } from "./map-notations.js";
@@ -52,6 +54,10 @@ import {
   claimRoomEasterEgg
 } from "./easter-eggs.js";
 
+// Before anything can be served: an installed system has to be in the registry
+// or every room on it would 500 on its first request.
+loadInstalledSystems();
+
 const app = express();
 app.disable("x-powered-by");
 app.use(express.json({ limit: "1mb" }));
@@ -77,6 +83,7 @@ app.use("/api", roomConfigRouter);
 app.use("/api", roomItemRouter);
 app.use("/api", playlistRouter);
 app.use("/api", helpRouter);
+app.use("/api", systemRouter);
 function publicMessage(row: {
   id: number;
   room_id: number;
@@ -343,6 +350,10 @@ app.post("/api/rooms", requireAuth, (req: AuthedRequest, res) => {
     res
   );
   if (!body) return;
+  // Registered but retired: the rooms already on it keep working, and this is
+  // the difference between retiring a system and deleting one.
+  if (!isSystemOffered(body.system))
+    return res.status(409).json({ error: `${systemOrThrow(body.system).name} is retired and cannot take new rooms.` });
   const theme = body.theme ?? systemOrThrow(body.system).defaultTheme;
   db.exec("BEGIN");
   try {

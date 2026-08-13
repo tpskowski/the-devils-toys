@@ -108,7 +108,14 @@ export async function runSmoke(name, run, { env = {}, withTablesServer = false }
     return { response, body: await response.json() };
   }
 
-  /** A download from The Devil's Tables, as the bytes it sent. */
+  /** A download from the game server, as the bytes it sent. */
+  async function bytes(pathname, init = {}, expected = 200) {
+    const response = await fetch(`${base}${pathname}`, init);
+    assert.equal(response.status, expected, `${pathname} returned ${response.status}`);
+    return { response, bytes: Buffer.from(await response.arrayBuffer()) };
+  }
+
+  /** The same, from The Devil's Tables. */
   async function tablesBytes(pathname, init = {}, expected = 200) {
     const response = await fetch(`${tablesBase}${pathname}`, init);
     assert.equal(response.status, expected, `${pathname} returned ${response.status}`);
@@ -208,6 +215,7 @@ export async function runSmoke(name, run, { env = {}, withTablesServer = false }
       dataDir,
       json,
       request,
+      bytes,
       cookieOf,
       jsonHeaders,
       setup,
