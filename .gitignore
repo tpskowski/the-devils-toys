@@ -1,5 +1,7 @@
-# Source books: the Markdown is redistributable under CC BY-SA 4.0, the PDFs are not ours to publish
-/raw/*.pdf
+# Source books: the Markdown is redistributable under CC BY-SA 4.0, the PDFs are
+# not ours to publish. Matched at any depth, because a book being worked on gets
+# its own folder — `/raw/*.pdf` alone left those PDFs stageable.
+/raw/**/*.pdf
 
 # Dependencies and build output
 node_modules/
@@ -33,6 +35,7 @@ test-results/
 # Editor and merge leftovers
 .DS_Store
 Thumbs.db
+desktop.ini
 *.orig
 *.rej
 *.patch
