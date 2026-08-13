@@ -123,6 +123,14 @@ await runSmoke("Installable system smoke test", async ({ request, json, bytes, s
     "The installed system's character sheet is Monolith's, field for field."
   );
   assert.equal(fromInstalled.partyLabel, fromOriginal.partyLabel);
+  // The sheet's rail arrangement travels in the definition rather than being
+  // drawn for whichever system the browser recognises, so an installed system
+  // lays out the way its own sheet asks.
+  assert.deepEqual(
+    fromInstalled.sheetDefinition.layout,
+    { kind: "rails", left: ["identity"], feature: ["talents"], right: { sections: ["vices"], lists: ["equipment"] } },
+    "The installed system carries Monolith's sheet layout."
+  );
   assert.deepEqual(
     fromInstalled.viceCatalogue,
     fromOriginal.viceCatalogue,
@@ -143,6 +151,23 @@ await runSmoke("Installable system smoke test", async ({ request, json, bytes, s
     installedItems.map((item) => item.name),
     originalItems.map((item) => item.name),
     "The same items, in the same order."
+  );
+
+  // The group tabs come from the definition, so an installed system gets the
+  // ones it declares rather than the ones a browser knows Monolith to have.
+  const groupOf = (roomId) => request(`/api/rooms/${roomId}/group`, { headers: gm.headers });
+  const [installedGroup, originalGroup] = await Promise.all([groupOf(room.id), groupOf(original.id)]);
+  assert.deepEqual(
+    installedGroup.definition.obligations,
+    originalGroup.definition.obligations,
+    "It declares the obligations roster, which is what gives it that tab."
+  );
+  assert.ok(installedGroup.definition.hirelings, "It declares freelancers.");
+  assert.equal(installedGroup.definition.hirelings.label, "Freelancers");
+  assert.ok(installedGroup.definition.groupAssets?.some((asset) => asset.kind === "starship"), "It owns ships.");
+  assert.ok(
+    installedGroup.definition.starshipSheet.parts.length > 0,
+    "Its starship parts are read from its own book, not from Monolith's."
   );
 
   // --- Rules, and the player cut of them ---

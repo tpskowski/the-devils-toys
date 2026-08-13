@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { BUILTIN_SYSTEM_IDS, evaluateCharacterWarnings } from "@devils-toys/shared";
+import { BUILTIN_SYSTEM_IDS, evaluateCharacterWarnings, groupViewsForDefinition } from "@devils-toys/shared";
 import { cairn } from "@devils-toys/system-cairn";
 import { monolith } from "@devils-toys/system-monolith";
 import { cwn } from "@devils-toys/system-cwn";
@@ -118,6 +118,23 @@ describe("character system definitions", () => {
     });
   });
 
+  it("gives each system the group tabs its own definition asks for", () => {
+    // The client used to pick these by matching the system's name, so a system
+    // could only ever have the tabs Monolith has.
+    expect(groupViewsForDefinition(cairn.groupPage)).toEqual([
+      { id: "party", label: "Party Members" },
+      { id: "group", label: "Hirelings" }
+    ]);
+    expect(groupViewsForDefinition(monolith.groupPage)).toEqual([
+      { id: "party", label: "Party Members" },
+      { id: "group", label: "Freelancers" },
+      { id: "obligations", label: "Group Obligations" },
+      { id: "starship", label: "Starships" }
+    ]);
+    // Cities Without Number has no group page at all, and so no tabs but one.
+    expect(groupViewsForDefinition(cwn.groupPage)).toEqual([{ id: "party", label: "Party Members" }]);
+  });
+
   it("defines Cairn's shared hireling sheet", () => {
     expect(cairn.groupPage?.hirelings?.label).toBe("Hirelings");
     expect(cairn.groupPage?.hirelings?.singularLabel).toBe("Hireling");
@@ -206,8 +223,13 @@ describe("character system definitions", () => {
       "torso",
       "torso"
     ]);
-    expect(monolith.groupPage?.sections[0]?.fields[0]).toMatchObject({
-      key: "groupDebt",
+    // The lone `groupDebt` textarea that used to sit in `sections` became the
+    // obligations roster: its data was migrated into rows and the key stripped
+    // from the group blob, and no client had drawn the field since.
+    expect(monolith.groupPage?.sections).toEqual([]);
+    expect(monolith.groupPage?.obligations).toMatchObject({
+      label: "Group Obligations",
+      singularLabel: "Obligation",
       rulesQuery: "Group Debt"
     });
     expect(monolith.groupPage?.hirelings?.label).toBe("Freelancers");

@@ -20,6 +20,7 @@ import type {
   ChatMessage,
   GroupPageDefinition,
   GroupSheetSection,
+  GroupViewOption,
   ItemClassification,
   ItemTrait,
   PresenceMember,
@@ -27,7 +28,16 @@ import type {
   SystemId
 } from "@devils-toys/shared";
 import type { SlotWeaponDetail } from "@devils-toys/shared";
-import { setSlotWeapon, slotIsWeapon, slotWeapon, splitItemLabel, weaponOverrideKey } from "@devils-toys/shared";
+import {
+  groupViewsForDefinition,
+  HIRELINGS_VIEW,
+  PARTY_VIEW,
+  setSlotWeapon,
+  slotIsWeapon,
+  slotWeapon,
+  splitItemLabel,
+  weaponOverrideKey
+} from "@devils-toys/shared";
 import { api } from "./api";
 import { CharacterItemEditor } from "./CharacterItemEditor";
 import { characterItemsForSlot, weaponTraitSuggestions } from "./character-items";
@@ -74,6 +84,16 @@ interface SavedRow {
   obligation?: GroupObligation;
 }
 
+/** The writes still owed to one row, and what the last of them established. */
+interface RowSave {
+  /** Runs this row's writes one after another rather than all at once. */
+  chain: Promise<void>;
+  /** How many of them are queued or in flight. */
+  pending: number;
+  /** The revision the row's last write produced, once one has answered. */
+  revision?: number;
+}
+
 interface PartyCharacterResponse {
   characters: ReadOnlyCharacter[];
   activeCharacterId: number | null;
@@ -107,26 +127,16 @@ function fixedValue(value: unknown) {
   return text || "—";
 }
 
-export const MONOLITH_GROUP_VIEWS = [
-  { id: "party", label: "Party Members" },
-  { id: "freelancers", label: "Freelancers" },
-  { id: "obligations", label: "Group Obligations" },
-  { id: "starship", label: "Starship" }
-] as const;
+/**
+ * A view id is whatever the definition names, including an asset kind a system
+ * invents, so this is a string rather than a union. It used to be derived from a
+ * list of Monolith's own tabs, which meant a system could only have the tabs
+ * Monolith has.
+ */
+export type GroupView = string;
 
-export const STANDARD_GROUP_VIEWS = [
-  { id: "party", label: "Party Members" },
-  { id: "group", label: "Hirelings" }
-] as const;
-
-export type GroupView = "group" | (typeof MONOLITH_GROUP_VIEWS)[number]["id"];
-
-export function groupViewsForSystem(system: SystemId) {
-  return system === "monolith" ? MONOLITH_GROUP_VIEWS : STANDARD_GROUP_VIEWS;
-}
-
-export function defaultGroupView(system: SystemId): GroupView {
-  return "party";
+export function defaultGroupView(): GroupView {
+  return PARTY_VIEW.id;
 }
 
 // Ids come from the database now, so the browser no longer mints one and hopes
@@ -145,7 +155,8 @@ export function GroupPage({
   onRolled,
   traits,
   presence,
-  view = "group"
+  view = PARTY_VIEW.id,
+  onViewsChange
 }: {
   roomId: number;
   system: SystemId;
@@ -161,6 +172,12 @@ export function GroupPage({
   traits: readonly ItemTrait[];
   presence: PresenceMember[];
   view?: GroupView;
+  /**
+   * The tabs this room's group page offers, reported once its definition has
+   * loaded. The picker lives outside this component but the definition is
+   * fetched inside it, and only the definition knows what the tabs are.
+   */
+  onViewsChange?: (views: GroupViewOption[]) => void;
 }) {
   const canEditGroup = role === "gm";
   const [definition, setDefinition] = useState<GroupPageDefinition>();
@@ -190,6 +207,9 @@ export function GroupPage({
   // One pending save per row, so editing two hirelings at once never makes one
   // wait on the other and never sends one row's fields under another's id.
   const rowSaveTimers = useRef(new Map<string, number>());
+  // Two edits to the same row cannot go at once: the second has to carry the
+  // revision the first produced, which is only known once the first has answered.
+  const rowSaves = useRef(new Map<string, RowSave>());
   const [editingHirelingSlot, setEditingHirelingSlot] = useState<{ id: number; listKey: string; index: number }>();
   const [busyHirelingImageId, setBusyHirelingImageId] = useState<number>();
   const [rollingHireling, setRollingHireling] = useState(false);
@@ -200,11 +220,15 @@ export function GroupPage({
   const [itemCatalogue, setItemCatalogue] = useState<Record<string, CharacterItem[]>>({});
   const editVersionRef = useRef(0);
   const dirtyRef = useRef(false);
+  // The group's own fields and its rows save by different routes but share the
+  // dirty flag, so each has to know the other is settled before putting it down.
+  const stateDirtyRef = useRef(false);
   const updatedAtRef = useRef<string | null>(null);
 
   async function load() {
     const response = await api<GroupResponse>(`/api/rooms/${roomId}/group`);
     setDefinition(response.definition);
+    onViewsChange?.(groupViewsForDefinition(response.definition));
     setItemCatalogue(response.itemCatalogue ?? {});
     setState(response.state);
     setHirelings(flattenRows(response.hirelings ?? []));
@@ -212,7 +236,11 @@ export function GroupPage({
     setObligations(response.obligations ?? []);
     latestStateRef.current = response.state;
     updatedAtRef.current = response.updatedAt;
+    // The rows just answered for themselves, so a revision remembered from a
+    // write against the previous set of them no longer describes anything.
+    rowSaves.current.clear();
     dirtyRef.current = false;
+    stateDirtyRef.current = false;
     setStatus("Saved");
     setError("");
   }
@@ -221,7 +249,10 @@ export function GroupPage({
     void load().catch((cause: Error) => setError(cause.message));
     return () => {
       window.clearTimeout(saveTimerRef.current);
-      if (canEditGroup && dirtyRef.current) {
+      // Only the group's own fields go this way; a row left waiting is the row
+      // route's to flush, and sending the state back unchanged would broadcast
+      // a change nobody made.
+      if (canEditGroup && stateDirtyRef.current) {
         void api<{ updatedAt: string }>(`/api/rooms/${roomId}/group`, {
           method: "PATCH",
           body: JSON.stringify({ state: latestStateRef.current, updatedAt: updatedAtRef.current })
@@ -267,6 +298,7 @@ export function GroupPage({
     if (!canEditGroup) return;
     latestStateRef.current = next;
     dirtyRef.current = true;
+    stateDirtyRef.current = true;
     const version = ++editVersionRef.current;
     setStatus("Unsaved");
     setError("");
@@ -281,8 +313,12 @@ export function GroupPage({
           });
           updatedAtRef.current = saved.updatedAt;
           if (version === editVersionRef.current) {
-            dirtyRef.current = false;
-            setStatus("Saved");
+            stateDirtyRef.current = false;
+            // A row still waiting keeps the page dirty: clearing it here would
+            // let a reload land on top of what is still being typed in one.
+            const idle = savesIdle();
+            if (idle) dirtyRef.current = false;
+            setStatus(idle ? "Saved" : "Unsaved");
           }
         })
         .catch((cause: Error) => {
@@ -323,24 +359,55 @@ export function GroupPage({
       window.setTimeout(() => {
         rowSaveTimers.current.delete(key);
         setStatus("Saving…");
-        api<SavedRow>(`/api/rooms/${roomId}/group/${kind}/${id}`, { method: "PATCH", body: JSON.stringify(body()) })
-          .then((result) => {
+        const entry = rowSaves.current.get(key) ?? { chain: Promise.resolve(), pending: 0 };
+        rowSaves.current.set(key, entry);
+        entry.pending += 1;
+        entry.chain = entry.chain
+          .then(async () => {
+            // Built here rather than when the edit was made: a write already in
+            // flight for this row moves its revision on, and the one captured
+            // with the edit would be refused as a write from before that.
+            const payload = body();
+            if (entry.revision !== undefined) payload.revision = entry.revision;
+            const result = await api<SavedRow>(`/api/rooms/${roomId}/group/${kind}/${id}`, {
+              method: "PATCH",
+              body: JSON.stringify(payload)
+            });
             // Carry the revision the write produced, so the next save is judged
             // against it rather than against the one this row was loaded with.
             const saved = result.hireling ?? result.asset ?? result.obligation;
-            if (saved) noteRevision(kind, id, saved.revision);
-            const idle = rowSaveTimers.current.size === 0;
+            if (saved) {
+              entry.revision = saved.revision;
+              noteRevision(kind, id, saved.revision);
+            }
+            const idle = finishRowSave(key);
             if (idle) dirtyRef.current = false;
             setStatus(idle ? "Saved" : "Unsaved");
           })
           .catch((cause: Error) => {
             // Still dirty: the edit is on the page and not in the database, so a
             // reload must not be allowed to quietly replace it.
+            finishRowSave(key);
             setStatus("Unsaved");
             setError(cause.message);
           });
       }, 650)
     );
+  }
+
+  /**
+   * Whether the page owes the server nothing at all: no group field waiting to
+   * go, and no row waiting on a timer or on a reply.
+   */
+  function savesIdle() {
+    return !stateDirtyRef.current && rowSaveTimers.current.size === 0 && rowSaves.current.size === 0;
+  }
+
+  /** Retires one finished write, and answers whether it was the last of them. */
+  function finishRowSave(key: string) {
+    const entry = rowSaves.current.get(key);
+    if (entry && --entry.pending <= 0) rowSaves.current.delete(key);
+    return savesIdle();
   }
 
   /** Records the revision a write returned, on whichever roster the row is in. */
@@ -912,14 +979,8 @@ export function GroupPage({
     : undefined;
   const editingStarshipImage = editingStarship?.imageUrl ?? undefined;
   const partsList = definition.starshipSheet?.partsList;
-  const isMonolith = system === "monolith";
-
-  const pageTitle =
-    view === "party"
-      ? "Party Members"
-      : isMonolith
-        ? (MONOLITH_GROUP_VIEWS.find((option) => option.id === view)?.label ?? "Group Obligations")
-        : (definition.hirelings?.label ?? "Group");
+  const views = groupViewsForDefinition(definition);
+  const pageTitle = views.find((option) => option.id === view)?.label ?? "Group";
 
   return (
     <div className="group-page character-sheet" hidden={hidden}>
@@ -1005,19 +1066,23 @@ export function GroupPage({
         </section>
       )}
 
-      {isMonolith && view === "obligations" && (
+      {definition.obligations && view === "obligations" && (
         <section className="group-obligations" aria-label="Group obligations">
           <header className="group-obligations-toolbar">
             <div>
-              <span>{obligations.length === 1 ? "1 obligation" : `${obligations.length} obligations`}</span>
-              {rulesLink("Group Debt")}
+              <span>
+                {obligations.length === 1
+                  ? `1 ${definition.obligations.singularLabel.toLowerCase()}`
+                  : `${obligations.length} ${definition.obligations.label.toLowerCase()}`}
+              </span>
+              {definition.obligations.rulesQuery && rulesLink(definition.obligations.rulesQuery)}
             </div>
             <button type="button" className="primary-button" onClick={addObligation} disabled={!canEditGroup}>
-              <Plus aria-hidden="true" /> Add obligation
+              <Plus aria-hidden="true" /> Add {definition.obligations.singularLabel.toLowerCase()}
             </button>
           </header>
           {obligations.length === 0 ? (
-            <p className="group-obligations-empty">No obligations recorded.</p>
+            <p className="group-obligations-empty">{definition.obligations.emptyHint ?? "None recorded."}</p>
           ) : (
             <div className="group-obligation-list">
               {obligations.map((obligation, index) => {
@@ -1080,8 +1145,7 @@ export function GroupPage({
         </section>
       )}
 
-      {view !== "party" &&
-        !isMonolith &&
+      {view === HIRELINGS_VIEW &&
         definition.sections.map((section) => (
           <fieldset key={section.id}>
             <legend>{section.label}</legend>
@@ -1091,7 +1155,7 @@ export function GroupPage({
           </fieldset>
         ))}
 
-      {view !== "party" && (!isMonolith || view === "freelancers") && definition.hirelings && (
+      {view === HIRELINGS_VIEW && definition.hirelings && (
         <section className="group-hirelings" aria-labelledby="group-hirelings-heading">
           <header className="group-hirelings-toolbar">
             <div>
@@ -1104,14 +1168,17 @@ export function GroupPage({
               {rulesLink(definition.hirelings.rulesQuery, "Creation rules")}
             </div>
             <div className="group-hirelings-actions">
-              {isMonolith && (
+              {/* Offered by a system that states how one is rolled up, which is
+                  what the server's roll route needs to answer at all. */}
+              {definition.hirelings.creationRoll && (
                 <button
                   type="button"
                   className="secondary-button"
                   onClick={() => void rollHireling()}
                   disabled={!canEditGroup || rollingHireling}
                 >
-                  <Dices aria-hidden="true" /> {rollingHireling ? "Rolling…" : "Roll freelancer"}
+                  <Dices aria-hidden="true" />{" "}
+                  {rollingHireling ? "Rolling…" : `Roll ${definition.hirelings.singularLabel.toLowerCase()}`}
                 </button>
               )}
               <button type="button" className="primary-button" onClick={addHireling} disabled={!canEditGroup}>
@@ -1394,7 +1461,7 @@ export function GroupPage({
         </section>
       )}
 
-      {view !== "party" && (!isMonolith || view === "starship") && definition.starshipSheet && (
+      {view === "starship" && definition.starshipSheet && (
         <section className="group-starships" aria-label="Starships">
           <header className="group-starships-toolbar">
             <span>{starships.length === 1 ? "1 starship" : `${starships.length} starships`}</span>

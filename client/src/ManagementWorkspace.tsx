@@ -461,7 +461,7 @@ function CharacterManagement({
         </label>
         <label>
           System
-          <select name="system" defaultValue="cairn">
+          <select name="system" defaultValue={data.systems[0]?.id}>
             {data.systems.map((system) => (
               <option value={system.id} key={system.id}>
                 {system.name}

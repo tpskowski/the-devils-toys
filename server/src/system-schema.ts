@@ -65,7 +65,22 @@ const characterList = z
   })
   .strict();
 
-const characterSheet = z.object({ sections: z.array(characterSection), lists: z.array(characterList) }).strict();
+/** A named arrangement the client knows how to draw, chosen rather than shipped. */
+const sheetLayout = z
+  .object({
+    kind: z.literal("rails"),
+    left: z.array(z.string()).optional(),
+    feature: z.array(z.string()).optional(),
+    right: z
+      .object({ sections: z.array(z.string()).optional(), lists: z.array(z.string()).optional() })
+      .strict()
+      .optional()
+  })
+  .strict();
+
+const characterSheet = z
+  .object({ sections: z.array(characterSection), lists: z.array(characterList), layout: sheetLayout.optional() })
+  .strict();
 
 const starshipSize = z
   .object({
@@ -141,6 +156,15 @@ const groupPage = z
           .optional(),
         sheet: characterSheet,
         levelUpHint: z.string()
+      })
+      .strict()
+      .optional(),
+    obligations: z
+      .object({
+        label: z.string(),
+        singularLabel: z.string(),
+        emptyHint: z.string().optional(),
+        rulesQuery: z.string().optional()
       })
       .strict()
       .optional(),

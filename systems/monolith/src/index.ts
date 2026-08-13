@@ -137,6 +137,15 @@ export const monolith: GameSystem = {
     }
   },
   characterSheet: {
+    // Identity on the left, talents highlighted, gear and vices to the right,
+    // and the numbers in the middle. The client used to draw this by
+    // recognising Monolith by name.
+    layout: {
+      kind: "rails",
+      left: ["identity"],
+      feature: ["talents"],
+      right: { sections: ["vices"], lists: ["equipment"] }
+    },
     sections: [
       {
         id: "identity",
@@ -237,21 +246,17 @@ export const monolith: GameSystem = {
     ]
   },
   groupPage: {
-    sections: [
-      {
-        id: "debt",
-        label: "Shared obligation",
-        fields: [
-          {
-            key: "groupDebt",
-            label: "Group Debt",
-            kind: "textarea",
-            placeholder: "Creditor, balance, terms, and consequences…",
-            rulesQuery: "Group Debt"
-          }
-        ]
-      }
-    ],
+    // The single `groupDebt` textarea that used to sit here was replaced by the
+    // obligations roster below. Its data has been migrated into rows and the
+    // key stripped from the group blob, and no client has rendered the field
+    // since; it is declared as a roster now rather than as a field nothing draws.
+    sections: [],
+    obligations: {
+      label: "Group Obligations",
+      singularLabel: "Obligation",
+      emptyHint: "No obligations recorded.",
+      rulesQuery: "Group Debt"
+    },
     hirelings: {
       label: "Freelancers",
       singularLabel: "Freelancer",

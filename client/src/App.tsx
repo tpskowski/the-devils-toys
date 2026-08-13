@@ -75,7 +75,8 @@ import type { ScenePing } from "./SceneViewer";
 import { TableMediaViewer } from "./TableMediaViewer";
 import { AudioDock, AudioModal } from "./AudioPlayer";
 import { ManagementWorkspace } from "./ManagementWorkspace";
-import { defaultGroupView, GroupPage, groupViewsForSystem, type GroupView } from "./GroupPage";
+import { defaultGroupView, GroupPage, type GroupView } from "./GroupPage";
+import { PARTY_VIEW, type GroupViewOption } from "@devils-toys/shared";
 
 import { AppearanceModal } from "./AppearanceModal";
 import { effectiveTheme, readPersonalTheme, writePersonalTheme } from "./personal-theme";
@@ -711,7 +712,10 @@ function TableRoom({
   }>({});
   const [mapNotationSyncRevision, setMapNotationSyncRevision] = useState(0);
   const [mapNotationChange, setMapNotationChange] = useState<MapNotationEvent>();
-  const [groupView, setGroupView] = useState<GroupView>(() => defaultGroupView(room.system));
+  const [groupView, setGroupView] = useState<GroupView>(defaultGroupView);
+  // Reported by the group page once its definition has loaded; until then the
+  // only tab anyone can be on is the party.
+  const [groupViews, setGroupViews] = useState<GroupViewOption[]>([PARTY_VIEW]);
   const [rulesTabRevision, setRulesTabRevision] = useState(0);
   /** The tracker sits above chat; collapsing it leaves only its header. */
   const [trackerOpen, setTrackerOpen] = useState(true);
@@ -817,7 +821,8 @@ function TableRoom({
     loadMedia();
     loadEncounters();
     loadSheetDefinitions();
-    setGroupView(defaultGroupView(room.system));
+    setGroupView(defaultGroupView());
+    setGroupViews([PARTY_VIEW]);
   }, [room.id]);
   useEffect(() => {
     const generation = ++audioLoadGeneration.current;
@@ -1028,6 +1033,7 @@ function TableRoom({
                   onRolled={noteMessage}
                   traits={systemDefinition.traits}
                   view={groupView}
+                  onViewsChange={setGroupViews}
                   presence={presence.length ? presence : detail.members.map((member) => ({ ...member, online: false }))}
                 />
               ) : undefined
@@ -1035,7 +1041,7 @@ function TableRoom({
             groupPicker={
               hasGroupPage
                 ? {
-                    options: groupViewsForSystem(room.system),
+                    options: groupViews,
                     selected: groupView,
                     onSelect: (id) => setGroupView(id as GroupView)
                   }
@@ -1641,7 +1647,9 @@ function CreateRoom({
   onClose: () => void;
   onCreated: (room: RoomSummary) => void;
 }) {
-  const [system, setSystem] = useState<SystemId>("cairn");
+  // Whatever the server offered first, rather than a system this build happens
+  // to ship — an installation may not have that one, or may not offer it.
+  const [system, setSystem] = useState<SystemId>(status.systems[0]?.id ?? "");
   const [error, setError] = useState("");
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

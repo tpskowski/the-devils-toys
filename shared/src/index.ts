@@ -55,6 +55,8 @@ export interface RoomSummary {
   id: number;
   name: string;
   system: SystemId;
+  /** What that system calls itself, so nothing has to keep its own list of names. */
+  systemName: string;
   theme: ThemeId;
   role: RoomRole;
   archived: boolean;
@@ -407,9 +409,35 @@ export interface CharacterItem {
   label: string;
 }
 
+/**
+ * How a sheet is arranged on a wide screen.
+ *
+ * Omit it and sections fall into bands — stats together, short fields together,
+ * wide ones below — which is what most sheets want and what every system had
+ * before Monolith's four-rail arrangement was written in by name.
+ *
+ * `rails` is that arrangement, said in data: a narrow left rail, a highlighted
+ * column, a right rail, and everything not named in the middle. The client
+ * knows how to draw it; a system chooses it and says what goes where, the same
+ * way it picks a theme rather than shipping one.
+ */
+export interface CharacterSheetRailsLayout {
+  kind: "rails";
+  /** Section ids on the narrow left rail. */
+  left?: readonly string[];
+  /** Section ids in the highlighted column beside the middle. */
+  feature?: readonly string[];
+  /** What sits on the right rail. Lists named here are drawn there rather than below. */
+  right?: {
+    sections?: readonly string[];
+    lists?: readonly string[];
+  };
+}
+
 export interface CharacterSheetDefinition {
   sections: readonly CharacterSheetSection[];
   lists: readonly CharacterListDefinition[];
+  layout?: CharacterSheetRailsLayout;
 }
 
 /**
@@ -528,6 +556,36 @@ export function groupAssetDefinitions(definition: GroupPageDefinition | undefine
   ];
 }
 
+/** One tab of the group page. */
+export interface GroupViewOption {
+  id: string;
+  label: string;
+}
+
+/** The party roster, which every group page opens on. */
+export const PARTY_VIEW: GroupViewOption = { id: "party", label: "Party Members" };
+
+/** The hirelings roster, whatever a system calls the people on it. */
+export const HIRELINGS_VIEW = "group";
+
+/**
+ * The tabs a group page offers, read from what the system declares rather than
+ * from its name. A system with only hirelings gets two, as Cairn does; one that
+ * also tracks obligations and owns ships gets a tab for each, as Monolith does.
+ *
+ * Every kind of shared property contributes a tab, so a system that declares a
+ * stronghold beside its ships gets one with no change here — and an installed
+ * system gets whatever it declares, which a list of Monolith's own tabs could
+ * never have given it.
+ */
+export function groupViewsForDefinition(definition: GroupPageDefinition | undefined): GroupViewOption[] {
+  const views = [PARTY_VIEW];
+  if (definition?.hirelings) views.push({ id: HIRELINGS_VIEW, label: definition.hirelings.label });
+  if (definition?.obligations) views.push({ id: "obligations", label: definition.obligations.label });
+  for (const asset of groupAssetDefinitions(definition)) views.push({ id: asset.kind, label: asset.label });
+  return views;
+}
+
 export interface GroupPageDefinition {
   sections: readonly GroupSheetSection[];
   hirelings?: {
@@ -556,6 +614,21 @@ export interface GroupPageDefinition {
     };
     sheet: CharacterSheetDefinition;
     levelUpHint: string;
+  };
+  /**
+   * Standing debts, favours, and other things owed by the party as a whole.
+   *
+   * Declared rather than assumed, because the roster existed before anything
+   * said which systems have one: the client showed it for Monolith by name and
+   * for nobody else. A system that omits this has no obligations tab, and the
+   * storage is untouched either way.
+   */
+  obligations?: {
+    label: string;
+    singularLabel: string;
+    /** What an empty roster says, and the rules heading it points at. */
+    emptyHint?: string;
+    rulesQuery?: string;
   };
   /**
    * The one asset kind that predates `groupAssets`. Kept because every system

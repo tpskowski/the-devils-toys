@@ -317,6 +317,7 @@ app.get("/api/rooms", requireAuth, (req: AuthedRequest, res) => {
     id: number;
     name: string;
     system: SystemId;
+    systemName: string;
     theme: ThemeId;
     role: "gm" | "player";
     archived: number;
@@ -324,9 +325,13 @@ app.get("/api/rooms", requireAuth, (req: AuthedRequest, res) => {
     map_notation_enabled: number;
     music_enabled: number;
   }>(
-    `SELECT r.id, r.name, r.system, r.theme, m.role, r.archived, r.calendar_enabled, r.map_notation_enabled,
-            r.music_enabled FROM rooms r
-     JOIN memberships m ON m.room_id = r.id WHERE m.account_id = ? ORDER BY r.archived, r.name`,
+    // The system's display name comes from the registry rather than from its
+    // definition, so a room on a system that is retired — or whose bundle will
+    // not load — still says what it is rather than showing a bare id.
+    `SELECT r.id, r.name, r.system, s.name AS systemName, r.theme, m.role, r.archived, r.calendar_enabled,
+            r.map_notation_enabled, r.music_enabled FROM rooms r
+     JOIN memberships m ON m.room_id = r.id
+     JOIN systems s ON s.id = r.system WHERE m.account_id = ? ORDER BY r.archived, r.name`,
     req.account!.id
   ).map(({ calendar_enabled, map_notation_enabled, music_enabled, ...room }) => ({
     ...room,
