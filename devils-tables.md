@@ -32,10 +32,11 @@ From **Table sets**, open a set and press **+** beside the table count. A new ta
 
 Each table has:
 
-- **Name** — the heading it appears under. Renaming it changes the identifier the table is known by; nothing stored depends on that, but it is worth knowing.
+- **Name** — the heading it appears under. Renaming it can change the table identifier that **Next roll** links store; the editor automatically retargets every affected link in the set when that happens.
 - **Die** — one of d4, d6, d8, d10, d12, d20, d30, d44, d66, or d100. The compound dice (d44, d66) are read as digit pairs, so d44 covers 11–44 using digits 1 to 4.
 - **Columns** — one or more result columns. Add and remove them from the header row.
 - **Rows** — a die value and a cell per column. A value can be a single number (`7`) or a range (`4-14`).
+- **Next roll** — an optional table in this set to roll after that row comes up. The game rolls the linked table automatically and shows the results as one sequence. Different rows can lead to different tables.
 
 Two things make filling a table out quicker:
 
@@ -64,6 +65,8 @@ The **Markdown** button swaps the grid for the document itself. A table is found
 Anything that is not a table — prose, notes, headings — is left alone. Editing one table in the grid rewrites only that table's lines and never touches the rest of the document.
 
 A literal `|` inside a cell is written `\|`.
+
+The grid stores a next-roll choice as an HTML comment at the end of the row's final cell, such as `<!-- next-table: injuries-d8 -->`. It stays invisible in the result while remaining portable in Markdown exports. Links must point within the same set and cannot form loops.
 
 ## Tags
 
@@ -112,9 +115,17 @@ The Markdown survives the round trip exactly, so exporting and re-importing a se
 
 ## Contributing a set back to the project
 
-An admin editing a set can download a **Repo bundle**: an archive shaped for the repository, holding the set as a file for `raw/` and a `MERGE.md` written against the real paths and constants. It covers both ways to use it — appending the tables to a system that already exists, or standing the set up as a catalogue of its own — and ends with the commands to check the result.
+An admin editing a set can download **Repo JSON + importer** for that set, or use **Export for repository** to include every custom set. The archive contains one runtime JSON file per set, a manifest, and a dependency-free `import-tables.mjs` CLI.
 
-This is the only thing in the editor that is about the application rather than about this instance, which is why it is an admin's.
+Unzip it, open a terminal anywhere inside a checkout of The Devil's Toys, and run the script by its path:
+
+```powershell
+node path/to/the-unzipped-bundle/import-tables.mjs
+```
+
+The script compares the bundle with `raw/tables`, names the existing sets it would update and the new sets it would add, then lists added, updated, and removed tables inside each changed set. It asks **Confirm Y/N?** before writing. A refusal changes nothing. A confirmation writes the set JSON and updates `raw/tables/repository-sets.json`; after that, review `git diff`, run the tests, and commit those files normally. Imported repository sets are read-only built-in catalogues after the applications restart.
+
+This is the only export in the editor that changes the application repository rather than moving data between instances, which is why it is an admin's.
 
 ## Things worth knowing
 

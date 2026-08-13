@@ -55,6 +55,7 @@
 - Tables carry the part of the book they came from as `category`, which is what the roller lists as browsable sections. A document with a single top-level heading is titled by it, as Cairn is, so that heading is dropped; Monolith uses top-level headings for chapters and they become the sections. A table with no heading above it is its own section, as Monolith's one-table GROUP DEBT chapter is.
 - The die comes from the column heading, then from a `(d20)` marker on a heading above the table, and last from the values the rows cover. Where a source and its own die disagree, keep the stated die and report the rows it cannot reach rather than silently changing either one; intentional repairs belong in `raw/corrections.md`.
 - Custom sets live in the `table_sets` table as Markdown and go through the same parser, so a set added outside any system behaves exactly like a system's own.
+- A repository export is different from the editable database copy: it contains runtime JSON under `raw/tables/`. Standalone checked-in sets are listed in `raw/tables/repository-sets.json`; the bundled `import-tables.mjs` compares set and table changes and must confirm before writing either the registry or a set file. These catalogues are read-only at runtime and do not require a `GameSystem` package.
 - Roll visibility is one choice with four values (`public`, `private`, `invisible`, `reveal`) even though the interface presents three checkboxes. The server decides what each one broadcasts; a client must never be trusted to withhold table text it was sent.
 
 ## The Devil's Tables

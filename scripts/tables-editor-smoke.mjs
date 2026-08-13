@@ -198,22 +198,24 @@ await runSmoke(
     const restoredBody = await tablesJson(`/api/table-sets/${restoredId}`, { headers: gm.headers });
     assert.deepEqual(restoredBody.body.set.tables, afterCsv.body.set.tables, "the round trip changed the tables");
 
-    // Artifact three is an admin's, and names the real files.
+    // Artifact three is an admin's, and carries runtime JSON plus its importer.
     await tablesJson(`/api/table-sets/custom:${restoredId}/repo-bundle`, { headers: gm.headers }, 403);
     const repo = await tablesBytes(`/api/table-sets/custom:${restoredId}/repo-bundle`, {
       headers: { cookie: admin.cookie }
     });
     const repoFiles = unzipSync(new Uint8Array(repo.bytes));
     const names = Object.keys(repoFiles).sort();
-    assert.equal(names.length, 2);
-    assert.ok(names.some((file) => file.startsWith("raw/") && file.endsWith(".md")));
-    // The instructions have to name the repository as it actually is, so that
-    // following them does not depend on knowing how a catalogue is registered.
-    const merge = strFromU8(repoFiles["MERGE.md"]);
-    assert.match(merge, /server\/src\/systems\.ts/);
-    assert.match(merge, /sourceDocuments/);
-    assert.match(merge, /tableCatalog/);
-    assert.match(merge, /systems\/market-rumours\//);
+    assert.deepEqual(names, ["README.md", "import-tables.mjs", "manifest.json", "sets/market-rumours.json"]);
+    const repoManifest = JSON.parse(strFromU8(repoFiles["manifest.json"]));
+    assert.equal(repoManifest.app, "devils-tables-repository");
+    assert.deepEqual(
+      repoManifest.sets.map((set) => [set.id, set.name]),
+      [["market-rumours", "Market rumours"]]
+    );
+    const repositorySet = JSON.parse(strFromU8(repoFiles["sets/market-rumours.json"]));
+    assert.equal(repositorySet.setName, "Market rumours");
+    assert.equal(repositorySet.tables.length, afterCsv.body.set.tables.length);
+    assert.match(strFromU8(repoFiles["import-tables.mjs"]), /Confirm Y\/N\?/);
 
     // What a GM may not do.
     await tablesJson(

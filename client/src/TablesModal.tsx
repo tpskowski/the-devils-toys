@@ -7,6 +7,7 @@ import {
   type RollTable,
   type RollTableSet,
   type RollTableSummary,
+  type TableRollResult,
   type TableRollVisibility,
   type TableTag,
   type TableTagDefinition
@@ -59,12 +60,7 @@ export function TablesModal({
   const [highlight, setHighlight] = useState(-1);
   const [selectedId, setSelectedId] = useState("");
   const [table, setTable] = useState<RollTable>();
-  const [rolled, setRolled] = useState<{
-    total: number;
-    text: string;
-    label: string;
-    visibility: TableRollVisibility;
-  }>();
+  const [rolled, setRolled] = useState<TableRollResult[]>([]);
   const [error, setError] = useState("");
   const [category, setCategory] = useState("");
   const [managing, setManaging] = useState(false);
@@ -78,6 +74,9 @@ export function TablesModal({
   const matches = useMemo(() => filterTables(taggedTables, suggesting ? query : ""), [taggedTables, query, suggesting]);
   const categories = useMemo(() => groupByCategory(taggedTables), [taggedTables]);
   const selectedSummary = tables.find((entry) => entry.id === selectedId);
+  const linkedTables = table
+    ? tables.filter((candidate) => table.rows.some((row) => row.nextTableId === candidate.id))
+    : [];
   // The vocabulary is editable in The Devil's Tables, so it is read rather than
   // assumed; until it arrives a slug stands in for its own label.
   const label = (tag: TableTag) => tagLabel(tag, vocabulary);
@@ -103,7 +102,7 @@ export function TablesModal({
   function clearSelection() {
     setSelectedId("");
     setTable(undefined);
-    setRolled(undefined);
+    setRolled([]);
     setQuery("");
     setHighlight(-1);
     setSuggesting(false);
@@ -128,7 +127,7 @@ export function TablesModal({
     setCategory(summary.category);
     setSuggesting(false);
     setHighlight(-1);
-    setRolled(undefined);
+    setRolled([]);
     setError("");
     try {
       const result = await api<{ table: RollTable }>(
@@ -166,18 +165,14 @@ export function TablesModal({
     setError("");
     try {
       const result = await api<{
-        roll: { total: number; text: string; row: { label: string } | null };
+        roll: TableRollResult;
+        followUps: TableRollResult[];
         message: ChatMessage;
       }>(`/api/rooms/${roomId}/tables/roll`, {
         method: "POST",
         body: JSON.stringify({ setId, tableId: table.id, visibility })
       });
-      setRolled({
-        total: result.roll.total,
-        text: result.roll.text,
-        label: result.roll.row?.label ?? "",
-        visibility
-      });
+      setRolled([result.roll, ...result.followUps]);
       onRolled(result.message);
     } catch (cause) {
       setError((cause as Error).message);
@@ -543,24 +538,40 @@ export function TablesModal({
                   ))}
                 </div>
 
-                {rolled && (
-                  <div className="tables-result" role="status">
-                    <span className="tables-result-total">{rolled.total}</span>
-                    <span>
-                      <span className="tables-result-text">
-                        <InlineMarkdown>{rolled.text || `No entry for ${rolled.total}`}</InlineMarkdown>
-                      </span>
-                      <small>
-                        {rollTableLabel(table.name, table.dice)}
-                        {rolled.visibility === "public"
-                          ? " · shown to GM; players told a roll was made"
-                          : rolled.visibility === "reveal"
-                            ? " · revealed to the room"
-                            : rolled.visibility === "private"
-                              ? " · players told a roll was made"
-                              : " · hidden from players"}
-                      </small>
-                    </span>
+                {linkedTables.length > 0 && (
+                  <div className="tables-follow-ups" aria-label="Tables linked to this roll">
+                    <span>Then rolls</span>
+                    {linkedTables.map((linked) => (
+                      <button type="button" key={linked.id} onClick={() => chooseTable(linked)}>
+                        {linked.name} <small>{linked.dice}</small>
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {rolled.length > 0 && (
+                  <div className="tables-results" role="status">
+                    {rolled.map((result, index) => (
+                      <div className="tables-result" key={`${result.tableId}-${index}`}>
+                        <span className="tables-result-step">{index + 1}</span>
+                        <span className="tables-result-total">{result.total}</span>
+                        <span>
+                          <span className="tables-result-text">
+                            <InlineMarkdown>{result.text || `No entry for ${result.total}`}</InlineMarkdown>
+                          </span>
+                          <small>
+                            {rollTableLabel(result.tableName, result.dice)}
+                            {result.visibility === "public"
+                              ? " · shown to GM; players told a roll was made"
+                              : result.visibility === "reveal"
+                                ? " · revealed to the room"
+                                : result.visibility === "private"
+                                  ? " · players told a roll was made"
+                                  : " · hidden from players"}
+                          </small>
+                        </span>
+                      </div>
+                    ))}
                   </div>
                 )}
 
@@ -596,7 +607,7 @@ export function TablesModal({
                       </thead>
                       <tbody>
                         {table.rows.map((row) => (
-                          <tr key={row.label} className={rolled && row.label === rolled.label ? "rolled" : ""}>
+                          <tr key={row.label} className={row.label === rolled[0]?.row?.label ? "rolled" : ""}>
                             <th scope="row">{row.label}</th>
                             {row.cells.map((cell, index) => (
                               <td key={index}>

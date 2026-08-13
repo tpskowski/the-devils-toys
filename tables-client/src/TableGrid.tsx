@@ -12,6 +12,7 @@ import {
   setCell,
   setColumn,
   setDice,
+  setNextTable,
   setRowLabel,
   tableWarnings
 } from "./tables";
@@ -22,6 +23,7 @@ import {
  */
 export function TableGrid({
   table,
+  tables,
   vocabulary,
   readOnly,
   canRename,
@@ -29,6 +31,7 @@ export function TableGrid({
   onCreateTag
 }: {
   table: RollTable;
+  tables: readonly RollTable[];
   vocabulary: readonly TableTagDefinition[];
   readOnly: boolean;
   canRename: boolean;
@@ -118,6 +121,7 @@ export function TableGrid({
                   )}
                 </th>
               ))}
+              <th className="grid-next">Next roll</th>
               {!readOnly && (
                 <th className="grid-actions">
                   <button
@@ -156,6 +160,26 @@ export function TableGrid({
                     )}
                   </td>
                 ))}
+                <td className="grid-next">
+                  {readOnly ? (
+                    <span>{tables.find((candidate) => candidate.id === row.nextTableId)?.name ?? "—"}</span>
+                  ) : (
+                    <select
+                      value={row.nextTableId ?? ""}
+                      aria-label={`Follow-up table for row ${index + 1}`}
+                      onChange={(event) => onChange(setNextTable(table, index, event.target.value))}
+                    >
+                      <option value="">None</option>
+                      {tables
+                        .filter((candidate) => candidate.id !== table.id)
+                        .map((candidate) => (
+                          <option key={candidate.id} value={candidate.id}>
+                            {candidate.name} ({candidate.dice})
+                          </option>
+                        ))}
+                    </select>
+                  )}
+                </td>
                 {!readOnly && (
                   <td className="grid-actions">
                     <button

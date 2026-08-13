@@ -6,6 +6,17 @@ const dicePattern = /^(?:(\d{1,2})\s*)?d\s*(100|66|44|30|20|12|10|8|6|4)$/i;
 const dieColumnNames = new Set(["roll", "die", "dice", "result of roll", "d"]);
 /** How a table carries its own tags, kept in a comment so rendered Markdown is unchanged. */
 const tagsComment = /^\s*<!--\s*tags:\s*([^>]*?)\s*-->\s*$/i;
+/** Stored at the end of a row's final cell so links travel with Markdown bundles. */
+const nextTableComment = /\s*<!--\s*next-table:\s*([a-z0-9][a-z0-9-]*)\s*-->\s*$/i;
+
+function linkedCells(values: string[]) {
+  const cells = [...values];
+  const last = cells.length - 1;
+  const match = last >= 0 ? nextTableComment.exec(cells[last]) : null;
+  if (!match) return { cells };
+  cells[last] = cells[last].slice(0, match.index).trimEnd();
+  return { cells, nextTableId: match[1].toLocaleLowerCase() };
+}
 
 function slug(value: string) {
   return (
@@ -213,12 +224,12 @@ export function parseRollTables(markdown: string, exclude: readonly string[] = [
           const label = row[position] ?? "";
           const range = rowRange(label, Boolean(stated));
           if (!range) continue;
-          parsed.push({ label, min: range.min, max: range.max, cells: [row[position + 1] ?? ""] });
+          parsed.push({ label, min: range.min, max: range.max, ...linkedCells([row[position + 1] ?? ""]) });
         }
       } else {
         const range = rowRange(row[0], Boolean(stated));
         if (!range) continue;
-        parsed.push({ label: row[0], min: range.min, max: range.max, cells: row.slice(1) });
+        parsed.push({ label: row[0], min: range.min, max: range.max, ...linkedCells(row.slice(1)) });
       }
     }
     if (compact) parsed.sort((left, right) => left.min - right.min || left.max - right.max);
@@ -333,4 +344,38 @@ export function rowText(table: RollTable, row: RollTableRow | null) {
   if (!values.length) return "";
   if (values.length === 1) return values[0].cell;
   return values.map((entry) => (entry.column ? `${entry.column}: ${entry.cell}` : entry.cell)).join(" · ");
+}
+
+/** Broken or cyclic follow-up links in a set, reported before the set is saved. */
+export function tableLinkProblems(tables: readonly RollTable[]) {
+  const byId = new Map(tables.map((table) => [table.id, table]));
+  const problems: string[] = [];
+  for (const table of tables) {
+    for (const row of table.rows) {
+      if (row.nextTableId && !byId.has(row.nextTableId))
+        problems.push(`${table.name}, row ${row.label}, links to a table that does not exist (${row.nextTableId}).`);
+    }
+  }
+
+  const visiting = new Set<string>();
+  const visited = new Set<string>();
+  function visit(table: RollTable): boolean {
+    if (visiting.has(table.id)) return true;
+    if (visited.has(table.id)) return false;
+    visiting.add(table.id);
+    for (const nextId of new Set(table.rows.map((row) => row.nextTableId).filter(Boolean))) {
+      const next = byId.get(nextId!);
+      if (next && visit(next)) return true;
+    }
+    visiting.delete(table.id);
+    visited.add(table.id);
+    return false;
+  }
+  for (const table of tables) {
+    if (visit(table)) {
+      problems.push("Follow-up table links cannot form a loop.");
+      break;
+    }
+  }
+  return problems;
 }

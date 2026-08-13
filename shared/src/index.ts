@@ -627,6 +627,8 @@ export interface RollTableRow {
   min: number;
   max: number;
   cells: readonly string[];
+  /** A table in the same set to roll immediately after this result. */
+  nextTableId?: string;
 }
 
 /**
@@ -686,7 +688,7 @@ export function rollTableLabel(name: string, dice: string) {
   return new RegExp(`\\(\\s*${dice}\\s*\\)`, "i").test(name) ? name : `${name} (${dice})`;
 }
 
-export type RollTableSetOrigin = "system" | "custom";
+export type RollTableSetOrigin = "system" | "repository" | "custom";
 
 /**
  * The discovery tags every instance starts with. They are seed data rather than
@@ -726,7 +728,7 @@ export interface TableTagDefinition {
 }
 
 export interface RollTableSet {
-  /** "system:cairn" or "custom:12". */
+  /** "system:cairn", "repository:weather-omens", or "custom:12". */
   id: string;
   name: string;
   origin: RollTableSetOrigin;

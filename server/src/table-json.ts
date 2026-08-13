@@ -20,6 +20,17 @@ export interface CustomSetDocument {
   tables: StoredCustomTable[];
 }
 
+export interface RepositorySetEntry {
+  id: string;
+  name: string;
+  file: string;
+}
+
+interface RepositorySetRegistry {
+  formatVersion: 1;
+  sets: RepositorySetEntry[];
+}
+
 interface StoredTable extends Omit<RollTable, "source"> {
   classification?: TableClassification;
   origin?: RollTableSource & { markdownFile?: string };
@@ -33,6 +44,32 @@ interface StoredSet {
 }
 
 const cache = new Map<string, StoredSet>();
+
+/** Standalone, checked-in table sets installed by a repository bundle. */
+export function parseRepositorySetRegistry(value: string): RepositorySetEntry[] {
+  const parsed = JSON.parse(value) as Partial<RepositorySetRegistry>;
+  if (parsed.formatVersion !== 1 || !Array.isArray(parsed.sets))
+    throw new Error("Invalid repository table-set registry.");
+  const ids = new Set<string>();
+  return parsed.sets.map((entry) => {
+    const id = String(entry?.id);
+    if (
+      !entry ||
+      !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(id) ||
+      ids.has(id) ||
+      !String(entry.name).trim() ||
+      !/^[a-z0-9]+(?:-[a-z0-9]+)*\.json$/.test(String(entry.file))
+    )
+      throw new Error("Invalid repository table-set entry.");
+    ids.add(id);
+    return { id, name: String(entry.name), file: String(entry.file) };
+  });
+}
+
+export function repositorySetEntries(): RepositorySetEntry[] {
+  const file = projectFile("raw", "tables", "repository-sets.json");
+  return parseRepositorySetRegistry(fs.readFileSync(file, "utf8"));
+}
 
 export function readSetJson(file: string): StoredSet {
   const cached = cache.get(file);
@@ -52,6 +89,24 @@ export function tablesForSetJson(file: string): CatalogRollTable[] {
     ...(origin ? { source: origin } : {}),
     classification
   }));
+}
+
+/** Repository tables must not silently lose a tag the checked-in JSON names. */
+export function validateRepositoryTableTags<T extends { tags: readonly string[] }>(
+  tables: readonly T[],
+  vocabulary: readonly TableTagDefinition[],
+  file: string
+): T[] {
+  const unknown = tables.flatMap((table) => table.tags).find((tag) => !vocabulary.some((entry) => entry.slug === tag));
+  if (unknown) throw new Error(`Unknown repository table tag "${unknown}" in ${file}.`);
+  return [...tables];
+}
+
+export function repositoryTablesForSetJson(
+  file: string,
+  vocabulary: readonly TableTagDefinition[]
+): CatalogRollTable[] {
+  return validateRepositoryTableTags(tablesForSetJson(file), vocabulary, file);
 }
 
 function tableSlug(value: string) {
@@ -75,7 +130,16 @@ function normalizedRows(table: Record<string, unknown>, columns: readonly string
     if (!Array.isArray(row.cells)) throw new Error(`Table "${String(table.name ?? "")}" has invalid cells.`);
     const cells = row.cells.map((cell) => String(cell));
     while (cells.length < columns.length) cells.push("");
-    return { label, min: range.min, max: range.max, cells: cells.slice(0, columns.length) };
+    const nextTableId = typeof row.nextTableId === "string" ? row.nextTableId.trim() : "";
+    if (nextTableId && !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(nextTableId))
+      throw new Error(`Table "${String(table.name ?? "")}" has an invalid next table id.`);
+    return {
+      label,
+      min: range.min,
+      max: range.max,
+      cells: cells.slice(0, columns.length),
+      ...(nextTableId ? { nextTableId } : {})
+    };
   });
 }
 

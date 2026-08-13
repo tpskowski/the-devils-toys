@@ -1,5 +1,10 @@
 import assert from "node:assert/strict";
 import { runSmoke } from "./harness.mjs";
+import { readFile } from "node:fs/promises";
+
+const repositorySets = JSON.parse(
+  await readFile(new URL("../raw/tables/repository-sets.json", import.meta.url), "utf8")
+).sets;
 
 const customTable = {
   id: "rumours-in-the-market-d6",
@@ -40,12 +45,12 @@ await runSmoke(
     );
     const roomId = room.body.room.id;
 
-    // Every system's table set is offered, and the room's own system is preselected.
+    // Every system and checked-in repository set is offered, and the room's own system is preselected.
     const listed = await json(`/api/rooms/${roomId}/tables`, { headers: { cookie: gmCookie } });
     assert.equal(listed.body.roomSetId, "system:cairn");
     assert.deepEqual(
       listed.body.sets.map((set) => set.id),
-      ["system:cairn", "system:monolith", "system:cwn"]
+      ["system:cairn", "system:monolith", "system:cwn", ...repositorySets.map((set) => `repository:${set.id}`)]
     );
     const cairnSet = listed.body.sets[0];
     const monolithSet = listed.body.sets[1];
@@ -152,7 +157,7 @@ await runSmoke(
     // Reveal: everyone is given the text that was rolled.
     const revealed = await roll("reveal");
     assert.equal(revealed.broadcasts.length, 1);
-    assert.equal(revealed.broadcasts[0].message.detail, revealed.roll.text);
+    assert.equal(revealed.broadcasts[0].message.detail, `${revealed.roll.tableName}: ${revealed.roll.text}`);
 
     // Private: the GM keeps the result, and the room is told a roll happened.
     const secret = await roll("private");

@@ -7,6 +7,7 @@ import {
   type TableTagDefinition
 } from "@devils-toys/shared";
 import { parseCustomSet, type CustomSetDocument } from "./table-json.js";
+import { REPOSITORY_TABLE_IMPORT_SCRIPT } from "./repository-table-import-script.js";
 
 /**
  * The two archives The Devil's Tables produces.
@@ -14,7 +15,8 @@ import { parseCustomSet, type CustomSetDocument } from "./table-json.js";
  * A **bundle** carries sets between copies of the application: the Markdown as
  * it was written, plus a manifest naming each set and the tag vocabulary it
  * relies on. A **repo bundle** is the other direction — one set shaped the way
- * `raw/` expects, with written instructions for folding it into the repository.
+ * `raw/tables/` expects, with a confirmation-based importer for folding it into
+ * the repository.
  */
 
 export const BUNDLE_VERSION = 2;
@@ -130,75 +132,70 @@ export function bundleSetMarkdown(set: BundleSet) {
   return [set.document.preamble.trim(), body, set.document.postamble.trim()].filter(Boolean).join("\n\n") + "\n";
 }
 
-/**
- * A set shaped for `raw/`, with instructions written against the paths and
- * constants as they actually are, so the merge does not depend on remembering
- * how the application loads a system catalogue.
- */
-export function buildRepoBundle(name: string, tables: readonly RollTable[], tags: readonly TableTag[]): Uint8Array {
-  const filename = `${name.replace(/[^A-Za-z0-9 _-]/g, "").trim() || "Tables"}.md`;
-  const slug =
-    name
-      .toLocaleLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-+|-+$/g, "") || "tables";
-  const quoted = [...tags].map((tag) => `"${tag}"`).join(", ");
-
-  const instructions = `# Merging "${name}" into the repository
-
-This archive holds one file, \`raw/${filename}\`, written the way the table parser
-reads the rulebooks. Table tags travel with it in \`<!-- tags: ... -->\` comments.
-
-There are two ways to use it.
-
-## As extra tables for a system that already exists
-
-Append the contents of \`raw/${filename}\` to the Markdown file named by the target system's
-\`sourceDocuments\` entry. Nothing else changes: the parser picks the tables up
-on the next start, and they inherit that system's catalogue tags.
-
-## As a catalogue of its own
-
-1. Copy \`raw/${filename}\` into the repository's \`raw/\` folder.
-2. Create \`systems/${slug}/\` beside \`systems/cairn/\`, copying its \`package.json\`
-   and \`src/index.ts\`. Give the new system a \`sourceDocuments\` entry and this catalogue:
-
-\`\`\`ts
-tableCatalog: {
-  label: "${name}",
-  exclude: [],
-  tags: [${quoted}]
+export interface RepositoryBundleSet {
+  name: string;
+  tables: readonly RollTable[];
 }
+
+function storedRepositoryTable(table: RollTable) {
+  return {
+    id: table.id,
+    name: table.name,
+    section: table.section,
+    category: table.category,
+    dice: table.dice,
+    columns: [...table.columns],
+    tags: [...table.tags],
+    rows: table.rows.map((row) => ({
+      label: row.label,
+      min: row.min,
+      max: row.max,
+      cells: [...row.cells],
+      ...(row.nextTableId ? { nextTableId: row.nextTableId } : {})
+    }))
+  };
+}
+
+/** JSON table sets plus a review-first Node importer for a checked-out repository. */
+export function buildRepoBundle(sets: readonly RepositoryBundleSet[]): Uint8Array {
+  const files: Record<string, Uint8Array> = {};
+  const taken = new Set<string>();
+  const manifest = {
+    formatVersion: 1,
+    app: "devils-tables-repository" as const,
+    exportedAt: new Date().toISOString(),
+    sets: [] as { id: string; name: string; file: string }[]
+  };
+
+  for (const set of sets) {
+    const id = slugFor(set.name, taken);
+    const file = `sets/${id}.json`;
+    files[file] = strToU8(
+      `${JSON.stringify(
+        { formatVersion: 1, setName: set.name, tables: set.tables.map(storedRepositoryTable) },
+        null,
+        2
+      )}\n`
+    );
+    manifest.sets.push({ id, name: set.name, file });
+  }
+
+  files["manifest.json"] = strToU8(`${JSON.stringify(manifest, null, 2)}\n`);
+  files["import-tables.mjs"] = strToU8(REPOSITORY_TABLE_IMPORT_SCRIPT);
+  files["README.md"] = strToU8(`# Importing these tables
+
+From a checkout of The Devil's Toys, run:
+
+\`\`\`powershell
+node path/to/this-bundle/import-tables.mjs
 \`\`\`
 
-3. Register it in \`server/src/systems.ts\`:
-
-\`\`\`ts
-export const systems = { cairn, monolith, ${slug} } as const;
-\`\`\`
-
-4. Add the workspace to the root \`package.json\` if it is not covered by
-   \`systems/*\`, and add \`COPY systems/${slug}/package.json systems/${slug}/package.json\`
-   to the \`Dockerfile\`. The line \`COPY --from=build /app/raw/*.md ./raw/\` already
-   carries the Markdown.
-5. Describe reusable rules in \`contentModules\` with stable capability names and storage namespaces. Leave \`imports\` empty until a compatible source system is intentionally enabled; source loading follows \`sourceDocuments\` automatically.
-
-## Checking it worked
-
-\`\`\`bash
-npm run build && npm run smoke
-\`\`\`
-
-${tables.length} table${tables.length === 1 ? "" : "s"} were exported${tags.length ? `, tagged ${[...tags].join(", ")}` : ""}.
-`;
-
-  return zipSync(
-    {
-      [`raw/${filename}`]: strToU8(serializeSet(tables, name)),
-      "MERGE.md": strToU8(instructions)
-    },
-    { level: 6 }
-  );
+The script finds the repository, reports which sets and tables would be added,
+updated, or removed, and asks for Y/N confirmation before writing. You can also
+pass the repository path explicitly. After importing, review \`git diff\`, run
+the tests, and commit the JSON files with the rest of your change.
+`);
+  return zipSync(files, { level: 6 });
 }
 
 /** How a set in a bundle relates to what this instance already holds. */

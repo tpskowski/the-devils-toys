@@ -3,6 +3,7 @@ import { z } from "zod";
 import {
   parseRollTables,
   serializeSet,
+  tableLinkProblems,
   tableSummary,
   TABLE_TAG_SLUG,
   type RollTable,
@@ -17,7 +18,12 @@ import { all, db, one } from "./db.js";
 import { knownTags, tagVocabulary } from "./table-tags.js";
 import { requireTableEdit, requireTableRead } from "./table-permissions.js";
 import { systems } from "./systems.js";
-import { tablesForSetJson, type CatalogRollTable } from "./table-json.js";
+import {
+  repositorySetEntries,
+  repositoryTablesForSetJson,
+  tablesForSetJson,
+  type CatalogRollTable
+} from "./table-json.js";
 
 /**
  * The table catalogue itself: what sets exist, and how a set is created, edited,
@@ -77,7 +83,7 @@ function mergeTags(
   return knownTags([...setTags, ...tableTags], vocabulary);
 }
 
-/** Every set a GM can switch between: one per installed system, then custom sets. */
+/** Every set a GM can switch between: installed systems, repository sets, then custom sets. */
 export function availableSets(): { set: RollTableSet; tables: RollTable[] }[] {
   const vocabulary = tagVocabulary();
   const system = Object.values(systems).map((entry) => {
@@ -87,6 +93,21 @@ export function availableSets(): { set: RollTableSet; tables: RollTable[] }[] {
         id: `system:${entry.id}`,
         name: entry.tableCatalog.label,
         origin: "system" as const,
+        tables: tables.map(tableSummary)
+      },
+      tables
+    };
+  });
+  const repository = repositorySetEntries().map((entry) => {
+    const tables = repositoryTablesForSetJson(entry.file, vocabulary).map((table) => ({
+      ...table,
+      tags: mergeTags([], table.tags, vocabulary)
+    }));
+    return {
+      set: {
+        id: `repository:${entry.id}`,
+        name: entry.name,
+        origin: "repository" as const,
         tables: tables.map(tableSummary)
       },
       tables
@@ -108,7 +129,7 @@ export function availableSets(): { set: RollTableSet; tables: RollTable[] }[] {
       tables: customTables
     };
   });
-  return [...system, ...custom];
+  return [...system, ...repository, ...custom];
 }
 
 export function findSet(setId: string) {
@@ -136,10 +157,13 @@ const setBody = z.object({
 });
 
 function validateTableTags(markdown: string, vocabulary: readonly TableTagDefinition[]) {
-  for (const table of parseRollTables(markdown)) {
+  const tables = parseRollTables(markdown);
+  for (const table of tables) {
     const unknown = table.tags.find((tag) => !vocabulary.some((entry) => entry.slug === tag));
     if (unknown) throw new Error(`This instance has no tag called "${unknown}".`);
   }
+  const [linkProblem] = tableLinkProblems(tables);
+  if (linkProblem) throw new Error(linkProblem);
 }
 
 /** The whole catalogue with its summaries, for an editor rather than a room. */
@@ -166,6 +190,21 @@ tableSetRouter.get("/table-sets/:setId", requireAuth, (req: AuthedRequest, res) 
         name: system.tableCatalog.label,
         tables: tablesForSystem(system.id),
         tags: knownTags(system.tableCatalog.tags),
+        updatedAt: null,
+        readOnly: true
+      }
+    });
+  }
+
+  if (setId.startsWith("repository:")) {
+    const found = findSet(setId);
+    if (!found) return res.status(404).json({ error: "Table set not found." });
+    return res.json({
+      set: {
+        id: setId,
+        name: found.set.name,
+        tables: found.tables,
+        tags: knownTags(found.tables.flatMap((table) => table.tags)),
         updatedAt: null,
         readOnly: true
       }
