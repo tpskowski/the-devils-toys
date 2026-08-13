@@ -1,4 +1,10 @@
 {
   "formatVersion": 1,
-  "sets": []
+  "sets": [
+    {
+      "id": "tim-s-tables",
+      "name": "Tim's Tables",
+      "file": "tim-s-tables.json"
+    }
+  ]
 }
