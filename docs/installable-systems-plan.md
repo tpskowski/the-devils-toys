@@ -330,7 +330,7 @@ Give each an exported `invalidate(systemId?)` and call them from one `reloadSyst
 
 **Acceptance:** a test installs a bundle, reads its rules, re-installs with changed Markdown, and reads the change without a process restart.
 
-### Phase 5 — Client de-hardcoding
+### Phase 5 — Client de-hardcoding — **done**
 
 - `systemNames` and the theme fallback come from the status payload; `RulesReferencePage` fetches `/api/status` before rendering, as the rest of the client already does.
 - `rules.ts:138` stops validating against a compile-time list. Match `/^[a-z][a-z0-9-]{1,31}$/` and let the server's 404 be the answer — the route only decides which component to mount, and mounting the rules page for a bad slug shows an error either way.
@@ -339,7 +339,16 @@ Give each an exported `invalidate(systemId?)` and call them from one `reloadSyst
 - Defaults become "the first system the server offered".
 - `smoke.test.ts:6` asserts the built-in list, which is now `BUILTIN_SYSTEM_IDS` and still exactly three.
 
-**Acceptance:** steps 2 and 3 of the `monolith-2` manual pass. A `monolith-2` room shows Monolith's sheet layout and Monolith's group views, with no client code naming either system.
+**Acceptance met:** nothing in `client/src` matches a system id. The smoke test checks the two payloads the browser draws from — the sheet's declared layout and the group definition's rosters — so steps 2 and 3 of the manual pass are covered by an automated one. 406 unit tests and all 17 smoke tests pass.
+
+**Two things the sketch treated as branches turned out to be missing declarations:**
+
+- **Obligations had none at all.** The roster, its rows, and its routes all existed; the client showed it for Monolith by name and for nobody else. It is a declared field now, and that is what gives it a tab. Monolith's `groupDebt` textarea — the field it replaced — went with it: its data had already been migrated into rows and the key stripped from the group blob, so it was a field nothing rendered sitting beside the roster that superseded it.
+- **The four-rail sheet arrangement is a layout, not a system.** A sheet now names which sections sit on the left rail, which is highlighted, and what shares the right rail with which lists; everything unnamed falls in the middle. The client knows how to draw it and a system chooses it — the same principle as the theme decision, which is why it does not violate it.
+
+**`GroupView` was a type, not just a branch**, exactly as flagged: it was derived from `MONOLITH_GROUP_VIEWS`, so a system could only have the tabs Monolith has. `groupViewsForDefinition` moved to `shared/` beside `groupAssetDefinitions`, so the server can test it against the real definitions while the client tests the derivation.
+
+**Rooms now carry their system's display name**, read from the registry rather than the definition, so a room on a retired system — or one whose bundle will not load — still says what it is instead of showing a bare id.
 
 ### Phase 6 — Export, scaffold, and docs
 
