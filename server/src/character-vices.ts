@@ -8,11 +8,13 @@ import { tablesForSetJson } from "./table-json.js";
  * is what the tests hand it — asking the registry is how the two are told
  * apart, rather than naming the systems that have vices.
  */
-export function characterVicesFor(source: string | SystemId): CharacterVice[] {
-  const tables = hasSystem(source)
+export function characterVicesFor(source: string | SystemId, column = "Vice"): CharacterVice[] {
+  const registered = hasSystem(source);
+  const tables = registered
     ? tablesForSetJson(source, systemOrThrow(source).sourceDocuments[0]?.tablesFile ?? "")
     : parseRollTables(source);
-  const table = tables.find((candidate) => candidate.columns[0]?.toLowerCase() === "vice");
+  const wanted = (registered ? (systemOrThrow(source).viceCatalog?.column ?? column) : column).toLowerCase();
+  const table = tables.find((candidate) => candidate.columns[0]?.toLowerCase() === wanted);
   return (table?.rows ?? []).map((row) => ({
     name: row.cells[0] ?? "",
     triggers: row.cells[1] ?? "",

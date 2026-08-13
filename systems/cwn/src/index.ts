@@ -280,6 +280,7 @@ export const cwn: GameSystem = {
   },
   rangedWeaponIcon: "gun",
   npcStatblock: {
+    parser: "labelled",
     hitPointsKey: "hp",
     weaponRange,
     // One weapon, and its own column's name. The rest of this statblock is the

@@ -786,9 +786,27 @@ export interface NpcStatblockField {
   inSummary?: boolean;
 }
 
+/**
+ * How a bestiary writes its creatures' numbers, and so which reader takes them
+ * apart.
+ *
+ * `inline` is Cairn's and Monolith's shape — one comma-separated line, each part
+ * a number and the word it belongs to, with anything left over read as an
+ * attack: `8 HP, 1 ARMOR, 12 STR, bite (d8)`.
+ *
+ * `labelled` is CWN's — labels paired with values across a column-aligned block,
+ * `HD 2 (9 HP)  AC 14/12  Atk +3`, where the spacing is what separates one pair
+ * from the next.
+ */
+export const NPC_STATBLOCK_PARSERS = ["inline", "labelled"] as const;
+
+export type NpcStatblockParser = (typeof NPC_STATBLOCK_PARSERS)[number];
+
 export interface NpcStatblockDefinition {
   hitPointsKey: string;
   armorKey?: string;
+  /** Defaults to `inline`, which is what most of these books write. */
+  parser?: NpcStatblockParser;
   /**
    * The fields holding what the creature fights with, in the order it brings
    * them to bear. The first is what it leads with and the second is its other
@@ -904,6 +922,13 @@ export interface GameSystem {
     entryLevel: number;
     exclude: readonly string[];
   };
+  /**
+   * The table this system's vices are chosen from, named by its first column.
+   * Like every other table, it is read out of the book rather than restated —
+   * this only says that the system has one and what to look for. Omit it and
+   * the sheet offers no vices, which is every system but Monolith today.
+   */
+  viceCatalog?: { column: string };
   /**
    * Random tables are read out of the system's authoritative Markdown rather
    * than restated here; this only records which ones to leave out and how the

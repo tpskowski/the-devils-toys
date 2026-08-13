@@ -107,6 +107,7 @@ export const monolith: GameSystem = {
       { id: "wil", label: "WIL", currentKey: "wilCurrent", maximumKey: "wilMax", statblockKey: "wil" }
     ]
   },
+  viceCatalog: { column: "Vice" },
   tableCatalog: {
     label: "Monolith tables",
     exclude: [],

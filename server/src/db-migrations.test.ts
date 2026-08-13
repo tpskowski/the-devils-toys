@@ -25,14 +25,28 @@ function dataDir() {
   return directory;
 }
 
+/** The `system` column as each earlier build declared it. */
+const legacySystemColumns = {
+  /** Before installable systems: a CHECK listing the compiled systems. */
+  checked: "system TEXT NOT NULL CHECK(system IN ('cairn','monolith'))",
+  /** After the CHECK was dropped but before the registry existed. */
+  unconstrained: "system TEXT NOT NULL"
+} as const;
+
 /**
  * Writes a database with the pre-`shinji` rooms schema and one room in use.
  *
- * `themes` is overridable so a test can isolate one half of the rooms rebuild.
- * Seeded with the current themes, only the system CHECK is stale, and only the
- * system half of the predicate can trigger the migration.
+ * Both the theme list and the `system` column are overridable so a test can
+ * isolate one condition of the rooms rebuild. With current themes and an
+ * unconstrained `system`, only the missing reference to the registry can
+ * trigger it — which is the database a build between dropping the CHECK and
+ * adding the registry would have left.
  */
-function seedLegacyDatabase(directory: string, themes: readonly string[] = legacyThemes) {
+function seedLegacyDatabase(
+  directory: string,
+  themes: readonly string[] = legacyThemes,
+  systemColumn: string = legacySystemColumns.checked
+) {
   const legacy = new DatabaseSync(path.join(directory, "devils-toys.sqlite"));
   legacy.exec(`
     CREATE TABLE accounts (
@@ -45,7 +59,7 @@ function seedLegacyDatabase(directory: string, themes: readonly string[] = legac
     CREATE TABLE rooms (
       id INTEGER PRIMARY KEY,
       name TEXT NOT NULL,
-      system TEXT NOT NULL CHECK(system IN ('cairn','monolith')),
+      ${systemColumn},
       theme TEXT NOT NULL CHECK(theme IN (${themes.map((theme) => `'${theme}'`).join(",")})),
       archived INTEGER NOT NULL DEFAULT 0,
       created_by INTEGER NOT NULL REFERENCES accounts(id),
@@ -57,6 +71,19 @@ function seedLegacyDatabase(directory: string, themes: readonly string[] = legac
       role TEXT NOT NULL CHECK(role IN ('gm','player')),
       active_character_id INTEGER,
       PRIMARY KEY(room_id, account_id)
+    );
+    -- Characters as every earlier build declared them, with system a bare TEXT
+    -- carrying no constraint of any kind. Present in the seed so the migration
+    -- that gives it a reference has something to migrate; created fresh it
+    -- would simply be right, and the migration would never run.
+    CREATE TABLE characters (
+      id INTEGER PRIMARY KEY,
+      system TEXT NOT NULL,
+      owner_account_id INTEGER REFERENCES accounts(id) ON DELETE SET NULL,
+      pool_room_id INTEGER REFERENCES rooms(id) ON DELETE SET NULL,
+      name TEXT NOT NULL,
+      sheet_json TEXT NOT NULL DEFAULT '{}',
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
     CREATE TABLE room_state (
       room_id INTEGER PRIMARY KEY REFERENCES rooms(id) ON DELETE CASCADE,
@@ -317,8 +344,12 @@ async function openDatabase(directory: string) {
   return loaded;
 }
 
+function storedSchemaFor(loaded: LoadedDatabase, table: string) {
+  return loaded.all<{ sql: string }>("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?", table)[0].sql;
+}
+
 function roomsSchema(loaded: LoadedDatabase) {
-  return loaded.all<{ sql: string }>("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'rooms'")[0].sql;
+  return storedSchemaFor(loaded, "rooms");
 }
 
 function tableNames(loaded: LoadedDatabase) {
@@ -391,19 +422,86 @@ describe("database migrations", () => {
     expect(roomsSchema(loaded)).not.toMatch(/CHECK\s*\(\s*system\s+IN/i);
   });
 
-  it("accepts a system id this build has never heard of, with themes already current", async () => {
+  it("accepts a system id this build has never heard of, once it is registered", async () => {
     const directory = dataDir();
     seedLegacyDatabase(directory, THEME_IDS);
     const loaded = await openDatabase(directory);
 
     // What an installed system is, from the database's point of view: an id no
-    // compiled list contains. The registry decides whether the server has it;
-    // the schema must not have an opinion.
+    // compiled list contains. The old CHECK could never have allowed it; the
+    // registry row is what does.
+    loaded.db
+      .prepare("INSERT INTO systems (id, name, origin) VALUES ('monolith-2', 'Monolith (installed)', 'installed')")
+      .run();
     loaded.db
       .prepare("INSERT INTO rooms (name, system, theme, created_by) VALUES ('Installed', 'monolith-2', 'used', 1)")
       .run();
     expect(loaded.all<{ system: string }>("SELECT system FROM rooms WHERE name = 'Installed'")).toEqual([
       { system: "monolith-2" }
+    ]);
+  });
+
+  // Seeded with current themes and an already-unconstrained `system`, so neither
+  // the theme condition nor the CHECK condition can fire. Only the missing
+  // reference to the registry can trigger the rebuild, which is what these two
+  // are testing — and they fail when that condition is removed.
+  it("points an unconstrained system column at the registry", async () => {
+    const directory = dataDir();
+    seedLegacyDatabase(directory, THEME_IDS, legacySystemColumns.unconstrained);
+    const loaded = await openDatabase(directory);
+
+    expect(roomsSchema(loaded)).toMatch(/system\s+TEXT[^,]*REFERENCES\s+systems/i);
+  });
+
+  it("refuses a room on a system nothing has registered", async () => {
+    const directory = dataDir();
+    seedLegacyDatabase(directory, THEME_IDS, legacySystemColumns.unconstrained);
+    const loaded = await openDatabase(directory);
+
+    // The reference is what the dropped CHECK could not do: it makes deleting a
+    // system in use impossible, rather than merely discouraged.
+    expect(() =>
+      loaded.db
+        .prepare("INSERT INTO rooms (name, system, theme, created_by) VALUES ('Nowhere', 'no-such-system', 'used', 1)")
+        .run()
+    ).toThrow(/FOREIGN KEY/i);
+  });
+
+  it("gives characters the same reference, which they never had at all", async () => {
+    const directory = dataDir();
+    seedLegacyDatabase(directory, THEME_IDS, legacySystemColumns.unconstrained);
+    const loaded = await openDatabase(directory);
+
+    expect(storedSchemaFor(loaded, "characters")).toMatch(/system\s+TEXT[^,]*REFERENCES\s+systems/i);
+    expect(() =>
+      loaded.db.prepare("INSERT INTO characters (system, name) VALUES ('no-such-system', 'Nobody')").run()
+    ).toThrow(/FOREIGN KEY/i);
+  });
+
+  it("registers every compiled system, and keeps a room's system on hand for one it no longer ships", async () => {
+    const directory = dataDir();
+    seedLegacyDatabase(directory, THEME_IDS);
+
+    // A room on a system this build has never had — which is what a database
+    // outliving a system looks like, and the case that would otherwise make
+    // adding the foreign key fail. Written past the older build's own CHECK,
+    // since that build would have listed the system it then shipped.
+    const seeded = new DatabaseSync(path.join(directory, "devils-toys.sqlite"));
+    seeded.exec("PRAGMA ignore_check_constraints = ON");
+    seeded
+      .prepare("INSERT INTO rooms (name, system, theme, created_by) VALUES ('Orphan', 'retired-system', 'used', 1)")
+      .run();
+    seeded.close();
+
+    const loaded = await openDatabase(directory);
+    const registered = loaded.all<{ id: string; origin: string; retired: number }>(
+      "SELECT id, origin, retired FROM systems ORDER BY id"
+    );
+    for (const id of BUILTIN_SYSTEM_IDS) expect(registered).toContainEqual({ id, origin: "builtin", retired: 0 });
+    // Kept, and retired: the room still opens, and nobody can start another.
+    expect(registered).toContainEqual({ id: "retired-system", origin: "installed", retired: 1 });
+    expect(loaded.all<{ name: string }>("SELECT name FROM rooms WHERE system = 'retired-system'")).toEqual([
+      { name: "Orphan" }
     ]);
   });
 

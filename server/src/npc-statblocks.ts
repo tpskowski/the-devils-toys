@@ -1,4 +1,5 @@
-import type { SystemId } from "@devils-toys/shared";
+import type { NpcStatblockParser, SystemId } from "@devils-toys/shared";
+import { systemOrThrow } from "./systems.js";
 
 export type NpcStatblockValue = string | number;
 
@@ -97,6 +98,15 @@ export function parseCwnNpcStatblock(markdown: string): ParsedNpcStatblock {
   return { fields, unparsed: markdown };
 }
 
+/**
+ * Reads a creature's numbers the way its system's bestiary writes them. Which
+ * reader that is comes from the system's own `npcStatblock.parser`, so an
+ * installed system picks one by naming it rather than by being recognised here.
+ */
 export function parseNpcStatblock(system: SystemId, markdown: string): ParsedNpcStatblock {
-  return system === "cwn" ? parseCwnNpcStatblock(markdown) : parseCairnNpcStatblock(markdown);
+  return parseStatblockWith(systemOrThrow(system).npcStatblock.parser ?? "inline", markdown);
+}
+
+export function parseStatblockWith(parser: NpcStatblockParser, markdown: string): ParsedNpcStatblock {
+  return parser === "labelled" ? parseCwnNpcStatblock(markdown) : parseCairnNpcStatblock(markdown);
 }
