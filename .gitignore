@@ -1,7 +1,12 @@
 # Source books: the Markdown is redistributable under CC BY-SA 4.0, the PDFs are
 # not ours to publish. Matched at any depth, because a book being worked on gets
 # its own folder — `/raw/*.pdf` alone left those PDFs stageable.
+#
+# Images extracted from those pages are the book's too, so they go the same way.
+# This covers `raw/` only: the guide's own screenshots under `docs/guide/images`
+# are ours and stay tracked.
 /raw/**/*.pdf
+/raw/**/*.png
 
 # Dependencies and build output
 node_modules/
