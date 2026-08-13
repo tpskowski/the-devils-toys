@@ -22,7 +22,7 @@ This project is a custom virtual tabletop for Cairn and Monolith. They share a c
 
 - Use a TypeScript monorepo with a React/Vite client, a Node.js server, WebSockets for live room updates, and SQLite for persistent data.
 - In production, one Node.js process serves the built client and the API.
-- Install game systems at build time from repository folders. Runtime system installation is deferred.
+- Keep repository-maintained game systems as build-time workspace packages. Admins may also install validated data-only system bundles at runtime; bundles cannot add executable code, CSS, or client extensions.
 - Support ordinary local hosting on Windows, macOS, and Linux equally in the first release.
 - Store all mutable data beneath one configurable directory so the installation can be backed up easily.
 - Support room rosters of one GM and up to 20 player accounts, with up to 10 players active in a session. These are supported operating targets, not hard limits unless a technical constraint requires enforcement.

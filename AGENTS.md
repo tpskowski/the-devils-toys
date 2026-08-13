@@ -1,6 +1,6 @@
 # Project guidance
 
-## Adding new systems
+## Adding built-in systems
 
 1. Create `systems/<slug>` as a workspace package following the shared `GameSystem` type.
 2. Keep system metadata, character fields, constraints, dice behavior, and content classification in that package.
@@ -8,7 +8,16 @@
 4. Mark every content section as `player` or `gm`. Server-side search and direct reads must apply that classification before returning data.
 5. Register the package in `server/src/systems.ts` and add focused tests for defaults, dice rules, character fields, and access filtering.
 6. Add `systems/<slug>/items.json` containing `{"system":"<slug>","source":"","lists":{}}` and `systems/<slug>/traits.json` containing `{"system":"<slug>","source":"","traits":[]}`, then run `npm run build:items` and `npm run build:traits` to fill them. The placeholders are needed first because the generators load the system definition. Both commands are one-offs: they seed an empty catalogue and never touch a filled one. See "The item catalogue".
-7. Do not add runtime installation. Systems are compiled into the application.
+7. These steps are for a system maintained with the application. Built-in systems are compiled into the application and are not copied into the mutable data directory.
+
+## Installable systems
+
+- An admin may install another system at runtime as a `.devilsystem.zip` bundle through `POST /api/admin/systems`. A bundle is data only: `system.json`, `items.json`, `traits.json`, rules Markdown, extracted table JSON, and a manifest. Never load JavaScript or other executable content from one.
+- Installed content lives under `<dataDir>/systems/<id>/` and is registered in the `systems` database table. Both are required; copying a directory into place is not an installation.
+- Installing a bundle whose id is already installed replaces its content atomically and invalidates every system-content cache. A built-in id can never be replaced.
+- Retirement removes a system from new-room choices but leaves existing rooms and characters usable. Deletion is allowed only for an installed system with no rooms or characters pointing at it.
+- `GET /api/admin/systems/:id/export` exports either a built-in or installed system. The optional `as` and `name` query parameters clone it under a new id, rewriting all system-owned namespaces together.
+- A bundle's `tables/*.json` files use the same runtime table-set format as built-in and repository catalogues. Validate them through `readSetJson`; do not reparse the bundled Markdown to recreate them during installation.
 
 ## Adding a room theme
 

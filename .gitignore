@@ -8,6 +8,9 @@
 /raw/**/*.pdf
 /raw/**/*.png
 
+# Local 13th Age source conversions are not redistributable project content.
+/raw/13th-age-2e/*.md
+
 # Dependencies and build output
 node_modules/
 **/dist/

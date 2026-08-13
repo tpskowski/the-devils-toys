@@ -2,7 +2,7 @@
 
 A plan for letting an admin add a game system to a running server, without a rebuild and without touching the repository.
 
-Today a system is a compiled npm workspace. `AGENTS.md:11` says so outright — _"Do not add runtime installation. Systems are compiled into the application."_ — and `PLAN.md` records the same as an architecture guideline. This plan reverses both, deliberately, and says what that costs.
+When this work began, a system was only a compiled npm workspace and the project guidance explicitly ruled out runtime installation. Phases 0–5 and the server-side importer/exporter from Phase 6 are now implemented. This document preserves the design and acceptance record; current operational guidance lives in `docs/guide/admin/systems.md`, and `AGENTS.md` now distinguishes built-in packages from installable bundles.
 
 The headline finding: **`GameSystem` is already almost entirely declarative data.** Of its twenty-odd fields, exactly one is code — `characterWarnings` (`shared/src/index.ts:853`). Everything else is JSON in a TypeScript file. That single function, three hardcoded per-system branches on the server, and a compile-time `SystemId` union are the whole of what stands between here and an installable system. This is a much smaller job than the workspace-per-system structure makes it look.
 
@@ -284,7 +284,7 @@ Built-ins upsert themselves on every start, so the table is never authoritative 
 Routes, all admin-gated in one module (`server/src/system-permissions.ts`, following `table-permissions.ts`):
 
 - `GET /api/admin/systems` — the registry, with a per-system in-use count.
-- `POST /api/admin/systems` — multipart upload, `multer` as `media.ts` does, size-capped by a new `DEVILS_TOYS_SYSTEM_UPLOAD_LIMIT_MB` (default 25).
+- `POST /api/admin/systems` — multipart upload, `multer` as `media.ts` does, size-capped by `DEVILS_TOYS_SYSTEM_LIMIT_MB` (default 25).
 - `POST /api/admin/systems/:id/retire` and `/restore`.
 - `DELETE /api/admin/systems/:id` — refused with a 409 naming the rooms and characters that hold it.
 - `GET /api/admin/systems/:id/export` — a bundle out, for every system including built-ins.
@@ -350,15 +350,22 @@ Give each an exported `invalidate(systemId?)` and call them from one `reloadSyst
 
 **Rooms now carry their system's display name**, read from the registry rather than the definition, so a room on a retired system — or one whose bundle will not load — still says what it is instead of showing a bare id.
 
-### Phase 6 — Export, scaffold, and docs
+### Phase 6 — Export, scaffold, and docs — **server export and docs done; CLI and UI remain**
+
+The authenticated server API now exports any registered system and accepts the
+`as` and `name` query parameters for a complete renamed clone. The smoke test
+uses that route to produce and install `monolith-2`. The two proposed offline
+npm commands and the management UI below have not been added yet.
 
 - `npm run systems:export <id> [--as <newId>] [--out <dir>]` — writes a bundle for any registered system, built-in or not. Without `--as` it is a faithful export, for backup and for the round-trip test. With `--as` it is also the scaffold: it applies the five id rewrites and produces a bundle that installs alongside its source. This one command is decision 6, and it is what produces `monolith-2`.
 - `npm run systems:validate <bundle>` — the install validation, offline, so an author iterates without a server.
 - **Admin UI**: a section in `ManagementWorkspace` — the list, an upload control, retire/restore, export, and the in-use count that explains why delete is refused. It is a table and a file input; it does not need a page of its own. Built-ins appear in the list too, marked, exportable, and not retirable.
 
-**Acceptance:** `monolith-2` is produced by `systems:export` with no hand edit, installed through the admin UI, and passes the full manual pass.
+**Acceptance remaining:** expose the already-tested export/install lifecycle
+through the offline commands and admin UI, then repeat the `monolith-2` pass
+through those surfaces.
 
-- Docs, all of which currently state the opposite:
+- Docs completed with this phase:
   - `AGENTS.md` — rewrite `Adding new systems`. Point 7 inverts; points 1–6 stay as the guidance for a system that ships _in_ the repository, which is still the right home for one that is maintained alongside the code.
   - `PLAN.md` — the architecture guideline _"Install game systems at build time from repository folders. Runtime system installation is deferred."_
   - `docs/guide/admin/` — a new page, in the voice of the existing ones.

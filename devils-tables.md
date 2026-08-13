@@ -111,7 +111,9 @@ A single table can also be exported as CSV, in the same shape, to edit elsewhere
 
 **Import a bundle** reads one back. Before anything is written it shows, set by set, whether it is new, already here unchanged, or a name that exists with different tables — and which tags it would create. You then choose per set whether to add it, replace what is here, or skip it. Tags the bundle needs and this instance lacks are created for you.
 
-The Markdown survives the round trip exactly, so exporting and re-importing a set changes nothing about it.
+The Markdown survives the round trip exactly, including table-tag and next-roll comments, so exporting and re-importing a set changes nothing about it. Current imports also accept the older JSON portable-bundle format and turn it back into canonical editable Markdown.
+
+This portable bundle is the instance-to-instance path. CSV moves one or more tables into a chosen editable set and is useful for spreadsheets, but it does not carry prose around the tables or next-roll links. The repository export below is a third format: runtime JSON plus a review-first CLI for changing a checkout, not a bundle to upload into another running instance.
 
 ## Contributing a set back to the project
 
@@ -123,7 +125,7 @@ Unzip it, open a terminal anywhere inside a checkout of The Devil's Toys, and ru
 node path/to/the-unzipped-bundle/import-tables.mjs
 ```
 
-The script compares the bundle with `raw/tables`, names the existing sets it would update and the new sets it would add, then lists added, updated, and removed tables inside each changed set. It asks **Confirm Y/N?** before writing. A refusal changes nothing. A confirmation writes the set JSON and updates `raw/tables/repository-sets.json`; after that, review `git diff`, run the tests, and commit those files normally. Imported repository sets are read-only built-in catalogues after the applications restart.
+The script compares the bundle with `raw/tables`, names the existing sets it would update and the new sets it would add, then lists added, updated, and removed tables inside each changed set. The JSON preserves the table structure directly, including table tags and next-roll links. It asks **Confirm Y/N?** before writing. A refusal changes nothing. A confirmation writes the set JSON and updates `raw/tables/repository-sets.json`; after that, review `git diff`, run the tests, and commit those files normally. Imported repository sets are read-only built-in catalogues after the applications restart.
 
 This is the only export in the editor that changes the application repository rather than moving data between instances, which is why it is an admin's.
 
