@@ -90,7 +90,7 @@ Everything else the client knows about a system it is **already told over the wi
 
 ## The bundle
 
-```
+```text
 cairn.devilsystem.zip
 ├── manifest.json         app, bundleVersion, systemId, exportedAt, license summary
 ├── system.json           the GameSystem, minus characterWarnings, plus warningRules

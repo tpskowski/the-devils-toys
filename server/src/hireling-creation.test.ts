@@ -24,7 +24,7 @@ describe("Monolith freelancer creation", () => {
   });
 
   it("fills scores, HP, weapon, name, and finishing touches", () => {
-    expect(rollHirelingCreation(definition, markdown, () => 0)).toEqual({
+    expect(rollHirelingCreation(definition, { kind: "markdown", markdown }, () => 0)).toEqual({
       strCurrent: 3,
       strMax: 3,
       dexCurrent: 3,
@@ -46,7 +46,7 @@ describe("Monolith freelancer creation", () => {
   });
 
   it("can reach the last entry of every configured roll", () => {
-    expect(rollHirelingCreation(definition, markdown, () => 0.999)).toMatchObject({
+    expect(rollHirelingCreation(definition, { kind: "markdown", markdown }, () => 0.999)).toMatchObject({
       strCurrent: 18,
       strMax: 18,
       dexCurrent: 18,

@@ -411,6 +411,7 @@ function CharacterManagement({
 
   async function createCharacter(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!data.systems.length) return;
     const form = event.currentTarget;
     const values = new FormData(form);
     await act(async () => {
@@ -461,7 +462,7 @@ function CharacterManagement({
         </label>
         <label>
           System
-          <select name="system" defaultValue={data.systems[0]?.id}>
+          <select name="system" defaultValue={data.systems[0]?.id} disabled={!data.systems.length}>
             {data.systems.map((system) => (
               <option value={system.id} key={system.id}>
                 {system.name}
@@ -469,7 +470,13 @@ function CharacterManagement({
             ))}
           </select>
         </label>
-        <button className="primary-button compact" disabled={busy}>
+        {!data.systems.length && (
+          <p className="form-error">
+            No game systems are available. An administrator must install or restore one before a character can be
+            created.
+          </p>
+        )}
+        <button className="primary-button compact" disabled={busy || !data.systems.length}>
           <Plus size={16} /> Create character
         </button>
       </form>

@@ -45,9 +45,7 @@ describe("the group page's tabs", () => {
     ]);
   });
 
-  it("gives a system's own kind of property its own tab, with no change here", () => {
-    // The point of reading the definition rather than the system's name: a
-    // stronghold is a tab the day a system declares one.
+  it("does not offer an asset view until GroupPage renders and saves that asset kind", () => {
     const definition: GroupPageDefinition = {
       sections: [],
       groupAssets: [
@@ -55,7 +53,7 @@ describe("the group page's tabs", () => {
         { kind: "caravan", label: "Caravans", singularLabel: "Caravan", sheet }
       ]
     };
-    expect(groupViewsForDefinition(definition).map((view) => view.id)).toEqual(["party", "stronghold", "caravan"]);
+    expect(groupViewsForDefinition(definition).map((view) => view.id)).toEqual(["party"]);
   });
 
   it("defaults every group page to the party", () => {

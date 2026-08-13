@@ -89,8 +89,6 @@ interface RowSave {
   chain: Promise<void>;
   /** How many of them are queued or in flight. */
   pending: number;
-  /** The revision the row's last write produced, once one has answered. */
-  revision?: number;
 }
 
 interface PartyCharacterResponse {
@@ -209,6 +207,9 @@ export function GroupPage({
   // Two edits to the same row cannot go at once: the second has to carry the
   // revision the first produced, which is only known once the first has answered.
   const rowSaves = useRef(new Map<string, RowSave>());
+  // A row may become idle between edits. Its revision still belongs to that
+  // row, not to the transient queue entry that happened to save it last.
+  const rowRevisions = useRef(new Map<string, number>());
   const [editingHirelingSlot, setEditingHirelingSlot] = useState<{ id: number; listKey: string; index: number }>();
   const [busyHirelingImageId, setBusyHirelingImageId] = useState<number>();
   const [rollingHireling, setRollingHireling] = useState(false);
@@ -238,6 +239,7 @@ export function GroupPage({
     // The rows just answered for themselves, so a revision remembered from a
     // write against the previous set of them no longer describes anything.
     rowSaves.current.clear();
+    rowRevisions.current.clear();
     dirtyRef.current = false;
     stateDirtyRef.current = false;
     setStatus("Saved");
@@ -367,7 +369,8 @@ export function GroupPage({
             // flight for this row moves its revision on, and the one captured
             // with the edit would be refused as a write from before that.
             const payload = body();
-            if (entry.revision !== undefined) payload.revision = entry.revision;
+            const revision = rowRevisions.current.get(key);
+            if (revision !== undefined) payload.revision = revision;
             const result = await api<SavedRow>(`/api/rooms/${roomId}/group/${kind}/${id}`, {
               method: "PATCH",
               body: JSON.stringify(payload)
@@ -376,7 +379,7 @@ export function GroupPage({
             // against it rather than against the one this row was loaded with.
             const saved = result.hireling ?? result.asset ?? result.obligation;
             if (saved) {
-              entry.revision = saved.revision;
+              rowRevisions.current.set(key, saved.revision);
               noteRevision(kind, id, saved.revision);
             }
             const idle = finishRowSave(key);

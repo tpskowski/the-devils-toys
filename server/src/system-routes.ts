@@ -13,9 +13,10 @@ import {
   exportSystemBundle,
   refuseUninstallableBundle,
   removeSystemContent,
+  verifySystemTables,
   writeSystemBundle
 } from "./system-install.js";
-import { requireSystemAdmin, requireSystemRead } from "./system-permissions.js";
+import { requireSystemAdmin } from "./system-permissions.js";
 import {
   deleteSystemRow,
   loadInstalledSystem,
@@ -68,7 +69,7 @@ function publicSystem(row: ReturnType<typeof systemRows>[number]) {
 }
 
 systemRouter.get("/admin/systems", requireAuth, (req: AuthedRequest, res) => {
-  if (!requireSystemRead(req, res)) return;
+  if (!requireSystemAdmin(req, res)) return;
   res.json({ systems: systemRows().map(publicSystem) });
 });
 
@@ -84,6 +85,7 @@ systemRouter.post(
     try {
       const bundle = readSystemBundle(new Uint8Array(req.file.buffer));
       refuseUninstallableBundle(bundle);
+      verifySystemTables(bundle.system.id, bundle.system, bundle.tables);
       result = writeSystemBundle(bundle);
       recordInstalledSystem({
         id: bundle.system.id,

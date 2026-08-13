@@ -45,6 +45,14 @@ interface StoredSet {
   tables: StoredTable[];
 }
 
+export function parseSetJson(value: string, file: string): StoredSet {
+  const parsed = JSON.parse(value) as StoredSet;
+  if (parsed.formatVersion !== 1 || !Array.isArray(parsed.tables)) throw new Error(`Invalid table JSON: ${file}`);
+  if (parsed.tables.some((table) => !table.id || !table.name || !Array.isArray(table.rows)))
+    throw new Error(`Invalid table entry in ${file}`);
+  return parsed;
+}
+
 /**
  * Parsed sets, keyed by the system that owns them as well as the filename. The
  * filename alone was enough while every set lived in `raw/tables`; an installed
@@ -90,10 +98,7 @@ export function readSetJson(system: SystemId, file: string): StoredSet {
   const cached = cache.get(key);
   if (cached) return cached;
   const absolute = systemTablesJsonFile(system, file);
-  const parsed = JSON.parse(fs.readFileSync(absolute, "utf8")) as StoredSet;
-  if (parsed.formatVersion !== 1 || !Array.isArray(parsed.tables)) throw new Error(`Invalid table JSON: ${file}`);
-  if (parsed.tables.some((table) => !table.id || !table.name || !Array.isArray(table.rows)))
-    throw new Error(`Invalid table entry in ${file}`);
+  const parsed = parseSetJson(fs.readFileSync(absolute, "utf8"), file);
   cache.set(key, parsed);
   return parsed;
 }

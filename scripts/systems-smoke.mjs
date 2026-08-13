@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { strFromU8, strToU8, unzipSync, zipSync } from "fflate";
 import { runSmoke } from "./harness.mjs";
 
 /**
@@ -25,7 +26,7 @@ await runSmoke("Installable system smoke test", async ({ request, json, bytes, s
   // --- Who may install ---
 
   await json("/api/admin/systems", {}, 401);
-  await json("/api/admin/systems", { headers: gm.headers }, 200);
+  await json("/api/admin/systems", { headers: gm.headers }, 403);
   await json("/api/admin/systems", { method: "POST", headers: gm.headers }, 403);
   await json("/api/admin/systems/monolith/export", { headers: gm.headers }, 403);
 
@@ -236,8 +237,16 @@ await runSmoke("Installable system smoke test", async ({ request, json, bytes, s
 
   // --- Replacing an installed system, and deleting one nothing uses ---
 
-  const replaced = await install(exported.bytes, 200);
+  const replacementFiles = unzipSync(exported.bytes);
+  replacementFiles["rules/Monolith.md"] = strToU8(
+    `${strFromU8(replacementFiles["rules/Monolith.md"])}\n\nReplacement bundle marker.\n`
+  );
+  const replaced = await install(zipSync(replacementFiles), 200);
   assert.equal(replaced.body.replaced, true, "Installing over an existing system reports that it replaced one.");
+  assert.ok(
+    (await rulesOf(room.id, gm.cookie)).includes("Replacement bundle marker."),
+    "The running server reads replacement content without a restart."
+  );
 
   await request(`/api/rooms/${room.id}`, { method: "DELETE", headers: admin.headers }, 204);
   await json("/api/admin/systems/monolith-2", { method: "DELETE", headers: admin.headers }, 204);

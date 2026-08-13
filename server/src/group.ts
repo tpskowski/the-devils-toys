@@ -36,7 +36,7 @@ import { broadcastRoom } from "./realtime.js";
 import { roomAccessRole } from "./room-config-permissions.js";
 import { starshipPartsFor } from "./starship-parts.js";
 import { rollHirelingCreation } from "./hireling-creation.js";
-import { systemOrThrow } from "./systems.js";
+import { hasSystem, systemOrThrow } from "./systems.js";
 import { storedUploadBytes } from "./upload-usage.js";
 
 export const groupRouter = express.Router();
@@ -70,6 +70,7 @@ function groupContext(account: AuthedRequest["account"], roomId: number) {
   if (!role) return;
   const room = one<{ system: SystemId }>("SELECT system FROM rooms WHERE id = ?", roomId);
   if (!room) return;
+  if (!hasSystem(room.system)) return;
   const definition = systemOrThrow(room.system).groupPage;
   if (!definition) return;
   // The parts on offer come from the system's own book, so each asset sheet is
@@ -223,7 +224,7 @@ groupRouter.post("/rooms/:roomId/group/hirelings/roll", requireAuth, (req: Authe
     res.json({
       hireling: rollHirelingCreation(
         creationRoll,
-        context.system,
+        { kind: "system", system: context.system },
         undefined,
         context.definition.hirelings?.sheet.lists[0]?.key
       )

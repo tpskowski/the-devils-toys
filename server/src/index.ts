@@ -374,6 +374,7 @@ app.post("/api/rooms", requireAuth, (req: AuthedRequest, res) => {
         id: roomId,
         name: body.name,
         system: body.system,
+        systemName: systemOrThrow(body.system).name,
         theme,
         role: "gm",
         archived: false,

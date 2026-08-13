@@ -108,5 +108,14 @@ export function parseNpcStatblock(system: SystemId, markdown: string): ParsedNpc
 }
 
 export function parseStatblockWith(parser: NpcStatblockParser, markdown: string): ParsedNpcStatblock {
-  return parser === "labelled" ? parseCwnNpcStatblock(markdown) : parseCairnNpcStatblock(markdown);
+  switch (parser) {
+    case "inline":
+      return parseCairnNpcStatblock(markdown);
+    case "labelled":
+      return parseCwnNpcStatblock(markdown);
+    default: {
+      const exhaustive: never = parser;
+      return exhaustive;
+    }
+  }
 }

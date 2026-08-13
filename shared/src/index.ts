@@ -582,7 +582,10 @@ export function groupViewsForDefinition(definition: GroupPageDefinition | undefi
   const views = [PARTY_VIEW];
   if (definition?.hirelings) views.push({ id: HIRELINGS_VIEW, label: definition.hirelings.label });
   if (definition?.obligations) views.push({ id: "obligations", label: definition.obligations.label });
-  for (const asset of groupAssetDefinitions(definition)) views.push({ id: asset.kind, label: asset.label });
+  // GroupPage currently has a complete editor only for starships. Do not offer
+  // an asset tab whose declared kind has no matching page yet.
+  for (const asset of groupAssetDefinitions(definition))
+    if (asset.kind === "starship") views.push({ id: asset.kind, label: asset.label });
   return views;
 }
 

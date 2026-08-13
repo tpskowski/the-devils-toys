@@ -37,6 +37,7 @@ export function systemOrThrow(system: SystemId): GameSystem {
 
 /** Registers an installed system, replacing one already held under that id. */
 export function registerSystem(definition: GameSystem) {
+  if (isBuiltinSystem(definition.id)) throw new Error(`Cannot replace built-in system: ${definition.id}.`);
   registry.set(definition.id, definition);
 }
 

@@ -9,7 +9,7 @@ import { readTraitCatalog } from "./trait-catalog.js";
 import { systemOrThrow } from "./systems.js";
 import { gameSystemSchema } from "./system-schema.js";
 import { buildSystemBundle, readSystemBundle, renameSystem, type SystemBundleContent } from "./system-bundles.js";
-import { readSetJson } from "./table-json.js";
+import { parseSetJson, readSetJson } from "./table-json.js";
 
 /**
  * Putting a bundle on disk and taking one back off it.
@@ -139,7 +139,18 @@ export function writeSystemBundle(bundle: ReturnType<typeof readSystemBundle>): 
       fs.rmSync(retired, { recursive: true, force: true });
       fs.renameSync(root, retired);
     }
-    fs.renameSync(staging, root);
+    try {
+      fs.renameSync(staging, root);
+    } catch (error) {
+      if (replaced && fs.existsSync(retired)) {
+        try {
+          fs.renameSync(retired, root);
+        } catch {
+          // Keep the install error: it is the failure the caller can act on.
+        }
+      }
+      throw error;
+    }
     fs.rmSync(retired, { recursive: true, force: true });
     return {
       system: system.id,
@@ -165,6 +176,12 @@ export function removeSystemContent(system: SystemId) {
 export function installedSystemIds(): string[] {
   const root = path.join(config.dataDir, "systems");
   if (!fs.existsSync(root)) return [];
+  for (const entry of fs.readdirSync(root, { withFileTypes: true })) {
+    if (!entry.isDirectory() || !entry.name.endsWith(".replaced")) continue;
+    const system = entry.name.slice(0, -".replaced".length);
+    const destination = path.join(root, system);
+    if (!fs.existsSync(destination)) fs.renameSync(path.join(root, entry.name), destination);
+  }
   return fs
     .readdirSync(root, { withFileTypes: true })
     .filter((entry) => entry.isDirectory() && !entry.name.includes("."))
@@ -191,6 +208,15 @@ export function readInstalledSystem(system: SystemId): GameSystem {
  * Run at install time so a malformed set is a rejected upload rather than a
  * table that fails to roll at the worst moment.
  */
-export function verifySystemTables(system: SystemId, definition: GameSystem) {
-  for (const source of definition.sourceDocuments) if (source.tablesFile) readSetJson(system, source.tablesFile);
+export function verifySystemTables(system: SystemId, definition: GameSystem, tables?: Record<string, string>) {
+  for (const source of definition.sourceDocuments) {
+    if (!source.tablesFile) continue;
+    if (tables) {
+      const table = tables[source.tablesFile];
+      if (table === undefined) throw new Error(`The bundle names tables/${source.tablesFile} but does not contain it.`);
+      parseSetJson(table, source.tablesFile);
+    } else {
+      readSetJson(system, source.tablesFile);
+    }
+  }
 }

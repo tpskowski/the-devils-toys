@@ -31,7 +31,7 @@ This project is a custom virtual tabletop for Cairn and Monolith. They share a c
 
 - Keep Cairn and Monolith data/configuration in separate per-system files or folders. Prefer JSON where practical.
 - Use a common data shape where it fits, but do not force system-specific concepts into an unsuitable shared model.
-- When adding a system, follow the guidance in `AGENTS.md` under `Adding new systems`.
+- When adding a repository-maintained system, follow `AGENTS.md` under `Adding built-in systems`; for runtime bundles, follow its `Installable systems` guidance.
 - Treat Markdown files in `/raw` as the primary rules sources. Use the matching PDFs to verify questionable formatting or content.
 - Preserve imported rules wording exactly except for obvious encoding and formatting repairs.
 - Apparent source typos may be corrected only when the original and correction are recorded in `/raw/corrections.md` with the source and reason.

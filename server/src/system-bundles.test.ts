@@ -142,14 +142,25 @@ describe("reading a bundle that is not one", () => {
   it("refuses a bundle from a newer version of this application", () => {
     expect(() =>
       readSystemBundle(
-        rebuilt(
-          (files) =>
-            (files["manifest.json"] = strToU8(
-              JSON.stringify({ app: "devils-toys-system", bundleVersion: 99, systemId: "monolith-2" })
-            ))
-        )
+        rebuilt((files) => {
+          const manifest = JSON.parse(strFromU8(files["manifest.json"]));
+          manifest.bundleVersion = 99;
+          files["manifest.json"] = strToU8(JSON.stringify(manifest));
+        })
       )
     ).toThrow(/newer version \(99\)/);
+  });
+
+  it("refuses a manifest missing its bundle version", () => {
+    expect(() =>
+      readSystemBundle(
+        rebuilt((files) => {
+          const manifest = JSON.parse(strFromU8(files["manifest.json"]));
+          delete manifest.bundleVersion;
+          files["manifest.json"] = strToU8(JSON.stringify(manifest));
+        })
+      )
+    ).toThrow(/manifest\.json is not a valid system bundle manifest/);
   });
 
   it("refuses an entry that would write outside the bundle", () => {
@@ -157,6 +168,12 @@ describe("reading a bundle that is not one", () => {
       expect(() => readSystemBundle(rebuilt((files) => (files[escape] = strToU8("x"))))).toThrow(
         /would write outside it|not one of the files/
       );
+  });
+
+  it("checks directory entries for path traversal too", () => {
+    expect(() => readSystemBundle(rebuilt((files) => (files["../escape/"] = strToU8(""))))).toThrow(
+      /would write outside it/
+    );
   });
 
   it("refuses a file a system bundle has no place for", () => {

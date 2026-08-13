@@ -1,7 +1,14 @@
-import { describe, expect, it } from "vitest";
+import fs from "node:fs";
+import { describe, expect, it, vi } from "vitest";
 import { builtinSystems } from "./builtin-systems.js";
 import { buildSystemBundle, readSystemBundle, renameSystem } from "./system-bundles.js";
-import { refuseUninstallableBundle, systemContentFor } from "./system-install.js";
+import {
+  installedSystemIds,
+  refuseUninstallableBundle,
+  systemContentFor,
+  writeSystemBundle
+} from "./system-install.js";
+import { installedSystemRoot } from "./system-content.js";
 
 const bundleFor = (id: string, as = `${id}-2`) =>
   readSystemBundle(buildSystemBundle(renameSystem(systemContentFor(id), as)));
@@ -81,5 +88,44 @@ describe("what a bundle has to be true of to install", () => {
       (system as Record<string, { sourceDocumentId: string }[]>).contentModules[0].sourceDocumentId = "elsewhere";
     });
     expect(() => refuseUninstallableBundle(bundle)).toThrow(/names source document "elsewhere"/);
+  });
+});
+
+describe("writing an installed system", () => {
+  const system = "monolith-2";
+  const root = installedSystemRoot(system);
+  const staging = `${root}.incoming`;
+
+  const bundle = () => readSystemBundle(buildSystemBundle(renameSystem(systemContentFor("monolith"), system)));
+
+  it("restores the previous content when replacing it cannot rename the staging directory", () => {
+    fs.rmSync(root, { recursive: true, force: true });
+    fs.rmSync(`${root}.replaced`, { recursive: true, force: true });
+    writeSystemBundle(bundle());
+
+    const rename = fs.renameSync;
+    const blocked = vi.spyOn(fs, "renameSync").mockImplementation(((from: fs.PathLike, to: fs.PathLike) => {
+      if (String(from) === staging && String(to) === root) throw new Error("rename blocked");
+      return rename.call(fs, from, to);
+    }) as typeof fs.renameSync);
+    try {
+      expect(() => writeSystemBundle(bundle())).toThrow("rename blocked");
+    } finally {
+      blocked.mockRestore();
+    }
+
+    expect(fs.existsSync(root)).toBe(true);
+    expect(fs.existsSync(`${root}.replaced`)).toBe(false);
+  });
+
+  it("recovers a replaced directory left behind by an interrupted replacement on startup", () => {
+    fs.rmSync(root, { recursive: true, force: true });
+    fs.rmSync(`${root}.replaced`, { recursive: true, force: true });
+    writeSystemBundle(bundle());
+    fs.renameSync(root, `${root}.replaced`);
+
+    expect(installedSystemIds()).toContain(system);
+    expect(fs.existsSync(root)).toBe(true);
+    expect(fs.existsSync(`${root}.replaced`)).toBe(false);
   });
 });

@@ -1653,6 +1653,7 @@ function CreateRoom({
   const [error, setError] = useState("");
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!status.systems.length) return;
     const data = new FormData(event.currentTarget);
     try {
       const result = await api<{ room: RoomSummary }>("/api/rooms", {
@@ -1673,23 +1674,31 @@ function CreateRoom({
         </label>
         <fieldset>
           <legend>Game system</legend>
-          {status.systems.map((item) => (
-            <button
-              type="button"
-              key={item.id}
-              className={`system-choice ${system === item.id ? "selected" : ""}`}
-              onClick={() => setSystem(item.id)}
-            >
-              <span>{item.glyph}</span>
-              <div>
-                <strong>{item.name}</strong>
-                <small>{item.tagline}</small>
-              </div>
-            </button>
-          ))}
+          {status.systems.length ? (
+            status.systems.map((item) => (
+              <button
+                type="button"
+                key={item.id}
+                className={`system-choice ${system === item.id ? "selected" : ""}`}
+                onClick={() => setSystem(item.id)}
+              >
+                <span>{item.glyph}</span>
+                <div>
+                  <strong>{item.name}</strong>
+                  <small>{item.tagline}</small>
+                </div>
+              </button>
+            ))
+          ) : (
+            <p className="form-error">
+              No game systems are available. An administrator must install or restore one before a room can be created.
+            </p>
+          )}
         </fieldset>
         {error && <p className="form-error">{error}</p>}
-        <button className="primary-button">Create room</button>
+        <button className="primary-button" disabled={!status.systems.length}>
+          Create room
+        </button>
       </form>
     </Modal>
   );

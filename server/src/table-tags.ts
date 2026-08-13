@@ -82,6 +82,7 @@ function allTagUsage() {
   }
 
   for (const system of allSystems()) {
+    if (!system.tableCatalog) continue;
     includeSet(system.tableCatalog.tags);
     const source = system.sourceDocuments[0];
     if (!source?.tablesFile) continue;

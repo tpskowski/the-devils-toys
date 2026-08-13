@@ -1,4 +1,5 @@
 import { unzipSync, zipSync, strFromU8, strToU8 } from "fflate";
+import { z } from "zod";
 import {
   SYSTEM_ID_PATTERN,
   type GameSystem,
@@ -6,6 +7,7 @@ import {
   type SystemTraitCatalog
 } from "@devils-toys/shared";
 import { gameSystemSchema } from "./system-schema.js";
+import { config } from "./config.js";
 
 /**
  * An installable system: one zip of JSON and Markdown, and nothing else.
@@ -56,6 +58,18 @@ export interface SystemBundleContent {
   rules: Record<string, string>;
   tables: Record<string, string>;
 }
+
+const manifestSchema = z.object({
+  bundleVersion: z.number().int().positive(),
+  app: z.literal(SYSTEM_BUNDLE_APP),
+  systemId: z.string(),
+  systemName: z.string(),
+  exportedAt: z.string(),
+  licenses: z.array(z.string())
+});
+
+const MAX_SYSTEM_BUNDLE_ENTRIES = 100;
+const MAX_SYSTEM_BUNDLE_BYTES = config.systemUploadLimitMb * 1024 * 1024;
 
 /**
  * Five things in a system are namespaced by its id, and all five move together
@@ -151,9 +165,9 @@ const ALLOWED_ENTRY = /^(manifest\.json|system\.json|items\.json|traits\.json|(r
 export function refuseUnsafeEntries(names: readonly string[]) {
   for (const name of names) {
     const normalized = name.replace(/\\/g, "/");
-    if (normalized.endsWith("/")) continue;
     if (normalized.startsWith("/") || /^[A-Za-z]:/.test(normalized) || normalized.split("/").includes(".."))
       throw new Error(`The bundle holds an entry that would write outside it: "${name}".`);
+    if (normalized.endsWith("/")) continue;
     if (!ALLOWED_ENTRY.test(normalized))
       throw new Error(`The bundle holds "${name}", which is not one of the files a system bundle may carry.`);
   }
@@ -175,6 +189,8 @@ function readJson<T>(files: Record<string, Uint8Array>, name: string, what: stri
  * bundle in memory or an error naming what is wrong with it.
  */
 export function readSystemBundle(archive: Uint8Array): SystemBundle {
+  if (archive.byteLength > MAX_SYSTEM_BUNDLE_BYTES)
+    throw new Error("That system bundle is larger than this server accepts.");
   let files: Record<string, Uint8Array>;
   try {
     files = unzipSync(archive);
@@ -183,10 +199,16 @@ export function readSystemBundle(archive: Uint8Array): SystemBundle {
   }
 
   refuseUnsafeEntries(Object.keys(files));
+  if (Object.keys(files).length > MAX_SYSTEM_BUNDLE_ENTRIES) throw new Error("That system bundle has too many files.");
+  if (Object.values(files).reduce((total, file) => total + file.byteLength, 0) > MAX_SYSTEM_BUNDLE_BYTES)
+    throw new Error("That system bundle expands beyond this server's size limit.");
 
-  const manifest = readJson<SystemBundleManifest>(files, "manifest.json", "the bundle");
-  if (manifest.app !== SYSTEM_BUNDLE_APP)
+  const rawManifest = readJson<unknown>(files, "manifest.json", "the bundle");
+  if (!rawManifest || typeof rawManifest !== "object" || (rawManifest as { app?: unknown }).app !== SYSTEM_BUNDLE_APP)
     throw new Error("That archive was not written as a system bundle by this application.");
+  const manifestResult = manifestSchema.safeParse(rawManifest);
+  if (!manifestResult.success) throw new Error("The bundle's manifest.json is not a valid system bundle manifest.");
+  const manifest = manifestResult.data;
   if (!(manifest.bundleVersion <= SYSTEM_BUNDLE_VERSION))
     throw new Error(
       `That bundle was written by a newer version (${manifest.bundleVersion}). Update this application first.`

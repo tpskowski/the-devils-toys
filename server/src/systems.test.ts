@@ -51,6 +51,14 @@ describe("the system registry", () => {
     expect(unregisterSystem("monolith")).toBe(false);
     expect(hasSystem("monolith")).toBe(true);
   });
+
+  it("refuses to replace a compiled system", () => {
+    const original = systemOrThrow("monolith");
+    expect(() => registerSystem({ ...monolith, name: "Counterfeit Monolith" })).toThrow(
+      /Cannot replace built-in system/
+    );
+    expect(systemOrThrow("monolith")).toBe(original);
+  });
 });
 
 describe("role-filtered rules", () => {

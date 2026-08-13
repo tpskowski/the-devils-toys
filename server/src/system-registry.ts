@@ -69,11 +69,11 @@ export function forgetSystemContent(system: SystemId) {
 export function loadInstalledSystem(system: SystemId) {
   const definition = readInstalledSystem(system);
   if (definition.id !== system) throw new Error(`${system}/system.json calls itself "${definition.id}".`);
+  // Do this before touching caches or the registry: a malformed replacement
+  // must leave the currently loaded definition usable.
+  verifySystemTables(system, definition);
   forgetSystemContent(system);
   registerSystem(definition);
-  // Reading the tables now turns a malformed set into a startup error naming
-  // the system, rather than a failed roll in the middle of a game.
-  verifySystemTables(system, definition);
   return definition;
 }
 
