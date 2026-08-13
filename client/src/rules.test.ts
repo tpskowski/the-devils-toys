@@ -168,11 +168,23 @@ describe("standalone rules routes", () => {
     expect(rulesPath("cwn", 7)).toBe("/rules/cwn?room=7");
   });
 
-  it("recognizes only supported standalone rules paths", () => {
+  it("recognizes a well-formed system id, including one this build has never heard of", () => {
     expect(rulesSystemFromPath("/rules/cairn")).toBe("cairn");
     expect(rulesSystemFromPath("/rules/monolith/")).toBe("monolith");
     expect(rulesSystemFromPath("/rules/cwn")).toBe("cwn");
-    expect(rulesSystemFromPath("/rules/unknown")).toBeNull();
+    // An installed system. The browser cannot know what the server has, so the
+    // route reads the id and lets the page report whatever the server says.
+    expect(rulesSystemFromPath("/rules/monolith-2")).toBe("monolith-2");
+  });
+
+  it("rejects a path that is not a system address at all", () => {
+    expect(rulesSystemFromPath("/rules/")).toBeNull();
+    expect(rulesSystemFromPath("/rules/cairn/extra")).toBeNull();
+    expect(rulesSystemFromPath("/rooms/cairn")).toBeNull();
+    // Ill-formed ids: capitals, a leading digit, too short, and a path segment.
+    expect(rulesSystemFromPath("/rules/Cairn")).toBeNull();
+    expect(rulesSystemFromPath("/rules/9lives")).toBeNull();
+    expect(rulesSystemFromPath("/rules/c")).toBeNull();
   });
 
   it("appends the standalone heading fragment when an anchor is known", () => {

@@ -1,13 +1,13 @@
 import type { GroupPageDefinition, SystemId } from "@devils-toys/shared";
 import { rollDice } from "./dice.js";
 import { compactTables, parseCompactRollTables } from "./roll-tables.js";
-import { systems } from "./systems.js";
 
 type CreationRoll = NonNullable<NonNullable<GroupPageDefinition["hirelings"]>["creationRoll"]>;
+export type HirelingCreationSource = { kind: "system"; system: SystemId } | { kind: "markdown"; markdown: string };
 
 export function rollHirelingCreation(
   definition: CreationRoll,
-  source: string | SystemId,
+  source: HirelingCreationSource,
   random: () => number = Math.random,
   /** Where the starting weapon is stowed, so it can be drawn like any other. */
   weaponList?: string
@@ -32,9 +32,9 @@ export function rollHirelingCreation(
   if (!finishing) return generated;
 
   const tables = new Map(
-    (Object.hasOwn(systems, source)
-      ? compactTables(source as SystemId, finishing.section)
-      : parseCompactRollTables(source, finishing.section)
+    (source.kind === "system"
+      ? compactTables(source.system, finishing.section)
+      : parseCompactRollTables(source.markdown, finishing.section)
     ).map((table) => [table.name, table])
   );
   const rollTable = (name: string) => {

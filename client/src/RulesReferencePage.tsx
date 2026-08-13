@@ -5,12 +5,6 @@ import { api } from "./api";
 import { RulesMarkdown } from "./RulesMarkdown";
 import { extractRuleTocHeadings, filterRules, standaloneRuleIdPrefix } from "./rules";
 
-const systemNames: Record<SystemId, string> = {
-  cairn: "Cairn",
-  monolith: "Monolith",
-  cwn: "Cities Without Number"
-};
-
 export function RulesReferencePage({ system }: { system: SystemId }) {
   const [room, setRoom] = useState<RoomSummary>();
   const [markdown, setMarkdown] = useState("");
@@ -19,13 +13,17 @@ export function RulesReferencePage({ system }: { system: SystemId }) {
   const [loadError, setLoadError] = useState("");
   const rulesReading = useRef<HTMLDivElement>(null);
 
+  // The system's own name, which arrives with the room rather than from a list
+  // kept here — a list could never name a system installed after this build.
+  const systemName = room?.systemName ?? system;
+
   useEffect(() => {
     const previousTitle = document.title;
-    document.title = `${systemNames[system]} rules · The Devil's Toys`;
+    document.title = `${systemName} rules · The Devil's Toys`;
     return () => {
       document.title = previousTitle;
     };
-  }, [system]);
+  }, [systemName]);
 
   useEffect(() => {
     let active = true;
@@ -40,7 +38,7 @@ export function RulesReferencePage({ system }: { system: SystemId }) {
           matchingRooms.find((candidate) => candidate.id === requestedRoomId) ??
           matchingRooms.find((candidate) => !candidate.archived) ??
           matchingRooms[0];
-        if (!selectedRoom) throw new Error(`You do not have access to a ${systemNames[system]} room.`);
+        if (!selectedRoom) throw new Error(`You do not have access to a ${system} room.`);
         if (active) setRoom(selectedRoom);
         return api<string>(`/api/rooms/${selectedRoom.id}/rules`);
       })
@@ -61,10 +59,12 @@ export function RulesReferencePage({ system }: { system: SystemId }) {
 
   const filtered = filterRules(markdown, query);
   const headings = extractRuleTocHeadings(filtered);
-  const fallbackTheme = system === "cairn" ? "heroic" : "digital";
+  // Until the room answers there is no theme to use, and the default palette is
+  // what an unstyled page already falls back to.
+  const theme = room?.theme ?? "heroic";
 
   return (
-    <main className={`standalone-rules theme-${room?.theme ?? fallbackTheme}`}>
+    <main className={`standalone-rules theme-${theme}`}>
       <header className="standalone-rules-header">
         <a href="/" className="standalone-rules-back">
           <ArrowLeft size={16} />
@@ -72,7 +72,7 @@ export function RulesReferencePage({ system }: { system: SystemId }) {
         </a>
         <div className="standalone-rules-title">
           <p className="eyebrow">System reference</p>
-          <h1>{systemNames[system]} rules</h1>
+          <h1>{systemName} rules</h1>
         </div>
         <p className="standalone-rules-context">
           {room ? `${room.name} · ${room.role === "gm" ? "Game master" : "Player"}` : "Checking access…"}
@@ -86,8 +86,8 @@ export function RulesReferencePage({ system }: { system: SystemId }) {
             <input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder={`Search ${systemNames[system]} rules…`}
-              aria-label={`Search ${systemNames[system]} rules`}
+              placeholder={`Search ${systemName} rules…`}
+              aria-label={`Search ${systemName} rules`}
               autoFocus
             />
           </label>

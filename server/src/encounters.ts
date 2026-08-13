@@ -26,7 +26,7 @@ import { groupRow, publicHireling, type SheetRow } from "./group-rows.js";
 import { broadcastRoom } from "./realtime.js";
 import { npcCatalog } from "./npcs.js";
 import { parseNpcStatblock } from "./npc-statblocks.js";
-import { systems } from "./systems.js";
+import { systemOrThrow } from "./systems.js";
 
 export const encounterRouter = express.Router();
 
@@ -88,7 +88,7 @@ function jsonObject(value: string | null | undefined): Record<string, unknown> {
 }
 
 function sidesFor(system: SystemId) {
-  return systems[system].initiative.sides ?? [];
+  return systemOrThrow(system).initiative.sides ?? [];
 }
 
 function validSide(system: SystemId, side: string) {
@@ -128,7 +128,9 @@ function validateMedia(roomId: number, mediaId: number | null | undefined) {
 }
 
 function hpKeys(system: SystemId, hireling: boolean) {
-  const definition = hireling ? systems[system].groupPage?.hirelings?.sheet : systems[system].characterSheet;
+  const definition = hireling
+    ? systemOrThrow(system).groupPage?.hirelings?.sheet
+    : systemOrThrow(system).characterSheet;
   const fields = definition?.sections.flatMap((section) => section.fields) ?? [];
   return {
     current: fields.some((field) => field.key === "hpCurrent") ? "hpCurrent" : undefined,
@@ -142,7 +144,9 @@ function hpKeys(system: SystemId, hireling: boolean) {
  * number, and neither system's hirelings wear any.
  */
 function sheetArmor(system: SystemId, sheet: Record<string, unknown>, hireling: boolean) {
-  const definition = hireling ? systems[system].groupPage?.hirelings?.sheet : systems[system].characterSheet;
+  const definition = hireling
+    ? systemOrThrow(system).groupPage?.hirelings?.sheet
+    : systemOrThrow(system).characterSheet;
   const fields = new Set(definition?.sections.flatMap((section) => section.fields.map((field) => field.key)) ?? []);
   const key = ["armorCurrent", "armor"].find((candidate) => fields.has(candidate));
   const raw = key === undefined ? undefined : sheet[key];
@@ -156,13 +160,13 @@ function sheetArmor(system: SystemId, sheet: Record<string, unknown>, hireling: 
  * a sheet and a statblock, since it is one state rather than a score.
  */
 function markedCritical(system: SystemId, fields: Record<string, unknown>) {
-  const key = systems[system].attributeDamage?.criticalDamage?.key;
+  const key = systemOrThrow(system).attributeDamage?.criticalDamage?.key;
   return key ? fields[key] === true : undefined;
 }
 
 /** The armor a creature's own statblock states, in the field the system names. */
 function statblockArmor(system: SystemId, fields: Record<string, unknown>) {
-  const key = systems[system].npcStatblock.armorKey;
+  const key = systemOrThrow(system).npcStatblock.armorKey;
   const raw = key === undefined ? undefined : fields[key];
   if (raw === null || raw === "") return undefined;
   const value = raw === undefined ? undefined : Number(raw);
@@ -178,14 +182,14 @@ function attributePatch(
   kind: CombatantRow["kind"],
   attributes: Record<string, number>
 ): { patch: Record<string, number> } | { error: string } {
-  const definition = systems[system].attributeDamage;
+  const definition = systemOrThrow(system).attributeDamage;
   if (!definition) return { error: "This system does not track attribute damage." };
   const sheet =
     kind === "npc"
       ? undefined
       : kind === "hireling"
-        ? systems[system].groupPage?.hirelings?.sheet
-        : systems[system].characterSheet;
+        ? systemOrThrow(system).groupPage?.hirelings?.sheet
+        : systemOrThrow(system).characterSheet;
   const fields = new Set(sheet?.sections.flatMap((section) => section.fields.map((field) => field.key)) ?? []);
   const patch: Record<string, number> = {};
   for (const [id, value] of Object.entries(attributes)) {
@@ -215,7 +219,9 @@ function weaponPayload(weapon: { name: string; held: ItemClassification }) {
  * players, who may still roll one's attack.
  */
 function sheetWeapons(system: SystemId, sheet: Record<string, unknown>, hireling: boolean) {
-  const definition = hireling ? systems[system].groupPage?.hirelings?.sheet : systems[system].characterSheet;
+  const definition = hireling
+    ? systemOrThrow(system).groupPage?.hirelings?.sheet
+    : systemOrThrow(system).characterSheet;
   const list = definition?.lists[0];
   if (!list) return {};
   const { main, offhand } = weaponsInHand(sheet, list);
@@ -248,7 +254,7 @@ function catalogueWeapon(catalogue: RoomCatalogue, label: string) {
 
 /** What a creature fights with, from one of the statblock fields that say so. */
 function statblockWeapon(system: SystemId, catalogue: RoomCatalogue, fields: Record<string, unknown>, key: string) {
-  const statblock = systems[system].npcStatblock;
+  const statblock = systemOrThrow(system).npcStatblock;
   const attacks = String(fields[key] ?? "").trim();
   if (!attacks) return undefined;
   const chosen = catalogueWeapon(catalogue, attacks);
@@ -283,7 +289,7 @@ function statblockWeapon(system: SystemId, catalogue: RoomCatalogue, fields: Rec
  * rather than blank, so the rail draws one mark for one weapon.
  */
 function statblockWeapons(system: SystemId, catalogue: RoomCatalogue, fields: Record<string, unknown>) {
-  const [first, second] = systems[system].npcStatblock.weaponKeys ?? [];
+  const [first, second] = systemOrThrow(system).npcStatblock.weaponKeys ?? [];
   const weapon = first ? statblockWeapon(system, catalogue, fields, first) : undefined;
   const offhand = second ? statblockWeapon(system, catalogue, fields, second) : undefined;
   return {
@@ -439,12 +445,12 @@ export function visibleEncounter(accountId: number, roomId: number, encounterId:
       encounter.id
     ),
     combatants,
-    initiative: systems[context.system].initiative,
+    initiative: systemOrThrow(context.system).initiative,
     // The rail renders a statblock from this rather than guessing at field names.
-    npcStatblock: context.role === "gm" ? systems[context.system].npcStatblock : undefined,
+    npcStatblock: context.role === "gm" ? systemOrThrow(context.system).npcStatblock : undefined,
     // Not GM-only: a player spends their own character's attributes from the rail.
-    attributeDamage: systems[context.system].attributeDamage,
-    rangedWeaponIcon: systems[context.system].rangedWeaponIcon,
+    attributeDamage: systemOrThrow(context.system).attributeDamage,
+    rangedWeaponIcon: systemOrThrow(context.system).rangedWeaponIcon,
     system: context.system,
     role: context.role
   };
@@ -487,7 +493,7 @@ encounterRouter.post("/rooms/:roomId/encounters", requireAuth, (req: AuthedReque
     .safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "Give the encounter a name and valid settings." });
   const context = roomSystem(req.account!.id, roomId)!;
-  if (parsed.data.individualInitiative && !systems[context.system].initiative.allowIndividualVariant)
+  if (parsed.data.individualInitiative && !systemOrThrow(context.system).initiative.allowIndividualVariant)
     return res.status(400).json({ error: "Individual initiative is not available for this system." });
   const media = validateMedia(roomId, parsed.data.mediaId);
   if ("error" in media) return res.status(400).json({ error: media.error });
@@ -534,7 +540,7 @@ encounterRouter.patch("/rooms/:roomId/encounters/:encounterId", requireAuth, (re
     .refine((value) => Object.keys(value).length > 0)
     .safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "Invalid encounter update." });
-  if (parsed.data.individualInitiative && !systems[existing.context.system].initiative.allowIndividualVariant)
+  if (parsed.data.individualInitiative && !systemOrThrow(existing.context.system).initiative.allowIndividualVariant)
     return res.status(400).json({ error: "Individual initiative is not available for this system." });
   const media = validateMedia(roomId, parsed.data.mediaId);
   if ("error" in media) return res.status(400).json({ error: media.error });
@@ -607,7 +613,7 @@ encounterRouter.patch("/rooms/:roomId/encounters/:encounterId/sides/:side", requ
   const side = String(req.params.side);
   if (existing.context.system && !validSide(existing.context.system, side))
     return res.status(400).json({ error: "Unknown encounter side." });
-  if (systems[existing.context.system].initiative.sideOrder !== "roll")
+  if (systemOrThrow(existing.context.system).initiative.sideOrder !== "roll")
     return res.status(400).json({ error: "This system uses fixed side order." });
   const parsed = z.object({ initiative: z.number().int().nullable() }).safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "Initiative must be an integer or null." });
@@ -928,7 +934,7 @@ encounterRouter.patch(
       scores = mapped.patch;
     }
     if (parsed.data.criticalDamage !== undefined) {
-      const mark = systems[existing.context.system].attributeDamage?.criticalDamage;
+      const mark = systemOrThrow(existing.context.system).attributeDamage?.criticalDamage;
       if (!mark) return res.status(400).json({ error: "This system does not track critical damage." });
       scores[mark.key] = parsed.data.criticalDamage;
     }
@@ -1045,7 +1051,7 @@ encounterRouter.post(
     if (!roomId) return;
     const existing = encounterForGm(req.account!.id, roomId, Number(req.params.encounterId));
     if (!existing) return res.status(404).json({ error: "Encounter not found." });
-    const rules = systems[existing.context.system].initiative;
+    const rules = systemOrThrow(existing.context.system).initiative;
     if (rules.sideOrder !== "roll" || !rules.roll)
       return res.status(400).json({ error: "This system does not roll for initiative." });
 
@@ -1079,7 +1085,7 @@ encounterRouter.post("/rooms/:roomId/encounters/:encounterId/opening-saves", req
   if (!roomId) return;
   const existing = encounterForGm(req.account!.id, roomId, Number(req.params.encounterId));
   if (!existing) return res.status(404).json({ error: "Encounter not found." });
-  if (!systems[existing.context.system].initiative.entrySave)
+  if (!systemOrThrow(existing.context.system).initiative.entrySave)
     return res.status(400).json({ error: "This system has no opening saves." });
   const parsed = z
     .object({

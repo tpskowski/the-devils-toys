@@ -19,7 +19,7 @@ import {
   validPortraitFile
 } from "./portrait-files.js";
 import { broadcastRoom, refreshRoomPresence } from "./realtime.js";
-import { systemMarkdown, systems } from "./systems.js";
+import { characterWarningsFor, systemMarkdown, systemOrThrow } from "./systems.js";
 import { characterVicesFor } from "./character-vices.js";
 
 export const characterRouter = express.Router();
@@ -99,7 +99,7 @@ export function publicCharacter(row: CharacterRow, roomId: number) {
       ? `/api/rooms/${roomId}/characters/${row.id}/portrait?v=${encodeURIComponent(row.portrait_stored_name)}`
       : null,
     portraitFilename: row.portrait_filename,
-    warnings: systems[row.system].characterWarnings(sheet),
+    warnings: characterWarningsFor(row.system, sheet),
     activeBy,
     updatedAt: row.updated_at
   };
@@ -191,10 +191,10 @@ characterRouter.get("/rooms/:roomId/characters", requireAuth, (req: AuthedReques
   res.json({
     characters: rows.map((row) => publicCharacter(row, roomId)),
     activeCharacterId: activeCharacterId ?? null,
-    partyLabel: systems[context.system].partyLabel,
-    sheetDefinition: systems[context.system].characterSheet,
+    partyLabel: systemOrThrow(context.system).partyLabel,
+    sheetDefinition: systemOrThrow(context.system).characterSheet,
     itemCatalogue: characterItemsFor(context.system, roomId),
-    viceCatalogue: context.system === "monolith" ? characterVicesFor("monolith") : []
+    viceCatalogue: systemOrThrow(context.system).viceCatalog ? characterVicesFor(context.system) : []
   });
 });
 

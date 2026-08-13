@@ -5,7 +5,10 @@ import { THEME_IDS, type AccountRole } from "@devils-toys/shared";
 import type { AuthedRequest } from "./auth.js";
 import { clearSession, createSession, requireAuth } from "./auth.js";
 import { one } from "./db.js";
-import { systems } from "./systems.js";
+import { systemOrThrow } from "./systems.js";
+import { offeredSystemIds } from "./system-registry.js";
+
+const offeredSystems = () => offeredSystemIds().map(systemOrThrow);
 import { itemTraitsFor } from "./character-items.js";
 
 /**
@@ -44,7 +47,9 @@ sessionRouter.get("/status", (_req, res) => {
   const count = one<{ count: number }>("SELECT COUNT(*) AS count FROM accounts")?.count ?? 0;
   res.json({
     initialized: count > 0,
-    systems: Object.values(systems).map(
+    // Only what a new room may be made on. A retired system keeps its rooms
+    // working, but nothing offers to start another on it.
+    systems: offeredSystems().map(
       ({ id, name, shortName, glyph, tagline, defaultTheme, rollRulesQuery, dice, groupPage }) => ({
         id,
         name,

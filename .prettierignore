@@ -1,6 +1,11 @@
 node_modules
 **/dist
 raw
+# Agent tool state, including the throwaway git worktrees Claude Code creates.
+# Git does not list those — a worktree carries its own `.git` — so without this
+# a background task running beside you fails `format:check` on files that are
+# not the project's.
+.claude
 PLAN.md
 PLAN.md.orig
 package-lock.json

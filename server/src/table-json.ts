@@ -4,8 +4,10 @@ import {
   type RollTable,
   type RollTableRow,
   type RollTableSource,
+  type SystemId,
   type TableTagDefinition
 } from "@devils-toys/shared";
+import { systemTablesJsonFile } from "./system-content.js";
 import { projectFile } from "./paths.js";
 
 export type TableClassification = "player" | "gm";
@@ -43,7 +45,27 @@ interface StoredSet {
   tables: StoredTable[];
 }
 
+export function parseSetJson(value: string, file: string): StoredSet {
+  const parsed = JSON.parse(value) as StoredSet;
+  if (parsed.formatVersion !== 1 || !Array.isArray(parsed.tables)) throw new Error(`Invalid table JSON: ${file}`);
+  if (parsed.tables.some((table) => !table.id || !table.name || !Array.isArray(table.rows)))
+    throw new Error(`Invalid table entry in ${file}`);
+  return parsed;
+}
+
+/**
+ * Parsed sets, keyed by the system that owns them as well as the filename. The
+ * filename alone was enough while every set lived in `raw/tables`; an installed
+ * system brings its own directory, and two systems may well both call their set
+ * `tables.json`.
+ */
 const cache = new Map<string, StoredSet>();
+
+/** Drops a system's parsed sets, for when its content has been replaced. */
+export function forgetSetJson(system?: SystemId) {
+  if (system === undefined) return cache.clear();
+  for (const key of cache.keys()) if (key.startsWith(`${system}\u0000`)) cache.delete(key);
+}
 
 /** Standalone, checked-in table sets installed by a repository bundle. */
 export function parseRepositorySetRegistry(value: string): RepositorySetEntry[] {
@@ -71,20 +93,18 @@ export function repositorySetEntries(): RepositorySetEntry[] {
   return parseRepositorySetRegistry(fs.readFileSync(file, "utf8"));
 }
 
-export function readSetJson(file: string): StoredSet {
-  const cached = cache.get(file);
+export function readSetJson(system: SystemId, file: string): StoredSet {
+  const key = `${system}\u0000${file}`;
+  const cached = cache.get(key);
   if (cached) return cached;
-  const absolute = projectFile("raw", "tables", file);
-  const parsed = JSON.parse(fs.readFileSync(absolute, "utf8")) as StoredSet;
-  if (parsed.formatVersion !== 1 || !Array.isArray(parsed.tables)) throw new Error(`Invalid table JSON: ${file}`);
-  if (parsed.tables.some((table) => !table.id || !table.name || !Array.isArray(table.rows)))
-    throw new Error(`Invalid table entry in ${file}`);
-  cache.set(file, parsed);
+  const absolute = systemTablesJsonFile(system, file);
+  const parsed = parseSetJson(fs.readFileSync(absolute, "utf8"), file);
+  cache.set(key, parsed);
   return parsed;
 }
 
-export function tablesForSetJson(file: string): CatalogRollTable[] {
-  return readSetJson(file).tables.map(({ origin, classification, ...table }) => ({
+export function tablesForSetJson(system: SystemId, file: string): CatalogRollTable[] {
+  return readSetJson(system, file).tables.map(({ origin, classification, ...table }) => ({
     ...table,
     ...(origin ? { source: origin } : {}),
     classification
@@ -106,7 +126,24 @@ export function repositoryTablesForSetJson(
   file: string,
   vocabulary: readonly TableTagDefinition[]
 ): CatalogRollTable[] {
-  return validateRepositoryTableTags(tablesForSetJson(file), vocabulary, file);
+  const key = `repository\u0000${file}`;
+  const cached = cache.get(key);
+  const parsed =
+    cached ??
+    (() => {
+      const source = JSON.parse(fs.readFileSync(projectFile("raw", "tables", file), "utf8")) as StoredSet;
+      if (source.formatVersion !== 1 || !Array.isArray(source.tables)) throw new Error(`Invalid table JSON: ${file}`);
+      if (source.tables.some((table) => !table.id || !table.name || !Array.isArray(table.rows)))
+        throw new Error(`Invalid table entry in ${file}`);
+      cache.set(key, source);
+      return source;
+    })();
+  const tables = parsed.tables.map(({ origin, classification, ...table }) => ({
+    ...table,
+    ...(origin ? { source: origin } : {}),
+    classification
+  }));
+  return validateRepositoryTableTags(tables, vocabulary, file);
 }
 
 function tableSlug(value: string) {

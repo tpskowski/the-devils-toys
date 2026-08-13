@@ -10,6 +10,7 @@ Everything mutable sits under one directory — `.data/` by default, moved with
 ```
 .data/
   devils-toys.sqlite    the database
+  systems/              installed game-system bundles
   uploads/              every uploaded file
   logs/server.log       the server log
 ```
@@ -32,6 +33,7 @@ Set through the environment; `.env.example` in the repository lists them all.
 | `DEVILS_TOYS_SCENE_IMAGE_LIMIT_MB`     | `60`    | Largest single map or scene.                                                  |
 | `DEVILS_TOYS_REFERENCE_IMAGE_LIMIT_MB` | `20`    | Largest single reference.                                                     |
 | `DEVILS_TOYS_AUDIO_LIMIT_MB`           | `50`    | Largest single MP3.                                                           |
+| `DEVILS_TOYS_SYSTEM_LIMIT_MB`          | `25`    | Largest game-system bundle accepted by the admin importer.                    |
 
 ## Storage, and what counts toward it
 
@@ -41,6 +43,10 @@ room and not per account. Counted against it:
 - every map, scene, reference, and audio track in every room;
 - character portraits;
 - hireling and shared-asset portraits.
+
+Installed system files are not part of that media allowance. The separate
+`DEVILS_TOYS_SYSTEM_LIMIT_MB` is a per-bundle import limit, not a total storage
+quota for installed systems.
 
 Character portraits are additionally capped at 5 MB each and must be PNG, JPEG,
 or WebP.
@@ -61,6 +67,10 @@ The whole procedure:
 
 Restore by stopping the server, replacing that directory with a copy taken while
 the server was stopped, and starting it again.
+
+An installed game system has files under `systems/` and a registry row in the
+database. Neither half is a useful backup by itself. The whole-directory
+procedure above preserves both.
 
 Copy it _stopped_. The database runs in WAL mode, so a copy taken from a running
 server can be an inconsistent snapshot — one that appears to work and is missing

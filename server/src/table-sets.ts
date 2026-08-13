@@ -17,7 +17,7 @@ import { requireAuth } from "./auth.js";
 import { all, db, one } from "./db.js";
 import { knownTags, tagVocabulary } from "./table-tags.js";
 import { requireTableEdit, requireTableRead } from "./table-permissions.js";
-import { systems } from "./systems.js";
+import { allSystems, hasSystem, systemOrThrow } from "./systems.js";
 import {
   repositorySetEntries,
   repositoryTablesForSetJson,
@@ -40,17 +40,22 @@ export interface TableSetRow {
   updated_at: string;
 }
 
-/** Parsed system tables, kept because the raw Markdown cannot change at runtime. */
+/** Parsed system tables. Cleared when a system's content is replaced. */
 const systemTables = new Map<SystemId, CatalogRollTable[]>();
+
+export function forgetSystemTables(system?: SystemId) {
+  if (system === undefined) systemTables.clear();
+  else systemTables.delete(system);
+}
 
 export function tablesForSystem(system: SystemId) {
   const cached = systemTables.get(system);
   if (cached) return cached;
-  const source = systems[system].sourceDocuments[0];
-  if (!source?.tablesFile) throw new Error(`${systems[system].name} has no sourceDocument.tablesFile.`);
-  const parsed = tablesForSetJson(source.tablesFile).map((table) => ({
+  const source = systemOrThrow(system).sourceDocuments[0];
+  if (!source?.tablesFile) throw new Error(`${systemOrThrow(system).name} has no sourceDocument.tablesFile.`);
+  const parsed = tablesForSetJson(system, source.tablesFile).map((table) => ({
     ...table,
-    tags: mergeTags(systems[system].tableCatalog.tags, table.tags, tagVocabulary())
+    tags: mergeTags(systemOrThrow(system).tableCatalog.tags, table.tags, tagVocabulary())
   }));
   systemTables.set(system, parsed);
   return parsed;
@@ -86,7 +91,7 @@ function mergeTags(
 /** Every set a GM can switch between: installed systems, repository sets, then custom sets. */
 export function availableSets(): { set: RollTableSet; tables: RollTable[] }[] {
   const vocabulary = tagVocabulary();
-  const system = Object.values(systems).map((entry) => {
+  const system = allSystems().map((entry) => {
     const tables = tablesForSystem(entry.id);
     return {
       set: {
@@ -182,8 +187,9 @@ tableSetRouter.get("/table-sets/:setId", requireAuth, (req: AuthedRequest, res) 
   const setId = String(req.params.setId);
 
   if (setId.startsWith("system:")) {
-    const system = Object.values(systems).find((entry) => `system:${entry.id}` === setId);
-    if (!system) return res.status(404).json({ error: "Table set not found." });
+    const systemId = setId.slice("system:".length);
+    if (!hasSystem(systemId)) return res.status(404).json({ error: "Table set not found." });
+    const system = systemOrThrow(systemId);
     return res.json({
       set: {
         id: setId,

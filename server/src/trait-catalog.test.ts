@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { SystemTraitCatalog } from "@devils-toys/shared";
-import { SYSTEM_IDS, describeTraits, findTrait, traitKeys, traitSummary } from "@devils-toys/shared";
+import { BUILTIN_SYSTEM_IDS, describeTraits, findTrait, traitKeys, traitSummary } from "@devils-toys/shared";
 import { mergeTraits, readTraitCatalog, traitsFromRulebook } from "./trait-catalog.js";
 import { characterItemsFor, itemTraitsFor } from "./character-items.js";
 
@@ -102,7 +102,7 @@ describe("what the catalogues actually carry", () => {
     // Not every word in a parenthetical is a trait — "must spend a round
     // reloading" is a sentence — so this reports rather than demands. It exists
     // to notice a word the book defines that the catalogue somehow missed.
-    for (const system of SYSTEM_IDS) {
+    for (const system of BUILTIN_SYSTEM_IDS) {
       const traits = itemTraitsFor(system);
       const written = new Set<string>();
       for (const items of Object.values(characterItemsFor(system)))

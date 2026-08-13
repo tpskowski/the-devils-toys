@@ -5,7 +5,7 @@ import { requireAuth } from "./auth.js";
 import { readCalendar } from "./calendar.js";
 import { one } from "./db.js";
 import { configurableRoom, configurableRooms, requireRoomConfig } from "./room-config-permissions.js";
-import { systems } from "./systems.js";
+import { systemOrThrow } from "./systems.js";
 import type { ConfigurableRoom } from "./room-config-permissions.js";
 
 /**
@@ -26,7 +26,7 @@ export const roomConfigRouter = express.Router();
  * the panel can offer the switch: that is where someone would go looking for it.
  */
 export function sectionsFor(room: ConfigurableRoom): RoomConfigSection[] {
-  const groupPage = systems[room.system].groupPage;
+  const groupPage = systemOrThrow(room.system).groupPage;
   const sections: RoomConfigSection[] = [
     { id: "library", label: "Library", hint: "Maps, scenes, and references", enabled: true },
     { id: "npcs", label: "NPCs", hint: "The room's cast and the bestiary", enabled: true },
@@ -76,7 +76,7 @@ roomConfigRouter.get("/room-config/:roomId", requireAuth, (req: AuthedRequest, r
   const roomId = requireRoomConfig(req, res);
   if (!roomId) return;
   const room = configurableRoom(req.account!, roomId)!;
-  const definition = systems[room.system];
+  const definition = systemOrThrow(room.system);
   const payload: RoomConfigPayload = {
     room,
     system: {

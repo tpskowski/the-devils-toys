@@ -1,6 +1,8 @@
 import type { RangedWeaponIcon, WeaponRangeRules } from "./character-items.js";
+import type { CharacterWarningRule } from "./character-warnings.js";
 
 export * from "./character-items.js";
+export * from "./character-warnings.js";
 export * from "./item-traits.js";
 export * from "./roll-tables.js";
 export * from "./table-csv.js";
@@ -8,10 +10,36 @@ export * from "./table-markdown.js";
 export * from "./table-tags.js";
 export * from "./calendar.js";
 
-export const SYSTEM_IDS = ["cairn", "monolith", "cwn"] as const;
+/**
+ * The systems compiled into the application. A server may hold more: an admin
+ * installs one at runtime and it is registered beside these, so this list names
+ * what ships rather than what a given installation offers. Ask the server for
+ * that — `/api/status` reports every system it has.
+ */
+export const BUILTIN_SYSTEM_IDS = ["cairn", "monolith", "cwn"] as const;
 export const THEME_IDS = ["heroic", "digital", "used", "grim", "shinji", "production-type"] as const;
 
-export type SystemId = (typeof SYSTEM_IDS)[number];
+/** One of the three above, for the few places that genuinely mean those three. */
+export type BuiltinSystemId = (typeof BUILTIN_SYSTEM_IDS)[number];
+
+/**
+ * A system's id. Deliberately a string rather than a union: an installed system
+ * has an id this package cannot know, and every consumer resolves one through
+ * the server's registry instead of matching it against a list.
+ */
+export type SystemId = string;
+
+/**
+ * What an installable system's id may look like. Lowercase, starts with a
+ * letter, and short enough to sit in a URL and a filesystem path without
+ * quoting. The same shape the built-in ids already have.
+ */
+export const SYSTEM_ID_PATTERN = /^[a-z][a-z0-9-]{1,31}$/;
+
+export function isSystemId(value: string): boolean {
+  return SYSTEM_ID_PATTERN.test(value);
+}
+
 export type ThemeId = (typeof THEME_IDS)[number];
 export type RoomRole = "gm" | "player";
 export type AccountRole = "admin" | "gm" | "player";
@@ -27,6 +55,8 @@ export interface RoomSummary {
   id: number;
   name: string;
   system: SystemId;
+  /** What that system calls itself, so nothing has to keep its own list of names. */
+  systemName: string;
   theme: ThemeId;
   role: RoomRole;
   archived: boolean;
@@ -379,9 +409,35 @@ export interface CharacterItem {
   label: string;
 }
 
+/**
+ * How a sheet is arranged on a wide screen.
+ *
+ * Omit it and sections fall into bands — stats together, short fields together,
+ * wide ones below — which is what most sheets want and what every system had
+ * before Monolith's four-rail arrangement was written in by name.
+ *
+ * `rails` is that arrangement, said in data: a narrow left rail, a highlighted
+ * column, a right rail, and everything not named in the middle. The client
+ * knows how to draw it; a system chooses it and says what goes where, the same
+ * way it picks a theme rather than shipping one.
+ */
+export interface CharacterSheetRailsLayout {
+  kind: "rails";
+  /** Section ids on the narrow left rail. */
+  left?: readonly string[];
+  /** Section ids in the highlighted column beside the middle. */
+  feature?: readonly string[];
+  /** What sits on the right rail. Lists named here are drawn there rather than below. */
+  right?: {
+    sections?: readonly string[];
+    lists?: readonly string[];
+  };
+}
+
 export interface CharacterSheetDefinition {
   sections: readonly CharacterSheetSection[];
   lists: readonly CharacterListDefinition[];
+  layout?: CharacterSheetRailsLayout;
 }
 
 /**
@@ -500,6 +556,39 @@ export function groupAssetDefinitions(definition: GroupPageDefinition | undefine
   ];
 }
 
+/** One tab of the group page. */
+export interface GroupViewOption {
+  id: string;
+  label: string;
+}
+
+/** The party roster, which every group page opens on. */
+export const PARTY_VIEW: GroupViewOption = { id: "party", label: "Party Members" };
+
+/** The hirelings roster, whatever a system calls the people on it. */
+export const HIRELINGS_VIEW = "group";
+
+/**
+ * The tabs a group page offers, read from what the system declares rather than
+ * from its name. A system with only hirelings gets two, as Cairn does; one that
+ * also tracks obligations and owns ships gets a tab for each, as Monolith does.
+ *
+ * Every kind of shared property contributes a tab, so a system that declares a
+ * stronghold beside its ships gets one with no change here — and an installed
+ * system gets whatever it declares, which a list of Monolith's own tabs could
+ * never have given it.
+ */
+export function groupViewsForDefinition(definition: GroupPageDefinition | undefined): GroupViewOption[] {
+  const views = [PARTY_VIEW];
+  if (definition?.hirelings) views.push({ id: HIRELINGS_VIEW, label: definition.hirelings.label });
+  if (definition?.obligations) views.push({ id: "obligations", label: definition.obligations.label });
+  // GroupPage currently has a complete editor only for starships. Do not offer
+  // an asset tab whose declared kind has no matching page yet.
+  for (const asset of groupAssetDefinitions(definition))
+    if (asset.kind === "starship") views.push({ id: asset.kind, label: asset.label });
+  return views;
+}
+
 export interface GroupPageDefinition {
   sections: readonly GroupSheetSection[];
   hirelings?: {
@@ -528,6 +617,21 @@ export interface GroupPageDefinition {
     };
     sheet: CharacterSheetDefinition;
     levelUpHint: string;
+  };
+  /**
+   * Standing debts, favours, and other things owed by the party as a whole.
+   *
+   * Declared rather than assumed, because the roster existed before anything
+   * said which systems have one: the client showed it for Monolith by name and
+   * for nobody else. A system that omits this has no obligations tab, and the
+   * storage is untouched either way.
+   */
+  obligations?: {
+    label: string;
+    singularLabel: string;
+    /** What an empty roster says, and the rules heading it points at. */
+    emptyHint?: string;
+    rulesQuery?: string;
   };
   /**
    * The one asset kind that predates `groupAssets`. Kept because every system
@@ -760,9 +864,27 @@ export interface NpcStatblockField {
   inSummary?: boolean;
 }
 
+/**
+ * How a bestiary writes its creatures' numbers, and so which reader takes them
+ * apart.
+ *
+ * `inline` is Cairn's and Monolith's shape — one comma-separated line, each part
+ * a number and the word it belongs to, with anything left over read as an
+ * attack: `8 HP, 1 ARMOR, 12 STR, bite (d8)`.
+ *
+ * `labelled` is CWN's — labels paired with values across a column-aligned block,
+ * `HD 2 (9 HP)  AC 14/12  Atk +3`, where the spacing is what separates one pair
+ * from the next.
+ */
+export const NPC_STATBLOCK_PARSERS = ["inline", "labelled"] as const;
+
+export type NpcStatblockParser = (typeof NPC_STATBLOCK_PARSERS)[number];
+
 export interface NpcStatblockDefinition {
   hitPointsKey: string;
   armorKey?: string;
+  /** Defaults to `inline`, which is what most of these books write. */
+  parser?: NpcStatblockParser;
   /**
    * The fields holding what the creature fights with, in the order it brings
    * them to bear. The first is what it leads with and the second is its other
@@ -852,7 +974,13 @@ export interface GameSystem {
   characterSheet: CharacterSheetDefinition;
   /** Omit this definition to remove the Group tab for a system. */
   groupPage?: GroupPageDefinition;
-  characterWarnings: (sheet: Record<string, unknown>) => string[];
+  /**
+   * The advisory notes this system's sheets earn, declared rather than computed.
+   * A built-in may still build the array with ordinary TypeScript — CWN maps its
+   * six abilities into twelve rules — but what it builds is data, which is what
+   * lets an installed system carry the same thing as JSON.
+   */
+  warningRules: readonly CharacterWarningRule[];
   initiative: InitiativeRules;
   npcStatblock: NpcStatblockDefinition;
   /** Omit for a system where hit points are the only pool damage touches. */
@@ -872,6 +1000,13 @@ export interface GameSystem {
     entryLevel: number;
     exclude: readonly string[];
   };
+  /**
+   * The table this system's vices are chosen from, named by its first column.
+   * Like every other table, it is read out of the book rather than restated —
+   * this only says that the system has one and what to look for. Omit it and
+   * the sheet offers no vices, which is every system but Monolith today.
+   */
+  viceCatalog?: { column: string };
   /**
    * Random tables are read out of the system's authoritative Markdown rather
    * than restated here; this only records which ones to leave out and how the
