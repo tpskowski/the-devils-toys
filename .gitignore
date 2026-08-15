@@ -21,6 +21,7 @@ test-results/
 
 # Mutable application data: the database, uploads, and logs a table has added
 .data/
+/.codex-ui-data/
 *.log
 
 # Local scratch directories used while developing. `scratch/` is the place for
