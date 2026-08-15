@@ -4,8 +4,10 @@ import {
   type RollTable,
   type RollTableRow,
   type RollTableSource,
+  type SystemId,
   type TableTagDefinition
 } from "@devils-toys/shared";
+import { systemTablesJsonFile } from "./system-content.js";
 import { projectFile } from "./paths.js";
 
 export type TableClassification = "player" | "gm";
@@ -20,6 +22,17 @@ export interface CustomSetDocument {
   tables: StoredCustomTable[];
 }
 
+export interface RepositorySetEntry {
+  id: string;
+  name: string;
+  file: string;
+}
+
+interface RepositorySetRegistry {
+  formatVersion: 1;
+  sets: RepositorySetEntry[];
+}
+
 interface StoredTable extends Omit<RollTable, "source"> {
   classification?: TableClassification;
   origin?: RollTableSource & { markdownFile?: string };
@@ -32,26 +45,105 @@ interface StoredSet {
   tables: StoredTable[];
 }
 
-const cache = new Map<string, StoredSet>();
-
-export function readSetJson(file: string): StoredSet {
-  const cached = cache.get(file);
-  if (cached) return cached;
-  const absolute = projectFile("raw", "tables", file);
-  const parsed = JSON.parse(fs.readFileSync(absolute, "utf8")) as StoredSet;
+export function parseSetJson(value: string, file: string): StoredSet {
+  const parsed = JSON.parse(value) as StoredSet;
   if (parsed.formatVersion !== 1 || !Array.isArray(parsed.tables)) throw new Error(`Invalid table JSON: ${file}`);
   if (parsed.tables.some((table) => !table.id || !table.name || !Array.isArray(table.rows)))
     throw new Error(`Invalid table entry in ${file}`);
-  cache.set(file, parsed);
   return parsed;
 }
 
-export function tablesForSetJson(file: string): CatalogRollTable[] {
-  return readSetJson(file).tables.map(({ origin, classification, ...table }) => ({
+/**
+ * Parsed sets, keyed by the system that owns them as well as the filename. The
+ * filename alone was enough while every set lived in `raw/tables`; an installed
+ * system brings its own directory, and two systems may well both call their set
+ * `tables.json`.
+ */
+const cache = new Map<string, StoredSet>();
+
+/** Drops a system's parsed sets, for when its content has been replaced. */
+export function forgetSetJson(system?: SystemId) {
+  if (system === undefined) return cache.clear();
+  for (const key of cache.keys()) if (key.startsWith(`${system}\u0000`)) cache.delete(key);
+}
+
+/** Standalone, checked-in table sets installed by a repository bundle. */
+export function parseRepositorySetRegistry(value: string): RepositorySetEntry[] {
+  const parsed = JSON.parse(value) as Partial<RepositorySetRegistry>;
+  if (parsed.formatVersion !== 1 || !Array.isArray(parsed.sets))
+    throw new Error("Invalid repository table-set registry.");
+  const ids = new Set<string>();
+  return parsed.sets.map((entry) => {
+    const id = String(entry?.id);
+    if (
+      !entry ||
+      !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(id) ||
+      ids.has(id) ||
+      !String(entry.name).trim() ||
+      !/^[a-z0-9]+(?:-[a-z0-9]+)*\.json$/.test(String(entry.file))
+    )
+      throw new Error("Invalid repository table-set entry.");
+    ids.add(id);
+    return { id, name: String(entry.name), file: String(entry.file) };
+  });
+}
+
+export function repositorySetEntries(): RepositorySetEntry[] {
+  const file = projectFile("raw", "tables", "repository-sets.json");
+  return parseRepositorySetRegistry(fs.readFileSync(file, "utf8"));
+}
+
+export function readSetJson(system: SystemId, file: string): StoredSet {
+  const key = `${system}\u0000${file}`;
+  const cached = cache.get(key);
+  if (cached) return cached;
+  const absolute = systemTablesJsonFile(system, file);
+  const parsed = parseSetJson(fs.readFileSync(absolute, "utf8"), file);
+  cache.set(key, parsed);
+  return parsed;
+}
+
+export function tablesForSetJson(system: SystemId, file: string): CatalogRollTable[] {
+  return readSetJson(system, file).tables.map(({ origin, classification, ...table }) => ({
     ...table,
     ...(origin ? { source: origin } : {}),
     classification
   }));
+}
+
+/** Repository tables must not silently lose a tag the checked-in JSON names. */
+export function validateRepositoryTableTags<T extends { tags: readonly string[] }>(
+  tables: readonly T[],
+  vocabulary: readonly TableTagDefinition[],
+  file: string
+): T[] {
+  const unknown = tables.flatMap((table) => table.tags).find((tag) => !vocabulary.some((entry) => entry.slug === tag));
+  if (unknown) throw new Error(`Unknown repository table tag "${unknown}" in ${file}.`);
+  return [...tables];
+}
+
+export function repositoryTablesForSetJson(
+  file: string,
+  vocabulary: readonly TableTagDefinition[]
+): CatalogRollTable[] {
+  const key = `repository\u0000${file}`;
+  const cached = cache.get(key);
+  const parsed =
+    cached ??
+    (() => {
+      const source = JSON.parse(fs.readFileSync(projectFile("raw", "tables", file), "utf8")) as StoredSet;
+      if (source.formatVersion !== 1 || !Array.isArray(source.tables)) throw new Error(`Invalid table JSON: ${file}`);
+      if (source.tables.some((table) => !table.id || !table.name || !Array.isArray(table.rows)))
+        throw new Error(`Invalid table entry in ${file}`);
+      cache.set(key, source);
+      return source;
+    })();
+  const tables = parsed.tables.map(({ origin, classification, ...table }) => ({
+    ...table,
+    ...(origin ? { source: origin } : {}),
+    classification
+  }));
+  return validateRepositoryTableTags(tables, vocabulary, file);
 }
 
 function tableSlug(value: string) {
@@ -75,7 +167,16 @@ function normalizedRows(table: Record<string, unknown>, columns: readonly string
     if (!Array.isArray(row.cells)) throw new Error(`Table "${String(table.name ?? "")}" has invalid cells.`);
     const cells = row.cells.map((cell) => String(cell));
     while (cells.length < columns.length) cells.push("");
-    return { label, min: range.min, max: range.max, cells: cells.slice(0, columns.length) };
+    const nextTableId = typeof row.nextTableId === "string" ? row.nextTableId.trim() : "";
+    if (nextTableId && !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(nextTableId))
+      throw new Error(`Table "${String(table.name ?? "")}" has an invalid next table id.`);
+    return {
+      label,
+      min: range.min,
+      max: range.max,
+      cells: cells.slice(0, columns.length),
+      ...(nextTableId ? { nextTableId } : {})
+    };
   });
 }
 

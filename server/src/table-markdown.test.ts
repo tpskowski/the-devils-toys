@@ -1,7 +1,15 @@
 import fs from "node:fs";
 import { describe, expect, it } from "vitest";
 import type { RollTable } from "@devils-toys/shared";
-import { appendTable, parseRollTables, serializeSet, serializeTable, spliceTable } from "@devils-toys/shared";
+import {
+  appendTable,
+  parseRollTables,
+  retargetTableLinks,
+  serializeSet,
+  serializeTable,
+  spliceTable,
+  tableLinkProblems
+} from "@devils-toys/shared";
 import { projectFile } from "./paths.js";
 
 /** Everything but where it sat in the document, which changes as lines move. */
@@ -155,6 +163,57 @@ describe("writing a table back out", () => {
       { ...table, rows: [{ label: "1", min: 1, max: 1, cells: ["Crows"] }] }
     );
     expect(parseRollTables(rewritten)[0].rows[0].cells).toEqual(["Crows", ""]);
+  });
+
+  it("stores a follow-up table link without adding it to the visible result", () => {
+    const [table] = parseRollTables(source);
+    const linked = {
+      ...table,
+      rows: table.rows.map((row, index) => (index === 0 ? { ...row, nextTableId: "injuries-d8" } : row))
+    };
+    const rewritten = spliceTable(source, linked);
+    expect(rewritten).toContain("<!-- next-table: injuries-d8 -->");
+    expect(parseRollTables(rewritten)[0].rows[0]).toMatchObject({
+      cells: ["A caravan is overdue"],
+      nextTableId: "injuries-d8"
+    });
+  });
+
+  it("retargets row links when their destination is renamed", () => {
+    const linked = `${source.trim()} <!-- next-table: injuries-d8 -->\n`;
+    expect(retargetTableLinks(linked, "injuries-d8", "lasting-injuries-d8")).toContain(
+      "<!-- next-table: lasting-injuries-d8 -->"
+    );
+  });
+});
+
+describe("linked tables", () => {
+  const linked = parseRollTables(`## First
+
+| d4 | Result |
+| --- | --- |
+| 1-4 | Continue <!-- next-table: second --> |
+
+## Second
+
+| d4 | Result |
+| --- | --- |
+| 1-4 | Done |
+`);
+
+  it("accepts a link to another table in the set", () => {
+    expect(tableLinkProblems(linked)).toEqual([]);
+  });
+
+  it("reports missing targets and loops", () => {
+    expect(tableLinkProblems([{ ...linked[0], rows: [{ ...linked[0].rows[0], nextTableId: "missing" }] }])[0]).toMatch(
+      /does not exist/
+    );
+    const loop = linked.map((table, index) => ({
+      ...table,
+      rows: table.rows.map((row) => ({ ...row, nextTableId: linked[index ? 0 : 1].id }))
+    }));
+    expect(tableLinkProblems(loop)).toContain("Follow-up table links cannot form a loop.");
   });
 });
 

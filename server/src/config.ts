@@ -17,6 +17,13 @@ export const config = {
     process.env.DEVILS_TOYS_REFERENCE_IMAGE_LIMIT_MB ?? process.env.DEVILS_TOYS_IMAGE_LIMIT_MB ?? 20
   ),
   audioUploadLimitMb: Number(process.env.DEVILS_TOYS_AUDIO_LIMIT_MB ?? 50),
+  /**
+   * A system bundle is rules text and JSON, so it is small: exporting Monolith,
+   * the largest of the three, gives about 130 KB. The cap is generous enough for
+   * a book several times that and low enough that a mistaken upload is refused
+   * before it is read into memory.
+   */
+  systemUploadLimitMb: Number(process.env.DEVILS_TOYS_SYSTEM_LIMIT_MB ?? 25),
   logLevel: process.env.DEVILS_TOYS_LOG_LEVEL ?? "info",
   isProduction: process.env.NODE_ENV === "production"
 };

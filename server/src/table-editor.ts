@@ -1,7 +1,15 @@
 import express from "express";
 import multer from "multer";
 import { z } from "zod";
-import { appendTable, parseRollTables, SAMPLE_CSV, serializeSet, tablesFromCsv, tableToCsv } from "@devils-toys/shared";
+import {
+  appendTable,
+  parseRollTables,
+  SAMPLE_CSV,
+  serializeSet,
+  tableLinkProblems,
+  tablesFromCsv,
+  tableToCsv
+} from "@devils-toys/shared";
 import type { AuthedRequest } from "./auth.js";
 import { requireAuth } from "./auth.js";
 import { all, db, one } from "./db.js";
@@ -128,6 +136,24 @@ tableEditorRouter.get("/table-export", requireAuth, (req: AuthedRequest, res) =>
   res.send(Buffer.from(buildBundle(sets, tags)));
 });
 
+/** Every custom set as repository JSON, with one CLI import plan and prompt. */
+tableEditorRouter.get("/table-repo-export", requireAuth, (req: AuthedRequest, res) => {
+  if (!requireTableAdmin(req, res)) return;
+  const wanted = String(req.query.ids ?? "")
+    .split(",")
+    .map((id) => Number(id.trim()))
+    .filter((id) => Number.isInteger(id) && id > 0);
+  const rows = customSets().filter((row) => !wanted.length || wanted.includes(row.id));
+  const sets = rows.flatMap((row) => {
+    const found = findSet(`custom:${row.id}`);
+    return found?.tables.length ? [{ name: found.set.name, tables: found.tables }] : [];
+  });
+  if (!sets.length) return res.status(404).json({ error: "There are no custom tables to export." });
+
+  attachment(res, "application/zip", `devils-tables-repository-${new Date().toISOString().slice(0, 10)}.zip`);
+  res.send(Buffer.from(buildRepoBundle(sets)));
+});
+
 tableEditorRouter.post("/table-import", requireAuth, upload.single("file"), (req: AuthedRequest, res) => {
   if (!requireTableEdit(req, res)) return;
   if (!req.file) return res.status(400).json({ error: "Choose a bundle to import." });
@@ -181,6 +207,8 @@ tableEditorRouter.post("/table-import", requireAuth, upload.single("file"), (req
         .flatMap((table) => table.tags)
         .find((tag) => !known.some((entry) => entry.slug === tag));
       if (unknown) throw new Error(`Unknown table tag "${unknown}".`);
+      const [linkProblem] = tableLinkProblems(parseRollTables(markdown));
+      if (linkProblem) throw new Error(linkProblem);
       if (clash && action === "overwrite") {
         updateSet.run(markdown, tags, clash.name);
         overwritten += 1;
@@ -212,7 +240,6 @@ tableEditorRouter.get("/table-sets/:setId/repo-bundle", requireAuth, (req: Authe
   if (!found) return res.status(404).json({ error: "Table set not found." });
   if (!found.tables.length) return res.status(400).json({ error: "That set has no tables to merge." });
 
-  const tags = knownTags(found.tables.flatMap((table) => table.tags));
   attachment(res, "application/zip", `${found.set.id.replace(":", "-")}-repo.zip`);
-  res.send(Buffer.from(buildRepoBundle(found.set.name, found.tables, tags)));
+  res.send(Buffer.from(buildRepoBundle([{ name: found.set.name, tables: found.tables }])));
 });

@@ -751,6 +751,25 @@ export function CharacterModal({
   const activeRuleExcerpt = activeRule ? findRuleExcerpt(rulesMarkdown, activeRule.query) : "";
   const activeRuleAnchorId = activeRule ? findRuleAnchorId(rulesMarkdown, activeRule.query) : "";
   const sections = definition?.sections ?? [];
+  /**
+   * The rail arrangement a sheet asked for, resolved to the lookups the render
+   * needs. `placed` is everything spoken for elsewhere, so the middle column is
+   * whatever is left rather than a list that has to be kept in step.
+   */
+  const rails = (() => {
+    const layout = definition?.layout;
+    if (layout?.kind !== "rails") return undefined;
+    const left = new Set(layout.left ?? []);
+    const feature = new Set(layout.feature ?? []);
+    const right = new Set(layout.right?.sections ?? []);
+    return {
+      left,
+      feature,
+      right,
+      lists: new Set(layout.right?.lists ?? []),
+      placed: new Set([...left, ...feature, ...right])
+    };
+  })();
   const statSections = sections.filter((section) => !isWideSection(section) && section.layout === "paired-current-max");
   const compactSections = sections.filter(
     (section) => !isWideSection(section) && section.layout !== "paired-current-max"
@@ -1410,28 +1429,24 @@ export function CharacterModal({
                   ))}
                 </section>
               )}
-              {system === "monolith" ? (
+              {rails ? (
                 <>
                   <div className="character-layout character-layout-monolith">
                     <div className="character-layout-rail character-layout-left">
-                      {sections.filter((section) => section.id === "identity").map(renderSection)}
+                      {sections.filter((section) => rails.left.has(section.id)).map(renderSection)}
                     </div>
                     <div className="character-layout-main">
-                      {sections
-                        .filter(
-                          (section) => section.id !== "identity" && section.id !== "talents" && section.id !== "vices"
-                        )
-                        .map(renderSection)}
+                      {sections.filter((section) => !rails.placed.has(section.id)).map(renderSection)}
                     </div>
                     <div className="character-layout-talents">
-                      {sections.filter((section) => section.id === "talents").map(renderSection)}
+                      {sections.filter((section) => rails.feature.has(section.id)).map(renderSection)}
                     </div>
                     <div className="character-layout-rail character-layout-right">
-                      {definition.lists.filter((list) => list.key === "equipment").map(renderList)}
-                      {sections.filter((section) => section.id === "vices").map(renderSection)}
+                      {definition.lists.filter((list) => rails.lists.has(list.key)).map(renderList)}
+                      {sections.filter((section) => rails.right.has(section.id)).map(renderSection)}
                     </div>
                   </div>
-                  {definition.lists.filter((list) => list.key !== "equipment").map(renderList)}
+                  {definition.lists.filter((list) => !rails.lists.has(list.key)).map(renderList)}
                 </>
               ) : (
                 <>

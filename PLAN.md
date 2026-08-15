@@ -22,7 +22,7 @@ This project is a custom virtual tabletop for Cairn and Monolith. They share a c
 
 - Use a TypeScript monorepo with a React/Vite client, a Node.js server, WebSockets for live room updates, and SQLite for persistent data.
 - In production, one Node.js process serves the built client and the API.
-- Install game systems at build time from repository folders. Runtime system installation is deferred.
+- Keep repository-maintained game systems as build-time workspace packages. Admins may also install validated data-only system bundles at runtime; bundles cannot add executable code, CSS, or client extensions.
 - Support ordinary local hosting on Windows, macOS, and Linux equally in the first release.
 - Store all mutable data beneath one configurable directory so the installation can be backed up easily.
 - Support room rosters of one GM and up to 20 player accounts, with up to 10 players active in a session. These are supported operating targets, not hard limits unless a technical constraint requires enforcement.
@@ -31,7 +31,7 @@ This project is a custom virtual tabletop for Cairn and Monolith. They share a c
 
 - Keep Cairn and Monolith data/configuration in separate per-system files or folders. Prefer JSON where practical.
 - Use a common data shape where it fits, but do not force system-specific concepts into an unsuitable shared model.
-- When adding a system, follow the guidance in `AGENTS.md` under `Adding new systems`.
+- When adding a repository-maintained system, follow `AGENTS.md` under `Adding built-in systems`; for runtime bundles, follow its `Installable systems` guidance.
 - Treat Markdown files in `/raw` as the primary rules sources. Use the matching PDFs to verify questionable formatting or content.
 - Preserve imported rules wording exactly except for obvious encoding and formatting repairs.
 - Apparent source typos may be corrected only when the original and correction are recorded in `/raw/corrections.md` with the source and reason.

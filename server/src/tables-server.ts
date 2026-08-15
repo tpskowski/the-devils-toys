@@ -6,6 +6,7 @@ import { config } from "./config.js";
 import { logger } from "./logger.js";
 import { projectFile } from "./paths.js";
 import { sessionRouter } from "./session-routes.js";
+import { loadInstalledSystems } from "./system-registry.js";
 import { tableEditorRouter } from "./table-editor.js";
 import { tableSetRouter } from "./table-sets.js";
 import { tagRouter } from "./table-tags.js";
@@ -17,6 +18,10 @@ import { tagRouter } from "./table-tags.js";
  * vocabulary. The session cookie is scoped by host rather than by port, so a
  * sign-in here is a sign-in there and the other way round.
  */
+// The editor lists one table set per system, so it needs the installed ones as
+// much as the game server does.
+loadInstalledSystems();
+
 const app = express();
 app.disable("x-powered-by");
 // Bundles are much larger than a chat message, and an import arrives as one body.

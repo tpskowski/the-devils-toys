@@ -4,7 +4,6 @@ import {
   appendTable,
   parseRollTables,
   serializeSet,
-  spliceTable,
   tagLabel,
   type RollTable,
   type TableTag,
@@ -14,7 +13,7 @@ import { api, download } from "./api";
 import { CsvImport } from "./CsvImport";
 import { TableGrid } from "./TableGrid";
 import { TagPicker } from "./TagPicker";
-import { blankTable, tablesWithTag, tagTallies } from "./tables";
+import { applyTableEdit, blankTable, tablesWithTag, tagTallies } from "./tables";
 import type { Permissions } from "./session";
 
 interface StoredSet {
@@ -105,7 +104,16 @@ export function SetEditor({
       setError("That table has no source range and cannot be edited in place.");
       return;
     }
-    setMarkdown((current) => (current === undefined ? current : spliceTable(current, editing)));
+    if (markdown === undefined) return;
+    let revised: string;
+    try {
+      revised = applyTableEdit(markdown, editingId, editing);
+    } catch (cause) {
+      setError((cause as Error).message);
+      return;
+    }
+    setMarkdown(revised);
+    setError("");
     setDirty(true);
     setEditing(undefined);
     setEditingId("");
@@ -162,7 +170,7 @@ export function SetEditor({
         {permissions.canAdminister && (
           <button
             type="button"
-            title="A zip shaped for the repository, with instructions for folding it in"
+            title="Table JSON plus a CLI importer that previews and confirms repository changes"
             onClick={() =>
               download(
                 `/api/table-sets/${encodeURIComponent(setId)}/repo-bundle`,
@@ -170,7 +178,7 @@ export function SetEditor({
               ).catch((cause: Error) => setError(cause.message))
             }
           >
-            <Download size={15} aria-hidden /> Repo bundle
+            <Download size={15} aria-hidden /> Repo JSON + importer
           </button>
         )}
         {!readOnly && (
@@ -288,6 +296,7 @@ export function SetEditor({
               <>
                 <TableGrid
                   table={editing}
+                  tables={tables}
                   vocabulary={vocabulary}
                   readOnly={readOnly}
                   canRename={editing.source?.soleTable ?? true}

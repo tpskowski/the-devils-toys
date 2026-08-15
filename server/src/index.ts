@@ -25,6 +25,8 @@ import { tagRouter } from "./table-tags.js";
 import { tableSetRouter } from "./table-sets.js";
 import { tablesLinkRouter } from "./tables-link.js";
 import { asyncRoute, parse, publicAccount, sessionRouter } from "./session-routes.js";
+import { systemRouter } from "./system-routes.js";
+import { isSystemOffered, loadInstalledSystems } from "./system-registry.js";
 import { groupRouter } from "./group.js";
 import { encounterRouter } from "./encounters.js";
 import { mapNotationRouter } from "./map-notations.js";
@@ -34,11 +36,10 @@ import { playlistRouter } from "./playlists.js";
 import { helpRouter } from "./help.js";
 import { roomAccessRole } from "./room-config-permissions.js";
 import { projectFile } from "./paths.js";
-import { rulesMarkdown, systems } from "./systems.js";
+import { rulesMarkdown, systemIdSchema, systemOrThrow } from "./systems.js";
 import {
   calendarNowMessage,
   damageExpression,
-  SYSTEM_IDS,
   THEME_IDS,
   type AccountRole,
   type SystemId,
@@ -52,6 +53,10 @@ import {
   MAP_NOTATION_ROAD_EGG_MESSAGE,
   claimRoomEasterEgg
 } from "./easter-eggs.js";
+
+// Before anything can be served: an installed system has to be in the registry
+// or every room on it would 500 on its first request.
+loadInstalledSystems();
 
 const app = express();
 app.disable("x-powered-by");
@@ -78,6 +83,7 @@ app.use("/api", roomConfigRouter);
 app.use("/api", roomItemRouter);
 app.use("/api", playlistRouter);
 app.use("/api", helpRouter);
+app.use("/api", systemRouter);
 function publicMessage(row: {
   id: number;
   room_id: number;
@@ -311,6 +317,7 @@ app.get("/api/rooms", requireAuth, (req: AuthedRequest, res) => {
     id: number;
     name: string;
     system: SystemId;
+    systemName: string;
     theme: ThemeId;
     role: "gm" | "player";
     archived: number;
@@ -318,9 +325,13 @@ app.get("/api/rooms", requireAuth, (req: AuthedRequest, res) => {
     map_notation_enabled: number;
     music_enabled: number;
   }>(
-    `SELECT r.id, r.name, r.system, r.theme, m.role, r.archived, r.calendar_enabled, r.map_notation_enabled,
-            r.music_enabled FROM rooms r
-     JOIN memberships m ON m.room_id = r.id WHERE m.account_id = ? ORDER BY r.archived, r.name`,
+    // The system's display name comes from the registry rather than from its
+    // definition, so a room on a system that is retired — or whose bundle will
+    // not load — still says what it is rather than showing a bare id.
+    `SELECT r.id, r.name, r.system, s.name AS systemName, r.theme, m.role, r.archived, r.calendar_enabled,
+            r.map_notation_enabled, r.music_enabled FROM rooms r
+     JOIN memberships m ON m.room_id = r.id
+     JOIN systems s ON s.id = r.system WHERE m.account_id = ? ORDER BY r.archived, r.name`,
     req.account!.id
   ).map(({ calendar_enabled, map_notation_enabled, music_enabled, ...room }) => ({
     ...room,
@@ -337,14 +348,18 @@ app.post("/api/rooms", requireAuth, (req: AuthedRequest, res) => {
   const body = parse(
     z.object({
       name: z.string().trim().min(2).max(80),
-      system: z.enum(SYSTEM_IDS),
+      system: systemIdSchema,
       theme: z.enum(THEME_IDS).optional()
     }),
     req.body,
     res
   );
   if (!body) return;
-  const theme = body.theme ?? systems[body.system].defaultTheme;
+  // Registered but retired: the rooms already on it keep working, and this is
+  // the difference between retiring a system and deleting one.
+  if (!isSystemOffered(body.system))
+    return res.status(409).json({ error: `${systemOrThrow(body.system).name} is retired and cannot take new rooms.` });
+  const theme = body.theme ?? systemOrThrow(body.system).defaultTheme;
   db.exec("BEGIN");
   try {
     const result = db
@@ -359,6 +374,7 @@ app.post("/api/rooms", requireAuth, (req: AuthedRequest, res) => {
         id: roomId,
         name: body.name,
         system: body.system,
+        systemName: systemOrThrow(body.system).name,
         theme,
         role: "gm",
         archived: false,
@@ -682,12 +698,12 @@ app.post("/api/rooms/:roomId/rolls", requireAuth, (req: AuthedRequest, res) => {
   if (body.invisible && role !== "gm")
     return res.status(403).json({ error: "Invisible rolls are reserved for the GM." });
   const system = one<{ system: SystemId }>("SELECT system FROM rooms WHERE id = ?", roomId)!.system;
-  const diceRules = systems[system].dice;
+  const diceRules = systemOrThrow(system).dice;
   if (body.check && !diceRules.skillCheck)
-    return res.status(400).json({ error: `${systems[system].name} does not define skill checks.` });
+    return res.status(400).json({ error: `${systemOrThrow(system).name} does not define skill checks.` });
   if (body.save && body.save.position !== "normal" && !diceRules.save.outcomes[body.save.position])
     return res.status(400).json({
-      error: `${systems[system].name} does not define ${body.save.position} for saves.`
+      error: `${systemOrThrow(system).name} does not define ${body.save.position} for saves.`
     });
   let attackExpression;
   if (body.attack && !body.save) {

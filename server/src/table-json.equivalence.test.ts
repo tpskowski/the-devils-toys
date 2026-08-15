@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { parseRollTables } from "@devils-toys/shared";
 import { readSetJson } from "./table-json.js";
 import { projectFile } from "./paths.js";
-import { systems } from "./systems.js";
+import { builtinSystems } from "./systems.js";
 
 const comparable = (table: {
   id: string;
@@ -26,12 +26,12 @@ const comparable = (table: {
 });
 
 describe("generated table JSON", () => {
-  for (const system of Object.values(systems)) {
+  for (const system of Object.values(builtinSystems)) {
     it(`${system.id} matches the parser output`, () => {
       const source = system.sourceDocuments[0]!;
       const markdown = fs.readFileSync(projectFile("raw", source.markdownFile), "utf8");
       const parsed = parseRollTables(markdown, system.tableCatalog.exclude);
-      const stored = readSetJson(source.tablesFile!);
+      const stored = readSetJson(system.id, source.tablesFile!);
       expect(stored.tables.map(comparable)).toEqual(parsed.map(comparable));
       expect(stored.tables.map((table) => [table.id, table.origin?.tableStart, table.origin?.tableEnd])).toEqual(
         parsed.map((table) => [table.id, table.source?.tableStart, table.source?.tableEnd])

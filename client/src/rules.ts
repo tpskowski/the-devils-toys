@@ -1,4 +1,4 @@
-import { SYSTEM_IDS, type SystemId } from "@devils-toys/shared";
+import { isSystemId, type SystemId } from "@devils-toys/shared";
 export function stripMarkdownMetadata(markdown: string) {
   const withoutBom = markdown.replace(/^\uFEFF/, "");
   const frontMatter = /^---[ \t]*\r?\n[\s\S]*?\r?\n(?:---|\.\.\.)[ \t]*(?:\r?\n|$)/.exec(withoutBom);
@@ -133,9 +133,18 @@ export function rulesAnchorPath(system: SystemId, roomId: number | undefined, an
   return anchorId ? `${base}#${standaloneRuleIdPrefix}-${anchorId}` : base;
 }
 
+/**
+ * The system a `/rules/<system>` address names, or null when the path is not one.
+ *
+ * The id is checked for shape, not for membership: a compiled list cannot know
+ * about a system an admin installed, and this only decides which component to
+ * mount. A well-formed id the server does not have renders the reference page,
+ * which reports the server's 404 — the same as any other system whose rules
+ * cannot be read.
+ */
 export function rulesSystemFromPath(pathname: string): SystemId | null {
   const match = /^\/rules\/([^/]+)\/?$/.exec(pathname);
-  return match && SYSTEM_IDS.includes(match[1] as SystemId) ? (match[1] as SystemId) : null;
+  return match && isSystemId(match[1]) ? match[1] : null;
 }
 
 /**

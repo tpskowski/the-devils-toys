@@ -1,6 +1,6 @@
 # The Devil's Toys
 
-A local-first virtual tabletop for Cairn, Monolith, and Cities Without Number. It focuses on a persistent room, a fast shared table, rules at hand, and useful GM controls without trying to automate the games away.
+A local-first virtual tabletop that ships with Cairn, Monolith, and Cities Without Number and can accept additional data-only game-system bundles at runtime. It focuses on a persistent room, a fast shared table, rules at hand, and useful GM controls without trying to automate the games away.
 
 **This is alpha software.** It runs and it is used, but nothing is settled: interfaces move, and data shapes still change between versions — migrations run on start, so keep the backups described under [Backups](#backups).
 
@@ -8,7 +8,7 @@ A local-first virtual tabletop for Cairn, Monolith, and Cities Without Number. I
 
 - [Player's Guide](docs/guide/README.md) — joining a table, the sheet, dice, and combat.
 - [GM's Guide](docs/guide/gm/README.md) — your room, Room Config, NPCs and encounters, and running a session.
-- [Admin's Guide](docs/guide/admin/README.md) — first run, accounts and roles, rooms, and operating the server.
+- [Admin's Guide](docs/guide/admin/README.md) — first run, accounts and roles, rooms, installable game systems, and operating the server.
 - [The Devil's Tables](devils-tables.md) — using the random-table editor.
 
 ## Requirements
@@ -43,7 +43,7 @@ That link points at this host on `DEVILS_TABLES_PORT`. Set `DEVILS_TABLES_URL` w
 
 It signs in with the same accounts as The Devil's Toys — the session cookie is scoped to the host rather than the port, so signing in to either signs you in to both. Accounts are still created in The Devil's Toys. An admin can do everything; a GM writes tables for this instance; a player can read the catalogue but change nothing.
 
-It edits tables as grids, manages the tag vocabulary, imports CSV against a downloadable template, and produces two kinds of zip archive: a bundle for moving sets into another copy of the application, and a bundle shaped for folding a set into this repository as built-in content.
+It edits tables as grids, manages the tag vocabulary, imports CSV against a downloadable template, and produces two kinds of zip archive: a bundle for moving sets into another copy of the application, and a JSON repository bundle whose CLI previews and confirms changes before installing standalone built-in table sets.
 
 How to use it — adding tables, tagging them, importing CSV, and moving sets between instances — is written up in [devils-tables.md](devils-tables.md), which the editor also serves as its **Guide** page.
 
@@ -57,6 +57,14 @@ npm start
 The production server serves both the API and `client/dist` at `http://localhost:4000`. To serve the table editor as well, run `npm run start:tables` alongside it; it serves the API and `tables-client/dist` at `http://localhost:4100`.
 
 Mutable data defaults to `.data/` and can be moved with `DEVILS_TOYS_DATA_DIR`. The ports can be set with `PORT` and `DEVILS_TABLES_PORT`. See `.env.example`.
+
+## Installable game systems
+
+A server admin can install a `.devilsystem.zip` without rebuilding or restarting the application. A system bundle contains a declarative system definition, its item and trait catalogues, rules Markdown, and extracted table JSON; it cannot contain executable extensions, custom CSS, or client code.
+
+The current control surface is the authenticated admin API under `/api/admin/systems`. It lists systems, accepts a bundle upload, exports any built-in or installed system, retires and restores systems, and deletes an installed system that no room or character still uses. Exporting with a new `as` id produces a clone that can be installed beside its source.
+
+Installed systems are kept under `systems/` inside `DEVILS_TOYS_DATA_DIR` and registered in the database. Retiring one only removes it from new-room choices; rooms and characters already using it continue to work. Because the files and registry row belong together, back up and restore the complete data directory rather than copying an installed system by itself. See [Game systems](docs/guide/admin/systems.md) in the Admin's Guide for the lifecycle and API.
 
 ## Run with WSLC on Windows
 
@@ -125,7 +133,7 @@ Maps and Scenes use `DEVILS_TOYS_SCENE_IMAGE_LIMIT_MB` (60 MB by default); image
 
 ## Backups
 
-Stop the server, copy the complete configured data directory, then restart. Restore by stopping the server and replacing that directory with a backup made while the server was stopped. Database, uploads, and logs are kept together so a single filesystem copy is sufficient.
+Stop the server, copy the complete configured data directory, then restart. Restore by stopping the server and replacing that directory with a backup made while the server was stopped. Database, installed systems, uploads, and logs are kept together so a single filesystem copy is sufficient.
 
 ## Content and licensing
 

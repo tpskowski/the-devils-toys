@@ -33,7 +33,7 @@ export function parseCompactRollTables(markdown: string, section: string): Compa
 }
 
 export function compactTables(system: SystemId, section: string): CompactRollTable[] {
-  return compactTablesFromTables(tablesForSetJson(systemTablesFile(system)), section);
+  return compactTablesFromTables(tablesForSetJson(system, systemTablesFile(system)), section);
 }
 
 function compactTablesFromTables(tables: readonly CatalogRollTable[], section: string): CompactRollTable[] {

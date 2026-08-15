@@ -11,8 +11,8 @@ import type { AuthedRequest } from "./auth.js";
 import { requireAuth } from "./auth.js";
 import { all, db, one } from "./db.js";
 import { requireTableAdmin, requireTableEdit, requireTableRead } from "./table-permissions.js";
-import { systems } from "./systems.js";
-import { tablesForSetJson } from "./table-json.js";
+import { allSystems } from "./systems.js";
+import { repositorySetEntries, repositoryTablesForSetJson, tablesForSetJson } from "./table-json.js";
 
 export const tagRouter = express.Router();
 
@@ -81,13 +81,20 @@ function allTagUsage() {
     includeTables(parseRollTables(row.markdown), inherited);
   }
 
-  for (const system of Object.values(systems)) {
+  for (const system of allSystems()) {
+    if (!system.tableCatalog) continue;
     includeSet(system.tableCatalog.tags);
     const source = system.sourceDocuments[0];
     if (!source?.tablesFile) continue;
-    for (const table of tablesForSetJson(source.tablesFile)) {
+    for (const table of tablesForSetJson(system.id, source.tablesFile)) {
       for (const slug of new Set([...system.tableCatalog.tags, ...table.tags])) counts(slug).tables += 1;
     }
+  }
+
+  for (const entry of repositorySetEntries()) {
+    const tables = repositoryTablesForSetJson(entry.file, tagVocabulary());
+    includeSet(tables.flatMap((table) => table.tags));
+    includeTables(tables, []);
   }
 
   return usage;

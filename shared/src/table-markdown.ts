@@ -32,7 +32,12 @@ function dieColumn(table: RollTable) {
 function rowCells(row: RollTableRow, columns: number) {
   const filled = [...row.cells];
   while (filled.length < columns) filled.push("");
-  return filled.slice(0, columns);
+  const cells = filled.slice(0, columns);
+  if (row.nextTableId && cells.length) {
+    const last = cells.length - 1;
+    cells[last] = `${cells[last]}${cells[last] ? " " : ""}<!-- next-table: ${row.nextTableId} -->`;
+  }
+  return cells;
 }
 
 /** The pipe table on its own: header, separator, and one line per row. */
@@ -84,6 +89,15 @@ export function spliceTable(markdown: string, table: RollTable): string {
 export function appendTable(markdown: string, table: RollTable, level = DEFAULT_HEADING_LEVEL): string {
   const body = markdown.replace(/\s*$/, "");
   return `${body ? `${body}\n\n` : ""}${serializeTable(table, level).join("\n").replace(/\n+$/, "")}\n`;
+}
+
+/** Retarget every stored row link after an editor rename changes a table's derived id. */
+export function retargetTableLinks(markdown: string, from: string, to: string) {
+  return markdown.replace(
+    /(<!--\s*next-table:\s*)([a-z0-9][a-z0-9-]*)(\s*-->)/gi,
+    (whole, start: string, id: string, end: string) =>
+      id.toLocaleLowerCase() === from.toLocaleLowerCase() ? `${start}${to}${end}` : whole
+  );
 }
 
 /**

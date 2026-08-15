@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { PackageOpen, Upload } from "lucide-react";
+import { Download, PackageOpen, Upload } from "lucide-react";
 import { api, download } from "./api";
 import type { Permissions } from "./session";
 
@@ -85,6 +85,20 @@ export function BundleTools({ permissions, onImported }: { permissions: Permissi
         <button type="button" onClick={() => download("/api/table-export", "devils-tables.zip")}>
           <PackageOpen size={15} aria-hidden /> Export all custom sets
         </button>
+        {permissions.canAdminister && (
+          <button
+            type="button"
+            title="JSON for raw/tables, plus a CLI importer that previews and confirms changes"
+            onClick={() => {
+              setError("");
+              download("/api/table-repo-export", "devils-tables-repository.zip").catch((cause: Error) =>
+                setError(cause.message)
+              );
+            }}
+          >
+            <Download size={15} aria-hidden /> Export for repository
+          </button>
+        )}
         {permissions.canEdit && (
           <label className="bundle-upload">
             <Upload size={15} aria-hidden /> Import a bundle

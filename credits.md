@@ -16,6 +16,10 @@ The Cairn and Monolith rules text this application serves, and data read out of 
 
 Cities Without Number was written by Kevin Crawford and released under [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/). The canonical HTML source and runtime Markdown derivative are included in `raw/`; all intentional differences are recorded in `raw/citieswithoutnumber-corrections.md`. For the original game, visit [Sine Nomine Publishing](https://sine-nomine-publishing.myshopify.com/).
 
+## Installed game systems
+
+An administrator may install additional data-only game systems. Those systems are not distributed by this repository and are not covered by the attributions above. Each bundle carries the licence declared by its source documents and preserves the source rules and corrections files supplied by its author. The server operator is responsible for confirming that the bundle may be stored and shared with its users.
+
 ## Software
 
 Application code is released under the MIT License. Fonts — Inter, DM Mono, and Unbounded — are installed through Fontsource under the SIL Open Font License 1.1. Third-party JavaScript dependency licences are available from their packages in `node_modules` after installation. `NOTICE.md` in the repository has the full breakdown.

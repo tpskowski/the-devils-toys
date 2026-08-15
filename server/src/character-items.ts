@@ -12,8 +12,10 @@ import monolithItems from "@devils-toys/system-monolith/items";
 import cairnTraits from "@devils-toys/system-cairn/traits";
 import cwnTraits from "@devils-toys/system-cwn/traits";
 import monolithTraits from "@devils-toys/system-monolith/traits";
+import fs from "node:fs";
 import { readPricedRows, splitPricedCell } from "./rules-tables.js";
 import { applyRoomOverlay } from "./room-items.js";
+import { itemCatalogFile, traitCatalogFile } from "./system-content.js";
 
 /** Reads socket names from parentheticals such as "2 Leg Sockets" or "Internal & Skin Sockets". */
 export function allowedSlotTypes(spec: string) {
@@ -107,9 +109,47 @@ const traitCatalogs: Record<SystemId, SystemTraitCatalog> = {
   cwn: cwnTraits as SystemTraitCatalog
 };
 
+/**
+ * An installed system's catalogues are read off disk instead, and cached.
+ *
+ * A compiled system's are inlined into the bundle by esbuild, which is why the
+ * runtime image carries no `items.json` — see `AGENTS.md`. An installed system
+ * arrived after the build, so there is nothing to inline and no choice but to
+ * read it. The two paths are kept apart so the built-in one stays exactly as it
+ * was, and so the Docker image needs nothing new.
+ */
+const installedCatalogs = new Map<SystemId, SystemItemCatalog>();
+const installedTraits = new Map<SystemId, SystemTraitCatalog>();
+
+export function forgetInstalledCatalogs(system?: SystemId) {
+  if (system === undefined) {
+    installedCatalogs.clear();
+    installedTraits.clear();
+    return;
+  }
+  installedCatalogs.delete(system);
+  installedTraits.delete(system);
+}
+
+function readJsonCatalog<T>(file: string, cache: Map<SystemId, T>, system: SystemId): T {
+  const cached = cache.get(system);
+  if (cached) return cached;
+  const parsed = JSON.parse(fs.readFileSync(file, "utf8")) as T;
+  cache.set(system, parsed);
+  return parsed;
+}
+
+function itemCatalogOf(system: SystemId): SystemItemCatalog {
+  return catalogs[system] ?? readJsonCatalog(itemCatalogFile(system), installedCatalogs, system);
+}
+
+function traitCatalogOf(system: SystemId): SystemTraitCatalog {
+  return traitCatalogs[system] ?? readJsonCatalog(traitCatalogFile(system), installedTraits, system);
+}
+
 /** The definitions behind the words written on a system's weapons. */
 export function itemTraitsFor(system: SystemId) {
-  return traitCatalogs[system].traits;
+  return traitCatalogOf(system).traits;
 }
 
 /**
@@ -120,7 +160,7 @@ export function itemTraitsFor(system: SystemId) {
  * the system's catalogue is what it has always been.
  */
 export function characterItemsFor(system: SystemId, roomId?: number) {
-  return applyRoomOverlay(catalogs[system].lists, roomId);
+  return applyRoomOverlay(itemCatalogOf(system).lists, roomId);
 }
 
 /** One item wherever it sits, for anything holding an id rather than a slot's text. */

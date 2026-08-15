@@ -1,7 +1,8 @@
 import fs from "node:fs";
 import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import { BUILTIN_TABLE_TAGS, defaultTagLabel, serializeSet, SYSTEM_IDS, THEME_IDS } from "@devils-toys/shared";
+import { BUILTIN_TABLE_TAGS, defaultTagLabel, serializeSet, THEME_IDS } from "@devils-toys/shared";
+import { builtinSystems } from "./builtin-systems.js";
 import { config } from "./config.js";
 
 fs.mkdirSync(config.dataDir, { recursive: true });
@@ -13,12 +14,42 @@ export const db = new DatabaseSync(path.join(config.dataDir, "devils-toys.sqlite
 // waits its turn instead of failing the request outright.
 db.exec("PRAGMA busy_timeout = 5000; PRAGMA foreign_keys = ON; PRAGMA journal_mode = WAL;");
 
-const systemCheckList = SYSTEM_IDS.map((system) => `'${system}'`).join(",");
 const themeCheckList = THEME_IDS.map((theme) => `'${theme}'`).join(",");
+
+/**
+ * Every system this server has, compiled in or installed by an admin. It exists
+ * so an installed system has somewhere to be recorded, and so a room can point
+ * at a row rather than at a string nothing vouches for.
+ *
+ * A built-in's row is upserted on every start and never deleted: rooms reference
+ * it, and a build that drops a system should leave those rooms readable rather
+ * than orphaned. `retired` hides a system from room creation without touching
+ * the rooms already on it.
+ */
+const systemsColumns = `
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    origin TEXT NOT NULL CHECK(origin IN ('builtin','installed')),
+    retired INTEGER NOT NULL DEFAULT 0,
+    manifest_json TEXT NOT NULL DEFAULT '{}',
+    installed_by INTEGER REFERENCES accounts(id) ON DELETE SET NULL,
+    installed_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP`;
+/**
+ * `system` carries no CHECK. It used to list the compiled systems, which meant a
+ * system added to the application rejected every room made on it until the table
+ * had been rebuilt — and an installed system, whose id nothing can know in
+ * advance, could never be listed at all. The registry validates the id on the way
+ * in instead (`systemIdSchema`), which is where a system this server does not
+ * have belongs: in a 400 naming it, not in a constraint violation.
+ *
+ * It does carry a foreign key, which is the part a CHECK could never do: it is
+ * what makes deleting a system in use impossible rather than merely discouraged.
+ */
 const roomsColumns = `
     id INTEGER PRIMARY KEY,
     name TEXT NOT NULL,
-    system TEXT NOT NULL CHECK(system IN (${systemCheckList})),
+    system TEXT NOT NULL REFERENCES systems(id),
     theme TEXT NOT NULL CHECK(theme IN (${themeCheckList})),
     archived INTEGER NOT NULL DEFAULT 0,
     calendar_enabled INTEGER NOT NULL DEFAULT 0,
@@ -73,6 +104,20 @@ const portraitColumns = `
     portrait_mime_type TEXT,
     portrait_size INTEGER`;
 
+/**
+ * Declared here rather than inline so the migration that gives `system` its
+ * reference to the registry derives its replacement table from the same text
+ * the schema does. `system` had no constraint of any kind before this.
+ */
+const charactersColumns = `
+    id INTEGER PRIMARY KEY,
+    system TEXT NOT NULL REFERENCES systems(id),
+    owner_account_id INTEGER REFERENCES accounts(id) ON DELETE SET NULL,
+    pool_room_id INTEGER REFERENCES rooms(id) ON DELETE SET NULL,
+    name TEXT NOT NULL,
+    sheet_json TEXT NOT NULL DEFAULT '{}',${portraitColumns},
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP`;
+
 db.exec(`
   CREATE TABLE IF NOT EXISTS accounts (
     id INTEGER PRIMARY KEY,
@@ -88,6 +133,8 @@ db.exec(`
     expires_at TEXT NOT NULL,
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
   );
+  CREATE TABLE IF NOT EXISTS systems (${systemsColumns}
+  );
   CREATE TABLE IF NOT EXISTS rooms (${roomsColumns}
   );
   CREATE TABLE IF NOT EXISTS memberships (
@@ -97,18 +144,7 @@ db.exec(`
     active_character_id INTEGER,
     PRIMARY KEY(room_id, account_id)
   );
-  CREATE TABLE IF NOT EXISTS characters (
-    id INTEGER PRIMARY KEY,
-    system TEXT NOT NULL,
-    owner_account_id INTEGER REFERENCES accounts(id) ON DELETE SET NULL,
-    pool_room_id INTEGER REFERENCES rooms(id) ON DELETE SET NULL,
-    name TEXT NOT NULL,
-    sheet_json TEXT NOT NULL DEFAULT '{}',
-    portrait_filename TEXT,
-    portrait_stored_name TEXT,
-    portrait_mime_type TEXT,
-    portrait_size INTEGER,
-    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+  CREATE TABLE IF NOT EXISTS characters (${charactersColumns}
   );
   CREATE TABLE IF NOT EXISTS messages (
     id INTEGER PRIMARY KEY,
@@ -313,6 +349,36 @@ db.exec(`
     ON encounter_combatants (encounter_id, hireling_id) WHERE hireling_id IS NOT NULL;
 `);
 
+/**
+ * Fill the registry before anything is asked to point at it.
+ *
+ * A compiled system's row is written on every start, so a rename in the code
+ * reaches the database and a system added to a build appears without ceremony.
+ * Rows are never deleted here: a room may be on a system this build no longer
+ * ships, and that room should still open.
+ *
+ * Any system id already recorded against a room or a character but not compiled
+ * in gets a row too, retired, so that adding the foreign key below cannot fail
+ * on a database whose rooms outlived their system.
+ */
+const upsertBuiltinSystem = db.prepare(
+  `INSERT INTO systems (id, name, origin) VALUES (?, ?, 'builtin')
+   ON CONFLICT(id) DO UPDATE SET name = excluded.name, origin = 'builtin', updated_at = CURRENT_TIMESTAMP`
+);
+for (const [id, definition] of Object.entries(builtinSystems)) upsertBuiltinSystem.run(id, definition.name);
+
+for (const { system } of db
+  .prepare(
+    `SELECT DISTINCT system FROM rooms
+     UNION SELECT DISTINCT system FROM characters`
+  )
+  .all() as { system: string }[]) {
+  db.prepare("INSERT OR IGNORE INTO systems (id, name, origin, retired) VALUES (?, ?, 'installed', 1)").run(
+    system,
+    system
+  );
+}
+
 function hasColumn(table: string, column: string) {
   return (db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[]).some((item) => item.name === column);
 }
@@ -325,14 +391,29 @@ function tableExists(table: string) {
   return Boolean(storedSchema(table));
 }
 
-// A system or theme added after a database was created is still rejected by the
-// older CHECK constraint, so rebuild rooms whenever its recorded schema is stale.
+/**
+ * Rebuild `rooms` when its recorded schema is stale in any of three ways: a
+ * theme added since the database was made is still rejected by the older CHECK,
+ * `system` still carries a CHECK at all, or `system` does not yet point at the
+ * registry.
+ *
+ * The system constraint is dropped rather than widened. It listed the compiled
+ * systems, so every release that added one required this rebuild — and an
+ * installed system could never be listed, because its id is not known until an
+ * admin uploads it. What replaces it is a foreign key, which answers the
+ * question the CHECK could not: whether a system may be deleted.
+ *
+ * Each condition is read from the stored schema, which is what makes this
+ * idempotent — once the constraint is gone and the reference is there, none of
+ * the three can match again.
+ */
 const roomsSchema =
   one<{ sql: string }>("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'rooms'")?.sql ?? "";
+const roomsConstrainsSystem = /CHECK\s*\(\s*system\s+IN/i.test(roomsSchema);
+const roomsReferencesSystems = /system\s+TEXT[^,]*REFERENCES\s+systems/i.test(roomsSchema);
 if (
   roomsSchema &&
-  (SYSTEM_IDS.some((system) => !roomsSchema.includes(`'${system}'`)) ||
-    THEME_IDS.some((theme) => !roomsSchema.includes(`'${theme}'`)))
+  (roomsConstrainsSystem || !roomsReferencesSystems || THEME_IDS.some((theme) => !roomsSchema.includes(`'${theme}'`)))
 ) {
   const preservedColumns = [
     "id",
@@ -356,6 +437,44 @@ if (
              SELECT ${preservedColumns.join(", ")} FROM rooms`);
     db.exec("DROP TABLE rooms");
     db.exec("ALTER TABLE rooms_rebuilt RENAME TO rooms");
+    db.exec("COMMIT");
+  } catch (cause) {
+    db.exec("ROLLBACK");
+    throw cause;
+  } finally {
+    db.exec("PRAGMA foreign_keys = ON");
+  }
+}
+
+/**
+ * Give `characters.system` the same reference. It has never carried a constraint
+ * of any kind, so a character could be recorded against a system that was never
+ * installed and nothing would notice until its sheet failed to render.
+ */
+const charactersSchema = storedSchema("characters");
+if (charactersSchema && !/system\s+TEXT[^,]*REFERENCES\s+systems/i.test(charactersSchema)) {
+  const preservedColumns = [
+    "id",
+    "system",
+    "owner_account_id",
+    "pool_room_id",
+    "name",
+    "sheet_json",
+    "portrait_filename",
+    "portrait_stored_name",
+    "portrait_mime_type",
+    "portrait_size",
+    "updated_at"
+  ].filter((column) => hasColumn("characters", column));
+  db.exec("PRAGMA foreign_keys = OFF");
+  db.exec("BEGIN IMMEDIATE");
+  try {
+    db.exec(`CREATE TABLE characters_rebuilt (${charactersColumns}
+    )`);
+    db.exec(`INSERT INTO characters_rebuilt (${preservedColumns.join(", ")})
+             SELECT ${preservedColumns.join(", ")} FROM characters`);
+    db.exec("DROP TABLE characters");
+    db.exec("ALTER TABLE characters_rebuilt RENAME TO characters");
     db.exec("COMMIT");
   } catch (cause) {
     db.exec("ROLLBACK");
