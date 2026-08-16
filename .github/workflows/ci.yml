@@ -27,3 +27,13 @@ jobs:
       - run: npm test
       - run: npm run build
       - run: npm run smoke
+      # Nothing ran this until now, which is how three of its assertions came to
+      # be describing an interface that had moved on. It starts its own server.
+      - run: npm run playwright:install
+      - run: npm run test:e2e
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7

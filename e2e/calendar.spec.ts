@@ -74,7 +74,9 @@ test("GM configures shared calendar and persistent map notation", async ({ page 
 
   await expect(page.getByRole("heading", { name: "Thawrise · Day 14" })).toBeVisible();
   await expect(page.getByText("Year 803")).toBeVisible();
-  await expect(page.getByText("Dawn", { exact: true })).toBeVisible();
+  // The segment carries its position as well as its name, so this is the whole
+  // label rather than just "Dawn".
+  await expect(page.getByText("Dawn · 1 of 3", { exact: true })).toBeVisible();
   await expect(page.getByText("Founding Feast")).toBeVisible();
   await expect(page.getByText("Market Day").first()).toBeVisible();
   await page.waitForTimeout(500); // Let the room-opening animation release its temporary containing block.
@@ -86,7 +88,7 @@ test("GM configures shared calendar and persistent map notation", async ({ page 
   ]);
   const advancedDetail = await page.request.get(`/api/rooms/${roomId}`);
   expect((await advancedDetail.json()).room.calendar.segment).toBe(1);
-  await expect(page.getByText("Noon", { exact: true })).toBeVisible();
+  await expect(page.getByText("Noon · 2 of 3", { exact: true })).toBeVisible();
 
   await page.getByTitle("Configure calendar").click();
   await expect(page.getByRole("heading", { name: "Holidays & recurring events" })).toBeVisible();
@@ -106,7 +108,9 @@ test("GM configures shared calendar and persistent map notation", async ({ page 
     page.waitForResponse((response) => response.url().endsWith(`/api/rooms/${roomId}/maps/${mapId}/notations`)),
     page.mouse.up()
   ]);
-  await expect(page.locator(".map-notation-layer polyline")).toHaveCount(1);
+  // Only the saved notations: the layer also holds a draft polyline at all times,
+  // which is what a line being drawn is rendered into.
+  await expect(page.locator(".map-notation-layer polyline[data-notation-id]")).toHaveCount(1);
   const saved = await page.request.get(`/api/rooms/${roomId}/maps/${mapId}/notations`);
   expect((await saved.json()).notations).toHaveLength(1);
   const invitation = await page.request.post(`/api/rooms/${roomId}/invitations`, {
