@@ -1,42 +1,54 @@
 import { describe, expect, it } from "vitest";
 import type { SystemTraitCatalog } from "@devils-toys/shared";
-import { BUILTIN_SYSTEM_IDS, describeTraits, findTrait, traitKeys, traitSummary } from "@devils-toys/shared";
+import { describeTraits, findTrait, traitKeys, traitSummary } from "@devils-toys/shared";
 import { mergeTraits, readTraitCatalog, traitsFromRulebook } from "./trait-catalog.js";
 import { characterItemsFor, itemTraitsFor } from "./character-items.js";
+import { installToybox } from "./test-fixture.js";
+
+installToybox();
 
 describe("reading what a book says its words mean", () => {
-  const monolith = traitsFromRulebook("monolith");
-  const trait = (id: string) => monolith.traits.find((entry) => entry.id === id);
+  const book = traitsFromRulebook("toybox");
+  const trait = (id: string) => book.traits.find((entry) => entry.id === id);
 
   it("takes every definition under the headings the system names", () => {
-    expect(trait("thermal")).toEqual({
-      id: "thermal",
-      label: "Thermal",
-      description: "DEX Save or take 1D4 heat damage for 1D4 rounds.",
-      category: "DAMAGE TYPES"
+    expect(trait("thrown")).toEqual({
+      id: "thrown",
+      label: "Thrown",
+      description: "May be used at range once, and is then wherever it landed.",
+      category: "Gear Properties"
     });
   });
 
   it("keeps a condition apart from what the trait does", () => {
-    // "- **Sweep:** (Bulky) Long weapons that allow a second attack…"
+    // "- **Sweep:** (Bulky) Long weapons that reach a second adjacent enemy…"
     expect(trait("sweep")).toMatchObject({
       appliesTo: "Bulky",
-      description: "Long weapons that allow a second attack on an adjacent opponent."
+      description: "Long weapons that reach a second adjacent enemy on a hit."
     });
   });
 
-  it("reads nothing from a book that defines its words in prose alone", () => {
-    // Cairn states bulk in a sentence, not a definition list, so the catalogue's
-    // own entry is the only one there is.
-    expect(traitsFromRulebook("cairn").traits).toEqual([]);
-    expect(findTrait(itemTraitsFor("cairn"), "bulky")).toMatchObject({ label: "Bulky" });
+  it("reads an abbreviation as part of the label, not as a separate trait", () => {
+    expect(trait("armour-piercing-ap")?.label).toBe("Armour Piercing (AP)");
+    expect(book.traits.filter((entry) => entry.label.includes("Armour Piercing"))).toHaveLength(1);
+  });
+
+  it("records which book it read, so a catalogue can be traced to a source", () => {
+    expect(book).toMatchObject({ system: "toybox", source: "Toybox.md" });
+  });
+
+  it("takes nothing the book does not state in a definition list", () => {
+    // Prose is not a definition. A word stated only in a sentence has to be
+    // written into the catalogue by hand, and stays there.
+    expect(book.traits.map((entry) => entry.id)).not.toContain("deprived");
+    expect(findTrait(itemTraitsFor("toybox"), "bulky")).toMatchObject({ label: "Bulky" });
   });
 });
 
 describe("keeping a trait catalogue", () => {
   const catalog = (traits: SystemTraitCatalog["traits"]): SystemTraitCatalog => ({
-    system: "monolith",
-    source: "Monolith.md",
+    system: "toybox",
+    source: "Toybox.md",
     traits
   });
 
@@ -71,28 +83,28 @@ describe("keeping a trait catalogue", () => {
 });
 
 describe("matching a word on an item to its definition", () => {
-  const traits = itemTraitsFor("monolith");
+  const traits = itemTraitsFor("toybox");
 
   it("finds a trait however the armoury happens to write it", () => {
-    expect(findTrait(traits, "Thermal")?.id).toBe("thermal");
-    expect(findTrait(traits, "thermal")?.id).toBe("thermal");
-    // "Armor Piercing (AP)" is written both ways in the book.
-    expect(findTrait(traits, "AP")?.id).toBe("armor-piercing-ap");
-    expect(findTrait(traits, "Armor Piercing")?.id).toBe("armor-piercing-ap");
-    expect(traitKeys({ id: "armor-piercing-ap", label: "Armor Piercing (AP)" })).toContain("ap");
+    expect(findTrait(traits, "Thrown")?.id).toBe("thrown");
+    expect(findTrait(traits, "thrown")?.id).toBe("thrown");
+    // "Armour Piercing (AP)" is the sort of label a book writes both ways.
+    expect(findTrait(traits, "AP")?.id).toBe("armour-piercing-ap");
+    expect(findTrait(traits, "Armour Piercing")?.id).toBe("armour-piercing-ap");
+    expect(traitKeys({ id: "armour-piercing-ap", label: "Armour Piercing (AP)" })).toContain("ap");
   });
 
   it("keeps a word nobody defined, since players write their own", () => {
     expect(findTrait(traits, "sticky")).toBeUndefined();
-    expect(describeTraits(["thermal", "sticky"], traits)).toEqual([
-      { written: "thermal", summary: traitSummary(findTrait(traits, "thermal")!) },
+    expect(describeTraits(["thrown", "sticky"], traits)).toEqual([
+      { written: "thrown", summary: traitSummary(findTrait(traits, "thrown")!) },
       { written: "sticky", summary: "sticky" }
     ]);
   });
 
   it("says what a trait is in one line, condition and all", () => {
     expect(traitSummary(findTrait(traits, "sweep")!)).toBe(
-      "Sweep — Bulky — Long weapons that allow a second attack on an adjacent opponent."
+      "Sweep — Bulky — Long weapons that reach a second adjacent enemy on a hit."
     );
   });
 });
@@ -102,16 +114,14 @@ describe("what the catalogues actually carry", () => {
     // Not every word in a parenthetical is a trait — "must spend a round
     // reloading" is a sentence — so this reports rather than demands. It exists
     // to notice a word the book defines that the catalogue somehow missed.
-    for (const system of BUILTIN_SYSTEM_IDS) {
-      const traits = itemTraitsFor(system);
-      const written = new Set<string>();
-      for (const items of Object.values(characterItemsFor(system)))
-        for (const item of items) for (const word of item.traits ?? []) written.add(word);
-      const defined = [...written].filter((word) => findTrait(traits, word));
-      // Monolith writes damage types and properties beside its weapons; a system
-      // with no priced tables yet has nothing to check.
-      if (system === "monolith") expect(defined.length).toBeGreaterThan(3);
-      expect(readTraitCatalog(system).traits).toEqual(traits);
-    }
+    const traits = itemTraitsFor("toybox");
+    const written = new Set<string>();
+    for (const items of Object.values(characterItemsFor("toybox")))
+      for (const item of items) for (const word of item.traits ?? []) written.add(word);
+    const defined = [...written].filter((word) => findTrait(traits, word));
+
+    expect(written.size).toBeGreaterThan(0);
+    expect(defined.length).toBeGreaterThanOrEqual(2);
+    expect(readTraitCatalog("toybox").traits).toEqual(traits);
   });
 });

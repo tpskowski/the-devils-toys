@@ -1,21 +1,43 @@
-import fs from "node:fs";
 import { describe, expect, it } from "vitest";
 import { parseStarshipParts } from "./starship-parts.js";
-import { projectFile } from "./paths.js";
 
-const monolith = fs.readFileSync(projectFile("raw", "Monolith.md"), "utf8");
-const parts = parseStarshipParts(monolith);
+/**
+ * Reading a ship's parts out of a priced table.
+ *
+ * The corpus used to be Monolith's STARSHIP PARTS section, read from
+ * `raw/Monolith.md`. That book has a repository of its own now, so the tables
+ * below carry one row for each thing this parser has to get right: a plain part,
+ * one whose name and effect are split across a bolded run, the bolded-name-with-
+ * colon shape the quarters tables use, a free part, and nested parentheses.
+ */
+const book = `# A Book
+
+# STARSHIP PARTS
+
+| WEAPON MODULES | COST |
+| --- | --- |
+| Flak Cannon (D4) Standard weapon, front-facing pilot use only. | Free |
+| Auto-Gun (D6) Most common starship weaponry. | 500 |
+| **Hellfire Turret (D8) Critical Effect:** Overheat (Engineer loses next turn.) | 1,500 |
+| Ultra-Hot Chaingun (D10, Bulky) | 2,000 |
+
+| HULL MODULES | COST |
+| --- | --- |
+| Neutron Titanium Husk (+2 HUL, bulky) | 1,800 |
+| Unstable Shield-Gen (1D6 SHI, re-roll every time shields recharge.) | 900 |
+
+| QUARTERS | COST |
+| --- | --- |
+| **Crew Quarters:** Rest comfortably on the ship (6 persons per crew quarter) | 300 |
+| **Smuggling Compartments:** Carry 4 trade goods in a single hold (hidden). | 2,000 |
+`;
+
+const parts = parseStarshipParts(book);
 
 describe("reading a system's starship parts", () => {
   it("collects every parts table under the heading", () => {
-    expect([...new Set(parts.map((part) => part.category))]).toEqual([
-      "WEAPON MODULES",
-      "HULL MODULES",
-      "ENGINE MODULES",
-      "SYSTEM MODULES",
-      "QUARTERS"
-    ]);
-    expect(parts.length).toBeGreaterThan(40);
+    expect([...new Set(parts.map((part) => part.category))]).toEqual(["WEAPON MODULES", "HULL MODULES", "QUARTERS"]);
+    expect(parts).toHaveLength(8);
   });
 
   it("splits a part into its name, the book's parenthetical, and the rest", () => {
@@ -38,15 +60,9 @@ describe("reading a system's starship parts", () => {
   });
 
   it("marks the parts the book calls bulky, however it is capitalised", () => {
-    const bulky = parts.filter((part) => part.bulky).map((part) => part.name);
-    expect(bulky).toEqual([
-      "Emerald Star Particle Array",
+    expect(parts.filter((part) => part.bulky).map((part) => part.name)).toEqual([
       "Ultra-Hot Chaingun",
-      "Disintegrator Beam",
-      "Nanobot Veil Generator",
-      "Neutron Titanium Husk",
-      "Condensed Power Supply",
-      "Quantum Operating System"
+      "Neutron Titanium Husk"
     ]);
   });
 
@@ -73,6 +89,6 @@ describe("reading a system's starship parts", () => {
   });
 
   it("returns nothing when a system has no parts list", () => {
-    expect(parseStarshipParts("# Cairn\n\nNo starships here.")).toEqual([]);
+    expect(parseStarshipParts("# Toybox\n\nNo starships here.")).toEqual([]);
   });
 });

@@ -106,12 +106,42 @@ export function loadInstalledSystems() {
   for (const id of onDisk) if (!systemRow(id)) logger.warn("System content has no registry row", { system: id });
 }
 
+/**
+ * Brings a second process's registry up to date with the database.
+ *
+ * The Devil's Tables runs on its own port against the same database and builds
+ * its registry once, at start. That was harmless while every system was compiled
+ * in — both processes had the same three, always. Now that an admin installs one
+ * into a running server, the editor would go on listing what it had at start
+ * until someone restarted it.
+ *
+ * The check is a count and the latest timestamp, so the common case costs one
+ * cheap query and the reload only happens when the registry has actually moved.
+ */
+let registrySignature = "";
+
+export function refreshInstalledSystems() {
+  const row = one<{ count: number; latest: string | null }>(
+    "SELECT COUNT(*) AS count, MAX(updated_at) AS latest FROM systems"
+  );
+  const signature = `${row?.count ?? 0}:${row?.latest ?? ""}`;
+  if (signature === registrySignature) return false;
+  registrySignature = signature;
+  loadInstalledSystems();
+  return true;
+}
+
 export function recordInstalledSystem(input: { id: string; name: string; manifest: unknown; installedBy: number }) {
   db.prepare(
     `INSERT INTO systems (id, name, origin, retired, manifest_json, installed_by)
      VALUES (?, ?, 'installed', 0, ?, ?)
      ON CONFLICT(id) DO UPDATE SET
        name = excluded.name,
+       -- Also the origin. A row left over from when this system shipped inside
+       -- the application still says 'builtin', and installing over it without
+       -- correcting that would work until the next restart and then stop:
+       -- 'loadInstalledSystems' only loads what is marked installed.
+       origin = 'installed',
        manifest_json = excluded.manifest_json,
        installed_by = excluded.installed_by,
        updated_at = CURRENT_TIMESTAMP`

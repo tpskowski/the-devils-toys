@@ -1,16 +1,18 @@
 import { describe, expect, it } from "vitest";
 import type { CharacterItem, SystemItemCatalog } from "@devils-toys/shared";
-import { BUILTIN_SYSTEM_IDS } from "@devils-toys/shared";
 import { catalogFromRulebook, mergeCatalog, readItemCatalog, seedItemCatalog } from "./item-catalog.js";
 import { characterItem, characterItemsFor } from "./character-items.js";
+import { installToybox } from "./test-fixture.js";
+
+installToybox();
 
 function catalog(items: Partial<CharacterItem>[]): SystemItemCatalog {
   return {
-    system: "monolith",
-    source: "Monolith.md",
+    system: "toybox",
+    source: "Toybox.md",
     lists: {
       equipment: items.map((item) => ({
-        id: "monolith/thing",
+        id: "toybox/thing",
         category: "GEAR",
         name: "Thing",
         spec: "",
@@ -29,8 +31,8 @@ describe("seeding a catalogue from a rulebook", () => {
   // The rule the whole arrangement rests on: the book seeds the catalogue once
   // and never again decides what is in it.
   it("keeps an entry the catalogue already holds, however the book reads it", () => {
-    const edited = catalog([{ id: "monolith/knife", name: "Knife", weapon: true, damage: "d8", traits: ["silenced"] }]);
-    const book = catalog([{ id: "monolith/knife", name: "Knife", weapon: false }]);
+    const edited = catalog([{ id: "toybox/knife", name: "Knife", weapon: true, damage: "d8", traits: ["silenced"] }]);
+    const book = catalog([{ id: "toybox/knife", name: "Knife", weapon: false }]);
 
     const { catalog: merged, added } = mergeCatalog(edited, book);
     expect(added).toEqual([]);
@@ -41,40 +43,40 @@ describe("seeding a catalogue from a rulebook", () => {
     // The book still prices "Heavy Weapons"; the catalogue replaced that one row
     // with the two weapons its own description names, and means it.
     const existing = {
-      ...catalog([{ id: "monolith/mini-gun", name: "Mini Gun" }]),
-      retired: ["monolith/heavy-weapons"]
+      ...catalog([{ id: "toybox/mini-gun", name: "Mini Gun" }]),
+      retired: ["toybox/heavy-weapons"]
     };
     const book = catalog([
-      { id: "monolith/heavy-weapons", name: "Heavy Weapons" },
+      { id: "toybox/heavy-weapons", name: "Heavy Weapons" },
       { id: "monolith/rifle", name: "Rifle" }
     ]);
 
     const { catalog: merged, added } = mergeCatalog(existing, book);
     expect(added).toEqual(["monolith/rifle"]);
-    expect(merged.lists.equipment.map((item) => item.id)).toEqual(["monolith/mini-gun", "monolith/rifle"]);
-    expect(merged.retired).toEqual(["monolith/heavy-weapons"]);
+    expect(merged.lists.equipment.map((item) => item.id)).toEqual(["toybox/mini-gun", "monolith/rifle"]);
+    expect(merged.retired).toEqual(["toybox/heavy-weapons"]);
   });
 
   it("takes only the entries the catalogue has never seen", () => {
-    const existing = catalog([{ id: "monolith/knife", name: "Knife" }]);
+    const existing = catalog([{ id: "toybox/knife", name: "Knife" }]);
     const book = catalog([
-      { id: "monolith/knife", name: "Knife", cost: "999" },
+      { id: "toybox/knife", name: "Knife", cost: "999" },
       { id: "monolith/rifle", name: "Rifle", weapon: true, damage: "D8" }
     ]);
 
     const { catalog: merged, added } = mergeCatalog(existing, book);
     expect(added).toEqual(["monolith/rifle"]);
-    expect(merged.lists.equipment.map((item) => item.id)).toEqual(["monolith/knife", "monolith/rifle"]);
+    expect(merged.lists.equipment.map((item) => item.id)).toEqual(["toybox/knife", "monolith/rifle"]);
     // The one it already had keeps its own cost, not the book's.
     expect(merged.lists.equipment[0].cost).toBe("1");
   });
 
   it("never drops an entry the book stopped offering, and says so", () => {
     const existing = catalog([
-      { id: "monolith/knife", name: "Knife" },
+      { id: "toybox/knife", name: "Knife" },
       { id: "monolith/homebrew-axe", name: "Homebrew Axe", weapon: true }
     ]);
-    const book = catalog([{ id: "monolith/knife", name: "Knife" }]);
+    const book = catalog([{ id: "toybox/knife", name: "Knife" }]);
 
     const { catalog: merged, unmatched } = mergeCatalog(existing, book);
     expect(unmatched).toEqual(["monolith/homebrew-axe"]);
@@ -82,79 +84,72 @@ describe("seeding a catalogue from a rulebook", () => {
   });
 
   it("adds nothing on a second run", () => {
-    const book = catalog([{ id: "monolith/knife", name: "Knife" }]);
+    const book = catalog([{ id: "toybox/knife", name: "Knife" }]);
     const once = mergeCatalog(catalog([]), book);
     const twice = mergeCatalog(once.catalog, book);
     expect(twice.added).toEqual([]);
     expect(twice.catalog).toEqual(once.catalog);
   });
 
-  it.each(BUILTIN_SYSTEM_IDS)("has nothing new to fold into %s today", (system) => {
-    const { added, catalog: merged } = seedItemCatalog(system);
+  it("has nothing new to fold into the committed catalogue today", () => {
+    const { added, catalog: merged } = seedItemCatalog("toybox");
     expect(added).toEqual([]);
-    expect(merged).toEqual(readItemCatalog(system));
+    expect(merged).toEqual(readItemCatalog("toybox"));
   });
 });
 
-describe("the committed item catalogues", () => {
-  it.each(BUILTIN_SYSTEM_IDS)("is what %s serves at runtime", (system) => {
-    expect(characterItemsFor(system)).toEqual(readItemCatalog(system).lists);
+describe("the committed item catalogue", () => {
+  it("is what the system serves at runtime", () => {
+    expect(characterItemsFor("toybox")).toEqual(readItemCatalog("toybox").lists);
   });
 
   it("gives every item an id that is unique within its system", () => {
-    for (const system of BUILTIN_SYSTEM_IDS) {
-      const items = Object.values(readItemCatalog(system).lists).flat();
-      const ids = items.map((item) => item.id);
-      expect(new Set(ids).size).toBe(ids.length);
-      expect(ids.every((id) => id.startsWith(`${system}/`))).toBe(true);
-    }
+    const items = Object.values(readItemCatalog("toybox").lists).flat();
+    const ids = items.map((item) => item.id);
+    expect(new Set(ids).size).toBe(ids.length);
+    expect(ids.every((id) => id.startsWith("toybox/"))).toBe(true);
   });
 
   it("looks an item up by the id it was seeded with", () => {
-    expect(characterItem("monolith", "monolith/rifle")).toMatchObject({ name: "Rifle", weapon: true, damage: "D8" });
-    expect(characterItem("monolith", "monolith/medkit")).toMatchObject({ name: "Medkit", weapon: false });
-    expect(characterItem("monolith", "monolith/no-such-thing")).toBeUndefined();
+    expect(characterItem("toybox", "toybox/longblade")).toMatchObject({
+      name: "Longblade",
+      weapon: true,
+      damage: "d8"
+    });
+    expect(characterItem("toybox", "toybox/lantern")).toMatchObject({ name: "Lantern", weapon: false });
+    expect(characterItem("toybox", "toybox/no-such-thing")).toBeUndefined();
   });
 
   it("holds a weapon the book itself does not describe as one", () => {
-    // The gland's damage sits in a second parenthetical, so the parser reads it
-    // as ordinary gear. The catalogue says otherwise, and the catalogue wins —
-    // which is the arrangement working, not a discrepancy to reconcile.
-    const seeded = catalogFromRulebook("monolith").lists.augmentations.find((item) => item.name === "Basilisk Gland");
+    // The fixture's book prices a crowbar as a tool with no die, so the parser
+    // reads it as ordinary gear. The catalogue says otherwise, and the catalogue
+    // wins — the arrangement working, not a discrepancy to reconcile.
+    const seeded = catalogFromRulebook("toybox").lists.inventory.find((item) => item.name === "Crowbar");
     expect(seeded?.weapon).toBe(false);
-    expect(characterItem("monolith", "monolith/basilisk-gland")).toMatchObject({
-      name: "Basilisk Gland",
+    expect(characterItem("toybox", "toybox/crowbar")).toMatchObject({
+      name: "Crowbar",
       weapon: true,
-      damage: "1D8"
+      damage: "d6"
     });
   });
 
-  it("records what Monolith's gear is, so a change to it has to be deliberate", () => {
-    const lists = readItemCatalog("monolith").lists;
-    // The book's two generic rows — "Heavy Weapons", "Stationary Weapons" — were
-    // retired in favour of the four weapons their own descriptions name, and the
-    // weapons the book only names in a background or a gear pack were added.
-    expect(lists.equipment).toHaveLength(127);
-    expect(lists.augmentations).toHaveLength(16);
-    expect(
-      Object.values(lists)
-        .flat()
-        .filter((item) => item.weapon)
-    ).toHaveLength(87);
-    expect(readItemCatalog("monolith").retired).toEqual([
-      "monolith/heavy-weapons",
-      "monolith/stationary-weapons",
-      // The armoury already prices a Shotgun with the same reach, and a
-      // Collapsible Baton is a Retractable Baton under another name.
-      "monolith/old-shotgun",
-      "monolith/collapsible-baton"
-    ]);
+  it("never brings back an id the catalogue has retired", () => {
+    const retired = readItemCatalog("toybox").retired ?? [];
+    expect(retired).toContain("toybox/bent-nail");
+    const ids = Object.values(readItemCatalog("toybox").lists)
+      .flat()
+      .map((item) => item.id);
+    for (const id of retired) expect(ids).not.toContain(id);
+    // And a reseed leaves it retired, which is the point of recording it.
+    expect(seedItemCatalog("toybox").added).toEqual([]);
   });
 
-  it("has nothing to say for the systems whose gear tables are not read yet", () => {
-    // Cairn's tables are priced under a "Price" column and CWN's weapons are not
-    // Markdown tables at all. Both are empty on purpose, not by accident.
-    expect(readItemCatalog("cairn").lists).toEqual({});
-    expect(readItemCatalog("cwn").lists).toEqual({});
+  it("is empty rather than absent for a system whose gear tables are not read", () => {
+    // A system may price its gear in a shape the parser does not read, or have no
+    // priced gear at all. Empty on purpose is a different thing from missing.
+    expect(catalogFromRulebook("toybox").lists.inventory.length).toBeGreaterThan(0);
+    expect(mergeCatalog(catalog([]), { system: "toybox", source: "Toybox.md", lists: {} }).catalog.lists).toEqual({
+      equipment: []
+    });
   });
 });

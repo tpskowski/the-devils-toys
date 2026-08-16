@@ -2,6 +2,9 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { all, db, one } from "./db.js";
 import { groupStateSchema, parseGroupState } from "./group.js";
 import { nextSortOrder, publicHireling, reorderRows, staleWrite, type SheetRow } from "./group-rows.js";
+import { installToybox } from "./test-fixture.js";
+
+installToybox();
 
 let roomId = 0;
 
@@ -10,7 +13,7 @@ beforeEach(() => {
   db.exec("DELETE FROM rooms; DELETE FROM accounts;");
   db.prepare("INSERT INTO accounts (id, username, password_hash, account_role) VALUES (1, 'GM', '', 'gm')").run();
   roomId = Number(
-    db.prepare("INSERT INTO rooms (name, system, theme, created_by) VALUES ('Table', 'monolith', 'grim', 1)").run()
+    db.prepare("INSERT INTO rooms (name, system, theme, created_by) VALUES ('Table', 'toybox', 'grim', 1)").run()
       .lastInsertRowid
   );
 });
@@ -75,7 +78,7 @@ describe("the roster as rows", () => {
 
   it("ignores an id from another room rather than refusing the whole reorder", () => {
     const otherRoom = Number(
-      db.prepare("INSERT INTO rooms (name, system, theme, created_by) VALUES ('Other', 'cairn', 'grim', 1)").run()
+      db.prepare("INSERT INTO rooms (name, system, theme, created_by) VALUES ('Other', 'toybox', 'grim', 1)").run()
         .lastInsertRowid
     );
     const mine = addHireling("Mine");

@@ -7,8 +7,7 @@
     "client",
     "tables-client",
     "server",
-    "shared",
-    "systems/*"
+    "shared"
   ],
   "scripts": {
     "dev": "concurrently -n client,server -c cyan,magenta \"npm:dev:client\" \"npm:dev:server\"",
@@ -21,19 +20,24 @@
     "test:e2e": "playwright test",
     "playwright:install": "playwright install --with-deps chromium",
     "format:check": "prettier --check .",
-    "tables:check": "tsx scripts/tables-md-to-json.ts --all --check",
+    "tables:check": "tsx scripts/tables-md-to-json.ts --repo fixtures/toybox --check",
+    "tables:build": "tsx scripts/tables-md-to-json.ts --repo",
     "smoke": "node scripts/smoke.mjs && node scripts/characters-smoke.mjs && node scripts/management-smoke.mjs && node scripts/capacity-smoke.mjs && node scripts/media-smoke.mjs && node scripts/audio-smoke.mjs && node scripts/npc-smoke.mjs && node scripts/dice-smoke.mjs && node scripts/tables-smoke.mjs && node scripts/tables-editor-smoke.mjs && node scripts/encounter-smoke.mjs && node scripts/group-smoke.mjs && node scripts/room-items-smoke.mjs && node scripts/playlist-smoke.mjs && node scripts/help-smoke.mjs && node scripts/room-config-smoke.mjs && node scripts/systems-smoke.mjs",
     "dev:tables-client": "npm run dev --workspace @devils-toys/tables-client",
     "dev:tables-server": "npm run dev:tables --workspace @devils-toys/server",
     "dev:tables": "concurrently -n tables-client,tables-server -c cyan,magenta \"npm:dev:tables-client\" \"npm:dev:tables-server\"",
     "start:tables": "npm run start:tables --workspace @devils-toys/server",
-    "build:items": "npm run build:items --workspace @devils-toys/server",
-    "build:traits": "npm run build:traits --workspace @devils-toys/server",
-    "build:items:merge": "npm run build:items --workspace @devils-toys/server -- --merge",
-    "build:traits:merge": "npm run build:traits --workspace @devils-toys/server -- --merge"
+    "systems:export": "npm run systems:export --workspace @devils-toys/server --",
+    "systems:validate": "npm run systems:validate --workspace @devils-toys/server --",
+    "systems:catalog": "npm run systems:catalog --workspace @devils-toys/server --",
+    "fixture:build": "npm run tables:build -- fixtures/toybox && npm run systems:catalog -- fixtures/toybox",
+    "systems:schema": "npm run systems:schema --workspace @devils-toys/server --",
+    "accounts": "npm run accounts --workspace @devils-toys/server --"
   },
   "devDependencies": {
     "@playwright/test": "^1.62.1",
+    "ajv": "^8.20.0",
+    "ajv-formats": "^3.0.1",
     "concurrently": "^9.2.0",
     "prettier": "^3.6.2",
     "tsx": "^4.23.1",

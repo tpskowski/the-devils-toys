@@ -1,7 +1,47 @@
 import { describe, expect, it } from "vitest";
-import { cairn } from "@devils-toys/system-cairn";
-import { monolith } from "@devils-toys/system-monolith";
-import { cwn } from "@devils-toys/system-cwn";
+import type { GameSystem } from "@devils-toys/shared";
+
+/**
+ * Save configurations, written out rather than borrowed from a system.
+ *
+ * These used to be `cairn.dice`, `monolith.dice`, and `cwn.dice`, read from the
+ * systems compiled into this repository. No system is, so each case now states
+ * the configuration it is testing — which is what a test of `evaluateSave`
+ * should have done anyway: the interesting thing is the shape, not whose it is.
+ */
+const rollUnder: GameSystem["dice"] = {
+  save: {
+    sides: 20,
+    success: "equal-or-under",
+    automaticSuccess: 1,
+    automaticFailure: 20,
+    types: [],
+    outcomes: { normal: { success: "Success", failure: "Failure" } }
+  }
+};
+
+const rollOver: GameSystem["dice"] = {
+  save: {
+    sides: 20,
+    success: "equal-or-over",
+    automaticSuccess: 20,
+    automaticFailure: 1,
+    types: [],
+    outcomes: { normal: { success: "Success", failure: "Failure" } }
+  }
+};
+
+/** Roll-under, and with advantage and disadvantage naming their own outcomes. */
+const withQualifiedOutcomes: GameSystem["dice"] = {
+  save: {
+    ...rollUnder.save,
+    outcomes: {
+      normal: { success: "Success", failure: "Failure" },
+      advantage: { success: "Enhanced success", failure: "Reduced failure" },
+      disadvantage: { success: "Mixed success", failure: "Disastrous failure" }
+    }
+  }
+};
 import { evaluateCheck, evaluateSave, parseRollCommand, rollDice } from "./dice.js";
 
 function sequence(...values: number[]) {
@@ -72,35 +112,35 @@ describe("dice expressions", () => {
 
 describe("system saves", () => {
   it("applies roll-under saves and automatic 1/20 outcomes", () => {
-    expect(evaluateSave(12, 12, "normal", cairn.dice).passed).toBe(true);
-    expect(evaluateSave(1, 1, "normal", cairn.dice).passed).toBe(true);
-    expect(evaluateSave(20, 20, "normal", cairn.dice).passed).toBe(false);
+    expect(evaluateSave(12, 12, "normal", rollUnder).passed).toBe(true);
+    expect(evaluateSave(1, 1, "normal", rollUnder).passed).toBe(true);
+    expect(evaluateSave(20, 20, "normal", rollUnder).passed).toBe(false);
   });
 
-  it("uses Monolith ADV and DIS to change outcome quality without changing the roll", () => {
-    expect(evaluateSave(8, 10, "advantage", monolith.dice)).toMatchObject({
+  it("uses ADV and DIS to change outcome quality without changing the roll", () => {
+    expect(evaluateSave(8, 10, "advantage", withQualifiedOutcomes)).toMatchObject({
       passed: true,
       label: "Enhanced success"
     });
-    expect(evaluateSave(18, 10, "advantage", monolith.dice)).toMatchObject({
+    expect(evaluateSave(18, 10, "advantage", withQualifiedOutcomes)).toMatchObject({
       passed: false,
       label: "Reduced failure"
     });
-    expect(evaluateSave(8, 10, "disadvantage", monolith.dice)).toMatchObject({
+    expect(evaluateSave(8, 10, "disadvantage", withQualifiedOutcomes)).toMatchObject({
       passed: true,
       label: "Mixed success"
     });
-    expect(evaluateSave(18, 10, "disadvantage", monolith.dice)).toMatchObject({
+    expect(evaluateSave(18, 10, "disadvantage", withQualifiedOutcomes)).toMatchObject({
       passed: false,
       label: "Disastrous failure"
     });
   });
 
-  it("applies Cities Without Number roll-over saves and natural outcomes", () => {
-    expect(evaluateSave(12, 12, "normal", cwn.dice).passed).toBe(true);
-    expect(evaluateSave(11, 12, "normal", cwn.dice).passed).toBe(false);
-    expect(evaluateSave(20, 20, "normal", cwn.dice).passed).toBe(true);
-    expect(evaluateSave(1, 1, "normal", cwn.dice).passed).toBe(false);
+  it("applies roll-over saves, where the natural outcomes invert", () => {
+    expect(evaluateSave(12, 12, "normal", rollOver).passed).toBe(true);
+    expect(evaluateSave(11, 12, "normal", rollOver).passed).toBe(false);
+    expect(evaluateSave(20, 20, "normal", rollOver).passed).toBe(true);
+    expect(evaluateSave(1, 1, "normal", rollOver).passed).toBe(false);
   });
 
   it("evaluates skill checks against their difficulty", () => {

@@ -1,24 +1,22 @@
 # Credits
 
-The Devil's Toys is an independent virtual tabletop project. It is not affiliated with, endorsed by, or reviewed by the authors of the games it supports.
+The Devil's Toys is an independent virtual tabletop project. It is not affiliated with, endorsed by, or reviewed by the authors of the games it can run.
 
-## Cairn
+## Game systems
 
-Cairn was written by Yochai Gal and its text is licensed under [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/). Cairn features public domain art by Wilhelm Jordan, W. Heath Robinson, Rolf Von Hoerschelmann, Arthur Rackham, and Arthur Layard, which is not included here. The text was converted to Markdown with the art and layout dropped; its own acknowledgments are preserved in `raw/Cairn.md`. For the original, visit [cairnrpg.com](https://cairnrpg.com).
+This application ships no game system, and distributes no rules text. A system is installed into a running server from a repository or a file, and carries its own rules, its own licence, and its own attribution. What a given server can run is whatever its admin installed — ask that server, which lists its systems and their licences under Management → Systems.
 
-## Monolith
+Three systems were maintained inside this repository until they were split out, and are now repositories of their own:
 
-Monolith: Interstellar Science-Fiction Adventure, version 1.1, was written by Adam Hensley and its text is licensed under [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/). Monolith is a science-fiction hack of Cairn. It is reprinted with minor changes for the digital format and with the art removed; its own credits are preserved in `raw/Monolith.md`. For the original, visit [adamhensley.itch.io](https://adamhensley.itch.io/).
+- **Cairn** by Yochai Gal, [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/). For the original, visit [cairnrpg.com](https://cairnrpg.com).
+- **Monolith: Interstellar Science-Fiction Adventure** by Adam Hensley, [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) — a science-fiction hack of Cairn. For the original, visit [adamhensley.itch.io](https://adamhensley.itch.io/).
+- **Cities Without Number** by Kevin Crawford, [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/). For the original game, visit [Sine Nomine Publishing](https://sine-nomine-publishing.myshopify.com/).
 
-The Cairn and Monolith rules text this application serves, and data read out of it, remain under CC BY-SA 4.0. Repairs to those sources are recorded in `raw/corrections.md`.
-
-## Cities Without Number
-
-Cities Without Number was written by Kevin Crawford and released under [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/). The canonical HTML source and runtime Markdown derivative are included in `raw/`; all intentional differences are recorded in `raw/citieswithoutnumber-corrections.md`. For the original game, visit [Sine Nomine Publishing](https://sine-nomine-publishing.myshopify.com/).
+Each carries its full attribution, the record of what was changed, and the licence of its text in its own repository. None of those authors endorses this project or has reviewed it.
 
 ## Installed game systems
 
-An administrator may install additional data-only game systems. Those systems are not distributed by this repository and are not covered by the attributions above. Each bundle carries the licence declared by its source documents and preserves the source rules and corrections files supplied by its author. The server operator is responsible for confirming that the bundle may be stored and shared with its users.
+A system installed on this server is not distributed by this repository and is not covered by the attributions above. Each one declares the licence of its source documents, which the server records when it is installed. The server operator is responsible for confirming that a system may be stored and shared with its users.
 
 ## Software
 

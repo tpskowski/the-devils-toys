@@ -4,7 +4,7 @@ import path from "node:path";
 import { spawn } from "node:child_process";
 import { DatabaseSync } from "node:sqlite";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { BUILTIN_TABLE_TAGS, BUILTIN_SYSTEM_IDS, THEME_IDS } from "@devils-toys/shared";
+import { BUILTIN_TABLE_TAGS, THEME_IDS } from "@devils-toys/shared";
 import { removeDataDir } from "./test-setup.js";
 
 // The themes that shipped before `shinji` was added. A database created by that
@@ -431,13 +431,13 @@ describe("database migrations", () => {
     // compiled list contains. The old CHECK could never have allowed it; the
     // registry row is what does.
     loaded.db
-      .prepare("INSERT INTO systems (id, name, origin) VALUES ('monolith-2', 'Monolith (installed)', 'installed')")
+      .prepare("INSERT INTO systems (id, name, origin) VALUES ('toybox-2', 'Toybox (installed)', 'installed')")
       .run();
     loaded.db
-      .prepare("INSERT INTO rooms (name, system, theme, created_by) VALUES ('Installed', 'monolith-2', 'used', 1)")
+      .prepare("INSERT INTO rooms (name, system, theme, created_by) VALUES ('Installed', 'toybox-2', 'used', 1)")
       .run();
     expect(loaded.all<{ system: string }>("SELECT system FROM rooms WHERE name = 'Installed'")).toEqual([
-      { system: "monolith-2" }
+      { system: "toybox-2" }
     ]);
   });
 
@@ -478,7 +478,7 @@ describe("database migrations", () => {
     ).toThrow(/FOREIGN KEY/i);
   });
 
-  it("registers every compiled system, and keeps a room's system on hand for one it no longer ships", async () => {
+  it("keeps a room's system on hand for one this build does not ship", async () => {
     const directory = dataDir();
     seedLegacyDatabase(directory, THEME_IDS);
 
@@ -497,7 +497,6 @@ describe("database migrations", () => {
     const registered = loaded.all<{ id: string; origin: string; retired: number }>(
       "SELECT id, origin, retired FROM systems ORDER BY id"
     );
-    for (const id of BUILTIN_SYSTEM_IDS) expect(registered).toContainEqual({ id, origin: "builtin", retired: 0 });
     // Kept, and retired: the room still opens, and nobody can start another.
     expect(registered).toContainEqual({ id: "retired-system", origin: "installed", retired: 1 });
     expect(loaded.all<{ name: string }>("SELECT name FROM rooms WHERE system = 'retired-system'")).toEqual([
@@ -505,18 +504,33 @@ describe("database migrations", () => {
     ]);
   });
 
-  it("accepts every current system in a database created by an older build", async () => {
+  /**
+   * The case a real database hit. Cairn, Monolith, and Cities Without Number
+   * shipped inside the application once, so a database written then holds rows
+   * marked `builtin` — and `loadInstalledSystems` skips anything not marked
+   * `installed`. Left alone, those rooms could never be given their system back
+   * however it was installed, because the row would never be loaded.
+   */
+  it("stops calling a system built in once this build stops shipping it", async () => {
     const directory = dataDir();
-    seedLegacyDatabase(directory);
-    const loaded = await openDatabase(directory);
+    seedLegacyDatabase(directory, THEME_IDS);
 
-    for (const [index, system] of BUILTIN_SYSTEM_IDS.entries()) {
-      loaded.db
-        .prepare("INSERT INTO rooms (name, system, theme, created_by) VALUES (?, ?, 'used', 1)")
-        .run(`System room ${index}`, system);
-    }
-    expect(loaded.all<{ system: string }>("SELECT system FROM rooms WHERE id > 1").map((row) => row.system)).toEqual([
-      ...BUILTIN_SYSTEM_IDS
+    // Opened once for the current schema, then written back into the state a
+    // build that still shipped Cairn would have left: its row marked `builtin`,
+    // with a room on it. That is a real database, not an invented one.
+    const first = await openDatabase(directory);
+    first.db.prepare("UPDATE systems SET origin = 'builtin', retired = 0 WHERE id = 'cairn'").run();
+
+    const loaded = await openDatabase(directory);
+    const row = loaded.all<{ id: string; origin: string; retired: number }>(
+      "SELECT id, origin, retired FROM systems WHERE id = 'cairn'"
+    );
+    // Installed, so `loadInstalledSystems` will load it once its content is
+    // there — and not retired, so nothing has to be un-retired by hand after
+    // re-installing it.
+    expect(row).toEqual([{ id: "cairn", origin: "installed", retired: 0 }]);
+    expect(loaded.all<{ name: string }>("SELECT name FROM rooms WHERE system = 'cairn'")).toEqual([
+      { name: "Old Table" }
     ]);
   });
 

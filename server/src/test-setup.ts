@@ -9,6 +9,10 @@ import { afterAll } from "vitest";
 // importing db.ts themselves.
 const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "devils-toys-test-"));
 process.env.DEVILS_TOYS_DATA_DIR = dataDir;
+// A server comes configured with the published catalogue. Tests must never reach
+// for it: that would make them slower, flakier, and dependent on what someone
+// else published. Anything testing the catalogue supplies its own.
+process.env.DEVILS_TOYS_SYSTEM_CATALOG_URL = "";
 
 afterAll(() => {
   removeDataDir(dataDir);

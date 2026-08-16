@@ -18,6 +18,7 @@ import { all, db, one } from "./db.js";
 import { knownTags, tagVocabulary } from "./table-tags.js";
 import { requireTableEdit, requireTableRead } from "./table-permissions.js";
 import { allSystems, hasSystem, systemOrThrow } from "./systems.js";
+import { refreshInstalledSystems } from "./system-registry.js";
 import {
   repositorySetEntries,
   repositoryTablesForSetJson,
@@ -174,6 +175,10 @@ function validateTableTags(markdown: string, vocabulary: readonly TableTagDefini
 /** The whole catalogue with its summaries, for an editor rather than a room. */
 tableSetRouter.get("/table-sets", requireAuth, (req: AuthedRequest, res) => {
   if (!requireTableRead(req, res)) return;
+  // The editor is a second process against the same database, so a system
+  // installed since it started is one it has never heard of. This is where it
+  // finds out.
+  refreshInstalledSystems();
   const updated = new Map(customSets().map((row) => [`custom:${row.id}`, row.updated_at]));
   res.json({
     sets: availableSets().map((entry) => ({ ...entry.set, updatedAt: updated.get(entry.set.id) })),
@@ -188,6 +193,7 @@ tableSetRouter.get("/table-sets/:setId", requireAuth, (req: AuthedRequest, res) 
 
   if (setId.startsWith("system:")) {
     const systemId = setId.slice("system:".length);
+    if (!hasSystem(systemId)) refreshInstalledSystems();
     if (!hasSystem(systemId)) return res.status(404).json({ error: "Table set not found." });
     const system = systemOrThrow(systemId);
     return res.json({

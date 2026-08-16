@@ -12,17 +12,17 @@ await runSmoke("Character ownership smoke test", async ({ base, request, setup, 
 
   const room = await request(
     "/api/rooms",
-    { method: "POST", headers: gmHeaders, body: JSON.stringify({ name: "Character Table", system: "cairn" }) },
+    { method: "POST", headers: gmHeaders, body: JSON.stringify({ name: "Character Table", system: "toybox" }) },
     201
   );
   const secondRoom = await request(
     "/api/rooms",
-    { method: "POST", headers: gmHeaders, body: JSON.stringify({ name: "Other Cairn Table", system: "cairn" }) },
+    { method: "POST", headers: gmHeaders, body: JSON.stringify({ name: "Other Table", system: "toybox" }) },
     201
   );
-  const monolithRoom = await request(
+  const otherSystemRoom = await request(
     "/api/rooms",
-    { method: "POST", headers: gmHeaders, body: JSON.stringify({ name: "Monolith Table", system: "monolith" }) },
+    { method: "POST", headers: gmHeaders, body: JSON.stringify({ name: "Other System Table", system: "plainbox" }) },
     201
   );
 
@@ -42,7 +42,7 @@ await runSmoke("Character ownership smoke test", async ({ base, request, setup, 
     201
   );
   await request(
-    `/api/rooms/${monolithRoom.room.id}/members`,
+    `/api/rooms/${otherSystemRoom.room.id}/members`,
     { method: "POST", headers: gmHeaders, body: JSON.stringify({ accountId: redemption.account.id }) },
     201
   );
@@ -174,7 +174,7 @@ await runSmoke("Character ownership smoke test", async ({ base, request, setup, 
     headers: playerHeaders
   });
   assert.equal(removedPortrait.character.portraitUrl, null);
-  const incompatible = await request(`/api/rooms/${monolithRoom.room.id}/characters`, { headers: playerHeaders });
+  const incompatible = await request(`/api/rooms/${otherSystemRoom.room.id}/characters`, { headers: playerHeaders });
   assert.equal(incompatible.characters.length, 0);
 
   const gmView = await request(`/api/rooms/${room.room.id}/characters`, { headers: gmHeaders });

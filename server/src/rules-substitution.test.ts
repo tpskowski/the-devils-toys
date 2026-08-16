@@ -14,11 +14,15 @@ describe("rules table substitution", () => {
     expect(substituteTableLinks(linked, "system:test", [table])).toBe(linked);
   });
 
-  it("leaves priced reference tables alone when they are not catalogued", () => {
-    const markdown = fs.readFileSync(projectFile("raw", "Monolith.md"), "utf8");
-    const tables = parseRollTables(markdown).filter((table) => table.name === "GROUP DEBT");
-    const linked = substituteTableLinks(markdown, "system:monolith", tables);
-    expect(linked).toContain("devils-table:system%3Amonolith/");
-    expect(linked).toContain("| D6 | Old Crew Specialty |");
+  it("leaves reference tables alone when they are not catalogued", () => {
+    const markdown = fs.readFileSync(projectFile("fixtures", "toybox", "rules", "Toybox.md"), "utf8");
+    // One table of the fixture's five is catalogued. The other four are left in
+    // the text exactly as they are, which is the whole point: substitution is
+    // driven by the catalogue, not by "this looks like a table".
+    const tables = parseRollTables(markdown).filter((table) => table.name.startsWith("Weather"));
+    const linked = substituteTableLinks(markdown, "system:toybox", tables);
+    expect(linked).toContain("devils-table:system%3Atoybox/");
+    expect(linked).not.toContain("| d6 | Sky | Wind | Underfoot |");
+    expect(linked).toContain("| d10 | Complication |");
   });
 });

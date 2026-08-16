@@ -18,9 +18,9 @@ await runSmoke("Room Config smoke test", async ({ request, json, setup, login, r
 
   const makeRoom = (headers, name, system) =>
     request("/api/rooms", { method: "POST", headers, body: JSON.stringify({ name, system }) }, 201);
-  const gmRoom = (await makeRoom(gm.headers, "GM Monolith", "monolith")).room;
-  const rivalRoom = (await makeRoom(rival.headers, "Rival Cairn", "cairn")).room;
-  const adminRoom = (await makeRoom(admin.headers, "Admin Cairn", "cairn")).room;
+  const gmRoom = (await makeRoom(gm.headers, "GM Table", "toybox")).room;
+  const rivalRoom = (await makeRoom(rival.headers, "Rival Table", "plainbox")).room;
+  const adminRoom = (await makeRoom(admin.headers, "Admin Table", "toybox")).room;
 
   // A player who is a member of the GM's room, to prove that belonging to a room
   // is not what grants the right to configure it.
@@ -40,7 +40,7 @@ await runSmoke("Room Config smoke test", async ({ request, json, setup, login, r
   const gmRooms = await request("/api/room-config/rooms", { headers: gm.headers });
   assert.deepEqual(
     gmRooms.rooms.map((room) => room.name),
-    ["GM Monolith"],
+    ["GM Table"],
     "A GM should see only the rooms they are GM of."
   );
   assert.equal(gmRooms.rooms[0].access, "gm");
@@ -48,7 +48,7 @@ await runSmoke("Room Config smoke test", async ({ request, json, setup, login, r
   const adminRooms = await request("/api/room-config/rooms", { headers: admin.headers });
   assert.deepEqual(
     adminRooms.rooms.map((room) => room.name).sort(),
-    ["Admin Cairn", "GM Monolith", "Rival Cairn"],
+    ["Admin Table", "GM Table", "Rival Table"],
     "An admin should see every room on the server."
   );
   assert.ok(
@@ -63,20 +63,20 @@ await runSmoke("Room Config smoke test", async ({ request, json, setup, login, r
 
   // --- What a room's sections are ---
 
-  const monolith = await request(`/api/room-config/${gmRoom.id}`, { headers: gm.headers });
-  const sectionIds = monolith.sections.map((section) => section.id);
-  assert.ok(sectionIds.includes("hirelings"), "Monolith declares hirelings, so the section is offered.");
-  assert.ok(sectionIds.includes("assets"), "Monolith declares a starship sheet, so group assets are offered.");
+  const full = await request(`/api/room-config/${gmRoom.id}`, { headers: gm.headers });
+  const sectionIds = full.sections.map((section) => section.id);
+  assert.ok(sectionIds.includes("hirelings"), "Toybox declares hirelings, so the section is offered.");
+  assert.ok(sectionIds.includes("assets"), "Toybox declares a group asset sheet, so group assets are offered.");
   assert.equal(
-    monolith.sections.find((section) => section.id === "calendar").enabled,
+    full.sections.find((section) => section.id === "calendar").enabled,
     false,
     "A new room has no calendar, so the section is listed switched off."
   );
 
-  const cairn = await request(`/api/room-config/${rivalRoom.id}`, { headers: admin.headers });
+  const minimal = await request(`/api/room-config/${rivalRoom.id}`, { headers: admin.headers });
   assert.ok(
-    !cairn.sections.some((section) => section.id === "assets"),
-    "Cairn has no group assets, so the section is left out rather than shown empty."
+    !minimal.sections.some((section) => section.id === "assets"),
+    "Plainbox has no group assets, so the section is left out rather than shown empty."
   );
 
   // Turning a section on is setup, and belongs to the panel.
@@ -228,7 +228,7 @@ await runSmoke("Room Config smoke test", async ({ request, json, setup, login, r
   const monolithTwin = (
     await request(
       "/api/rooms",
-      { method: "POST", headers: gm.headers, body: JSON.stringify({ name: "GM Monolith II", system: "monolith" }) },
+      { method: "POST", headers: gm.headers, body: JSON.stringify({ name: "GM Second Table", system: "toybox" }) },
       201
     )
   ).room;

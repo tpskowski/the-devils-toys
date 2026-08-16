@@ -17,7 +17,7 @@ await runSmoke(
       {
         method: "POST",
         headers: gmJson,
-        body: JSON.stringify({ name: "Audio Table", system: "monolith" })
+        body: JSON.stringify({ name: "Audio Table", system: "toybox" })
       },
       201
     );

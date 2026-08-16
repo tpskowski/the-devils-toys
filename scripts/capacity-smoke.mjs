@@ -13,7 +13,7 @@ await runSmoke(
       {
         method: "POST",
         headers: gmHeaders,
-        body: JSON.stringify({ name: "Capacity Table", system: "cairn" })
+        body: JSON.stringify({ name: "Capacity Table", system: "toybox" })
       },
       201
     );

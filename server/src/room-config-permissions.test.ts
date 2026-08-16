@@ -2,6 +2,9 @@ import { beforeEach, describe, expect, it } from "vitest";
 import type { AuthAccount } from "./auth.js";
 import { db } from "./db.js";
 import { configurableRoom, configurableRooms, roomAccessRole, roomConfigAccess } from "./room-config-permissions.js";
+import { installToybox } from "./test-fixture.js";
+
+installToybox();
 
 function account(id: number, username: string, role: AuthAccount["role"]): AuthAccount {
   return { id, username, role, isAdmin: role === "admin" };
@@ -26,7 +29,7 @@ beforeEach(() => {
   const createRoom = (name: string, createdBy: number, archived: number) =>
     Number(
       db
-        .prepare("INSERT INTO rooms (name, system, theme, archived, created_by) VALUES (?, 'cairn', 'grim', ?, ?)")
+        .prepare("INSERT INTO rooms (name, system, theme, archived, created_by) VALUES (?, 'toybox', 'grim', ?, ?)")
         .run(name, archived, createdBy).lastInsertRowid
     );
   ownedRoom = createRoom("Owned", owningGm.id, 0);
@@ -147,7 +150,7 @@ describe("one configurable room", () => {
     expect(configurableRoom(owningGm, ownedRoom)).toMatchObject({
       id: ownedRoom,
       name: "Owned",
-      system: "cairn",
+      system: "toybox",
       calendarEnabled: true,
       musicEnabled: true,
       mapNotationEnabled: false,

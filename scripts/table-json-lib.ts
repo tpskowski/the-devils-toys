@@ -1,15 +1,5 @@
-import fs from "node:fs";
 import path from "node:path";
-import { cairn } from "../systems/cairn/src/index.ts";
-import { cwn } from "../systems/cwn/src/index.ts";
-import { monolith } from "../systems/monolith/src/index.ts";
-import {
-  parseRollTables,
-  type GameSystem,
-  type RollTable,
-  type RollTableSource,
-  type SystemId
-} from "../shared/src/index.ts";
+import { parseRollTables, type GameSystem, type RollTable, type RollTableSource } from "../shared/src/index.ts";
 
 export interface JsonTable extends Omit<RollTable, "source"> {
   classification?: "player" | "gm";
@@ -25,16 +15,8 @@ export interface JsonSet {
   tables: JsonTable[];
 }
 
-export const SYSTEMS: Record<SystemId, GameSystem> = { cairn, monolith, cwn };
-
 export function projectFile(...segments: string[]) {
   return path.resolve(process.cwd(), ...segments);
-}
-
-export function systemMarkdown(system: GameSystem) {
-  const source = system.sourceDocuments[0];
-  if (!source) throw new Error(`${system.name} has no source document.`);
-  return fs.readFileSync(projectFile("raw", source.markdownFile), "utf8");
 }
 
 export function classificationFor(system: GameSystem, table: RollTable): "player" | "gm" {

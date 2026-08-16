@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { builtinSystems } from "./builtin-systems.js";
 import { gameSystemSchema } from "./system-schema.js";
+import { toyboxDefinition } from "./test-fixture.js";
 
 /** A valid system to mutate, so each rejection test differs in exactly one way. */
-const valid = () => JSON.parse(JSON.stringify(builtinSystems.monolith)) as Record<string, unknown>;
+const valid = () => JSON.parse(JSON.stringify(toyboxDefinition())) as Record<string, unknown>;
 
 const firstIssue = (value: unknown) => {
   const result = gameSystemSchema.safeParse(value);
@@ -12,20 +12,20 @@ const firstIssue = (value: unknown) => {
 };
 
 describe("the system schema", () => {
-  // The test the schema exists for. Every compiled system is a GameSystem that
-  // works, so a schema that rejects one is wrong about the type rather than
-  // about the system — and a schema that quietly drops a field it does not know
-  // would let a bundle lose it. Strict objects plus this test is what keeps the
-  // two in step.
-  it("accepts every compiled system, field for field", () => {
-    for (const [id, definition] of Object.entries(builtinSystems)) {
-      const result = gameSystemSchema.safeParse(JSON.parse(JSON.stringify(definition)));
-      expect(
-        result.success,
-        `${id}: ${result.error?.issues.map((issue) => `${issue.path.join(".")} ${issue.message}`).join("; ")}`
-      ).toBe(true);
-      expect(result.data).toEqual(JSON.parse(JSON.stringify(definition)));
-    }
+  // The test the schema exists for. A working system is a GameSystem, so a
+  // schema that rejects one is wrong about the type rather than about the
+  // system — and a schema that quietly drops a field it does not know would let
+  // a bundle lose it. Strict objects plus this test is what keeps the two in
+  // step. It ran over the three compiled systems once; each of those now runs
+  // the same check against this schema in its own CI, through `systems:validate`.
+  it("accepts a whole system, field for field", () => {
+    const definition = JSON.parse(JSON.stringify(toyboxDefinition()));
+    const result = gameSystemSchema.safeParse(definition);
+    expect(
+      result.success,
+      result.error?.issues.map((issue) => `${issue.path.join(".")} ${issue.message}`).join("; ")
+    ).toBe(true);
+    expect(result.data).toEqual(definition);
   });
 
   it("keeps every field it was given, so a bundle cannot lose one in transit", () => {

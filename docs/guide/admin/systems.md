@@ -2,69 +2,115 @@
 
 [← Back to the admin guide](README.md)
 
-The application ships with Cairn, Monolith, and Cities Without Number. A server
-admin can also install a game system at runtime as a `.devilsystem.zip`, without
-rebuilding or restarting the server.
+The Devil's Toys ships no game system. It is the tabletop; a game system is
+installed into it, and a server can run as many as it likes. Until one is
+installed there is nothing for a room to be played on, so this is usually the
+first thing a new server needs.
 
-The importer is deliberately data-only. A bundle contains:
+Everything on this page is an admin's. A GM configures a room; an admin decides
+what the server can run at all.
 
-- `manifest.json`, identifying the format, system, export time, and licences;
-- `system.json`, the declarative sheet, dice, content, warning, NPC, and group
-  definitions;
-- `items.json` and `traits.json`;
+## Installing one
+
+Open **Management → Systems**. There are three ways in, and they end in the same
+place — the same checks, in the same order, on the same files.
+
+**From the catalogue.** A menu of published systems, which a server comes
+configured with. Each entry says who wrote it and under what licence; the button
+installs it, or updates it when the catalogue offers a newer version than the one
+you have. A server with no catalogue configured says so rather than showing an
+empty menu.
+
+**From a repository.** Give it an owner and repository name, and a branch, tag,
+or commit. This is how a system is installed while it is still being written, and
+how a system that will never be listed is installed at all. The server fetches
+the repository, reads the system out of it, and ignores everything a repository
+carries that a system does not use — README, licence, workflows, notes.
+
+**From a file.** A `.devilsystem.zip` exported from this or another server, for a
+system that is not in a repository at all.
+
+Installing is atomic. Open requests start using the new definition immediately
+and no restart is needed; a bundle that fails any check leaves the previous
+content and the previous registry entry exactly as they were.
+
+## What a system may contain
+
+Data, and nothing else:
+
+- `devilsystem.json`, the marker saying which system this is and under what licence;
+- `system.json`, the declarative sheet, dice, content, warning, NPC, and group definitions;
+- `items.json` and `traits.json`, the gear catalogue and what its words mean;
 - rules and corrections Markdown under `rules/`;
 - extracted runtime table sets under `tables/` as JSON.
 
-JavaScript, CSS, executable plugins, arbitrary assets, and paths outside those
-locations are refused. Installation validates the bundle structure and system
-definition, then stages the files and moves them into place as one unit.
+JavaScript, CSS, executable plugins, and paths outside those locations are
+refused. This is not a plugin system with the dangerous parts removed — nothing
+in the format is ever evaluated, and there is nowhere in it to put code.
 
-## Current control surface
+`GET /api/systems/schema` serves the schema a `system.json` is checked against,
+so an author can validate one before pushing it.
 
-System management is currently exposed through the authenticated game-server
-API. Every write and every export requires a signed-in server-admin session.
-Anyone signed in may list the registry.
+## Where a system may be fetched from
 
-| Operation          | Request                                                      | Result                                                                |
-| ------------------ | ------------------------------------------------------------ | --------------------------------------------------------------------- |
-| List               | `GET /api/admin/systems`                                     | Built-in and installed systems, status, and room/character use counts |
-| Install or replace | `POST /api/admin/systems`                                    | Multipart form with the bundle in a field named `bundle`              |
-| Export             | `GET /api/admin/systems/<id>/export`                         | Downloads `<id>.devilsystem.zip`                                      |
-| Clone on export    | `GET /api/admin/systems/<id>/export?as=<new-id>&name=<name>` | Rewrites the system-owned ids and downloads an installable sibling    |
-| Retire             | `POST /api/admin/systems/<id>/retire`                        | Removes it from the choices for a new room                            |
-| Restore            | `POST /api/admin/systems/<id>/restore`                       | Offers it for new rooms again                                         |
-| Delete             | `DELETE /api/admin/systems/<id>`                             | Removes an unused installed system and its files                      |
+Importing is the one thing that makes this server open an outbound connection, so
+where it may connect is a setting rather than an argument. `DEVILS_TOYS_SYSTEM_HOSTS`
+is the allowlist, and it is checked on every redirect rather than once at the
+start. Anything else — another host, plain HTTP, an address on your own network —
+is refused before a connection is opened.
 
-The upload limit is 25 MB by default and can be changed with
-`DEVILS_TOYS_SYSTEM_LIMIT_MB` before starting the server.
-
-Installing another bundle with the same installed id is an atomic replacement.
-Open requests start using the new definition immediately; a restart is not
-required. A bundle may not replace one of the systems that ships with the
-application.
+`DEVILS_TOYS_SYSTEM_CATALOG_URL` is the menu, and it comes set to the published
+catalogue — a server that ships no game system and offers no way to find one has
+nothing to do. Point it at your own index to offer a different menu, or set it to
+an empty string for no menu at all. Nothing is fetched until an admin opens this
+panel, and neither installing by repository nor installing from a file depends on
+it.
 
 ## Retire or delete
 
-Retirement is the safe choice for a system that has been used. It prevents new
-rooms from choosing it while existing rooms and characters continue to load and
-play normally. Restoring reverses that choice.
+Retirement is the safe choice for a system that has been used. It stops new rooms
+choosing it while existing rooms and characters keep loading and playing normally.
+Restoring reverses that.
 
-Deletion is only for an installed system with no room and no character pointing
-at it. The server refuses deletion otherwise and reports the use counts. A
-built-in system cannot be deleted.
+Deletion is only for a system no room and no character points at. The server
+refuses otherwise and names the rooms in the way, because a deleted system would
+leave them pointing at nothing.
+
+A system whose content will not load is listed as such rather than hidden. Its
+rooms still open on whatever they already hold, and it can be replaced or removed.
 
 ## Files, backups, and licences
 
-Installed files live under `systems/<id>/` inside `DEVILS_TOYS_DATA_DIR`; the
-database holds the corresponding registry record. Do not install a system by
-copying that directory by hand, and do not back up one half without the other.
-The complete stopped-server backup in [Operating the server](operating.md#backups)
-preserves both.
+Installed content lives under `systems/<id>/` inside `DEVILS_TOYS_DATA_DIR`; the
+database holds the matching registry row. The two belong together — do not
+install a system by copying that directory in by hand, and do not back up one
+half without the other. The stopped-server backup in
+[Operating the server](operating.md#backups) preserves both.
 
-An exported bundle carries the licence strings and source files declared by its
-system definition. That preserves attribution; it does not grant permission to
-redistribute a rulebook. Confirm the source licence before installing or sharing
-a bundle.
+A system states its own licence, which the server reports when it is installed
+and shows under Credits. That records attribution; it does not grant permission
+to redistribute a rulebook. Confirm the licence of anything you install, and of
+anything you share.
+
+## The API behind the panel
+
+Every write and every export requires a signed-in server admin.
+
+| Operation           | Request                                                             |
+| ------------------- | ------------------------------------------------------------------- |
+| List                | `GET /api/admin/systems`                                            |
+| Catalogue           | `GET /api/admin/systems/catalog`                                    |
+| Import              | `POST /api/admin/systems/import` with `{id}` or `{repository, ref}` |
+| Install from a file | `POST /api/admin/systems` — multipart, bundle in `bundle`           |
+| Export              | `GET /api/admin/systems/<id>/export`                                |
+| Clone on export     | `GET /api/admin/systems/<id>/export?as=<new-id>&name=<name>`        |
+| Retire              | `POST /api/admin/systems/<id>/retire`                               |
+| Restore             | `POST /api/admin/systems/<id>/restore`                              |
+| Delete              | `DELETE /api/admin/systems/<id>`                                    |
+| Schema              | `GET /api/systems/schema` — open, since an author needs it          |
+
+The upload limit is 25 MB by default and caps a fetched repository too; change it
+with `DEVILS_TOYS_SYSTEM_LIMIT_MB`.
 
 ---
 

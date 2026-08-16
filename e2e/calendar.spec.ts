@@ -1,4 +1,5 @@
 import { expect, request as apiRequest, test } from "@playwright/test";
+import { FIXTURE_SYSTEM, bundleSystemRepo } from "../scripts/harness.mjs";
 
 test("GM configures shared calendar and persistent map notation", async ({ page }) => {
   const setup = await page.request.post("/api/setup", {
@@ -6,8 +7,16 @@ test("GM configures shared calendar and persistent map notation", async ({ page 
   });
   expect(setup.status()).toBe(201);
 
+  // This application ships no game system, so the run installs the one it tests
+  // with before it can make a room on anything.
+  const { id: system, zip } = await bundleSystemRepo(FIXTURE_SYSTEM);
+  const installed = await page.request.post("/api/admin/systems", {
+    multipart: { bundle: { name: `${system}.devilsystem.zip`, mimeType: "application/zip", buffer: zip } }
+  });
+  expect(installed.status()).toBe(201);
+
   const created = await page.request.post("/api/rooms", {
-    data: { name: "The Long Campaign", system: "cairn" }
+    data: { name: "The Long Campaign", system }
   });
   expect(created.status()).toBe(201);
   const roomId = (await created.json()).room.id as number;

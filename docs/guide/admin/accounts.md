@@ -63,6 +63,25 @@ An admin can reset any account, including another admin's. A GM can reset only a
 non-admin account they manage; the application says so plainly rather than
 failing quietly.
 
+### When nobody can sign in
+
+If the last admin forgets their password there is no way back in through the
+application — a server with no usable admin cannot install a system, make a room,
+or add an account. Recovery is from the machine the database is on, which is the
+right place for it: whoever can read that file can already read every session in
+it.
+
+```bash
+npm run accounts list
+npm run accounts reset <username>
+```
+
+Run it wherever the server's data directory is, setting `DEVILS_TOYS_DATA_DIR` if
+it is not the default. It asks for the password rather than taking it as an
+argument — an argument is visible to every other process on the machine and is
+written to your shell history — and it signs the account out everywhere, exactly
+as a reset in the application does. See [Operating the server](operating.md).
+
 ## Changing a role
 
 **Admins only.** Choose the role on the account's record and save.
@@ -97,9 +116,16 @@ Full sheets stay where they belong, on the room's own Characters screen.
 
 ## What you cannot do
 
-There is no delete-account action. An account that should stop being used is
-demoted to player and removed from its rooms; the row stays, and so does its
-username.
+There is no delete-account action in the application. An account that should stop
+being used is demoted to player and removed from its rooms; the row stays, and so
+does its username. That is usually what you want: a room names its creator, a
+message names its author, and deleting the account would leave those pointing at
+nothing.
+
+`npm run accounts delete <username>` exists for an account that has genuinely
+done nothing — a mistyped username, an invitation never used. It refuses an
+account that created a room, wrote a message, uploaded anything, or made a table
+set, naming what is in the way, and it refuses to delete the only admin.
 
 ---
 

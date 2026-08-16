@@ -6,12 +6,6 @@ import type {
   SystemTraitCatalog
 } from "@devils-toys/shared";
 import { classifyItem } from "@devils-toys/shared";
-import cairnItems from "@devils-toys/system-cairn/items";
-import cwnItems from "@devils-toys/system-cwn/items";
-import monolithItems from "@devils-toys/system-monolith/items";
-import cairnTraits from "@devils-toys/system-cairn/traits";
-import cwnTraits from "@devils-toys/system-cwn/traits";
-import monolithTraits from "@devils-toys/system-monolith/traits";
 import fs from "node:fs";
 import { readPricedRows, splitPricedCell } from "./rules-tables.js";
 import { applyRoomOverlay } from "./room-items.js";
@@ -93,30 +87,14 @@ export function parseCharacterItems(
 }
 
 /**
- * Every system's gear, read from the committed catalogues rather than from the
- * rulebooks. Bundled at build time, so this is a lookup and not a file read.
- */
-const catalogs: Record<SystemId, SystemItemCatalog> = {
-  cairn: cairnItems as SystemItemCatalog,
-  monolith: monolithItems as SystemItemCatalog,
-  cwn: cwnItems as SystemItemCatalog
-};
-
-/** What each system's own words mean, read from the committed catalogues. */
-const traitCatalogs: Record<SystemId, SystemTraitCatalog> = {
-  cairn: cairnTraits as SystemTraitCatalog,
-  monolith: monolithTraits as SystemTraitCatalog,
-  cwn: cwnTraits as SystemTraitCatalog
-};
-
-/**
- * An installed system's catalogues are read off disk instead, and cached.
+ * A system's catalogues are read off disk and cached.
  *
- * A compiled system's are inlined into the bundle by esbuild, which is why the
- * runtime image carries no `items.json` — see `AGENTS.md`. An installed system
- * arrived after the build, so there is nothing to inline and no choice but to
- * read it. The two paths are kept apart so the built-in one stays exactly as it
- * was, and so the Docker image needs nothing new.
+ * There used to be a second path here: the three compiled systems' catalogues
+ * were inlined into the bundle by esbuild and looked up rather than read, which
+ * is why the runtime image carried no `items.json`. No system is compiled in any
+ * more, so every catalogue arrives after the build and every one is read. The
+ * cache is what that lookup became, and `forgetInstalledCatalogs` is what makes
+ * it safe — a system's content can be replaced while the server is running.
  */
 const installedCatalogs = new Map<SystemId, SystemItemCatalog>();
 const installedTraits = new Map<SystemId, SystemTraitCatalog>();
@@ -140,11 +118,11 @@ function readJsonCatalog<T>(file: string, cache: Map<SystemId, T>, system: Syste
 }
 
 function itemCatalogOf(system: SystemId): SystemItemCatalog {
-  return catalogs[system] ?? readJsonCatalog(itemCatalogFile(system), installedCatalogs, system);
+  return readJsonCatalog(itemCatalogFile(system), installedCatalogs, system);
 }
 
 function traitCatalogOf(system: SystemId): SystemTraitCatalog {
-  return traitCatalogs[system] ?? readJsonCatalog(traitCatalogFile(system), installedTraits, system);
+  return readJsonCatalog(traitCatalogFile(system), installedTraits, system);
 }
 
 /** The definitions behind the words written on a system's weapons. */

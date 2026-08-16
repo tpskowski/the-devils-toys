@@ -1,0 +1,70 @@
+{
+  "formatVersion": 1,
+  "setName": "Plainbox tables",
+  "sourceDocument": "Plainbox.md",
+  "tables": [
+    {
+      "id": "plainbox-playing-fortune-d6",
+      "name": "Fortune (d6)",
+      "section": "Playing",
+      "category": "Playing",
+      "dice": "d6",
+      "columns": ["Result"],
+      "tags": [],
+      "rows": [
+        {
+          "label": "1",
+          "min": 1,
+          "max": 1,
+          "cells": ["It holds"]
+        },
+        {
+          "label": "2",
+          "min": 2,
+          "max": 2,
+          "cells": ["It holds, barely"]
+        },
+        {
+          "label": "3",
+          "min": 3,
+          "max": 3,
+          "cells": ["It gives a little"]
+        },
+        {
+          "label": "4",
+          "min": 4,
+          "max": 4,
+          "cells": ["It gives"]
+        },
+        {
+          "label": "5",
+          "min": 5,
+          "max": 5,
+          "cells": ["It gives way"]
+        },
+        {
+          "label": "6",
+          "min": 6,
+          "max": 6,
+          "cells": ["It was never going to hold"]
+        }
+      ],
+      "classification": "player",
+      "origin": {
+        "heading": {
+          "line": 14,
+          "level": 3,
+          "text": "Fortune (d6)"
+        },
+        "headingPath": ["Plainbox", "Playing", "Fortune (d6)"],
+        "tagsLine": null,
+        "tableStart": 16,
+        "tableEnd": 23,
+        "dieColumn": "d6",
+        "dice": "d6",
+        "soleTable": true,
+        "markdownFile": "Plainbox.md"
+      }
+    }
+  ]
+}

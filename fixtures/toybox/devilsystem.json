@@ -1,0 +1,7 @@
+{
+  "app": "devils-toys-system",
+  "formatVersion": 1,
+  "systemId": "toybox",
+  "systemName": "Toybox",
+  "licenses": ["CC0 1.0"]
+}

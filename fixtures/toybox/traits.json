@@ -1,0 +1,37 @@
+{
+  "system": "toybox",
+  "source": "Toybox.md",
+  "traits": [
+    {
+      "id": "bulky",
+      "label": "Bulky",
+      "description": "Takes two inventory slots rather than one.",
+      "category": "Gear Properties"
+    },
+    {
+      "id": "thrown",
+      "label": "Thrown",
+      "description": "May be used at range once, and is then wherever it landed.",
+      "category": "Gear Properties"
+    },
+    {
+      "id": "ranged",
+      "label": "Ranged",
+      "description": "Reaches anything the wielder can see.",
+      "category": "Gear Properties"
+    },
+    {
+      "id": "sweep",
+      "label": "Sweep",
+      "description": "Long weapons that reach a second adjacent enemy on a hit.",
+      "appliesTo": "Bulky",
+      "category": "Gear Properties"
+    },
+    {
+      "id": "armour-piercing-ap",
+      "label": "Armour Piercing (AP)",
+      "description": "Ignores armour. Damage rolls of 1 glance off instead.",
+      "category": "Gear Properties"
+    }
+  ]
+}

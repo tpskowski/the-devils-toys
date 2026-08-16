@@ -9,19 +9,19 @@ await runSmoke("System-defined dice smoke test", async ({ json, setup, redeem, c
   const gm = await setup("DiceGM", "dice-test-password");
   const { headers } = gm;
 
-  const cairn = await json(
+  const firstRoom = await json(
     "/api/rooms",
-    { method: "POST", headers, body: JSON.stringify({ name: "Cairn Dice", system: "cairn" }) },
+    { method: "POST", headers, body: JSON.stringify({ name: "First Dice Table", system: "toybox" }) },
     201
   );
-  const monolith = await json(
+  const secondRoom = await json(
     "/api/rooms",
-    { method: "POST", headers, body: JSON.stringify({ name: "Monolith Dice", system: "monolith" }) },
+    { method: "POST", headers, body: JSON.stringify({ name: "Second Dice Table", system: "toybox" }) },
     201
   );
 
   const invitation = await json(
-    `/api/rooms/${cairn.body.room.id}/invitations`,
+    `/api/rooms/${firstRoom.body.room.id}/invitations`,
     { method: "POST", headers, body: JSON.stringify({ username: "DicePlayer" }) },
     201
   );
@@ -29,7 +29,7 @@ await runSmoke("System-defined dice smoke test", async ({ json, setup, redeem, c
   const playerHeaders = player.headers;
 
   const privateRoll = await json(
-    `/api/rooms/${cairn.body.room.id}/rolls`,
+    `/api/rooms/${firstRoom.body.room.id}/rolls`,
     {
       method: "POST",
       headers,
@@ -42,9 +42,9 @@ await runSmoke("System-defined dice smoke test", async ({ json, setup, redeem, c
   assert.equal(privateRoll.body.message.kind, "roll");
   assert.ok(privateRoll.body.message.body.startsWith("1d66 "));
 
-  const gmHistory = await json(`/api/rooms/${cairn.body.room.id}/messages`, { headers });
+  const gmHistory = await json(`/api/rooms/${firstRoom.body.room.id}/messages`, { headers });
   assert.ok(gmHistory.body.messages.some((message) => message.private && message.id === privateRoll.body.message.id));
-  const playerHistory = await json(`/api/rooms/${cairn.body.room.id}/messages`, { headers: playerHeaders });
+  const playerHistory = await json(`/api/rooms/${firstRoom.body.room.id}/messages`, { headers: playerHeaders });
   assert.equal(
     playerHistory.body.messages.some((message) => message.private),
     false
@@ -55,11 +55,11 @@ await runSmoke("System-defined dice smoke test", async ({ json, setup, redeem, c
   );
 
   // A private roll tells the table a roll happened, without the result.
-  const { events: playerEvents } = await connect(player.cookie, cairn.body.room.id);
+  const { events: playerEvents } = await connect(player.cookie, firstRoom.body.room.id);
   async function hiddenRoll(flags) {
     playerEvents.length = 0;
     const result = await json(
-      `/api/rooms/${cairn.body.room.id}/rolls`,
+      `/api/rooms/${firstRoom.body.room.id}/rolls`,
       { method: "POST", headers, body: JSON.stringify({ expression: "1d20", ...flags }) },
       201
     );
@@ -90,7 +90,7 @@ await runSmoke("System-defined dice smoke test", async ({ json, setup, redeem, c
 
   // Two private rolls have been made and both announced themselves; the
   // invisible one added nothing.
-  const afterHidden = await json(`/api/rooms/${cairn.body.room.id}/messages`, { headers: playerHeaders });
+  const afterHidden = await json(`/api/rooms/${firstRoom.body.room.id}/messages`, { headers: playerHeaders });
   assert.equal(
     afterHidden.body.messages.filter((message) => message.body === "Rolled privately").length,
     2,
@@ -98,11 +98,11 @@ await runSmoke("System-defined dice smoke test", async ({ json, setup, redeem, c
   );
 
   // A player may roll privately, and it reaches the GM and nobody else.
-  const { events: gmEvents } = await connect(gm.cookie, cairn.body.room.id);
+  const { events: gmEvents } = await connect(gm.cookie, firstRoom.body.room.id);
   playerEvents.length = 0;
   gmEvents.length = 0;
   const playerPrivate = await json(
-    `/api/rooms/${cairn.body.room.id}/rolls`,
+    `/api/rooms/${firstRoom.body.room.id}/rolls`,
     { method: "POST", headers: playerHeaders, body: JSON.stringify({ expression: "1d20", private: true }) },
     201
   );
@@ -118,7 +118,7 @@ await runSmoke("System-defined dice smoke test", async ({ json, setup, redeem, c
     "The roller's own copy comes from their response, not the socket."
   );
 
-  const gmAfterPlayer = await json(`/api/rooms/${cairn.body.room.id}/messages`, { headers });
+  const gmAfterPlayer = await json(`/api/rooms/${firstRoom.body.room.id}/messages`, { headers });
   assert.ok(
     gmAfterPlayer.body.messages.some(
       (message) => message.private && message.id === playerPrivate.body.message.id && message.body.startsWith("1d20 ")
@@ -131,7 +131,7 @@ await runSmoke("System-defined dice smoke test", async ({ json, setup, redeem, c
     ),
     "An invisible GM roll keeps its visibility tag in chat history."
   );
-  const gmRollLog = await json(`/api/rooms/${cairn.body.room.id}/private-rolls`, { headers });
+  const gmRollLog = await json(`/api/rooms/${firstRoom.body.room.id}/private-rolls`, { headers });
   assert.ok(
     gmRollLog.body.rolls.some((roll) => roll.id === playerPrivate.body.message.id),
     "A player's private roll is in the GM's roll log."
@@ -139,12 +139,12 @@ await runSmoke("System-defined dice smoke test", async ({ json, setup, redeem, c
 
   // A second player at the table sees the notice but never the result.
   const otherInvitation = await json(
-    `/api/rooms/${cairn.body.room.id}/invitations`,
+    `/api/rooms/${firstRoom.body.room.id}/invitations`,
     { method: "POST", headers, body: JSON.stringify({ username: "DiceOnlooker" }) },
     201
   );
   const onlooker = await redeem(otherInvitation.body.invitation.token, "onlooker-password");
-  const onlookerHistory = await json(`/api/rooms/${cairn.body.room.id}/messages`, { headers: onlooker.headers });
+  const onlookerHistory = await json(`/api/rooms/${firstRoom.body.room.id}/messages`, { headers: onlooker.headers });
   assert.equal(
     onlookerHistory.body.messages.some((message) => message.private),
     false,
@@ -154,13 +154,13 @@ await runSmoke("System-defined dice smoke test", async ({ json, setup, redeem, c
 
   // Leaving no trace at all is still the GM's own privilege.
   await json(
-    `/api/rooms/${cairn.body.room.id}/rolls`,
+    `/api/rooms/${firstRoom.body.room.id}/rolls`,
     { method: "POST", headers: playerHeaders, body: JSON.stringify({ expression: "1d20", invisible: true }) },
     403
   );
 
   const kept = await json(
-    `/api/rooms/${cairn.body.room.id}/messages`,
+    `/api/rooms/${firstRoom.body.room.id}/messages`,
     { method: "POST", headers, body: JSON.stringify({ body: "/roll 3d6kh1+2" }) },
     201
   );
@@ -168,15 +168,22 @@ await runSmoke("System-defined dice smoke test", async ({ json, setup, redeem, c
   assert.ok(kept.body.message.detail.includes("kept ["));
   assert.ok(kept.body.message.detail.includes("dropped ["));
 
+  // Plainbox states only the ordinary pair of outcomes, so it has no way to
+  // report an advantaged save and refuses to pretend otherwise.
+  const plainRoom = await json(
+    "/api/rooms",
+    { method: "POST", headers, body: JSON.stringify({ name: "Plain Dice Table", system: "plainbox" }) },
+    201
+  );
   await json(
-    `/api/rooms/${cairn.body.room.id}/rolls`,
+    `/api/rooms/${plainRoom.body.room.id}/rolls`,
     {
       method: "POST",
       headers,
       body: JSON.stringify({
         expression: "1d20",
         private: false,
-        save: { label: "STR", target: 10, position: "advantage" }
+        save: { label: "PLUCK", target: 10, position: "advantage" }
       })
     },
     400
@@ -187,14 +194,14 @@ await runSmoke("System-defined dice smoke test", async ({ json, setup, redeem, c
     ["disadvantage", "Mixed success", "Disastrous failure"]
   ]) {
     const response = await json(
-      `/api/rooms/${monolith.body.room.id}/rolls`,
+      `/api/rooms/${secondRoom.body.room.id}/rolls`,
       {
         method: "POST",
         headers,
         body: JSON.stringify({
           expression: "9d100+99",
           private: false,
-          save: { label: "WIL", target: 10, position }
+          save: { label: "NERVE", target: 10, position }
         })
       },
       201
@@ -204,6 +211,6 @@ await runSmoke("System-defined dice smoke test", async ({ json, setup, redeem, c
     const passed = expectedPass(response.body.roll.total, 10);
     assert.equal(response.body.roll.outcome.passed, passed);
     assert.equal(response.body.roll.outcome.label, passed ? successLabel : failureLabel);
-    assert.ok(response.body.message.body.includes(position === "advantage" ? "WIL save (ADV)" : "WIL save (DIS)"));
+    assert.ok(response.body.message.body.includes(position === "advantage" ? "NERVE save (ADV)" : "NERVE save (DIS)"));
   }
 });

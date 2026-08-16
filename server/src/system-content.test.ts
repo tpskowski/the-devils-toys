@@ -1,7 +1,7 @@
 import path from "node:path";
-import { describe, expect, it } from "vitest";
-import { BUILTIN_SYSTEM_IDS } from "@devils-toys/shared";
+import { beforeAll, describe, expect, it } from "vitest";
 import { builtinSystems, isBuiltinSystem } from "./builtin-systems.js";
+import { toyboxDefinition } from "./test-fixture.js";
 import { config } from "./config.js";
 import { projectFile } from "./paths.js";
 import {
@@ -13,42 +13,49 @@ import {
 } from "./system-content.js";
 
 describe("where a compiled system's content is read from", () => {
-  // The whole point of the resolver is that it changed nothing for the three
-  // systems already here. Each of these is the literal path the module it
-  // replaced built, so a wrong root shows up as a failure rather than as a
-  // missing file weeks later.
-  it("is exactly where it was before the resolver existed", () => {
-    for (const id of BUILTIN_SYSTEM_IDS) {
-      const source = builtinSystems[id].sourceDocuments[0]!;
-      expect(systemRulesFile(id, source.markdownFile)).toBe(projectFile("raw", source.markdownFile));
-      expect(systemTablesJsonFile(id, source.tablesFile!)).toBe(projectFile("raw", "tables", source.tablesFile!));
-      expect(itemCatalogFile(id)).toBe(projectFile("systems", id, "items.json"));
-      expect(traitCatalogFile(id)).toBe(projectFile("systems", id, "traits.json"));
-    }
+  /**
+   * Nothing is compiled into this build, so the repository half of the resolver
+   * has no system to exercise it. A built-in is stood up for the length of these
+   * tests rather than leaving that branch untested — the same arrangement
+   * `systems.test.ts` uses, and for the same reason: a guard with no case to
+   * catch is a guard that rots.
+   */
+  const compiled = "shipped-with-the-build";
+  beforeAll(() => {
+    builtinSystems[compiled] = toyboxDefinition();
+    return () => {
+      delete builtinSystems[compiled];
+    };
+  });
+
+  it("comes out of the repository, not the data directory", () => {
+    expect(isBuiltinSystem(compiled)).toBe(true);
+    expect(systemRulesFile(compiled, "Book.md")).toBe(projectFile("raw", "Book.md"));
+    expect(systemTablesJsonFile(compiled, "book.json")).toBe(projectFile("raw", "tables", "book.json"));
+    expect(itemCatalogFile(compiled)).toBe(projectFile("systems", compiled, "items.json"));
+    expect(traitCatalogFile(compiled)).toBe(projectFile("systems", compiled, "traits.json"));
   });
 
   it("does not depend on the configured data directory", () => {
-    for (const id of BUILTIN_SYSTEM_IDS) {
-      expect(systemRulesFile(id, "Book.md").startsWith(config.dataDir)).toBe(false);
-      expect(itemCatalogFile(id).startsWith(config.dataDir)).toBe(false);
-    }
+    expect(systemRulesFile(compiled, "Book.md").startsWith(config.dataDir)).toBe(false);
+    expect(itemCatalogFile(compiled).startsWith(config.dataDir)).toBe(false);
   });
 });
 
 describe("where an installed system's content is read from", () => {
-  const installed = "monolith-2";
+  const installed = "toybox-2";
 
   it("is under the data directory, per the mutable-files constraint", () => {
     const root = path.join(config.dataDir, "systems", installed);
     expect(installedSystemRoot(installed)).toBe(root);
-    expect(systemRulesFile(installed, "Monolith.md")).toBe(path.join(root, "rules", "Monolith.md"));
-    expect(systemTablesJsonFile(installed, "monolith.json")).toBe(path.join(root, "tables", "monolith.json"));
+    expect(systemRulesFile(installed, "Toybox.md")).toBe(path.join(root, "rules", "Toybox.md"));
+    expect(systemTablesJsonFile(installed, "toybox.json")).toBe(path.join(root, "tables", "toybox.json"));
     expect(itemCatalogFile(installed)).toBe(path.join(root, "items.json"));
     expect(traitCatalogFile(installed)).toBe(path.join(root, "traits.json"));
   });
 
   it("never reaches the repository, however the id is spelled", () => {
-    for (const id of [installed, "cairn-2", "thirteenth-age"]) {
+    for (const id of [installed, "plainbox", "thirteenth-age"]) {
       expect(isBuiltinSystem(id)).toBe(false);
       expect(systemRulesFile(id, "Book.md")).not.toContain(`${path.sep}raw${path.sep}`);
     }

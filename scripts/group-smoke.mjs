@@ -16,7 +16,7 @@ await runSmoke("Group roster smoke test", async ({ request, json, setup, login }
   const room = (
     await request(
       "/api/rooms",
-      { method: "POST", headers: gm.headers, body: JSON.stringify({ name: "The Hold", system: "monolith" }) },
+      { method: "POST", headers: gm.headers, body: JSON.stringify({ name: "The Hold", system: "toybox" }) },
       201
     )
   ).room;
@@ -191,7 +191,7 @@ await runSmoke("Group roster smoke test", async ({ request, json, setup, login }
   const other = (
     await request(
       "/api/rooms",
-      { method: "POST", headers: gm.headers, body: JSON.stringify({ name: "Elsewhere", system: "monolith" }) },
+      { method: "POST", headers: gm.headers, body: JSON.stringify({ name: "Elsewhere", system: "toybox" }) },
       201
     )
   ).room;

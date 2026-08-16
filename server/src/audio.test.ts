@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { db, one } from "./db.js";
 import { pauseRoomAudio, roomMusicEnabled } from "./audio.js";
+import { installToybox } from "./test-fixture.js";
+
+installToybox();
 
 function seedRoom(id: number, enabled: boolean) {
   db.prepare("INSERT INTO accounts (id, username, password_hash, account_role) VALUES (?, ?, 'hash', 'gm')").run(
@@ -8,7 +11,7 @@ function seedRoom(id: number, enabled: boolean) {
     `gm-${id}`
   );
   db.prepare(
-    "INSERT INTO rooms (id, name, system, theme, music_enabled, created_by) VALUES (?, ?, 'cairn', 'heroic', ?, ?)"
+    "INSERT INTO rooms (id, name, system, theme, music_enabled, created_by) VALUES (?, ?, 'toybox', 'heroic', ?, ?)"
   ).run(id, `Room ${id}`, enabled ? 1 : 0, id);
   db.prepare("INSERT INTO room_state (room_id) VALUES (?)").run(id);
 }

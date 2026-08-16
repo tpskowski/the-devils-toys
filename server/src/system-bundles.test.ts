@@ -1,19 +1,20 @@
 import { describe, expect, it } from "vitest";
 import { strToU8, zipSync, unzipSync, strFromU8 } from "fflate";
-import { builtinSystems } from "./builtin-systems.js";
 import { buildSystemBundle, readSystemBundle, renameSystem, type SystemBundleContent } from "./system-bundles.js";
 import { systemContentFor } from "./system-install.js";
+import { installToybox } from "./test-fixture.js";
 
-/** Monolith, read off disk exactly as an export would read it. */
-const monolithContent = () => systemContentFor("monolith");
+installToybox();
+
+/** The fixture, read off disk exactly as an export would read it. */
+const fixtureContent = () => systemContentFor("toybox");
 
 const bundleOf = (content: SystemBundleContent) => readSystemBundle(buildSystemBundle(content));
 
 describe("a system bundle", () => {
   it("carries a compiled system out and back unchanged", () => {
-    const content = monolithContent();
+    const content = fixtureContent();
     const read = bundleOf(content);
-
     expect(read.system).toEqual(JSON.parse(JSON.stringify(content.system)));
     expect(read.items).toEqual(content.items);
     expect(read.traits).toEqual(content.traits);
@@ -21,56 +22,47 @@ describe("a system bundle", () => {
     expect(read.tables).toEqual(content.tables);
   });
 
-  it("carries every compiled system, not just the one it was written for", () => {
-    for (const id of Object.keys(builtinSystems)) {
-      const content = systemContentFor(id);
-      expect(bundleOf(content).system).toEqual(JSON.parse(JSON.stringify(content.system)));
-    }
-  });
-
   it("records the licences its source documents state", () => {
-    const archive = unzipSync(buildSystemBundle(monolithContent()));
+    const archive = unzipSync(buildSystemBundle(fixtureContent()));
     const manifest = JSON.parse(strFromU8(archive["manifest.json"]));
     expect(manifest.app).toBe("devils-toys-system");
-    expect(manifest.systemId).toBe("monolith");
-    expect(manifest.licenses).toEqual(["CC BY-SA 4.0"]);
+    expect(manifest.systemId).toBe("toybox");
+    expect(manifest.licenses).toEqual(["CC0 1.0"]);
   });
 
   it("puts the rules and tables where the layout says", () => {
-    const names = Object.keys(unzipSync(buildSystemBundle(monolithContent()))).sort();
+    const names = Object.keys(unzipSync(buildSystemBundle(fixtureContent()))).sort();
     expect(names).toEqual([
       "items.json",
       "manifest.json",
-      "rules/Monolith.md",
+      "rules/Toybox.md",
       "rules/corrections.md",
       "system.json",
-      "tables/monolith.json",
+      "tables/toybox.json",
       "traits.json"
     ]);
   });
 });
 
 describe("renaming a system for a bundle", () => {
-  const renamed = () => renameSystem(monolithContent(), "monolith-2", "Monolith (installed)");
+  const renamed = () => renameSystem(fixtureContent(), "toybox-2", "Toybox (installed)");
 
   it("moves all five things namespaced by the id, and nothing else", () => {
-    const before = monolithContent();
+    const before = fixtureContent();
     const after = renamed();
-
-    expect(after.system.id).toBe("monolith-2");
-    expect(after.system.name).toBe("Monolith (installed)");
-    expect(after.system.contentModules.map((module) => module.id)).toEqual(["monolith-2/core", "monolith-2/gm"]);
+    expect(after.system.id).toBe("toybox-2");
+    expect(after.system.name).toBe("Toybox (installed)");
+    expect(after.system.contentModules.map((module) => module.id)).toEqual(["toybox-2/core", "toybox-2/gm"]);
     expect(after.system.contentModules.map((module) => module.storageNamespace)).toEqual([
-      "monolith-2.core",
-      "monolith-2.gm"
+      "toybox-2.core",
+      "toybox-2.gm"
     ]);
     // The dependency between the two modules has to move with their ids, or the
     // GM module requires something that no longer exists.
-    expect(after.system.contentModules[1].requires).toEqual(["monolith-2/core"]);
-    expect(after.system.contentModules[1].provides).toEqual(["monolith-2/gm"]);
-    expect(after.items.system).toBe("monolith-2");
-    expect(after.traits.system).toBe("monolith-2");
-
+    expect(after.system.contentModules[1].requires).toEqual(["toybox-2/core"]);
+    expect(after.system.contentModules[1].provides).toEqual(["toybox-2/gm"]);
+    expect(after.items.system).toBe("toybox-2");
+    expect(after.traits.system).toBe("toybox-2");
     // Everything that is not an identifier is left exactly as it was.
     expect(after.rules).toEqual(before.rules);
     expect(after.tables).toEqual(before.tables);
@@ -84,40 +76,54 @@ describe("renaming a system for a bundle", () => {
     const ids = Object.values(after.items.lists)
       .flat()
       .map((item) => item.id);
-    expect(ids.length).toBeGreaterThan(50);
-    expect(ids.every((id) => id.startsWith("monolith-2/"))).toBe(true);
-    expect(ids.some((id) => id.startsWith("monolith/"))).toBe(false);
-    for (const id of after.items.retired ?? []) expect(id.startsWith("monolith-2/")).toBe(true);
+    expect(ids.length).toBeGreaterThan(5);
+    expect(ids.every((id) => id.startsWith("toybox-2/"))).toBe(true);
+    expect(ids.some((id) => id.startsWith("toybox/"))).toBe(false);
+    for (const id of after.items.retired ?? []) expect(id.startsWith("toybox-2/")).toBe(true);
   });
 
   it("leaves a capability namespace that is not the system's own alone", () => {
-    // CWN's modules provide "without-number/core@1", which is a family rather
-    // than this system. Renaming the system must not touch it.
-    const after = renameSystem(systemContentFor("cwn"), "cwn-2");
-    expect(after.system.contentModules.map((module) => module.id)).toContain("cwn-2/cyberware");
-    expect(after.system.contentModules.find((module) => module.id === "cwn-2/cyberware")?.provides).toEqual([
+    // A module may provide a capability named for a *family* rather than for the
+    // system itself — Cities Without Number's provide "without-number/core@1".
+    // Renaming the system must not touch those.
+    const source = fixtureContent();
+    const family = {
+      ...source,
+      system: {
+        ...source.system,
+        contentModules: source.system.contentModules.map((module) => ({
+          ...module,
+          provides: [...module.provides, "without-number/cyberware@1"],
+          requires: ["without-number/core@1"]
+        }))
+      }
+    };
+    const after = renameSystem(family, "toybox-2");
+    expect(after.system.contentModules.map((module) => module.id)).toContain("toybox-2/core");
+    expect(after.system.contentModules.find((module) => module.id === "toybox-2/core")?.provides).toEqual([
+      "toybox-2/core",
       "without-number/cyberware@1"
     ]);
-    expect(after.system.contentModules.find((module) => module.id === "cwn-2/cyberware")?.requires).toEqual([
+    expect(after.system.contentModules.find((module) => module.id === "toybox-2/core")?.requires).toEqual([
       "without-number/core@1"
     ]);
   });
 
   it("produces a bundle that reads back as the renamed system", () => {
     const read = bundleOf(renamed());
-    expect(read.system.id).toBe("monolith-2");
-    expect(read.manifest.systemId).toBe("monolith-2");
-    expect(read.items.system).toBe("monolith-2");
+    expect(read.system.id).toBe("toybox-2");
+    expect(read.manifest.systemId).toBe("toybox-2");
+    expect(read.items.system).toBe("toybox-2");
   });
 
   it("refuses an id it could not write to disk", () => {
-    for (const id of ["Monolith2", "../escape", "monolith 2", ""])
-      expect(() => renameSystem(monolithContent(), id)).toThrow(/not a usable system id/);
+    for (const id of ["Toybox2", "../escape", "toybox 2", ""])
+      expect(() => renameSystem(fixtureContent(), id)).toThrow(/not a usable system id/);
   });
 });
 
 describe("reading a bundle that is not one", () => {
-  const bytes = () => buildSystemBundle(renameSystem(monolithContent(), "monolith-2"));
+  const bytes = () => buildSystemBundle(renameSystem(fixtureContent(), "toybox-2"));
 
   const rebuilt = (change: (files: Record<string, Uint8Array>) => void) => {
     const files = unzipSync(bytes());
@@ -206,7 +212,7 @@ describe("reading a bundle that is not one", () => {
           files["manifest.json"] = strToU8(JSON.stringify(manifest));
         })
       )
-    ).toThrow(/names "something-else" but its system\.json is "monolith-2"/);
+    ).toThrow(/names "something-else" but its system\.json is "toybox-2"/);
   });
 
   it("refuses catalogues belonging to another system", () => {
@@ -222,14 +228,14 @@ describe("reading a bundle that is not one", () => {
   });
 
   it("refuses a bundle that names a rules file it does not carry", () => {
-    expect(() => readSystemBundle(rebuilt((files) => delete files["rules/Monolith.md"]))).toThrow(
-      /names rules\/Monolith\.md but does not contain it/
+    expect(() => readSystemBundle(rebuilt((files) => delete files["rules/Toybox.md"]))).toThrow(
+      /names rules\/Toybox\.md but does not contain it/
     );
   });
 
   it("refuses a bundle that names a table set it does not carry", () => {
-    expect(() => readSystemBundle(rebuilt((files) => delete files["tables/monolith.json"]))).toThrow(
-      /names tables\/monolith\.json but does not contain it/
+    expect(() => readSystemBundle(rebuilt((files) => delete files["tables/toybox.json"]))).toThrow(
+      /names tables\/toybox\.json but does not contain it/
     );
   });
 });

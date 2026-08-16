@@ -7,6 +7,9 @@ import {
   MAP_NOTATION_ROAD_EGG_MESSAGE,
   claimRoomEasterEgg
 } from "./easter-eggs.js";
+import { installToybox } from "./test-fixture.js";
+
+installToybox();
 
 describe("room easter eggs", () => {
   it("claims an easter egg only once per room", () => {
@@ -14,7 +17,7 @@ describe("room easter eggs", () => {
       "INSERT INTO accounts (id, username, password_hash, account_role) VALUES (1, 'Warden', 'hash', 'gm')"
     ).run();
     db.prepare(
-      "INSERT INTO rooms (id, name, system, theme, created_by) VALUES (1, 'Campaign', 'cairn', 'used', 1)"
+      "INSERT INTO rooms (id, name, system, theme, created_by) VALUES (1, 'Campaign', 'toybox', 'used', 1)"
     ).run();
 
     expect(claimRoomEasterEgg(1, CALENDAR_STRICT_TIME_EGG_ID)).toBe(true);

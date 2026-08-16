@@ -1,8 +1,20 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
-import { Check, ContactRound, KeyRound, Plus, Save, ShieldCheck, Trash2, UserPlus, UsersRound } from "lucide-react";
+import {
+  Boxes,
+  Check,
+  ContactRound,
+  KeyRound,
+  Plus,
+  Save,
+  ShieldCheck,
+  Trash2,
+  UserPlus,
+  UsersRound
+} from "lucide-react";
 import type { AccountRole, SystemId } from "@devils-toys/shared";
 import { api } from "./api";
 import { accountRoleLabels, requiresOwnedRoomDowngradeWarning } from "./account-roles";
+import { SystemsManagement } from "./SystemsManagement";
 import "./management.css";
 
 interface ManagedRoom {
@@ -40,9 +52,9 @@ interface ManagementData {
   characters: ManagedCharacter[];
 }
 
-type Section = "players" | "characters";
+type Section = "players" | "characters" | "systems";
 
-export function ManagementWorkspace() {
+export function ManagementWorkspace({ onSystemsChanged }: { onSystemsChanged?: () => Promise<void> }) {
   const [data, setData] = useState<ManagementData>();
   const [section, setSection] = useState<Section>("players");
   const [selectedPlayerId, setSelectedPlayerId] = useState<number>();
@@ -109,6 +121,13 @@ export function ManagementWorkspace() {
         <button className={section === "characters" ? "active" : ""} onClick={() => setSection("characters")}>
           <ContactRound size={17} /> Characters <span>{data?.characters.length ?? 0}</span>
         </button>
+        {/* A system is server-wide: a GM configures a room, an admin decides
+            what the server can run at all. */}
+        {data?.viewerRole === "admin" && (
+          <button className={section === "systems" ? "active" : ""} onClick={() => setSection("systems")}>
+            <Boxes size={17} /> Systems <span>{data?.systems.length ?? 0}</span>
+          </button>
+        )}
       </nav>
 
       {(error || notice) && (
@@ -119,6 +138,8 @@ export function ManagementWorkspace() {
 
       {!data ? (
         <div className="management-loading">Opening the company ledger…</div>
+      ) : section === "systems" ? (
+        <SystemsManagement onSystemsChanged={onSystemsChanged} />
       ) : section === "players" ? (
         <PlayerManagement
           data={data}

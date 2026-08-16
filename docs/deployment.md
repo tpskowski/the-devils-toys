@@ -30,6 +30,6 @@ Docker remains supported as an alternative. Run `docker compose up --build -d`. 
 
 Use one game instance with a persistent volume mounted at `/data`; the first release does not coordinate multiple game processes. Set `DEVILS_TOYS_DATA_DIR=/data`, terminate TLS at the platform edge, and make sure WebSocket upgrades reach the same process. Do not use an ephemeral filesystem for `/data`.
 
-The table editor may run beside it as a second process on the same volume, but only one of it as well. It writes to `table_sets` and `table_tags`, and a second writer on those would race the first. It sends no realtime events, so a game client picks up a table written there the next time the roller is opened.
+The table editor may run beside it as a second process on the same volume, but only one of it as well. It writes to `table_sets` and `table_tags`, and a second writer on those would race the first. It sends no realtime events, so a game client picks up a table written there the next time the roller is opened. It does notice a game system installed on the other process since it started, so an install does not need it restarted.
 
 The application collects no telemetry. Restrict the service at the network or reverse-proxy layer until the initial GM account has been created.

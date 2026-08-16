@@ -1,0 +1,554 @@
+{
+  "formatVersion": 1,
+  "setName": "Toybox tables",
+  "sourceDocument": "Toybox.md",
+  "tables": [
+    {
+      "id": "toybox-character-creation-name-trade-d6",
+      "name": "Name & Trade (d6)",
+      "section": "Character Creation",
+      "category": "Character Creation",
+      "dice": "d6",
+      "columns": [
+        "Name",
+        "Trade"
+      ],
+      "tags": [
+        "character-building"
+      ],
+      "rows": [
+        {
+          "label": "1",
+          "min": 1,
+          "max": 1,
+          "cells": [
+            "Ames",
+            "Cooper"
+          ]
+        },
+        {
+          "label": "2",
+          "min": 2,
+          "max": 2,
+          "cells": [
+            "Byrd",
+            "Drayman"
+          ]
+        },
+        {
+          "label": "3",
+          "min": 3,
+          "max": 3,
+          "cells": [
+            "Crane",
+            "Fletcher"
+          ]
+        },
+        {
+          "label": "4",
+          "min": 4,
+          "max": 4,
+          "cells": [
+            "Dell",
+            "Glazier"
+          ]
+        },
+        {
+          "label": "5",
+          "min": 5,
+          "max": 5,
+          "cells": [
+            "Ewe",
+            "Miller"
+          ]
+        },
+        {
+          "label": "6",
+          "min": 6,
+          "max": 6,
+          "cells": [
+            "Frost",
+            "Tanner"
+          ]
+        }
+      ],
+      "classification": "player",
+      "origin": {
+        "heading": {
+          "line": 34,
+          "level": 3,
+          "text": "Name & Trade (d6)"
+        },
+        "headingPath": [
+          "Toybox",
+          "Character Creation",
+          "Name & Trade (d6)"
+        ],
+        "tagsLine": 36,
+        "tableStart": 38,
+        "tableEnd": 45,
+        "dieColumn": "d6",
+        "dice": "d6",
+        "soleTable": true,
+        "markdownFile": "Toybox.md"
+      }
+    },
+    {
+      "id": "toybox-character-creation-vices-d6",
+      "name": "Vices (d6)",
+      "section": "Character Creation",
+      "category": "Character Creation",
+      "dice": "d6",
+      "columns": [
+        "Vice",
+        "Triggered by",
+        "Satisfied by"
+      ],
+      "tags": [],
+      "rows": [
+        {
+          "label": "1",
+          "min": 1,
+          "max": 1,
+          "cells": [
+            "Drink",
+            "Idleness",
+            "A full night and a full purse"
+          ]
+        },
+        {
+          "label": "2",
+          "min": 2,
+          "max": 2,
+          "cells": [
+            "Boasting",
+            "An audience",
+            "Being believed"
+          ]
+        },
+        {
+          "label": "3",
+          "min": 3,
+          "max": 3,
+          "cells": [
+            "Hoarding",
+            "Anything unattended",
+            "Counting it twice"
+          ]
+        },
+        {
+          "label": "4",
+          "min": 4,
+          "max": 4,
+          "cells": [
+            "Grudges",
+            "Being corrected",
+            "An apology, or worse"
+          ]
+        },
+        {
+          "label": "5",
+          "min": 5,
+          "max": 5,
+          "cells": [
+            "Gambling",
+            "A wager offered",
+            "Winning, then leaving"
+          ]
+        },
+        {
+          "label": "6",
+          "min": 6,
+          "max": 6,
+          "cells": [
+            "Sleep",
+            "Warmth",
+            "Eight hours nobody interrupts"
+          ]
+        }
+      ],
+      "classification": "player",
+      "origin": {
+        "heading": {
+          "line": 47,
+          "level": 3,
+          "text": "Vices (d6)"
+        },
+        "headingPath": [
+          "Toybox",
+          "Character Creation",
+          "Vices (d6)"
+        ],
+        "tagsLine": null,
+        "tableStart": 49,
+        "tableEnd": 56,
+        "dieColumn": "d6",
+        "dice": "d6",
+        "soleTable": true,
+        "markdownFile": "Toybox.md"
+      }
+    },
+    {
+      "id": "toybox-oracles-what-the-door-is-d20",
+      "name": "What the Door Is (d20)",
+      "section": "Oracles",
+      "category": "Oracles",
+      "dice": "d20",
+      "columns": [
+        "Result"
+      ],
+      "tags": [],
+      "rows": [
+        {
+          "label": "1-5",
+          "min": 1,
+          "max": 5,
+          "cells": [
+            "Locked, and the key is nearby"
+          ]
+        },
+        {
+          "label": "6-10",
+          "min": 6,
+          "max": 10,
+          "cells": [
+            "Barred from the other side"
+          ]
+        },
+        {
+          "label": "11-15",
+          "min": 11,
+          "max": 15,
+          "cells": [
+            "Ajar, which is worse"
+          ]
+        },
+        {
+          "label": "16-19",
+          "min": 16,
+          "max": 19,
+          "cells": [
+            "Not a door"
+          ]
+        },
+        {
+          "label": "20",
+          "min": 20,
+          "max": 20,
+          "cells": [
+            "Open, and something came through"
+          ]
+        }
+      ],
+      "classification": "player",
+      "origin": {
+        "heading": {
+          "line": 64,
+          "level": 3,
+          "text": "What the Door Is (d20)"
+        },
+        "headingPath": [
+          "Toybox",
+          "Oracles",
+          "What the Door Is (d20)"
+        ],
+        "tagsLine": null,
+        "tableStart": 66,
+        "tableEnd": 72,
+        "dieColumn": "d20",
+        "dice": "d20",
+        "soleTable": true,
+        "markdownFile": "Toybox.md"
+      }
+    },
+    {
+      "id": "toybox-oracles-weather-d6",
+      "name": "Weather (d6)",
+      "section": "Oracles",
+      "category": "Oracles",
+      "dice": "d6",
+      "columns": [
+        "Sky",
+        "Wind",
+        "Underfoot"
+      ],
+      "tags": [],
+      "rows": [
+        {
+          "label": "1",
+          "min": 1,
+          "max": 1,
+          "cells": [
+            "Clear",
+            "Still",
+            "Dry"
+          ]
+        },
+        {
+          "label": "2",
+          "min": 2,
+          "max": 2,
+          "cells": [
+            "Overcast",
+            "Rising",
+            "Damp"
+          ]
+        },
+        {
+          "label": "3",
+          "min": 3,
+          "max": 3,
+          "cells": [
+            "Drizzle",
+            "Gusting",
+            "Slick"
+          ]
+        },
+        {
+          "label": "4",
+          "min": 4,
+          "max": 4,
+          "cells": [
+            "Rain",
+            "Steady",
+            "Running"
+          ]
+        },
+        {
+          "label": "5",
+          "min": 5,
+          "max": 5,
+          "cells": [
+            "Fog",
+            "Still",
+            "Soft"
+          ]
+        },
+        {
+          "label": "6",
+          "min": 6,
+          "max": 6,
+          "cells": [
+            "Storm",
+            "Howling",
+            "Flooded"
+          ]
+        }
+      ],
+      "classification": "player",
+      "origin": {
+        "heading": {
+          "line": 74,
+          "level": 3,
+          "text": "Weather (d6)"
+        },
+        "headingPath": [
+          "Toybox",
+          "Oracles",
+          "Weather (d6)"
+        ],
+        "tagsLine": null,
+        "tableStart": 76,
+        "tableEnd": 83,
+        "dieColumn": "d6",
+        "dice": "d6",
+        "soleTable": true,
+        "markdownFile": "Toybox.md"
+      }
+    },
+    {
+      "id": "toybox-oracles-complications-d10",
+      "name": "Complications (d10)",
+      "section": "Oracles",
+      "category": "Oracles",
+      "dice": "d10",
+      "columns": [
+        "Complication"
+      ],
+      "tags": [],
+      "rows": [
+        {
+          "label": "1",
+          "min": 1,
+          "max": 1,
+          "cells": [
+            "The lantern is running low"
+          ]
+        },
+        {
+          "label": "2",
+          "min": 2,
+          "max": 2,
+          "cells": [
+            "Someone else has been here"
+          ]
+        },
+        {
+          "label": "3",
+          "min": 3,
+          "max": 3,
+          "cells": [
+            "The way back is shorter than it was"
+          ]
+        },
+        {
+          "label": "4",
+          "min": 4,
+          "max": 4,
+          "cells": [
+            "A sound repeats at intervals"
+          ]
+        },
+        {
+          "label": "5",
+          "min": 5,
+          "max": 5,
+          "cells": [
+            "The chalk marks are wrong"
+          ]
+        },
+        {
+          "label": "6",
+          "min": 6,
+          "max": 6,
+          "cells": [
+            "Water where there was none"
+          ]
+        },
+        {
+          "label": "7",
+          "min": 7,
+          "max": 7,
+          "cells": [
+            "A door that was open"
+          ]
+        },
+        {
+          "label": "8",
+          "min": 8,
+          "max": 8,
+          "cells": [
+            "The rope is fraying"
+          ]
+        },
+        {
+          "label": "9",
+          "min": 9,
+          "max": 9,
+          "cells": [
+            "Two sets of prints, one bare"
+          ]
+        },
+        {
+          "label": "10",
+          "min": 10,
+          "max": 10,
+          "cells": [
+            "Nothing, and that is the complication"
+          ]
+        }
+      ],
+      "classification": "player",
+      "origin": {
+        "heading": {
+          "line": 85,
+          "level": 3,
+          "text": "Complications (d10)"
+        },
+        "headingPath": [
+          "Toybox",
+          "Oracles",
+          "Complications (d10)"
+        ],
+        "tagsLine": null,
+        "tableStart": 87,
+        "tableEnd": 98,
+        "dieColumn": "d10",
+        "dice": "d10",
+        "soleTable": true,
+        "markdownFile": "Toybox.md"
+      }
+    },
+    {
+      "id": "toybox-oracles-what-went-wrong-d66",
+      "name": "What Went Wrong (d66)",
+      "section": "Oracles",
+      "category": "Oracles",
+      "dice": "d66",
+      "columns": [
+        "Result"
+      ],
+      "tags": [],
+      "rows": [
+        {
+          "label": "11-16",
+          "min": 11,
+          "max": 16,
+          "cells": [
+            "The plan was always thin"
+          ]
+        },
+        {
+          "label": "21-26",
+          "min": 21,
+          "max": 26,
+          "cells": [
+            "Someone talked"
+          ]
+        },
+        {
+          "label": "31-36",
+          "min": 31,
+          "max": 36,
+          "cells": [
+            "The map was old"
+          ]
+        },
+        {
+          "label": "41-46",
+          "min": 41,
+          "max": 46,
+          "cells": [
+            "It was never here"
+          ]
+        },
+        {
+          "label": "51-56",
+          "min": 51,
+          "max": 56,
+          "cells": [
+            "It was here, and is not now"
+          ]
+        },
+        {
+          "label": "61-66",
+          "min": 61,
+          "max": 66,
+          "cells": [
+            "It is still here"
+          ]
+        }
+      ],
+      "classification": "player",
+      "origin": {
+        "heading": {
+          "line": 100,
+          "level": 3,
+          "text": "What Went Wrong (d66)"
+        },
+        "headingPath": [
+          "Toybox",
+          "Oracles",
+          "What Went Wrong (d66)"
+        ],
+        "tagsLine": null,
+        "tableStart": 104,
+        "tableEnd": 111,
+        "dieColumn": "d66",
+        "dice": "d66",
+        "soleTable": true,
+        "markdownFile": "Toybox.md"
+      }
+    }
+  ]
+}

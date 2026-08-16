@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { monolith } from "@devils-toys/system-monolith";
+import type { GameSystem } from "@devils-toys/shared";
 import {
   applyStarshipSize,
   continuationOf,
@@ -10,37 +10,39 @@ import {
   starshipSizeFor
 } from "./starship";
 
-const sheet = monolith.groupPage!.starshipSheet!;
+/**
+ * A starship sheet, written here rather than read from a system.
+ *
+ * This used to be Monolith's, which was the only system with ships and is a
+ * repository of its own now. The three tests that asserted *its* five hull
+ * classes went with it; what is left tests the code that reads a sheet, and that
+ * code needs a sheet rather than a particular one.
+ */
+const sheet = {
+  sections: [],
+  lists: [{ key: "holds", label: "Holds", slots: Array.from({ length: 20 }, (_, index) => `Hold ${index + 1}`) }],
+  partsList: "holds",
+  baseValues: {
+    shieldsCurrent: 10,
+    shieldsMax: 10,
+    hullCurrent: 10,
+    hullMax: 10,
+    enginesCurrent: 10,
+    enginesMax: 10,
+    systemsCurrent: 10,
+    systemsMax: 10,
+    armoring: 0
+  },
+  sizes: [
+    { id: "fighter", label: "Fighter", holds: 4, fixed: { crew: "1-2", movement: 5, mobility: 3 } },
+    { id: "small", label: "Small", holds: 8, fixed: { crew: "2-6", movement: 5, mobility: 2 } },
+    { id: "medium", label: "Medium", holds: 12, fixed: { crew: "6-10", movement: 4, mobility: 2 } },
+    { id: "large", label: "Large", holds: 16, fixed: { crew: "10-20", movement: 3, mobility: 1 } },
+    { id: "giant", label: "Giant", holds: 20, fixed: { crew: "20-50", movement: 2, mobility: 1 } }
+  ]
+} satisfies NonNullable<NonNullable<GameSystem["groupPage"]>["starshipSheet"]>;
 
-describe("Monolith's ship sizes", () => {
-  it("ships the five sizes from the rules with their holds", () => {
-    expect(sheet.sizes?.map((size) => [size.label, size.holds])).toEqual([
-      ["Fighter", 4],
-      ["Small", 8],
-      ["Medium", 12],
-      ["Large", 16],
-      ["Giant", 20]
-    ]);
-  });
-
-  it("fixes crew, movement, and mobility per the size table", () => {
-    expect(sheet.sizes?.map((size) => size.fixed)).toEqual([
-      { crew: "1-2", movement: 5, mobility: 3 },
-      { crew: "2-6", movement: 5, mobility: 2 },
-      { crew: "6-10", movement: 4, mobility: 2 },
-      { crew: "10-20", movement: 3, mobility: 1 },
-      { crew: "20-50", movement: 2, mobility: 1 }
-    ]);
-  });
-
-  it("prices a hull at 500C a hold and names its command room", () => {
-    const [fighter, , medium, large] = sheet.sizes!;
-    expect(fighter.note).toContain("base cost 2,000C");
-    expect(medium.note).toContain("base cost 6,000C");
-    expect(medium.note).toContain("cockpit");
-    expect(large.note).toContain("bridge");
-  });
-
+describe("reading a ship size off a sheet", () => {
   it("finds a size by id or by the label written on a sheet", () => {
     expect(starshipSizeFor(sheet, "medium")?.holds).toBe(12);
     expect(starshipSizeFor(sheet, "Medium")?.holds).toBe(12);

@@ -569,3 +569,172 @@
     padding: 28px 0;
   }
 }
+
+/* --- Systems -------------------------------------------------------------
+   The panel an admin installs a game system from. It is also the first-run
+   screen: a server that ships no system can do nothing until one is here, so
+   the empty state has to say what to do rather than report a count of zero. */
+
+.systems-management {
+  display: grid;
+  gap: 22px;
+}
+
+.systems-management .inspector-section {
+  border-top: 1px solid var(--line);
+  padding-top: 18px;
+}
+
+.systems-empty {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  padding: 16px 18px;
+  border-left: 2px solid var(--accent);
+  background: color-mix(in srgb, var(--accent-soft), transparent 35%);
+}
+
+.systems-empty svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--accent);
+}
+
+.systems-empty p {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.systems-source-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 14px;
+}
+
+.systems-source-form label {
+  display: grid;
+  gap: 6px;
+  flex: 1 1 220px;
+  color: var(--muted);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.systems-source-form input {
+  min-height: 40px;
+  padding: 8px 11px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.systems-source-form input:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.systems-catalog,
+.systems-installed {
+  display: grid;
+  gap: 12px;
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.systems-catalog > li,
+.systems-installed > li {
+  display: grid;
+  gap: 6px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.systems-installed > li.retired {
+  opacity: 0.72;
+}
+
+.systems-catalog p,
+.systems-installed p {
+  margin: 0;
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.systems-catalog small,
+.systems-installed small {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.systems-catalog-name,
+.systems-installed-name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 9px;
+}
+
+.systems-installed-name code {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.systems-version {
+  color: var(--muted);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+}
+
+.systems-flag {
+  padding: 2px 7px;
+  border: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.systems-flag.broken {
+  border-color: color-mix(in srgb, var(--accent), transparent 45%);
+  color: var(--accent);
+}
+
+.systems-catalog > li > button {
+  justify-self: start;
+  margin-top: 4px;
+}
+
+.systems-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.systems-actions .secondary-button {
+  text-decoration: none;
+}
+
+.systems-catalog-error {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--accent) !important;
+}
+
+@media (max-width: 720px) {
+  .systems-source-form {
+    display: grid;
+  }
+}
