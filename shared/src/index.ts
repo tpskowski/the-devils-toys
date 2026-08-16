@@ -11,15 +11,17 @@ export * from "./table-tags.js";
 export * from "./calendar.js";
 
 /**
- * The systems compiled into the application. A server may hold more: an admin
- * installs one at runtime and it is registered beside these, so this list names
- * what ships rather than what a given installation offers. Ask the server for
- * that — `/api/status` reports every system it has.
+ * The systems compiled into the application: none. It ships a virtual tabletop,
+ * and every game system it can run is installed at runtime from a repository of
+ * its own.
+ *
+ * The list stays because the distinction is still meaningful and would be needed
+ * again the moment a system did ship in the image. Nothing may read it to decide
+ * what a server offers — ask the server, which reports that at `/api/status`.
  */
-export const BUILTIN_SYSTEM_IDS = ["cairn", "monolith", "cwn"] as const;
+export const BUILTIN_SYSTEM_IDS = [] as const;
 export const THEME_IDS = ["heroic", "digital", "used", "grim", "shinji", "production-type"] as const;
 
-/** One of the three above, for the few places that genuinely mean those three. */
 export type BuiltinSystemId = (typeof BUILTIN_SYSTEM_IDS)[number];
 
 /**

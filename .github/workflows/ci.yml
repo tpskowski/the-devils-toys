@@ -17,6 +17,23 @@ jobs:
       - run: npm ci
       - run: npm run format:check
       - run: npm run typecheck
+      # Both compare a generated file with what this build would generate. They
+      # fail when someone changes the source and forgets to regenerate, which is
+      # the only way either file can be wrong.
+      - name: The published system schema is current
+        run: npm run systems:schema -- --check
+      - name: The fixture's extracted tables match its rules text
+        run: npm run tables:check
       - run: npm test
       - run: npm run build
       - run: npm run smoke
+      # Nothing ran this until now, which is how three of its assertions came to
+      # be describing an interface that had moved on. It starts its own server.
+      - run: npm run playwright:install
+      - run: npm run test:e2e
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7

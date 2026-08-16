@@ -70,12 +70,12 @@ await runSmoke(
     // Every catalogue row opens. System sets expose their source Markdown as a
     // read-only browser; custom sets use the same canonical set id.
     const initialCatalogue = await tablesJson("/api/table-sets", { headers: player.headers });
-    const cairn = initialCatalogue.body.sets.find((set) => set.id === "system:cairn");
-    assert.ok(cairn?.tables.length > 0);
-    const cairnDetail = await tablesJson("/api/table-sets/system%3Acairn", { headers: player.headers });
-    assert.equal(cairnDetail.body.set.readOnly, true);
-    assert.equal(cairnDetail.body.set.name, cairn.name);
-    assert.ok(cairnDetail.body.set.tables.length > 0);
+    const systemSet = initialCatalogue.body.sets.find((set) => set.id === "system:toybox");
+    assert.ok(systemSet?.tables.length > 0);
+    const systemSetDetail = await tablesJson("/api/table-sets/system%3Atoybox", { headers: player.headers });
+    assert.equal(systemSetDetail.body.set.readOnly, true);
+    assert.equal(systemSetDetail.body.set.name, systemSet.name);
+    assert.ok(systemSetDetail.body.set.tables.length > 0);
 
     // Usage includes source-backed system catalogues and tags inherited by all
     // of their tables, rather than looking only at custom database rows.
@@ -83,9 +83,10 @@ await runSmoke(
     const fantasyUsage = initialTags.body.tags.find((tag) => tag.slug === "fantasy").usage;
     const scifiUsage = initialTags.body.tags.find((tag) => tag.slug === "scifi").usage;
     assert.ok(fantasyUsage.sets >= 1);
-    assert.ok(fantasyUsage.tables >= cairn.tables.length);
-    assert.ok(scifiUsage.sets >= 2);
-    assert.ok(scifiUsage.tables > 0);
+    assert.ok(fantasyUsage.tables >= systemSet.tables.length);
+    // Nothing installed carries "scifi", and a tag nobody uses reports zero
+    // rather than going missing from the vocabulary.
+    assert.deepEqual(scifiUsage, { sets: 0, tables: 0 });
 
     const created = await tablesJson(
       "/api/table-sets",

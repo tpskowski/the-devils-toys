@@ -16,15 +16,15 @@ await runSmoke("Room item overlay smoke test", async ({ request, json, setup, lo
   const makeRoom = (name) =>
     request(
       "/api/rooms",
-      { method: "POST", headers: gm.headers, body: JSON.stringify({ name, system: "monolith" }) },
+      { method: "POST", headers: gm.headers, body: JSON.stringify({ name, system: "toybox" }) },
       201
     );
   const room = (await makeRoom("The Hold")).room;
   const twin = (await makeRoom("The Other Hold")).room;
-  const cairn = (
+  const otherSystem = (
     await request(
       "/api/rooms",
-      { method: "POST", headers: gm.headers, body: JSON.stringify({ name: "Elsewhere", system: "cairn" }) },
+      { method: "POST", headers: gm.headers, body: JSON.stringify({ name: "Elsewhere", system: "plainbox" }) },
       201
     )
   ).room;
@@ -197,7 +197,7 @@ await runSmoke("Room item overlay smoke test", async ({ request, json, setup, lo
 
   await json(
     `/api/rooms/${room.id}/items/copy-to`,
-    { method: "POST", headers: gm.headers, body: JSON.stringify({ roomId: cairn.id, itemIds: [renamed.id] }) },
+    { method: "POST", headers: gm.headers, body: JSON.stringify({ roomId: otherSystem.id, itemIds: [renamed.id] }) },
     409
   );
   await request(
@@ -228,17 +228,17 @@ await runSmoke("Room item overlay smoke test", async ({ request, json, setup, lo
         body: JSON.stringify({
           listKey,
           name: "Stun Baton",
-          spec: "shock, c-r",
+          spec: "shock, melee",
           cost: "",
           detail: "",
-          category: "STANDARD WEAPONS"
+          category: "WEAPONS"
         })
       },
       201
     )
   ).item;
   assert.equal(baton.weapon, true, "The heading it is filed under is what makes it a weapon.");
-  assert.equal(baton.label, "Stun Baton (shock, c-r)");
+  assert.equal(baton.label, "Stun Baton (shock, melee)");
 
   const guard = (
     await request(
@@ -277,7 +277,7 @@ await runSmoke("Room item overlay smoke test", async ({ request, json, setup, lo
     )
   ).encounter.combatants.find((entry) => entry.kind === "npc");
   assert.equal(armed.weapon.name, "Stun Baton", "The creature is holding the entry, under the entry's own name.");
-  assert.deepEqual(armed.weapon.traits, ["shock", "c-r"], "…with the traits the catalogue gave it.");
+  assert.deepEqual(armed.weapon.traits, ["shock", "melee"], "…with the traits the catalogue gave it.");
   assert.equal(armed.weapon.range, "Melee", "…and the reach the catalogue read, not one worked out again here.");
   assert.equal(armed.offhand.name, "Slug Pistol", "The second slot reaches the rail as the creature's other hand.");
   assert.equal(armed.offhand.damage, "D8");

@@ -15,7 +15,7 @@ await runSmoke(
 
     const room = await json(
       "/api/rooms",
-      { method: "POST", headers: gmJson, body: JSON.stringify({ name: "Cairn Encounter Table", system: "cairn" }) },
+      { method: "POST", headers: gmJson, body: JSON.stringify({ name: "Encounter Table", system: "toybox" }) },
       201
     );
     const roomId = room.body.room.id;
@@ -52,7 +52,7 @@ await runSmoke(
     const encounterId = created.body.encounter.id;
     await waitFor(events, "encounters-updated");
 
-    // Cairn declares party and enemies, and both are seeded when the encounter is made.
+    // Toybox declares party and enemies, and both are seeded when the encounter is made.
     assert.deepEqual(
       created.body.encounter.sides.map((side) => side.side),
       ["party", "enemies"]
@@ -103,32 +103,32 @@ await runSmoke(
     // A bestiary entry clones into the room's NPCs and joins the encounter in one call.
     const withNpc = await json(
       `/api/rooms/${roomId}/encounters/${encounterId}/combatants`,
-      { method: "POST", headers: gmJson, body: JSON.stringify({ kind: "npc", catalogName: "Root Goblin" }) },
+      { method: "POST", headers: gmJson, body: JSON.stringify({ kind: "npc", catalogName: "Tin Rat" }) },
       201
     );
     const goblin = withNpc.body.encounter.combatants.find((entry) => entry.kind === "npc");
     assert.equal(goblin.side, "enemies");
-    assert.equal(goblin.hpCurrent, 4, "the Cairn parser reads 4 HP off the bestiary line");
+    assert.equal(goblin.hpCurrent, 3, "the inline parser reads 3 HP off the bestiary line");
     // A record cloned to put something in a fight is a spawn, and the bestiary
     // must not list it beside the entry it was copied from.
     const npcs = await json(`/api/rooms/${roomId}/npcs`, { headers: { cookie: gmCookie } });
     assert.ok(
-      !npcs.body.custom.some((npc) => npc.name === "Root Goblin"),
+      !npcs.body.custom.some((npc) => npc.name === "Tin Rat"),
       "a spawned copy stays out of the bestiary's custom list"
     );
     assert.ok(
-      npcs.body.catalog.some((npc) => npc.name === "Root Goblin"),
+      npcs.body.catalog.some((npc) => npc.name === "Tin Rat"),
       "the built-in bestiary entry is still there"
     );
     let spawned = await json(`/api/rooms/${roomId}/npcs/spawned`, { headers: { cookie: gmCookie } });
     assert.equal(spawned.body.spawned.length, 1);
-    assert.equal(spawned.body.spawned[0].name, "Root Goblin");
+    assert.equal(spawned.body.spawned[0].name, "Tin Rat");
     assert.equal(spawned.body.spawned[0].encounterName, "Ambush at the ford");
 
     // Two goblins are two independent HP pools.
     const second = await json(
       `/api/rooms/${roomId}/encounters/${encounterId}/combatants`,
-      { method: "POST", headers: gmJson, body: JSON.stringify({ kind: "npc", catalogName: "Root Goblin" }) },
+      { method: "POST", headers: gmJson, body: JSON.stringify({ kind: "npc", catalogName: "Tin Rat" }) },
       201
     );
     assert.equal(second.body.encounter.combatants.filter((entry) => entry.kind === "npc").length, 2);
@@ -139,7 +139,7 @@ await runSmoke(
     assert.equal(spawned.body.spawned.length, 2, "each goblin is tracked separately");
     const goblinRecords = await json(`/api/rooms/${roomId}/npcs`, { headers: { cookie: gmCookie } });
     assert.equal(
-      goblinRecords.body.custom.filter((npc) => npc.name === "Root Goblin").length,
+      goblinRecords.body.custom.filter((npc) => npc.name === "Tin Rat").length,
       0,
       "neither goblin leaks into the bestiary"
     );
@@ -172,7 +172,7 @@ await runSmoke(
       (entry) => entry.kind === "npc" && entry.id !== goblin.id
     );
     assert.equal(damaged.hpCurrent, 1);
-    assert.equal(untouched.hpCurrent, 4, "damaging one goblin leaves the other alone");
+    assert.equal(untouched.hpCurrent, 3, "damaging one goblin leaves the other alone");
 
     // The GM writes a player's HP through to the character sheet.
     await json(
@@ -193,7 +193,7 @@ await runSmoke(
     const seen = playerView.body.encounters[0];
     assert.equal(seen.notes, undefined, "encounter notes are GM-only");
     const seenGoblin = seen.combatants.find((entry) => entry.kind === "npc");
-    assert.equal(seenGoblin.name, "Root Goblin", "players see an NPC's name and position");
+    assert.equal(seenGoblin.name, "Tin Rat", "players see an NPC's name and position");
     assert.equal(seenGoblin.hpCurrent, undefined, "players never see NPC hit points");
     assert.equal(seenGoblin.statblock, undefined, "players never see an NPC statblock");
 
@@ -424,22 +424,22 @@ await runSmoke(
     // Damage past 0 HP moves to an attribute. The same rule about whose scores
     // they are holds, and where the score lives follows the kind of combatant.
     assert.ok(
-      seen.attributeDamage.attributes.some((attribute) => attribute.id === "str"),
+      seen.attributeDamage.attributes.some((attribute) => attribute.id === "muscle"),
       "a player is told which attributes their character can spend"
     );
     await json(
       `/api/rooms/${roomId}/encounters/${encounterId}/combatants/${partyMember.id}`,
-      { method: "PATCH", headers: playerJson, body: JSON.stringify({ attributes: { str: 7 } }) },
+      { method: "PATCH", headers: playerJson, body: JSON.stringify({ attributes: { muscle: 7 } }) },
       200
     );
     const spent = await json(`/api/rooms/${roomId}/characters`, { headers: { cookie: playerCookie } });
     const spentBea = spent.body.characters.find((entry) => entry.id === characterId);
-    assert.equal(spentBea.sheet.strCurrent, 7, "an attribute step reaches the character sheet");
+    assert.equal(spentBea.sheet.muscleCurrent, 7, "an attribute step reaches the character sheet");
     assert.equal(spentBea.sheet.hpCurrent, 3, "spending an attribute leaves hit points alone");
 
     await json(
       `/api/rooms/${roomId}/encounters/${encounterId}/combatants/${seenGoblin.id}`,
-      { method: "PATCH", headers: playerJson, body: JSON.stringify({ attributes: { str: 1 } }) },
+      { method: "PATCH", headers: playerJson, body: JSON.stringify({ attributes: { muscle: 1 } }) },
       403
     );
     await json(
@@ -448,29 +448,30 @@ await runSmoke(
       400
     );
 
-    // Cairn does not carry Monolith's mark, so nothing here may set one.
+    // Toybox declares the mark, so setting it is allowed here — and reaches the
+    // sheet under the key the system named for it.
     await json(
       `/api/rooms/${roomId}/encounters/${encounterId}/combatants/${partyMember.id}`,
       { method: "PATCH", headers: gmJson, body: JSON.stringify({ criticalDamage: true }) },
-      400
+      200
     );
 
     // An NPC's scores live in its statblock, not on any sheet.
     await json(
       `/api/rooms/${roomId}/encounters/${encounterId}/combatants/${goblin.id}`,
-      { method: "PATCH", headers: gmJson, body: JSON.stringify({ attributes: { str: 2 } }) },
+      { method: "PATCH", headers: gmJson, body: JSON.stringify({ attributes: { muscle: 2 } }) },
       200
     );
     const afterSpend = await json(`/api/rooms/${roomId}/encounters/${encounterId}`, { headers: { cookie: gmCookie } });
     const spentGoblin = afterSpend.body.encounter.combatants.find((entry) => entry.id === goblin.id);
-    assert.equal(spentGoblin.statblock.str, 2, "the GM spends an NPC's attribute in its statblock");
-    assert.equal(spentGoblin.statblock.strMax, 8, "and what it was is kept, so the dialog can show 2/8");
-    assert.equal(spentGoblin.statblock.hp, 4, "the rest of the statblock survives an attribute write");
+    assert.equal(spentGoblin.statblock.muscle, 2, "the GM spends an NPC's attribute in its statblock");
+    assert.equal(spentGoblin.statblock.muscleMax, 4, "and what it was is kept, so the dialog can show 2/4");
+    assert.equal(spentGoblin.statblock.hp, 3, "the rest of the statblock survives an attribute write");
     assert.equal(spentGoblin.hpCurrent, 1, "and its hit points are untouched");
 
     // The rail carries the first weapon each combatant is holding, so it can be
     // rolled from beside the name.
-    assert.equal(spentGoblin.weapon.damage, "d6", "a creature's attack is read from its statblock");
+    assert.equal(spentGoblin.weapon.damage, "d4", "a creature's attack is read from its statblock");
     assert.equal(spentGoblin.weapon.range, "unknown", "Cairn states no ranges, so a reach it never gave is unknown");
     assert.equal(spentGoblin.armor, 0, "a creature's armor is read from its statblock");
     assert.equal(afterSpend.body.encounter.rangedWeaponIcon, "bow", "the rail draws Cairn's ranged weapons as a bow");
@@ -506,7 +507,7 @@ await runSmoke(
     // What a creature is holding and wearing is plain to look at across a room,
     // so the whole table sees both. How much fight is left in it is not.
     const playerGoblin = playerCombatants.find((entry) => entry.kind === "npc");
-    assert.equal(playerGoblin.weapon.damage, "d6", "players see what a creature attacks with");
+    assert.equal(playerGoblin.weapon.damage, "d4", "players see what a creature attacks with");
     assert.equal(playerGoblin.armor, 0, "and what it is wearing");
     assert.equal(playerGoblin.hpCurrent, undefined, "but never its hit points");
     assert.equal(playerGoblin.statblock, undefined, "nor the rest of its statblock");
@@ -611,10 +612,11 @@ await runSmoke(
     saves = await json(`/api/rooms/${roomId}/encounters/${encounterId}`, { headers: { cookie: gmCookie } });
     assert.equal(saves.body.encounter.combatants.find((entry) => entry.id === partyMember.id).actsFirstTurn, null);
 
-    // A CWN room rolls per side, and the party adds its best DEX modifier.
+    // Plainbox declares no attribute damage and no initiative sides, so an
+    // encounter on it offers neither.
     const cwn = await json(
       "/api/rooms",
-      { method: "POST", headers: gmJson, body: JSON.stringify({ name: "CWN Encounter Table", system: "cwn" }) },
+      { method: "POST", headers: gmJson, body: JSON.stringify({ name: "Plain Encounter Table", system: "plainbox" }) },
       201
     );
     const cwnRoomId = cwn.body.room.id;
@@ -623,7 +625,7 @@ await runSmoke(
       { method: "POST", headers: gmJson, body: JSON.stringify({ name: "Rooftop firefight" }) },
       201
     );
-    // CWN does not spend attributes, so nothing offers to.
+    // Plainbox does not spend attributes, so nothing offers to.
     assert.equal(
       cwnEncounter.body.encounter.attributeDamage,
       undefined,

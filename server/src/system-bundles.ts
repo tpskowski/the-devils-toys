@@ -156,17 +156,26 @@ export function buildSystemBundle(content: SystemBundleContent): Uint8Array {
 }
 
 /**
- * A path an archive may hold. Refuses anything absolute, anything reaching
- * upwards, and anything outside the four places a bundle keeps files — the
- * zip-slip check, which has to happen before a single byte is written.
+ * Refuses anything absolute and anything reaching upwards — the zip-slip check,
+ * which has to happen before a single byte is written. Kept apart from the
+ * allowlist below because a repository holds files a bundle may not, but nothing
+ * may ever hold a path that escapes the directory it is being written into.
  */
-const ALLOWED_ENTRY = /^(manifest\.json|system\.json|items\.json|traits\.json|(rules|tables)\/[^/]+)$/;
-
-export function refuseUnsafeEntries(names: readonly string[]) {
+export function refuseUnsafePaths(names: readonly string[], source = "bundle") {
   for (const name of names) {
     const normalized = name.replace(/\\/g, "/");
     if (normalized.startsWith("/") || /^[A-Za-z]:/.test(normalized) || normalized.split("/").includes(".."))
-      throw new Error(`The bundle holds an entry that would write outside it: "${name}".`);
+      throw new Error(`The ${source} holds an entry that would write outside it: "${name}".`);
+  }
+}
+
+/** The four places a bundle keeps files, and nothing else. */
+const ALLOWED_ENTRY = /^(manifest\.json|system\.json|items\.json|traits\.json|(rules|tables)\/[^/]+)$/;
+
+export function refuseUnsafeEntries(names: readonly string[]) {
+  refuseUnsafePaths(names);
+  for (const name of names) {
+    const normalized = name.replace(/\\/g, "/");
     if (normalized.endsWith("/")) continue;
     if (!ALLOWED_ENTRY.test(normalized))
       throw new Error(`The bundle holds "${name}", which is not one of the files a system bundle may carry.`);
@@ -181,6 +190,48 @@ function readJson<T>(files: Record<string, Uint8Array>, name: string, what: stri
   } catch {
     throw new Error(`The bundle's ${name} could not be read as JSON, so ${what} cannot be checked.`);
   }
+}
+
+/**
+ * Everything a system is made of, read out of a map of files and checked against
+ * itself. Shared by the two things that carry a system: a bundle zip, and a
+ * repository checkout — which is the same set of files with the repo's own
+ * furniture around them.
+ *
+ * `source` names what is being read, so a message an author has to act on says
+ * "the repository's items.json" when that is what they are looking at.
+ */
+export function systemContentFromFiles(files: Record<string, Uint8Array>, source: string): SystemBundleContent {
+  const parsed = gameSystemSchema.safeParse(readJson(files, "system.json", "the system definition"));
+  if (!parsed.success) {
+    const issue = parsed.error.issues[0];
+    const where = issue.path.length ? `${issue.path.join(".")}: ` : "";
+    throw new Error(`The ${source}'s system.json is not a valid system — ${where}${issue.message}`);
+  }
+  const system = parsed.data as GameSystem;
+
+  const items = readJson<SystemItemCatalog>(files, "items.json", "the item catalogue");
+  const traits = readJson<SystemTraitCatalog>(files, "traits.json", "the trait catalogue");
+  if (items.system !== system.id)
+    throw new Error(`The ${source}'s items.json belongs to "${items.system}", not to "${system.id}".`);
+  if (traits.system !== system.id)
+    throw new Error(`The ${source}'s traits.json belongs to "${traits.system}", not to "${system.id}".`);
+
+  const rules: Record<string, string> = {};
+  const tables: Record<string, string> = {};
+  for (const [name, bytes] of Object.entries(files)) {
+    if (name.startsWith("rules/")) rules[name.slice("rules/".length)] = strFromU8(bytes);
+    if (name.startsWith("tables/")) tables[name.slice("tables/".length)] = strFromU8(bytes);
+  }
+
+  for (const document of system.sourceDocuments) {
+    if (!rules[document.markdownFile])
+      throw new Error(`The ${source} names rules/${document.markdownFile} but does not contain it.`);
+    if (document.tablesFile && !tables[document.tablesFile])
+      throw new Error(`The ${source} names tables/${document.tablesFile} but does not contain it.`);
+  }
+
+  return { system, items, traits, rules, tables };
 }
 
 /**
@@ -214,37 +265,11 @@ export function readSystemBundle(archive: Uint8Array): SystemBundle {
       `That bundle was written by a newer version (${manifest.bundleVersion}). Update this application first.`
     );
 
-  const parsed = gameSystemSchema.safeParse(readJson(files, "system.json", "the system definition"));
-  if (!parsed.success) {
-    const issue = parsed.error.issues[0];
-    const where = issue.path.length ? `${issue.path.join(".")}: ` : "";
-    throw new Error(`The bundle's system.json is not a valid system — ${where}${issue.message}`);
-  }
-  const system = parsed.data as GameSystem;
+  const content = systemContentFromFiles(files, "bundle");
+  if (manifest.systemId !== content.system.id)
+    throw new Error(
+      `The bundle's manifest names "${manifest.systemId}" but its system.json is "${content.system.id}".`
+    );
 
-  if (manifest.systemId !== system.id)
-    throw new Error(`The bundle's manifest names "${manifest.systemId}" but its system.json is "${system.id}".`);
-
-  const items = readJson<SystemItemCatalog>(files, "items.json", "the item catalogue");
-  const traits = readJson<SystemTraitCatalog>(files, "traits.json", "the trait catalogue");
-  if (items.system !== system.id)
-    throw new Error(`The bundle's items.json belongs to "${items.system}", not to "${system.id}".`);
-  if (traits.system !== system.id)
-    throw new Error(`The bundle's traits.json belongs to "${traits.system}", not to "${system.id}".`);
-
-  const rules: Record<string, string> = {};
-  const tables: Record<string, string> = {};
-  for (const [name, bytes] of Object.entries(files)) {
-    if (name.startsWith("rules/")) rules[name.slice("rules/".length)] = strFromU8(bytes);
-    if (name.startsWith("tables/")) tables[name.slice("tables/".length)] = strFromU8(bytes);
-  }
-
-  for (const source of system.sourceDocuments) {
-    if (!rules[source.markdownFile])
-      throw new Error(`The bundle names rules/${source.markdownFile} but does not contain it.`);
-    if (source.tablesFile && !tables[source.tablesFile])
-      throw new Error(`The bundle names tables/${source.tablesFile} but does not contain it.`);
-  }
-
-  return { manifest, system, items, traits, rules, tables };
+  return { manifest, ...content };
 }

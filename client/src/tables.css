@@ -423,8 +423,17 @@
   background: var(--accent);
 }
 
+/*
+   The rows sit on a solid accent, which is how the 1px gaps between them are
+   drawn. So each row has to be opaque: a translucent tint here lets that accent
+   through and turns the whole block into a slab of it, on which `--muted` — a
+   colour chosen to be quiet against a surface — is barely legible. Mixing
+   against `--surface` keeps the tint and keeps the contrast, in every theme,
+   because both sides come from the theme itself.
+*/
 .tables-results .tables-result {
   border: 0;
+  background: color-mix(in srgb, var(--accent) 8%, var(--surface));
 }
 
 .tables-result-step {

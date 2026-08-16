@@ -127,7 +127,7 @@ async function main() {
     );
     const { room } = await gm.call(
       "/api/rooms",
-      { method: "POST", body: JSON.stringify({ name: "The Cinder Road", system: "cairn" }) },
+      { method: "POST", body: JSON.stringify({ name: "The Cinder Road", system: "toybox" }) },
       201
     );
     await gm.call(`/api/rooms/${room.id}`, { method: "PATCH", body: JSON.stringify({ musicEnabled: true }) }, 204);
@@ -616,11 +616,7 @@ async function main() {
 
     // A second room nobody has joined, so the Room Config picker shows what
     // reaching every room on the server actually looks like.
-    await gm.call(
-      "/api/rooms",
-      { method: "POST", body: JSON.stringify({ name: "The Kiln", system: "monolith" }) },
-      201
-    );
+    await gm.call("/api/rooms", { method: "POST", body: JSON.stringify({ name: "The Kiln", system: "toybox" }) }, 201);
 
     const office = await browser.newContext({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 2 });
     const desk = await office.newPage();

@@ -18,14 +18,23 @@ function withoutSource(table: RollTable) {
   return rest;
 }
 
-const books = ["Cairn.md", "Monolith.md"] as const;
-
-describe.each(books)("round-tripping every table in %s", (filename) => {
-  const markdown = fs.readFileSync(projectFile("raw", filename), "utf8");
+/**
+ * The corpus used to be Cairn.md and Monolith.md, the two books this repository
+ * shipped. It is the fixture now, whose tables were written to cover the shapes
+ * this has to survive: banded rows, one column, several columns, and three dice
+ * sizes. A book is a bigger corpus, not a broader one.
+ */
+describe("round-tripping every table in the fixture", () => {
+  const markdown = fs.readFileSync(projectFile("fixtures", "toybox", "rules", "Toybox.md"), "utf8");
   const original = parseRollTables(markdown);
 
   it("finds tables to check", () => {
-    expect(original.length).toBeGreaterThanOrEqual(10);
+    expect(original.length).toBeGreaterThanOrEqual(5);
+    // The shapes are the point of the corpus, so their loss should fail here
+    // rather than quietly reducing what the round-trip covers.
+    expect(new Set(original.map((table) => table.dice))).toEqual(new Set(["d6", "d10", "d20", "d66"]));
+    expect(original.some((table) => table.rows.some((row) => row.min !== row.max))).toBe(true);
+    expect(original.some((table) => table.columns.length > 1)).toBe(true);
   });
 
   it("reads back an identical table after rewriting it", () => {

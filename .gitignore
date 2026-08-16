@@ -1,15 +1,14 @@
-# Source books: the Markdown is redistributable under CC BY-SA 4.0, the PDFs are
-# not ours to publish. Matched at any depth, because a book being worked on gets
-# its own folder — `/raw/*.pdf` alone left those PDFs stageable.
+# No rules text lives here any more — a game system carries its own, in its own
+# repository. What is left in `raw/` is the repository table sets, which belong
+# to no system. Anything else under it is source material being worked on for a
+# system repository, and is nobody's to publish from here.
 #
-# Images extracted from those pages are the book's too, so they go the same way.
-# This covers `raw/` only: the guide's own screenshots under `docs/guide/images`
-# are ours and stay tracked.
+# `docs/guide/images` is the guide's own screenshots and stays tracked.
 /raw/**/*.pdf
 /raw/**/*.png
-
-# Local 13th Age source conversions are not redistributable project content.
-/raw/13th-age-2e/*.md
+/raw/**/*.html
+/raw/*.md
+/raw/13th-age-2e/
 
 # Dependencies and build output
 node_modules/
@@ -35,8 +34,11 @@ test-results/
 .env.*
 !.env.example
 
-# Per-developer tool state
-.claude/settings.local.json
+# Per-developer tool state. The whole directory: it holds local settings, launch
+# configurations, and the throwaway git worktrees Claude Code creates — and a
+# worktree is a second checkout of this repository, which is the last thing that
+# should ever be committed into it.
+/.claude/
 /dev-local.ps1
 /dev-local-linux.sh
 /dev-local-macos.sh

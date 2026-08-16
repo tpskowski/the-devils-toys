@@ -11,14 +11,14 @@ await runSmoke("Production smoke test", async ({ base, dataDir, json, setup, red
     {
       method: "POST",
       headers,
-      body: JSON.stringify({ name: "Smoke Table", system: "cairn" })
+      body: JSON.stringify({ name: "Smoke Table", system: "toybox" })
     },
     201
   );
   assert.equal(room.body.room.theme, "heroic");
   const rulesResponse = await fetch(`${base}/api/rooms/${room.body.room.id}/rules`, { headers });
   assert.equal(rulesResponse.status, 200);
-  const standaloneRulesPage = await fetch(`${base}/rules/cairn?room=${room.body.room.id}`, { headers });
+  const standaloneRulesPage = await fetch(`${base}/rules/toybox?room=${room.body.room.id}`, { headers });
   assert.equal(standaloneRulesPage.status, 200);
   assert.match(
     await standaloneRulesPage.text(),
@@ -27,8 +27,8 @@ await runSmoke("Production smoke test", async ({ base, dataDir, json, setup, red
   );
   assert.match(rulesResponse.headers.get("content-type") ?? "", /text\/markdown/);
   const rulesText = await rulesResponse.text();
-  assert.ok(rulesText.length > 40_000, "The complete Cairn rules should be available from a workspace start.");
-  assert.match(rulesText, /# Cairn/);
+  assert.ok(rulesText.length > 1_000, "The installed system's complete rules should be served.");
+  assert.match(rulesText, /# Toybox/);
 
   const roll = await json(
     `/api/rooms/${room.body.room.id}/messages`,
@@ -141,7 +141,7 @@ await runSmoke("Production smoke test", async ({ base, dataDir, json, setup, red
     {
       method: "POST",
       headers,
-      body: JSON.stringify({ name: "Disposable Table", system: "monolith" })
+      body: JSON.stringify({ name: "Disposable Table", system: "toybox" })
     },
     201
   );

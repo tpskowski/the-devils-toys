@@ -1,0 +1,118 @@
+{
+  "system": "toybox",
+  "source": "Toybox.md",
+  "lists": {
+    "inventory": [
+      {
+        "id": "toybox/cudgel",
+        "category": "WEAPONS",
+        "name": "Cudgel",
+        "spec": "d6",
+        "detail": "A stick with intent.",
+        "cost": "5",
+        "bulky": false,
+        "weapon": true,
+        "damage": "d6",
+        "range": "unknown",
+        "label": "Cudgel (d6)"
+      },
+      {
+        "id": "toybox/hand-axe",
+        "category": "WEAPONS",
+        "name": "Hand Axe",
+        "spec": "d6, thrown",
+        "detail": "",
+        "cost": "8",
+        "bulky": false,
+        "weapon": true,
+        "damage": "d6",
+        "traits": [
+          "thrown"
+        ],
+        "range": "thrown",
+        "label": "Hand Axe (d6, thrown)"
+      },
+      {
+        "id": "toybox/longblade",
+        "category": "WEAPONS",
+        "name": "Longblade",
+        "spec": "d8, bulky",
+        "detail": "",
+        "cost": "20",
+        "bulky": true,
+        "weapon": true,
+        "damage": "d8",
+        "traits": [
+          "bulky"
+        ],
+        "range": "unknown",
+        "label": "Longblade (d8, bulky)"
+      },
+      {
+        "id": "toybox/sling",
+        "category": "WEAPONS",
+        "name": "Sling",
+        "spec": "d6, ranged",
+        "detail": "Stones are free.",
+        "cost": "6",
+        "bulky": false,
+        "weapon": true,
+        "damage": "d6",
+        "traits": [
+          "ranged"
+        ],
+        "range": "ranged",
+        "label": "Sling (d6, ranged)"
+      },
+      {
+        "id": "toybox/lantern",
+        "category": "TOOLS",
+        "name": "Lantern",
+        "spec": "",
+        "detail": "",
+        "cost": "10",
+        "bulky": false,
+        "weapon": false,
+        "label": "Lantern"
+      },
+      {
+        "id": "toybox/rope-50-feet",
+        "category": "TOOLS",
+        "name": "Rope, 50 feet",
+        "spec": "bulky",
+        "detail": "",
+        "cost": "12",
+        "bulky": true,
+        "weapon": false,
+        "label": "Rope, 50 feet (bulky)"
+      },
+      {
+        "id": "toybox/crowbar",
+        "category": "TOOLS",
+        "name": "Crowbar",
+        "spec": "",
+        "detail": "",
+        "cost": "7",
+        "bulky": false,
+        "weapon": true,
+        "label": "Crowbar",
+        "damage": "d6",
+        "range": "Melee"
+      },
+      {
+        "id": "toybox/chalk-and-twine",
+        "category": "TOOLS",
+        "name": "Chalk and twine",
+        "spec": "",
+        "detail": "",
+        "cost": "1",
+        "bulky": false,
+        "weapon": false,
+        "label": "Chalk and twine"
+      }
+    ]
+  },
+  "retired": [
+    "toybox/bent-nail"
+  ]
+}

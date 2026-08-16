@@ -2,7 +2,16 @@
 
 A plan for letting an admin add a game system to a running server, without a rebuild and without touching the repository.
 
-When this work began, a system was only a compiled npm workspace and the project guidance explicitly ruled out runtime installation. Phases 0–5 and the server-side importer/exporter from Phase 6 are now implemented. This document preserves the design and acceptance record; current operational guidance lives in `docs/guide/admin/systems.md`, and `AGENTS.md` now distinguishes built-in packages from installable bundles.
+**Closed.** Every phase below is implemented, and the work went further than this
+document planned: the three compiled systems were split into repositories of
+their own and the application now ships none at all. Where this plan says
+"built-in", read it as the state it was written against.
+
+When this work began, a system was only a compiled npm workspace and the project
+guidance explicitly ruled out runtime installation. This document is kept for the
+design and the acceptance record. Current guidance lives in
+`docs/guide/admin/systems.md` for operating a server and in `AGENTS.md` for
+working on one; `schema/` publishes what a system may declare.
 
 The headline finding: **`GameSystem` is already almost entirely declarative data.** Of its twenty-odd fields, exactly one is code — `characterWarnings` (`shared/src/index.ts:853`). Everything else is JSON in a TypeScript file. That single function, three hardcoded per-system branches on the server, and a compile-time `SystemId` union are the whole of what stands between here and an installable system. This is a much smaller job than the workspace-per-system structure makes it look.
 

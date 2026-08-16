@@ -1,6 +1,6 @@
 # The Devil's Toys
 
-A local-first virtual tabletop that ships with Cairn, Monolith, and Cities Without Number and can accept additional data-only game-system bundles at runtime. It focuses on a persistent room, a fast shared table, rules at hand, and useful GM controls without trying to automate the games away.
+A local-first virtual tabletop. It ships no game system: an admin installs one at runtime, from a repository or a file, and a server can run as many as it likes. It focuses on a persistent room, a fast shared table, rules at hand, and useful GM controls without trying to automate the games away.
 
 **This is alpha software.** It runs and it is used, but nothing is settled: interfaces move, and data shapes still change between versions — migrations run on start, so keep the backups described under [Backups](#backups).
 
@@ -58,13 +58,31 @@ The production server serves both the API and `client/dist` at `http://localhost
 
 Mutable data defaults to `.data/` and can be moved with `DEVILS_TOYS_DATA_DIR`. The ports can be set with `PORT` and `DEVILS_TABLES_PORT`. See `.env.example`.
 
-## Installable game systems
+## Game systems
 
-A server admin can install a `.devilsystem.zip` without rebuilding or restarting the application. A system bundle contains a declarative system definition, its item and trait catalogues, rules Markdown, and extracted table JSON; it cannot contain executable extensions, custom CSS, or client code.
+This repository is the tabletop. A game system — its rules text, tables, gear, and the declarative definition that lays out a character sheet — lives in a repository of its own and is installed into a running server. Nothing needs rebuilding or restarting, and a fresh server can do nothing at all until one is installed.
 
-The current control surface is the authenticated admin API under `/api/admin/systems`. It lists systems, accepts a bundle upload, exports any built-in or installed system, retires and restores systems, and deletes an installed system that no room or character still uses. Exporting with a new `as` id produces a clone that can be installed beside its source.
+An admin installs one under **Management → Systems**, three ways: from the catalogue, from any repository the server is allowed to reach (paste its GitHub address), or from a `.devilsystem.zip` exported elsewhere. All three end in the same checks, in the same order — arriving over the network buys no trust.
 
-Installed systems are kept under `systems/` inside `DEVILS_TOYS_DATA_DIR` and registered in the database. Retiring one only removes it from new-room choices; rooms and characters already using it continue to work. Because the files and registry row belong together, back up and restore the complete data directory rather than copying an installed system by itself. See [Game systems](docs/guide/admin/systems.md) in the Admin's Guide for the lifecycle and API.
+A system is data. It carries a declarative definition, catalogues, Markdown, and table JSON, and it cannot carry executable extensions, custom CSS, or client code: the installer will not run code and there is nowhere in the format to put any.
+
+The catalogue is [devils-toys-systems](https://github.com/tpskowski/devils-toys-systems), and a server comes pointed at it. Set `DEVILS_TOYS_SYSTEM_CATALOG_URL` to offer a different menu, or to an empty string for none — installing by repository or from a file works either way. Fetching a system is the only outbound connection this server makes, and `DEVILS_TOYS_SYSTEM_HOSTS` is the allowlist it may make it to.
+
+Installed content is kept under `systems/` inside `DEVILS_TOYS_DATA_DIR` and registered in the database. Retiring a system only removes it from new-room choices; rooms and characters already using it keep working. Because the files and the registry row belong together, back up and restore the whole data directory rather than copying one system out of it.
+
+See [Game systems](docs/guide/admin/systems.md) in the Admin's Guide for the lifecycle, and [`schema/`](schema) for what a system may declare.
+
+### Writing one
+
+Start from the `devils-toys-example` scaffold — a complete, deliberately tiny system to copy and rename. Then, from a checkout of this repository beside yours:
+
+```
+npm run systems:validate -- ../devils-toys-yours    # exactly the checks an install runs
+npm run systems:catalog  -- ../devils-toys-yours    # rebuild items.json and traits.json from the book
+npx tsx scripts/tables-md-to-json.ts --repo ../devils-toys-yours   # rebuild the extracted tables
+```
+
+`npm run systems:export -- <id> --out <dir>` writes any installed system out as a repository, which is also how the systems that used to live here were split out.
 
 ## Run with WSLC on Windows
 
@@ -121,7 +139,7 @@ Do not run `wslc volume remove devils-toys-data` unless you intend to permanentl
 
 ## Prepare players and characters
 
-Server admins and room GMs have a **Players & characters** entry beneath the room list. Use it to create player sign-ins before granting room access, reset player passwords, and prepare Cairn, Monolith, or Cities Without Number character records before choosing their player or room. Admins can assign account roles; GMs can create and add player-level accounts only. Downgrading an account that manages rooms requires confirmation and transfers those rooms to the acting admin.
+Server admins and room GMs have a management entry beneath the room list — **Management** for an admin, **Players & characters** for a GM. Use it to create player sign-ins before granting room access, reset player passwords, and prepare character records before choosing their player or room. Admins also install and retire game systems from here. Admins can assign account roles; GMs can create and add player-level accounts only. Downgrading an account that manages rooms requires confirmation and transfers those rooms to the acting admin.
 
 A character's player and room are independent assignments. When setting both, give the player access to that room first. Full character-sheet details remain available from the room's Characters screen.
 
@@ -131,6 +149,18 @@ The room Library accepts PNG, JPEG, or WebP images classified as Maps, Scenes, o
 
 Maps and Scenes use `DEVILS_TOYS_SCENE_IMAGE_LIMIT_MB` (60 MB by default); image and Markdown References use `DEVILS_TOYS_REFERENCE_IMAGE_LIMIT_MB` (20 MB by default).
 
+## Accounts, when nobody can sign in
+
+An admin can reset any account's password from the application, including another admin's. If the last admin is locked out there is no way in through it, so three things can be done from the machine the database is on:
+
+```sh
+npm run accounts list
+npm run accounts reset <username>     # asks twice, hidden; signs that account out everywhere
+npm run accounts delete <username>    # only for an account that has done nothing
+```
+
+A password is asked for rather than passed as an argument, since an argument is visible to other processes and lands in shell history. See [Operating the server](docs/guide/admin/operating.md).
+
 ## Backups
 
 Stop the server, copy the complete configured data directory, then restart. Restore by stopping the server and replacing that directory with a backup made while the server was stopped. Database, installed systems, uploads, and logs are kept together so a single filesystem copy is sufficient.
@@ -139,6 +169,8 @@ Stop the server, copy the complete configured data directory, then restart. Rest
 
 The application code is released under the [MIT License](LICENSE).
 
-The bundled rules use their authors' licences. Cairn by Yochai Gal and Monolith by Adam Hensley are licensed under [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/); Cities Without Number by Kevin Crawford is released under [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/). Derived rules pages and extracted game data retain the licence of their source.
+No game system is distributed with it. A system carries its own rules text under its own licence, in its own repository, and states that licence in its `devilsystem.json` — which the server reports when it is installed.
 
-Attributions, the changes made to each source, and what is deliberately _not_ redistributed here are recorded in [NOTICE.md](NOTICE.md), and shown in the app under Credits.
+Cairn, Monolith, and Cities Without Number were part of this repository until the systems were split out. Each is now a repository of its own carrying its own attribution and record of changes; [Monolith](https://github.com/tpskowski/devils-toys-monolith) is published.
+
+What this repository does and does not redistribute is recorded in [NOTICE.md](NOTICE.md), and shown in the app under Credits. An operator is responsible for what they install.

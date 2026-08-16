@@ -1,44 +1,39 @@
 # Notices
 
-This repository contains application code and several independently licensed rules sources.
+This repository contains application code and no rules text at all.
 
-| Material                                                                                                                       | Licence                                                   |
-| ------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------- |
-| The application: everything under `client/`, `server/`, `shared/`, `systems/`, `scripts/`, and the project's own documentation | MIT — see [LICENSE](LICENSE)                              |
-| Cairn and Monolith source text and material derived from those sources                                                         | Creative Commons Attribution-ShareAlike 4.0 International |
-| Cities Without Number source text and material derived from that source                                                        | CC0 1.0 Universal                                         |
+| Material                                                                                                           | Licence                      |
+| ------------------------------------------------------------------------------------------------------------------ | ---------------------------- |
+| The application: everything under `client/`, `server/`, `shared/`, `scripts/`, and the project's own documentation | MIT — see [LICENSE](LICENSE) |
+| `fixtures/toybox` and `fixtures/plainbox`                                                                          | CC0 1.0 Universal            |
 
-The application code is not an adaptation of the rules text. Rules pages, extracted tables, antagonist entries, and other source-derived content retain the licence of the source they reproduce or adapt.
+The application is not an adaptation of any rules text. A game system is
+installed into a running server and carries its own licence; nothing in this
+repository reproduces or adapts one.
 
-## Cairn
+## The test fixtures
 
-**Cairn** by Yochai Gal, licensed under [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/).
+`fixtures/toybox` and `fixtures/plainbox` are game systems written for this
+repository's own test suite. They reprint no book and are dedicated to the public
+domain under [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/). They
+exist so that the application can be tested without depending on anyone's rules.
 
-- Author's page: <https://yochaigal.itch.io/cairn>. Project site: <https://cairnrpg.com>.
-- Cairn features public domain art by Wilhelm Jordan, W. Heath Robinson, Rolf Von Hoerschelmann, Arthur Rackham, and Arthur Layard. That art is not included here.
-- Changes made: the text was converted to Markdown for this application and the art and layout were dropped. Repairs are recorded in [`raw/corrections.md`](raw/corrections.md).
+## Systems that used to be here
 
-## Monolith
+Cairn, Monolith, and Cities Without Number were maintained inside this repository
+until the game systems were split out. Their text, the record of every change made
+to it, and their licences moved with them:
 
-**Monolith: Interstellar Science-Fiction Adventure**, version 1.1 (January 2023), by Adam Hensley, licensed under [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/).
+- **Cairn** by Yochai Gal — CC BY-SA 4.0 — `devils-toys-cairn`
+- **Monolith: Interstellar Science-Fiction Adventure** by Adam Hensley — CC BY-SA 4.0 — `devils-toys-monolith`
+- **Cities Without Number** by Kevin Crawford — CC0 1.0 Universal — `devils-toys-cwn`
 
-- Author's page: <https://adamhensley.itch.io/>.
-- Monolith is a science-fiction hack of Cairn by Yochai Gal.
-- Changes made: as noted in the source, the text is reprinted with minor changes for the digital format and with the art removed. Repairs are recorded in [`raw/corrections.md`](raw/corrections.md).
-
-## Cities Without Number
-
-**Cities Without Number**, version 1.0, by Kevin Crawford, released under [CC0 1.0 Universal](https://creativecommons.org/publicdomain/zero/1.0/).
-
-- Publisher's page: <https://sine-nomine-publishing.myshopify.com/>.
-- The canonical source is [`raw/CitiesWithoutNumberSRDv1.0.html`](raw/CitiesWithoutNumberSRDv1.0.html); the application serves its Markdown derivative.
-- Numbering repairs and Markdown-only structural changes are recorded in [`raw/citieswithoutnumber-corrections.md`](raw/citieswithoutnumber-corrections.md). No wording repairs have been made.
-
-None of the authors endorses this project or has reviewed it.
+None of those authors endorses this project or has reviewed it.
 
 ## Not redistributed here
 
-- The original PDFs are ignored by Git and are not published in this repository. Buy or download them from the authors' pages above.
+- **No rules text.** No rulebook, no extracted tables, no gear catalogue derived from anyone's book. What a server serves is what its operator installed, and that operator is responsible for having the right to.
+- **No original PDFs.** They never were published here, and the repositories that carry the converted text do not publish them either.
 - Fonts are not vendored. Inter, DM Mono, and Unbounded are installed from Fontsource under the [SIL Open Font License 1.1](https://openfontlicense.org/); their licence files ship inside those packages.
 - Third-party JavaScript dependencies keep their own licences, available in `node_modules` after `npm install`.
 - Anything a table uploads at runtime — audio, images, Markdown references — stays in the server's data directory, which is ignored by Git. Nothing a group adds to a room is part of this repository.

@@ -1,0 +1,560 @@
+{
+  "id": "toybox",
+  "name": "Toybox",
+  "shortName": "TOYBOX",
+  "glyph": "T",
+  "defaultTheme": "heroic",
+  "tagline": "A system that exists so the application can be tested without one.",
+  "rollRulesQuery": "Saves",
+  "sourceDocuments": [
+    {
+      "id": "toybox",
+      "markdownFile": "Toybox.md",
+      "tablesFile": "toybox.json",
+      "correctionsFile": "corrections.md",
+      "license": "CC0 1.0"
+    }
+  ],
+  "contentModules": [
+    {
+      "id": "toybox/core",
+      "label": "Toybox core rules",
+      "sourceDocumentId": "toybox",
+      "rootHeadings": ["Toybox"],
+      "classification": "player",
+      "storageNamespace": "toybox.core",
+      "provides": ["toybox/core"],
+      "requires": []
+    },
+    {
+      "id": "toybox/gm",
+      "label": "Toybox bestiary",
+      "sourceDocumentId": "toybox",
+      "rootHeadings": ["Bestiary"],
+      "classification": "gm",
+      "storageNamespace": "toybox.gm",
+      "provides": ["toybox/gm"],
+      "requires": ["toybox/core"]
+    }
+  ],
+  "imports": [],
+  "partyLabel": "Gang",
+  "abilities": ["Muscle", "Nerve", "Knack"],
+  "gmOnlyHeadings": ["Bestiary"],
+  "npcCatalog": {
+    "heading": "Bestiary",
+    "entryLevel": 3,
+    "exclude": []
+  },
+  "characterSheet": {
+    "sections": [
+      {
+        "id": "vitals",
+        "label": "Hit Protection",
+        "layout": "paired-current-max",
+        "fields": [
+          {
+            "key": "hpCurrent",
+            "label": "Hit Protection current",
+            "kind": "number"
+          },
+          {
+            "key": "hpMax",
+            "label": "Hit Protection maximum",
+            "kind": "number"
+          },
+          {
+            "key": "armor",
+            "label": "Armor",
+            "kind": "number"
+          }
+        ]
+      },
+      {
+        "id": "abilities",
+        "label": "Abilities",
+        "layout": "paired-current-max",
+        "fields": [
+          {
+            "key": "muscleCurrent",
+            "label": "Muscle current",
+            "kind": "number",
+            "roll": {
+              "kind": "save",
+              "label": "MUSCLE"
+            }
+          },
+          {
+            "key": "muscleMax",
+            "label": "Muscle maximum",
+            "kind": "number"
+          },
+          {
+            "key": "nerveCurrent",
+            "label": "Nerve current",
+            "kind": "number",
+            "roll": {
+              "kind": "save",
+              "label": "NERVE"
+            }
+          },
+          {
+            "key": "nerveMax",
+            "label": "Nerve maximum",
+            "kind": "number"
+          },
+          {
+            "key": "knackCurrent",
+            "label": "Knack current",
+            "kind": "number",
+            "roll": {
+              "kind": "save",
+              "label": "KNACK"
+            }
+          },
+          {
+            "key": "knackMax",
+            "label": "Knack maximum",
+            "kind": "number"
+          }
+        ]
+      },
+      {
+        "id": "details",
+        "label": "Details",
+        "fields": [
+          {
+            "key": "trade",
+            "label": "Trade",
+            "kind": "text",
+            "placeholder": "Cooper"
+          },
+          {
+            "key": "criticalDamage",
+            "label": "Critical damage",
+            "kind": "checkbox"
+          },
+          {
+            "key": "deprived",
+            "label": "Deprived",
+            "kind": "checkbox"
+          },
+          {
+            "key": "vices",
+            "label": "Vices",
+            "kind": "vices"
+          },
+          {
+            "key": "notes",
+            "label": "Notes",
+            "kind": "textarea"
+          }
+        ]
+      }
+    ],
+    "lists": [
+      {
+        "key": "inventory",
+        "label": "Inventory",
+        "slots": ["1", "2", "3", "4", "5", "6"],
+        "itemHeadings": ["Gear"],
+        "weaponCategories": ["WEAPONS"],
+        "weaponRange": {
+          "melee": ["\\bmelee\\b", "^touch$"],
+          "ranged": ["range", "\\bthrown\\b", "\\branged\\b", "\\b(?:feet|foot|ft)\\b"]
+        }
+      }
+    ],
+    "layout": {
+      "kind": "rails",
+      "left": ["vitals"],
+      "feature": ["abilities"],
+      "right": {
+        "sections": ["details"],
+        "lists": ["inventory"]
+      }
+    }
+  },
+  "groupPage": {
+    "sections": [],
+    "hirelings": {
+      "label": "Hands",
+      "singularLabel": "Hand",
+      "rulesQuery": "Hands",
+      "creationHint": "Roll 3d6 for each ability and 1d6 for Hit Protection.",
+      "levelUpHint": "A hand that survives a delve raises one ability by 1.",
+      "sheet": {
+        "sections": [
+          {
+            "id": "identity",
+            "label": "Identity",
+            "fields": [
+              {
+                "key": "name",
+                "label": "Name",
+                "kind": "text"
+              },
+              {
+                "key": "trade",
+                "label": "Trade",
+                "kind": "text"
+              }
+            ]
+          },
+          {
+            "id": "vitals",
+            "label": "Hit Protection",
+            "layout": "paired-current-max",
+            "fields": [
+              {
+                "key": "hpCurrent",
+                "label": "Hit Protection current",
+                "kind": "number"
+              },
+              {
+                "key": "hpMax",
+                "label": "Hit Protection maximum",
+                "kind": "number"
+              }
+            ]
+          },
+          {
+            "id": "abilities",
+            "label": "Abilities",
+            "layout": "paired-current-max",
+            "fields": [
+              {
+                "key": "muscleCurrent",
+                "label": "Muscle current",
+                "kind": "number"
+              },
+              {
+                "key": "muscleMax",
+                "label": "Muscle maximum",
+                "kind": "number"
+              },
+              {
+                "key": "nerveCurrent",
+                "label": "Nerve current",
+                "kind": "number"
+              },
+              {
+                "key": "nerveMax",
+                "label": "Nerve maximum",
+                "kind": "number"
+              },
+              {
+                "key": "knackCurrent",
+                "label": "Knack current",
+                "kind": "number"
+              },
+              {
+                "key": "knackMax",
+                "label": "Knack maximum",
+                "kind": "number"
+              }
+            ]
+          }
+        ],
+        "lists": [
+          {
+            "key": "inventory",
+            "label": "Inventory",
+            "slots": ["1", "2", "3", "4", "5", "6"]
+          }
+        ]
+      }
+    },
+    "obligations": {
+      "label": "Debts",
+      "singularLabel": "Debt",
+      "emptyHint": "Nothing owed, which never lasts.",
+      "rulesQuery": "Debts"
+    },
+    "starshipSheet": {
+      "sections": [
+        {
+          "id": "identity",
+          "label": "Identity",
+          "fields": [
+            {
+              "key": "name",
+              "label": "Name",
+              "kind": "text"
+            },
+            {
+              "key": "size",
+              "label": "Size",
+              "kind": "text"
+            },
+            {
+              "key": "crew",
+              "label": "Crew",
+              "kind": "text"
+            }
+          ]
+        },
+        {
+          "id": "condition",
+          "label": "Condition",
+          "layout": "paired-current-max",
+          "fields": [
+            {
+              "key": "hullCurrent",
+              "label": "Hull current",
+              "kind": "number"
+            },
+            {
+              "key": "hullMax",
+              "label": "Hull maximum",
+              "kind": "number"
+            }
+          ]
+        }
+      ],
+      "lists": [
+        {
+          "key": "holds",
+          "label": "Holds",
+          "slots": ["Hold 1", "Hold 2", "Hold 3", "Hold 4", "Hold 5", "Hold 6"]
+        }
+      ],
+      "baseValues": {
+        "hullCurrent": 6,
+        "hullMax": 6
+      },
+      "sizes": [
+        {
+          "id": "handcart",
+          "label": "Handcart",
+          "holds": 2,
+          "fixed": {
+            "crew": "1"
+          },
+          "note": "Two holds."
+        },
+        {
+          "id": "wagon",
+          "label": "Wagon",
+          "holds": 4,
+          "fixed": {
+            "crew": "2-4"
+          },
+          "note": "Four holds."
+        },
+        {
+          "id": "barge",
+          "label": "Barge",
+          "holds": 6,
+          "fixed": {
+            "crew": "4-8"
+          },
+          "note": "Six holds."
+        }
+      ],
+      "partsList": "holds"
+    }
+  },
+  "warningRules": [
+    {
+      "kind": "compare",
+      "key": "hpCurrent",
+      "against": "hpMax",
+      "operator": ">",
+      "message": "Hit Protection is above its maximum."
+    },
+    {
+      "kind": "range",
+      "key": "armor",
+      "min": 0,
+      "max": 3,
+      "message": "Armor cannot normally exceed 3."
+    },
+    {
+      "kind": "range",
+      "key": "muscleMax",
+      "min": 3,
+      "max": 18,
+      "message": "Muscle is outside 3-18."
+    },
+    {
+      "kind": "range",
+      "key": "nerveMax",
+      "min": 3,
+      "max": 18,
+      "message": "Nerve is outside 3-18."
+    },
+    {
+      "kind": "range",
+      "key": "knackMax",
+      "min": 3,
+      "max": 18,
+      "message": "Knack is outside 3-18."
+    },
+    {
+      "kind": "flag",
+      "key": "deprived",
+      "equals": true,
+      "message": "Deprived: no recovery until it is resolved."
+    },
+    {
+      "kind": "list-occupancy",
+      "listKey": "inventory",
+      "tiers": [
+        {
+          "atLeast": 6,
+          "message": "Every slot is full."
+        }
+      ]
+    }
+  ],
+  "initiative": {
+    "model": "side",
+    "sides": [
+      {
+        "id": "party",
+        "label": "Gang"
+      },
+      {
+        "id": "enemies",
+        "label": "Enemies"
+      }
+    ],
+    "sideOrder": "fixed"
+  },
+  "rangedWeaponIcon": "bow",
+  "traitCatalog": {
+    "headings": ["Gear Properties"]
+  },
+  "viceCatalog": {
+    "column": "Vice"
+  },
+  "npcStatblock": {
+    "hitPointsKey": "hp",
+    "armorKey": "armor",
+    "parser": "inline",
+    "weaponKeys": ["attacks", "secondWeapon"],
+    "weaponRange": {
+      "melee": ["\\bmelee\\b", "^touch$"],
+      "ranged": ["range", "\\bthrown\\b", "\\branged\\b", "\\b(?:feet|foot|ft)\\b"]
+    },
+    "fields": [
+      {
+        "key": "hp",
+        "label": "HP",
+        "kind": "number",
+        "inSummary": true
+      },
+      {
+        "key": "armor",
+        "label": "Armor",
+        "kind": "number",
+        "inSummary": true
+      },
+      {
+        "key": "muscle",
+        "label": "Muscle",
+        "kind": "number"
+      },
+      {
+        "key": "nerve",
+        "label": "Nerve",
+        "kind": "number",
+        "inSummary": true
+      },
+      {
+        "key": "knack",
+        "label": "Knack",
+        "kind": "number"
+      },
+      {
+        "key": "attacks",
+        "label": "Attack",
+        "kind": "text"
+      },
+      {
+        "key": "secondWeapon",
+        "label": "Weapon 2",
+        "kind": "text"
+      }
+    ]
+  },
+  "tableCatalog": {
+    "label": "Toybox tables",
+    "exclude": [],
+    "tags": ["fantasy"]
+  },
+  "dice": {
+    "save": {
+      "sides": 20,
+      "success": "equal-or-under",
+      "automaticSuccess": 1,
+      "automaticFailure": 20,
+      "types": [
+        {
+          "id": "muscle",
+          "label": "Muscle"
+        },
+        {
+          "id": "nerve",
+          "label": "Nerve"
+        },
+        {
+          "id": "knack",
+          "label": "Knack"
+        }
+      ],
+      "outcomes": {
+        "normal": {
+          "success": "Under the ability - it holds.",
+          "failure": "Over the ability - it does not."
+        },
+        "advantage": {
+          "success": "Enhanced success",
+          "failure": "Reduced failure"
+        },
+        "disadvantage": {
+          "success": "Mixed success",
+          "failure": "Disastrous failure"
+        }
+      }
+    },
+    "damage": {
+      "impairedSides": 4,
+      "enhancedSides": 12,
+      "multipleRolls": "keep-highest"
+    }
+  },
+  "attributeDamage": {
+    "label": "Attribute damage",
+    "note": "Damage past 0 Hit Protection takes Muscle by the remainder, and the target then saves against Muscle to avoid critical damage.",
+    "criticalDamage": {
+      "attributeId": "muscle",
+      "key": "criticalDamage",
+      "label": "Critical damage"
+    },
+    "attributes": [
+      {
+        "id": "muscle",
+        "label": "Muscle",
+        "currentKey": "muscleCurrent",
+        "maximumKey": "muscleMax",
+        "statblockKey": "muscle"
+      },
+      {
+        "id": "nerve",
+        "label": "Nerve",
+        "currentKey": "nerveCurrent",
+        "maximumKey": "nerveMax",
+        "statblockKey": "nerve"
+      },
+      {
+        "id": "knack",
+        "label": "Knack",
+        "currentKey": "knackCurrent",
+        "maximumKey": "knackMax",
+        "statblockKey": "knack"
+      }
+    ]
+  }
+}

@@ -1,23 +1,58 @@
 # Project guidance
 
-## Adding built-in systems
+## Game systems
 
-1. Create `systems/<slug>` as a workspace package following the shared `GameSystem` type.
-2. Keep system metadata, character fields, constraints, dice behavior, and content classification in that package.
-3. Put authoritative source Markdown in `raw/`; preserve its wording exactly except for documented repairs in `raw/corrections.md`.
-4. Mark every content section as `player` or `gm`. Server-side search and direct reads must apply that classification before returning data.
-5. Register the package in `server/src/systems.ts` and add focused tests for defaults, dice rules, character fields, and access filtering.
-6. Add `systems/<slug>/items.json` containing `{"system":"<slug>","source":"","lists":{}}` and `systems/<slug>/traits.json` containing `{"system":"<slug>","source":"","traits":[]}`, then run `npm run build:items` and `npm run build:traits` to fill them. The placeholders are needed first because the generators load the system definition. Both commands are one-offs: they seed an empty catalogue and never touch a filled one. See "The item catalogue".
-7. These steps are for a system maintained with the application. Built-in systems are compiled into the application and are not copied into the mutable data directory.
+This repository is the tabletop and ships no game system. Each one lives in a
+repository of its own — `../devils-toys-<id>` — and is installed at runtime. If
+you are about to add a `systems/` workspace, that is the change this structure
+exists to prevent.
 
-## Installable systems
+- A system is **data, never code**. `system.json` is the whole of its behaviour and every field in it is declarative: a player warning is a `warningRules` entry, not a function. That is what makes a system installable at all, and it is why nothing read from one is ever evaluated, imported, or executed.
+- A system repository holds `devilsystem.json` (the marker), `system.json`, `items.json`, `traits.json`, `rules/`, and `tables/`. Everything else in it — README, licence, workflows, notes, the book itself under a gitignored `source/` — is the author's and is ignored on install.
+- Installed content lives under `<dataDir>/systems/<id>/` **and** is registered in the `systems` table. Both are required; copying a directory into place is not an installation.
+- Installing over an id replaces its content atomically and invalidates every system-content cache. A failure leaves the previous content and row untouched.
+- Retirement removes a system from new-room choices and leaves existing rooms usable. Deletion is only for a system nothing points at.
+- `builtinSystems` is empty and the concept is kept deliberately: it still draws the line between content read from this repository and content read from the data directory, and it is where a system would go if one ever shipped in the image again.
 
-- An admin may install another system at runtime as a `.devilsystem.zip` bundle through `POST /api/admin/systems`. A bundle is data only: `system.json`, `items.json`, `traits.json`, rules Markdown, extracted table JSON, and a manifest. Never load JavaScript or other executable content from one.
-- Installed content lives under `<dataDir>/systems/<id>/` and is registered in the `systems` database table. Both are required; copying a directory into place is not an installation.
-- Installing a bundle whose id is already installed replaces its content atomically and invalidates every system-content cache. A built-in id can never be replaced.
-- Retirement removes a system from new-room choices but leaves existing rooms and characters usable. Deletion is allowed only for an installed system with no rooms or characters pointing at it.
-- `GET /api/admin/systems/:id/export` exports either a built-in or installed system. The optional `as` and `name` query parameters clone it under a new id, rewriting all system-owned namespaces together.
-- A bundle's `tables/*.json` files use the same runtime table-set format as built-in and repository catalogues. Validate them through `readSetJson`; do not reparse the bundled Markdown to recreate them during installation.
+### Working on a system from here
+
+`fixtures/toybox` and `fixtures/plainbox` are system repositories in the same
+shape as any other, so the same commands work on all of them. A path is resolved
+against this repository's root.
+
+```
+npm run systems:validate -- ../devils-toys-cairn     # exactly what an install checks
+npm run systems:catalog  -- ../devils-toys-cairn     # rebuild items.json and traits.json from the book
+npx tsx scripts/tables-md-to-json.ts --repo ../devils-toys-cairn [--check]
+npm run systems:export   -- <installed-id> --out ../devils-toys-<id>
+npm run systems:schema                                # regenerate the published JSON Schema
+npm run fixture:build                                 # both of the above, for the fixture
+```
+
+**Rebuild tables with `--repo`, never with `--in`/`--out`.** The pair cannot see
+`gmOnlyHeadings`, so it writes tables carrying no `classification` — and a table
+with no classification is refused to _players_, not to the GM. A system rebuilt
+that way looks right to whoever rebuilt it and has silently lost every table its
+players could reach.
+
+### The test fixtures
+
+The suite cannot borrow a system, so it brings two. `toybox` declares everything
+optional a system may declare — group page, hirelings, assets, attribute damage,
+vices, traits, a sheet layout, qualified save outcomes. `plainbox` declares none
+of it. Much of what the application does is only visible across a _pair_ of
+systems — an item may not be copied into a room on another system, a config
+section is offered by one and not another — which is why there are two, and why
+"left out" and "empty" can be told apart at all.
+
+Both are installed through the real install path rather than injected, so every
+test that needs a system also exercises the installer.
+
+### Importing from a repository
+
+- Fetching is the only outbound connection this server makes. `DEVILS_TOYS_SYSTEM_HOSTS` is the allowlist and it is re-checked on **every redirect**, not once — codeload redirects to an object store, and checking once at the start is exactly how an allowlist is walked out of.
+- An archive is capped as it is read, not measured afterwards, and a path that climbs out of the archive is refused outright rather than filtered out. Do not let the set of files we read become the thing that provides that guarantee.
+- Everything after the download is the code an uploaded bundle already goes through. Arriving over the network buys no trust.
 
 ## Adding a room theme
 
@@ -36,17 +71,19 @@
 
 ## The item catalogue
 
-- A system's gear lives in `systems/<id>/items.json`. **The catalogue is the authority, not the rulebook.** The book seeds it once and has no say in it afterwards. This is a deliberate exception to the rule below that content is read from the book rather than restated: gear gets fixed, rebalanced, added to, and thrown out, and none of that can survive if the book reseeds it.
-- **`npm run build:items` is a one-off per system.** It seeds a catalogue that has none and then refuses to touch it again, reporting `already seeded — untouched`. Nothing a run can do will reorder, rewrite, or reinstate an entry, so a hand edit needs no defending against the build.
-- `npm run build:items:merge` folds in what a book has gained since — a corrections file, a new printing — and can be narrowed to one system by running it in the server workspace: `npm run build:items --workspace @devils-toys/server -- --merge cwn`. That pass is **additive only**: an entry already held keeps every value it has, a field it has never carried is filled from the book, and an id under `retired` is never offered again. An entry the book no longer offers is reported and left alone, since it is either a deliberate addition or a rename.
-- **Removing an entry means retiring it.** Deleting it from `lists` alone lasts until the next `--merge`, because the book still prices it. Put its id in the catalogue's `retired` array and it stays gone. Monolith's `heavy-weapons` and `stationary-weapons` are the standing example: one priced row each, replaced by the two weapons the row's own description names.
+_Cairn, Monolith, and Cities Without Number are named below as worked examples. They were part of this repository until the systems were split out and are now `../devils-toys-cairn`, `-monolith`, and `-cwn`; the behaviour each one illustrates is unchanged._
+
+- A system's gear lives in its own repository's `items.json`. **The catalogue is the authority, not the rulebook.** The book seeds it once and has no say in it afterwards. This is a deliberate exception to the rule below that content is read from the book rather than restated: gear gets fixed, rebalanced, added to, and thrown out, and none of that can survive if the book reseeds it.
+- **Seeding is additive and never rewrites.** `systems:catalog` fills a catalogue that has none, and afterwards contributes only ids it has never seen. Nothing a run can do will reorder, rewrite, or reinstate an entry, so a hand edit needs no defending against the build.
+- Re-running it folds in what a book has gained since — a corrections file, a new printing. An entry already held keeps every value it has, and an id under `retired` is never offered again. An entry the book no longer offers is reported and left alone, since it is either a deliberate addition or a rename. Run it and read the diff: what appears is what the book gained.
+- **Removing an entry means retiring it.** Deleting it from `lists` alone lasts until the next `systems:catalog`, because the book still prices it. Put its id in the catalogue's `retired` array and it stays gone. Monolith's `heavy-weapons` and `stationary-weapons` are the standing example: one priced row each, replaced by the two weapons the row's own description names.
 - To rebuild a catalogue from the book from scratch, delete the file and run the command again. That discards every hand edit in it, which is why it is a deletion and not a flag.
 - Hand-edit `items.json` freely; that is what it is for. It is `.prettierignore`d so nothing reformats it under you, though a run that adds entries rewrites the whole file in the serializer's format.
-- `weaponCategories` on a list is read only while seeding. There is no correction hook in the system definition — an entry the parser reads wrongly is fixed in the catalogue, which nothing will undo. Monolith's Basilisk Gland is the standing example: the parser reads it as ordinary gear because its damage sits in a second parenthetical, and the catalogue records it as a 1D8 weapon.
+- `weaponCategories` on a list is read only while seeding, by `systems:catalog`. There is no correction hook in the system definition — an entry the parser reads wrongly is fixed in the catalogue, which nothing will undo. Monolith's Basilisk Gland is the standing example: the parser reads it as ordinary gear because its damage sits in a second parenthetical, and the catalogue records it as a 1D8 weapon.
 - Every item carries an `id` built from the system and the item's name, so anything that needs to point at an item has something stable to point at, and so the seeder can tell a new entry from one already held. Ids are qualified by spec only where a name repeats, so an unrelated table gaining a row cannot move one. `catalogFromRulebook` refuses to produce a duplicate id.
-- The file is reached as `@devils-toys/system-<id>/items`, not through the `GameSystem` definition. The seeder reads those definitions to decide what to offer, so a definition that carried its own catalogue could not be loaded until the catalogue already existed. Adding a system therefore starts with a placeholder `{"system":"<id>","source":"","lists":{}}` before the first `npm run build:items`.
+- The file is read off disk beside the system's other content, not through the `GameSystem` definition. The seeder reads that definition to decide what to offer, so a definition carrying its own catalogue could not be loaded until the catalogue already existed. A new system therefore starts with a placeholder `{"system":"<id>","source":"","lists":{}}` before its first `systems:catalog`.
 - esbuild inlines the JSON into the server bundle, so the runtime image needs no extra files. Do not switch it to a runtime `fs` read without also adding it to the Dockerfile.
-- What a system's weapon words mean lives beside the gear in `systems/<id>/traits.json`, on the same terms: `npm run build:traits` seeds it from the definition lists the system names in `traitCatalog.headings`, once, and `npm run build:traits:merge` folds in later additions. A trait a book states in prose rather than in a list — Monolith's bulk and blast, Cairn's bulk — is written in by hand and is never touched. The client reads the catalogue from `/api/status` at start-up, so a change needs a server restart to be seen.
+- What a system's weapon words mean lives beside the gear in the same repository's `traits.json`, on the same terms: `npm run systems:catalog -- <dir>` seeds it from the definition lists the system names in `traitCatalog.headings` and folds in what the book has gained since. A trait a book states in prose rather than in a list — Monolith's bulk and blast, Cairn's bulk — is written in by hand and is never touched. The client reads the catalogue from `/api/status` at start-up, so a change needs a server restart to be seen.
 
 ## Weapons and carried items
 
@@ -62,7 +99,7 @@
 - Tables are read out of each system's authoritative Markdown by `server/src/roll-tables.ts`, never restated in the system package. A Markdown table is rollable when its first column is a die and its rows are keyed by die values, so reference tables such as equipment lists stay out of the catalogue.
 - A system package records only what its catalogue is called and which tables to leave out, in `tableCatalog`.
 - Tables carry the part of the book they came from as `category`, which is what the roller lists as browsable sections. A document with a single top-level heading is titled by it, as Cairn is, so that heading is dropped; Monolith uses top-level headings for chapters and they become the sections. A table with no heading above it is its own section, as Monolith's one-table GROUP DEBT chapter is.
-- The die comes from the column heading, then from a `(d20)` marker on a heading above the table, and last from the values the rows cover. Where a source and its own die disagree, keep the stated die and report the rows it cannot reach rather than silently changing either one; intentional repairs belong in `raw/corrections.md`.
+- The die comes from the column heading, then from a `(d20)` marker on a heading above the table, and last from the values the rows cover. Where a source and its own die disagree, keep the stated die and report the rows it cannot reach rather than silently changing either one; intentional repairs belong in the system's own `rules/corrections.md`.
 - Custom sets live in the `table_sets` table as Markdown and go through the same parser, so a set added outside any system behaves exactly like a system's own.
 - A repository export is different from the editable database copy: it contains runtime JSON under `raw/tables/`. Standalone checked-in sets are listed in `raw/tables/repository-sets.json`; the bundled `import-tables.mjs` compares set and table changes and must confirm before writing either the registry or a set file. These catalogues are read-only at runtime and do not require a `GameSystem` package.
 - Roll visibility is one choice with four values (`public`, `private`, `invisible`, `reveal`) even though the interface presents three checkboxes. The server decides what each one broadcasts; a client must never be trusted to withhold table text it was sent.

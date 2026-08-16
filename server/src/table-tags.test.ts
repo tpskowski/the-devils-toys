@@ -21,6 +21,9 @@ beforeAll(async () => {
   vi.resetModules();
   ({ db } = await import("./db.js"));
   ({ knownTags, tagUsage, tagVocabulary } = await import("./table-tags.js"));
+  // After the reset, so the fixture lands in this file's data directory and in
+  // the registry belonging to the module graph the assertions will read.
+  (await import("./test-fixture.js")).installToybox();
 });
 
 afterAll(() => {
@@ -120,17 +123,18 @@ describe("the tag vocabulary", () => {
     });
   });
 
-  it("counts inherited tags across the built-in system catalogues", () => {
+  it("counts inherited tags across a registered system's catalogue", () => {
     db.exec("DELETE FROM table_sets");
+    // The fixture's catalogue declares "fantasy", so every one of its tables
+    // inherits it; one table names "character-building" for itself.
     const fantasy = tagUsage("fantasy");
-    const scifi = tagUsage("scifi");
     const character = tagUsage("character-building");
 
     expect(fantasy.sets).toBeGreaterThanOrEqual(1);
-    expect(fantasy.tables).toBeGreaterThan(0);
-    expect(scifi.sets).toBeGreaterThanOrEqual(2);
-    expect(scifi.tables).toBeGreaterThan(0);
-    expect(character.tables).toBeGreaterThan(0);
+    expect(fantasy.tables).toBeGreaterThan(1);
+    expect(character.tables).toBe(1);
+    // A tag nothing carries is counted as such rather than being absent.
+    expect(tagUsage("scifi")).toEqual({ sets: 0, tables: 0 });
   });
 
   it("counts an inherited custom-set tag on each table in that set", () => {

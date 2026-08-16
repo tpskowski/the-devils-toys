@@ -1,6 +1,10 @@
-# Cairn/Monolith VTT Implementation Plan
+# The Devil's Toys Implementation Plan
 
-This project is a custom virtual tabletop for Cairn and Monolith. They share a core rules lineage, but Cairn is fantasy and Monolith is science fiction.
+This project is a custom virtual tabletop. It began as one built for Cairn and
+Monolith specifically, and the checklists below are the record of that work; the
+game systems have since been split into repositories of their own and the
+application ships none. Where an item names a system, read it as the history it
+is. The standing guidelines below are current.
 
 ## How to use this plan
 
@@ -22,7 +26,7 @@ This project is a custom virtual tabletop for Cairn and Monolith. They share a c
 
 - Use a TypeScript monorepo with a React/Vite client, a Node.js server, WebSockets for live room updates, and SQLite for persistent data.
 - In production, one Node.js process serves the built client and the API.
-- Keep repository-maintained game systems as build-time workspace packages. Admins may also install validated data-only system bundles at runtime; bundles cannot add executable code, CSS, or client extensions.
+- Ship no game system. A system is data — a declarative definition, catalogues, Markdown, and table JSON — maintained in its own repository and installed at runtime from a repository or a file. A system can never add executable code, CSS, or client extensions, and nothing read from one is evaluated.
 - Support ordinary local hosting on Windows, macOS, and Linux equally in the first release.
 - Store all mutable data beneath one configurable directory so the installation can be backed up easily.
 - Support room rosters of one GM and up to 20 player accounts, with up to 10 players active in a session. These are supported operating targets, not hard limits unless a technical constraint requires enforcement.

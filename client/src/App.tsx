@@ -164,6 +164,15 @@ export function App() {
   const [account, setAccount] = useState<Account>();
   const [loading, setLoading] = useState(true);
 
+  /**
+   * The status carries which game systems this server has, and installing one
+   * changes that. Everything reading it — the room-creation systems, a room's
+   * glyph, the rules a sheet is drawn from — is stale until this runs again.
+   */
+  async function refreshStatus() {
+    setStatus(await api<Status>("/api/status"));
+  }
+
   async function refresh() {
     const nextStatus = await api<Status>("/api/status");
     setStatus(nextStatus);
@@ -199,6 +208,7 @@ export function App() {
     <Workspace
       account={account}
       status={status}
+      onSystemsChanged={refreshStatus}
       onLogout={async () => {
         await api("/api/logout", { method: "POST" });
         setAccount(undefined);
@@ -254,7 +264,9 @@ function AuthScreen({ mode, onSuccess }: { mode: "setup" | "login"; onSuccess: (
           <br />
           Toys
         </h1>
-        <p className="auth-intro">Cairn, Monolith, and Cities Without Number around one persistent table.</p>
+        {/* Named no system since they left this repository: what a server runs
+            is whatever its admin installed, and this page cannot know. */}
+        <p className="auth-intro">One persistent table, and whichever game system it was built for.</p>
         <form onSubmit={submit}>
           <label>
             Username
@@ -289,7 +301,17 @@ function AuthScreen({ mode, onSuccess }: { mode: "setup" | "login"; onSuccess: (
   );
 }
 
-function Workspace({ account, status, onLogout }: { account: Account; status: Status; onLogout: () => void }) {
+function Workspace({
+  account,
+  status,
+  onSystemsChanged,
+  onLogout
+}: {
+  account: Account;
+  status: Status;
+  onSystemsChanged: () => Promise<void>;
+  onLogout: () => void;
+}) {
   const [rooms, setRooms] = useState<RoomSummary[]>([]);
   const [selectedId, setSelectedId] = useState<number>();
   const [showCreate, setShowCreate] = useState(false);
@@ -400,9 +422,14 @@ function Workspace({ account, status, onLogout }: { account: Account; status: St
           {canManage && (
             <>
               <p className="nav-label management-nav-label">Manage</p>
+              {/*
+                Named for what is behind it. An admin also installs game systems
+                here, and "Players & characters" hid that — nobody goes looking
+                for a game system under the people.
+              */}
               <button
                 className={`management-nav-button ${managementOpen ? "room-active" : ""}`}
-                title="Players and characters"
+                title={account.isAdmin ? "Accounts, characters, and game systems" : "Players and characters"}
                 onClick={() => {
                   setManagementOpen(true);
                   setMenuOpen(false);
@@ -410,8 +437,9 @@ function Workspace({ account, status, onLogout }: { account: Account; status: St
               >
                 <UsersRound size={18} />
                 <span>
-                  Players & characters
-                  <small>Company setup</small>
+                  {account.isAdmin ? "Management" : "Players & characters"}
+                  {/* The rail truncates, so this stays as short as its neighbours. */}
+                  <small>{account.isAdmin ? "Setup & systems" : "Company setup"}</small>
                 </span>
               </button>
               {/*
@@ -527,7 +555,7 @@ function Workspace({ account, status, onLogout }: { account: Account; status: St
         <Menu />
       </button>
       {managementOpen && canManage ? (
-        <ManagementWorkspace />
+        <ManagementWorkspace onSystemsChanged={onSystemsChanged} />
       ) : active ? (
         <TableRoom
           room={active}
@@ -1691,7 +1719,9 @@ function CreateRoom({
             ))
           ) : (
             <p className="form-error">
-              No game systems are available. An administrator must install or restore one before a room can be created.
+              This server has no game system yet. The Devil's Toys is the tabletop; a game system is installed into it.
+              An administrator can add one under Management → Systems, and a retired system is restored from the same
+              place.
             </p>
           )}
         </fieldset>

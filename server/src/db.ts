@@ -367,6 +367,28 @@ const upsertBuiltinSystem = db.prepare(
 );
 for (const [id, definition] of Object.entries(builtinSystems)) upsertBuiltinSystem.run(id, definition.name);
 
+/**
+ * A system this build no longer compiles in is no longer built in.
+ *
+ * Databases exist that were written when Cairn, Monolith, and Cities Without
+ * Number shipped inside the application, and their rows still say so. `builtin`
+ * means "content lives in the repository", which for those rows is now false —
+ * and `loadInstalledSystems` skips anything not marked `installed`, so the row
+ * would never load however the content arrived. Its rooms would open on a system
+ * that could never be restored to them.
+ *
+ * They are not retired here. A system with no content is already absent from the
+ * choices for a new room, because the registry only offers what it could load;
+ * retiring as well would mean re-installing and then remembering to restore it.
+ */
+const stranded = db
+  .prepare(`SELECT id FROM systems WHERE origin = 'builtin'`)
+  .all()
+  .filter((row) => !Object.hasOwn(builtinSystems, (row as { id: string }).id)) as { id: string }[];
+for (const row of stranded) {
+  db.prepare("UPDATE systems SET origin = 'installed', updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(row.id);
+}
+
 for (const { system } of db
   .prepare(
     `SELECT DISTINCT system FROM rooms

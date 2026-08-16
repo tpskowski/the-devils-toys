@@ -6,10 +6,10 @@ you can change, and what stays the GM's.
 If you run a table, you want the [GM's Guide](gm/README.md). If you run the
 server, the [Admin's Guide](admin/README.md).
 
-The Devil's Toys is a virtual tabletop for
-[Cairn](https://cairnrpg.com/), Monolith, and
-[Cities Without Number](https://www.drivethrurpg.com/product/397019/Cities-Without-Number-Free-Edition).
-One server holds your group's tables; a table stays where you left it between
+The Devil's Toys is a virtual tabletop. It does not come with a game system —
+your server's admin installs the ones your group plays — so what is on a
+character sheet and what the dice do depend on which system a room runs. One
+server holds your group's tables; a table stays where you left it between
 sessions.
 
 ![The table, as a player sees it](images/the-table.png)
@@ -59,6 +59,6 @@ forgotten. To redraw them after a change:
 npm run build && node scripts/docs-screenshots.mjs
 ```
 
-The table in the pictures runs Cairn. Monolith and Cities Without Number differ
-in what is on the character sheet and what the dice do, not in how the room
-works — where a difference matters, it is called out.
+The table in the pictures runs one particular game system. Another will differ in
+what is on the character sheet and what the dice do, not in how the room works —
+where a difference matters, it is called out.

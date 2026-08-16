@@ -11,7 +11,7 @@ await runSmoke("NPC catalog and custom NPC smoke test", async ({ json, setup, re
     {
       method: "POST",
       headers: gmJson,
-      body: JSON.stringify({ name: "Cairn NPC Table", system: "cairn" })
+      body: JSON.stringify({ name: "Cairn NPC Table", system: "toybox" })
     },
     201
   );
@@ -21,7 +21,7 @@ await runSmoke("NPC catalog and custom NPC smoke test", async ({ json, setup, re
     {
       method: "POST",
       headers: gmJson,
-      body: JSON.stringify({ name: "Monolith NPC Table", system: "monolith" })
+      body: JSON.stringify({ name: "Second NPC Table", system: "plainbox" })
     },
     201
   );
@@ -29,16 +29,17 @@ await runSmoke("NPC catalog and custom NPC smoke test", async ({ json, setup, re
   const cairnCatalog = await json(`/api/rooms/${cairnRoomId}/npcs`, { headers: { cookie: gmCookie } });
   assert.deepEqual(
     cairnCatalog.body.catalog.map((npc) => npc.name),
-    ["Root Goblin", "Hooded Men", "Cobblehounds", "Wood Troll", "Frost Elf", "Boggart"]
+    ["Tin Rat", "Chalk Golem"]
   );
-  assert.ok(cairnCatalog.body.catalog[0].markdown.includes("4 HP, 8 STR, 14 DEX"));
+  assert.ok(cairnCatalog.body.catalog[0].markdown.includes("3 HP, 4 Muscle, 10 Nerve"));
 
+  // A second system's bestiary is its own, and shares nothing with the first.
   const monolithCatalog = await json(`/api/rooms/${monolith.body.room.id}/npcs`, {
     headers: { cookie: gmCookie }
   });
   assert.deepEqual(
     monolithCatalog.body.catalog.map((npc) => npc.name),
-    ["Street Scummer", "Gang Enforcer", "Space Pirate Captain", "Large Battle Droid", "Feathered Void-Squid"]
+    ["Something in the Dark"]
   );
 
   const invitation = await json(

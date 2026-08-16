@@ -11,14 +11,14 @@
     "test": "vitest run",
     "dev:tables": "tsx watch src/tables-server.ts",
     "start:tables": "node dist/tables-server.js",
-    "build:items": "tsx src/build-items.ts",
-    "build:traits": "tsx src/build-traits.ts"
+    "systems:catalog": "tsx src/build-catalogs.ts",
+    "systems:export": "tsx src/export-system.ts",
+    "systems:validate": "tsx src/validate-system.ts",
+    "systems:schema": "tsx src/build-schema.ts",
+    "accounts": "tsx src/accounts-cli.ts"
   },
   "dependencies": {
     "@devils-toys/shared": "0.1.0",
-    "@devils-toys/system-cairn": "0.1.0",
-    "@devils-toys/system-cwn": "0.1.0",
-    "@devils-toys/system-monolith": "0.1.0",
     "@types/multer": "^2.0.0",
     "bcryptjs": "^3.0.2",
     "cookie": "^1.0.2",
@@ -34,7 +34,9 @@
     "@types/express": "^5.0.3",
     "@types/node": "^22.15.32",
     "@types/ws": "^8.18.1",
+    "ajv": "^8.20.0",
     "tsx": "^4.20.3",
-    "vitest": "^3.2.4"
+    "vitest": "^3.2.4",
+    "zod-to-json-schema": "^3.25.2"
   }
 }

@@ -10,7 +10,7 @@ await runSmoke("Management planning smoke test", async ({ request, setup, login 
     {
       method: "POST",
       headers: adminHeaders,
-      body: JSON.stringify({ name: "Admin Monolith", system: "monolith" })
+      body: JSON.stringify({ name: "Admin Monolith", system: "toybox" })
     },
     201
   );
@@ -32,7 +32,7 @@ await runSmoke("Management planning smoke test", async ({ request, setup, login 
     {
       method: "POST",
       headers: gmHeaders,
-      body: JSON.stringify({ name: "GM Cairn", system: "cairn" })
+      body: JSON.stringify({ name: "GM Cairn", system: "toybox" })
     },
     201
   );
@@ -71,7 +71,7 @@ await runSmoke("Management planning smoke test", async ({ request, setup, login 
     {
       method: "POST",
       headers: { "content-type": "application/json", cookie: playerCookie },
-      body: JSON.stringify({ name: "Forbidden Player Room", system: "cairn" })
+      body: JSON.stringify({ name: "Forbidden Player Room", system: "toybox" })
     },
     403
   );
@@ -94,7 +94,7 @@ await runSmoke("Management planning smoke test", async ({ request, setup, login 
     {
       method: "POST",
       headers: gmHeaders,
-      body: JSON.stringify({ name: "Unplaced Warden", system: "cairn", ownerAccountId: null, roomId: null })
+      body: JSON.stringify({ name: "Unplaced Warden", system: "toybox", ownerAccountId: null, roomId: null })
     },
     201
   );

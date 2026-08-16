@@ -8,7 +8,7 @@ import { readItemCatalog } from "./item-catalog.js";
 import { readTraitCatalog } from "./trait-catalog.js";
 import { systemOrThrow } from "./systems.js";
 import { gameSystemSchema } from "./system-schema.js";
-import { buildSystemBundle, readSystemBundle, renameSystem, type SystemBundleContent } from "./system-bundles.js";
+import { buildSystemBundle, renameSystem, type SystemBundleContent } from "./system-bundles.js";
 import { parseSetJson, readSetJson } from "./table-json.js";
 
 /**
@@ -17,7 +17,7 @@ import { parseSetJson, readSetJson } from "./table-json.js";
  * The write is staged and then renamed, so a bundle that fails halfway leaves
  * nothing behind and never half-replaces a system a room is in the middle of
  * using. Everything a bundle carries has already been validated in memory by
- * `readSystemBundle` before any of this runs.
+ * the reader it arrived through before any of this runs.
  */
 
 /** Reads everything a registered system is made of, ready to be bundled. */
@@ -70,7 +70,7 @@ export interface InstallResult {
  * the schema can see on its own. Each of these is a message an author can act
  * on, which is why they are separate rather than one "invalid bundle".
  */
-export function refuseUninstallableBundle(bundle: ReturnType<typeof readSystemBundle>) {
+export function refuseUninstallableBundle(bundle: Pick<SystemBundleContent, "system">) {
   const { system } = bundle;
 
   if (isBuiltinSystem(system.id))
@@ -117,7 +117,7 @@ export function refuseUninstallableBundle(bundle: ReturnType<typeof readSystemBu
  * install leaves the previous content untouched rather than a half-written
  * system that would fail to load on the next start.
  */
-export function writeSystemBundle(bundle: ReturnType<typeof readSystemBundle>): InstallResult {
+export function writeSystemBundle(bundle: SystemBundleContent): InstallResult {
   const { system, items, traits, rules, tables } = bundle;
   const root = installedSystemRoot(system.id);
   const staging = `${root}.incoming`;

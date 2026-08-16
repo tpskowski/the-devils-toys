@@ -2,6 +2,10 @@
  * The palettes, shared by The Devil's Toys and The Devil's Tables so a theme is
  * defined once. Layout lives with each application; only the colours are here.
  * The default is `heroic`, so a page that names no theme still has a palette.
+ *
+ * `--muted` is quiet, not faint. Each one clears 4.5:1 against its own surface,
+ * its background, and a surface tinted 8% with its accent — that last being what
+ * a rolled table result sits on, and where `used` had been failing at 2.97:1.
  */
 :root,
 .theme-heroic {
@@ -9,7 +13,7 @@
   --surface: #f3f0e8;
   --rail: #171711;
   --text: #191914;
-  --muted: #6d6a60;
+  --muted: #68655b;
   --line: #ccc7b9;
   --accent: #b63e2e;
   --accent-soft: #e8c9bd;
@@ -57,7 +61,7 @@
   --surface: #d8d0bf;
   --rail: #24221d;
   --text: #2d2b25;
-  --muted: #716a5b;
+  --muted: #544f44;
   --line: #a79d88;
   --accent: #9a4c2f;
   --accent-soft: #bba68d;
@@ -70,7 +74,7 @@
   --surface: #202020;
   --rail: #0c0c0c;
   --text: #e4e0d7;
-  --muted: #8d8880;
+  --muted: #8e8981;
   --line: #3a3937;
   --accent: #9f2634;
   --accent-soft: #56232a;

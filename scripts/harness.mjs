@@ -1,10 +1,68 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { createServer } from "node:net";
 import os from "node:os";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { zipSync } from "fflate";
 import { WebSocket } from "ws";
+
+/**
+ * The systems the smoke tests run on. This application ships none, so the suite
+ * brings its own — see `server/src/test-fixture.ts`.
+ *
+ * `toybox` declares everything optional a system may declare; `plainbox`
+ * declares none of it. Between them they are the two ends a room, a sheet, and a
+ * config panel have to cope with, and having both is how "left out" is told
+ * apart from "empty".
+ */
+export const FIXTURE_SYSTEM = fileURLToPath(new URL("../fixtures/toybox", import.meta.url));
+export const FIXTURE_SYSTEM_ID = "toybox";
+export const MINIMAL_SYSTEM = fileURLToPath(new URL("../fixtures/plainbox", import.meta.url));
+export const MINIMAL_SYSTEM_ID = "plainbox";
+
+/**
+ * Packs a system repository into the bundle an install accepts.
+ *
+ * A repository and a bundle hold the same files; the bundle adds a manifest
+ * and drops everything the application does not read. Doing that here rather
+ * than shipping a committed zip means the fixture cannot fall out of step with
+ * itself — there is only ever one copy of it.
+ */
+export async function bundleSystemRepo(directory) {
+  const root = path.resolve(directory);
+  const read = (...segments) => readFile(path.join(root, ...segments));
+  const marker = JSON.parse(await read("devilsystem.json"));
+  const system = JSON.parse(await read("system.json"));
+
+  const files = {
+    "manifest.json": Buffer.from(
+      `${JSON.stringify(
+        {
+          bundleVersion: 1,
+          app: "devils-toys-system",
+          systemId: marker.systemId,
+          systemName: marker.systemName,
+          exportedAt: new Date().toISOString(),
+          licenses: marker.licenses
+        },
+        null,
+        2
+      )}\n`
+    ),
+    "system.json": await read("system.json"),
+    "items.json": await read("items.json"),
+    "traits.json": await read("traits.json")
+  };
+  for (const document of system.sourceDocuments) {
+    files[`rules/${document.markdownFile}`] = await read("rules", document.markdownFile);
+    if (document.correctionsFile)
+      files[`rules/${document.correctionsFile}`] = await read("rules", document.correctionsFile);
+    if (document.tablesFile) files[`tables/${document.tablesFile}`] = await read("tables", document.tablesFile);
+  }
+  return { id: marker.systemId, zip: Buffer.from(zipSync(files, { level: 6 })) };
+}
 
 async function freePort() {
   const probe = createServer();
@@ -41,7 +99,16 @@ export async function runSmoke(name, run, { env = {}, withTablesServer = false }
   function start(entry, extraEnv) {
     const child = spawn(process.execPath, [entry], {
       cwd: process.cwd(),
-      env: { ...process.env, DEVILS_TOYS_DATA_DIR: dataDir, ...extraEnv, ...env },
+      env: {
+        ...process.env,
+        DEVILS_TOYS_DATA_DIR: dataDir,
+        // No catalogue. A server comes configured with the published one, and a
+        // test suite that reached for it would be slower, flakier, and quietly
+        // dependent on what someone published this morning.
+        DEVILS_TOYS_SYSTEM_CATALOG_URL: "",
+        ...extraEnv,
+        ...env
+      },
       stdio: ["ignore", "pipe", "pipe"]
     });
     child.stdout.on("data", (chunk) => (output += chunk.toString()));
@@ -134,6 +201,41 @@ export async function runSmoke(name, run, { env = {}, withTablesServer = false }
 
   const jsonHeaders = (cookie) => ({ "content-type": "application/json", cookie });
 
+  /** Installs a system repository as an admin, and returns the id it installed. */
+  async function installSystem(cookie, directory = FIXTURE_SYSTEM) {
+    const { id, zip } = await bundleSystemRepo(directory);
+    const form = new FormData();
+    form.append("bundle", new Blob([zip], { type: "application/zip" }), `${id}.devilsystem.zip`);
+    const { response } = await json("/api/admin/systems", { method: "POST", headers: { cookie }, body: form }, 201);
+    assert.equal(response.status, 201, `Installing ${id} did not report a new system.`);
+    return id;
+  }
+
+  /**
+   * A second system, for the tests that need two.
+   *
+   * Plenty of behaviour is only visible across a pair — an item may not be
+   * copied into a room on another system, a room-config section is offered by
+   * one system and not another. This repository ships no system at all, so the
+   * pair is made rather than found: the server exports one under a new id and
+   * installs the result, which is the export's own rename path doing the work.
+   */
+  async function installSystemCopy(cookie, { from = FIXTURE_SYSTEM_ID, as, name } = {}) {
+    assert.ok(as, "installSystemCopy needs an id to install the copy under.");
+    const query = `as=${encodeURIComponent(as)}${name ? `&name=${encodeURIComponent(name)}` : ""}`;
+    const exported = await bytes(`/api/admin/systems/${from}/export?${query}`, { headers: { cookie } });
+    const form = new FormData();
+    form.append("bundle", new Blob([exported.bytes], { type: "application/zip" }), `${as}.devilsystem.zip`);
+    await json("/api/admin/systems", { method: "POST", headers: { cookie }, body: form }, 201);
+    return as;
+  }
+
+  /**
+   * Creates the first admin — and gives the server a game system to run, since
+   * this application ships none. Every smoke test needs a room, and a room needs
+   * a system, so installing the fixture is part of standing a server up rather
+   * than something each script remembers to do.
+   */
   async function setup(username, password) {
     const { response, body } = await json(
       "/api/setup",
@@ -145,6 +247,10 @@ export async function runSmoke(name, run, { env = {}, withTablesServer = false }
       201
     );
     const cookie = cookieOf(response, "Setup");
+    if (body.account?.isAdmin ?? true) {
+      await installSystem(cookie, FIXTURE_SYSTEM);
+      await installSystem(cookie, MINIMAL_SYSTEM);
+    }
     return { cookie, headers: jsonHeaders(cookie), account: body.account, body };
   }
 
@@ -222,6 +328,9 @@ export async function runSmoke(name, run, { env = {}, withTablesServer = false }
       login,
       redeem,
       upload,
+      installSystem,
+      installSystemCopy,
+      bundleSystemRepo,
       connect,
       waitFor,
       sleep,

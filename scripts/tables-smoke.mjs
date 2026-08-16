@@ -40,41 +40,41 @@ await runSmoke(
 
     const room = await json(
       "/api/rooms",
-      { method: "POST", headers: gmJson, body: JSON.stringify({ name: "Cairn Tables", system: "cairn" }) },
+      { method: "POST", headers: gmJson, body: JSON.stringify({ name: "Cairn Tables", system: "toybox" }) },
       201
     );
     const roomId = room.body.room.id;
 
     // Every system and checked-in repository set is offered, and the room's own system is preselected.
     const listed = await json(`/api/rooms/${roomId}/tables`, { headers: { cookie: gmCookie } });
-    assert.equal(listed.body.roomSetId, "system:cairn");
+    assert.equal(listed.body.roomSetId, "system:toybox");
     assert.deepEqual(
       listed.body.sets.map((set) => set.id),
-      ["system:cairn", "system:monolith", "system:cwn", ...repositorySets.map((set) => `repository:${set.id}`)]
+      ["system:toybox", "system:plainbox", ...repositorySets.map((set) => `repository:${set.id}`)]
     );
-    const cairnSet = listed.body.sets[0];
-    const monolithSet = listed.body.sets[1];
-    assert.ok(cairnSet.tables.every((table) => table.tags.includes("fantasy")));
-    assert.ok(monolithSet.tables.every((table) => table.tags.includes("scifi")));
-    assert.ok(cairnSet.tables.every((table) => !table.tags.includes("scifi")));
-    assert.ok(monolithSet.tables.every((table) => !table.tags.includes("fantasy")));
-    assert.ok(cairnSet.tables.length >= 10, "Cairn should contribute its character-creation tables.");
-    assert.ok(monolithSet.tables.length >= 40, "Monolith should contribute its generators and background tables.");
+    const toyboxSet = listed.body.sets[0];
+    const plainSet = listed.body.sets[1];
+    // Toybox's catalogue declares "fantasy", so every table inherits it; Plainbox
+    // declares none, so its tables carry nothing they were not given.
+    assert.ok(toyboxSet.tables.every((table) => table.tags.includes("fantasy")));
+    assert.ok(plainSet.tables.every((table) => !table.tags.includes("fantasy")));
+    assert.ok(toyboxSet.tables.length >= 5, "Toybox should contribute its oracles and creation tables.");
+    assert.ok(plainSet.tables.length >= 1, "Plainbox should contribute the one table it has.");
 
-    const spellbooks = cairnSet.tables.find((table) => table.name === "Spellbooks (d100)");
-    assert.equal(spellbooks.dice, "d100");
-    assert.equal(spellbooks.rowCount, 100);
-    const traits = cairnSet.tables.find((table) => table.name === "Character Traits (d10)");
-    assert.deepEqual(traits.columns.slice(0, 3), ["Physique", "Skin", "Hair"]);
-    const compound = monolithSet.tables.find((table) => table.dice === "d66");
-    assert.ok(compound, "Monolith ships d66 tables.");
+    const complications = toyboxSet.tables.find((table) => table.name === "Complications (d10)");
+    assert.equal(complications.dice, "d10");
+    assert.equal(complications.rowCount, 10);
+    const weather = toyboxSet.tables.find((table) => table.name === "Weather (d6)");
+    assert.deepEqual(weather.columns.slice(0, 3), ["Sky", "Wind", "Underfoot"]);
+    const compound = toyboxSet.tables.find((table) => table.dice === "d66");
+    assert.ok(compound, "A d66 is read as two dice rather than a sixty-six-sided one.");
 
     // Summaries stay light; rows arrive only for the table the GM opens.
-    assert.equal(spellbooks.rows, undefined);
-    const full = await json(`/api/rooms/${roomId}/tables/system:cairn/${spellbooks.id}`, {
+    assert.equal(complications.rows, undefined);
+    const full = await json(`/api/rooms/${roomId}/tables/system:toybox/${complications.id}`, {
       headers: { cookie: gmCookie }
     });
-    assert.equal(full.body.table.rows.length, 100);
+    assert.equal(full.body.table.rows.length, 10);
     assert.deepEqual(full.body.table.tags, ["fantasy"]);
     assert.equal(full.body.table.rows[0].label, "1");
 
@@ -93,14 +93,14 @@ await runSmoke(
       {
         method: "POST",
         headers: { "content-type": "application/json", cookie: playerCookie },
-        body: JSON.stringify({ setId: "system:cairn", tableId: spellbooks.id, visibility: "public" })
+        body: JSON.stringify({ setId: "system:toybox", tableId: complications.id, visibility: "public" })
       },
       403
     );
 
     const { events: playerEvents } = await connect(playerCookie, roomId);
     const { events: gmEvents } = await connect(gmCookie, roomId);
-    const table = cairnSet.tables.find((entry) => entry.name === "Armor");
+    const table = toyboxSet.tables.find((entry) => entry.name === "Complications (d10)");
 
     async function roll(visibility) {
       playerEvents.length = 0;
@@ -110,7 +110,7 @@ await runSmoke(
         {
           method: "POST",
           headers: gmJson,
-          body: JSON.stringify({ setId: "system:cairn", tableId: table.id, visibility })
+          body: JSON.stringify({ setId: "system:toybox", tableId: table.id, visibility })
         },
         201
       );
@@ -130,7 +130,7 @@ await runSmoke(
     assert.equal(shown.broadcasts[0].message.body, "Rolled on a random table");
     assert.equal(shown.gmBroadcasts.length, 1);
     assert.equal(shown.gmBroadcasts[0].message.rollVisibility, "private");
-    assert.match(shown.gmBroadcasts[0].message.body, /^Armor \(d20\) → \d+$/);
+    assert.match(shown.gmBroadcasts[0].message.body, /^Complications \(d10\) → \d+$/);
     assert.ok(shown.gmBroadcasts[0].message.detail.includes(shown.roll.text));
     assert.ok(
       !JSON.stringify(shown.broadcasts[0].message).includes(shown.roll.text),
@@ -143,17 +143,17 @@ await runSmoke(
     assert.ok(gmHistory.body.messages.some((message) => message.detail?.includes(shown.roll.text)));
     assert.ok(!gmHistory.body.messages.some((message) => message.body === "Rolled on a random table"));
     // A heading that already carries its die must not be labelled twice.
-    const named = cairnSet.tables.find((entry) => entry.name === "Character Traits (d10)");
+    const named = toyboxSet.tables.find((entry) => entry.name === "Weather (d6)");
     const namedRoll = await json(
       `/api/rooms/${roomId}/tables/roll`,
       {
         method: "POST",
         headers: gmJson,
-        body: JSON.stringify({ setId: "system:cairn", tableId: named.id, visibility: "public" })
+        body: JSON.stringify({ setId: "system:toybox", tableId: named.id, visibility: "public" })
       },
       201
     );
-    assert.match(namedRoll.body.message.body, /^Character Traits \(d10\) → \d+$/);
+    assert.match(namedRoll.body.message.body, /^Weather \(d6\) → \d+$/);
     // Reveal: everyone is given the text that was rolled.
     const revealed = await roll("reveal");
     assert.equal(revealed.broadcasts.length, 1);
@@ -166,7 +166,7 @@ await runSmoke(
     assert.equal(secret.message.rollVisibility, "private");
     assert.ok(secret.message.detail.includes(secret.roll.text), "The GM sees the table text for a private roll.");
     assert.equal(secret.broadcasts.length, 1);
-    assert.equal(secret.broadcasts[0].message.body, "Rolled privately on Armor");
+    assert.equal(secret.broadcasts[0].message.body, "Rolled privately on Complications (d10)");
     assert.ok(
       !JSON.stringify(secret.broadcasts[0].message).includes(secret.roll.text),
       "A private roll must not leak the table text."

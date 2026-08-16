@@ -1,0 +1,102 @@
+{
+  "id": "plainbox",
+  "name": "Plainbox",
+  "shortName": "PLAIN",
+  "glyph": "P",
+  "defaultTheme": "used",
+  "tagline": "The smallest system the schema permits.",
+  "rollRulesQuery": "Playing",
+  "sourceDocuments": [
+    {
+      "id": "plainbox",
+      "markdownFile": "Plainbox.md",
+      "tablesFile": "plainbox.json",
+      "license": "CC0 1.0"
+    }
+  ],
+  "contentModules": [
+    {
+      "id": "plainbox/core",
+      "label": "Plainbox core rules",
+      "sourceDocumentId": "plainbox",
+      "rootHeadings": ["Plainbox"],
+      "classification": "player",
+      "storageNamespace": "plainbox.core",
+      "provides": ["plainbox/core"],
+      "requires": []
+    }
+  ],
+  "imports": [],
+  "partyLabel": "Party",
+  "abilities": ["Pluck"],
+  "gmOnlyHeadings": ["Bestiary"],
+  "npcCatalog": { "heading": "Bestiary", "entryLevel": 3, "exclude": [] },
+  "characterSheet": {
+    "sections": [
+      {
+        "id": "vitals",
+        "label": "Hit Protection",
+        "layout": "paired-current-max",
+        "fields": [
+          { "key": "hpCurrent", "label": "Hit Protection current", "kind": "number" },
+          { "key": "hpMax", "label": "Hit Protection maximum", "kind": "number" }
+        ]
+      },
+      {
+        "id": "abilities",
+        "label": "Abilities",
+        "layout": "paired-current-max",
+        "fields": [
+          {
+            "key": "pluckCurrent",
+            "label": "Pluck current",
+            "kind": "number",
+            "roll": { "kind": "save", "label": "PLUCK" }
+          },
+          { "key": "pluckMax", "label": "Pluck maximum", "kind": "number" }
+        ]
+      }
+    ],
+    "lists": []
+  },
+  "warningRules": [
+    {
+      "kind": "compare",
+      "key": "hpCurrent",
+      "against": "hpMax",
+      "operator": ">",
+      "message": "Hit Protection is above its maximum."
+    }
+  ],
+  "initiative": {
+    "model": "side",
+    "sides": [
+      { "id": "party", "label": "Party" },
+      { "id": "enemies", "label": "Enemies" }
+    ],
+    "sideOrder": "roll",
+    "roll": { "dice": "1d8", "label": "Initiative" },
+    "allowIndividualVariant": true
+  },
+  "rangedWeaponIcon": "bow",
+  "npcStatblock": {
+    "hitPointsKey": "hp",
+    "parser": "inline",
+    "fields": [
+      { "key": "hp", "label": "HP", "kind": "number", "inSummary": true },
+      { "key": "pluck", "label": "Pluck", "kind": "number" },
+      { "key": "attacks", "label": "Attack", "kind": "text" }
+    ]
+  },
+  "tableCatalog": { "label": "Plainbox tables", "exclude": [], "tags": [] },
+  "dice": {
+    "save": {
+      "sides": 20,
+      "success": "equal-or-under",
+      "automaticSuccess": 1,
+      "automaticFailure": 20,
+      "types": [{ "id": "pluck", "label": "Pluck" }],
+      "outcomes": { "normal": { "success": "It holds.", "failure": "It does not." } }
+    }
+  }
+}

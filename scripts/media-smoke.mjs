@@ -21,7 +21,7 @@ await runSmoke(
       {
         method: "POST",
         headers: gmJson,
-        body: JSON.stringify({ name: "Media Table", system: "cairn" })
+        body: JSON.stringify({ name: "Media Table", system: "toybox" })
       },
       201
     );

@@ -9,27 +9,40 @@ import {
   writeSystemBundle
 } from "./system-install.js";
 import { installedSystemRoot } from "./system-content.js";
+import { installToybox } from "./test-fixture.js";
+
+installToybox();
 
 const bundleFor = (id: string, as = `${id}-2`) =>
   readSystemBundle(buildSystemBundle(renameSystem(systemContentFor(id), as)));
 
 /** A readable bundle whose definition can be bent one way at a time. */
 const bent = (change: (system: Record<string, never>) => void) => {
-  const bundle = bundleFor("monolith");
+  const bundle = bundleFor("toybox");
   change(bundle.system as never);
   return bundle;
 };
 
 describe("what a bundle has to be true of to install", () => {
-  // The check has to pass every compiled system before it may reject anything.
-  // A rule that Monolith itself fails is a wrong rule, not a bad system.
-  it("accepts every compiled system, renamed and bundled", () => {
-    for (const id of Object.keys(builtinSystems)) expect(() => refuseUninstallableBundle(bundleFor(id))).not.toThrow();
+  // The check has to pass a real system before it may reject anything: a rule
+  // the fixture itself fails is a wrong rule, not a bad system.
+  it("accepts a whole system, renamed and bundled", () => {
+    expect(() => refuseUninstallableBundle(bundleFor("toybox"))).not.toThrow();
   });
 
+  /**
+   * Nothing is compiled into this build, so the guard has no case to catch. The
+   * built-in list is stood up for the length of the test rather than left to
+   * rot — see the same arrangement in `systems.test.ts`.
+   */
   it("refuses to overwrite a system this application ships", () => {
-    const bundle = readSystemBundle(buildSystemBundle(systemContentFor("monolith")));
-    expect(() => refuseUninstallableBundle(bundle)).toThrow(/is a system this application ships/);
+    const bundle = readSystemBundle(buildSystemBundle(systemContentFor("toybox")));
+    builtinSystems.toybox = bundle.system;
+    try {
+      expect(() => refuseUninstallableBundle(bundle)).toThrow(/is a system this application ships/);
+    } finally {
+      delete builtinSystems.toybox;
+    }
   });
 
   it("refuses two sheet lists under one key", () => {
@@ -37,7 +50,7 @@ describe("what a bundle has to be true of to install", () => {
       const sheet = (system as Record<string, { lists: unknown[] }>).characterSheet;
       sheet.lists = [...sheet.lists, sheet.lists[0]];
     });
-    expect(() => refuseUninstallableBundle(bundle)).toThrow(/declares two lists called "equipment"/);
+    expect(() => refuseUninstallableBundle(bundle)).toThrow(/declares two lists called "inventory"/);
   });
 
   it("refuses a hit points key that names no statblock field", () => {
@@ -77,7 +90,7 @@ describe("what a bundle has to be true of to install", () => {
   it("accepts a warning rule that reads one of the sheet's lists", () => {
     const bundle = bent((system) => {
       (system as Record<string, unknown[]>).warningRules = [
-        { kind: "list-occupancy", listKey: "equipment", tiers: [{ atLeast: 10, message: "Full." }] }
+        { kind: "list-occupancy", listKey: "inventory", tiers: [{ atLeast: 6, message: "Full." }] }
       ];
     });
     expect(() => refuseUninstallableBundle(bundle)).not.toThrow();
@@ -92,11 +105,11 @@ describe("what a bundle has to be true of to install", () => {
 });
 
 describe("writing an installed system", () => {
-  const system = "monolith-2";
+  const system = "toybox-2";
   const root = installedSystemRoot(system);
   const staging = `${root}.incoming`;
 
-  const bundle = () => readSystemBundle(buildSystemBundle(renameSystem(systemContentFor("monolith"), system)));
+  const bundle = () => readSystemBundle(buildSystemBundle(renameSystem(systemContentFor("toybox"), system)));
 
   it("restores the previous content when replacing it cannot rename the staging directory", () => {
     fs.rmSync(root, { recursive: true, force: true });

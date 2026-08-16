@@ -79,6 +79,34 @@ the most recent writes.
 **Back up before every upgrade.** Schema migrations run automatically at start
 and are not reversible. Restoring the directory is the only way back.
 
+## Account tools from the command line
+
+Three things can be done to accounts from the machine the database is on, for
+when they cannot be done through the application:
+
+```bash
+npm run accounts list                 # id, username, role, created
+npm run accounts reset <username>     # asks twice, hidden; signs that account out everywhere
+npm run accounts delete <username>    # only for an account that has done nothing
+```
+
+Set `DEVILS_TOYS_DATA_DIR` if the data directory is not the default; in a
+container, exec into it or run against the mounted volume. They can be run while
+the server is running — the next request reads the changed row.
+
+These answer to the filesystem rather than to a password, which is the honest
+trust boundary: anyone who can read the database can already read every session
+token in it. They grant no authority that reading the file did not already give,
+and they take care not to hand any out — a password is asked for rather than
+taken as an argument, since an argument is visible to other processes and lands
+in shell history, and a reset drops every existing session so a stolen cookie
+cannot outlive it.
+
+`delete` refuses the only admin, and refuses an account that created a room,
+wrote a message, uploaded a file, or made a table set — those records name the
+account. Reset the password instead: it keeps the history and takes back the
+access.
+
 ## Logs
 
 `logs/server.log` in the data directory, at the verbosity

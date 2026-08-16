@@ -24,6 +24,44 @@ export const config = {
    * before it is read into memory.
    */
   systemUploadLimitMb: Number(process.env.DEVILS_TOYS_SYSTEM_LIMIT_MB ?? 25),
+  /**
+   * The menu of systems an admin can install without going looking for one.
+   *
+   * A JSON index, fetched over HTTPS and cached. It is a URL rather than a
+   * compiled-in list so that an operator can point at their own — a club, a
+   * publisher, or a private mirror — and so that adding a system to the public
+   * catalogue does not need a release of this application.
+   *
+   * It defaults to the published one because a server that ships no game system
+   * and offers no way to find one is a server with nothing to do. Set it to
+   * another index to offer a different menu, or to an empty string for no menu
+   * at all — installing by repository and ref, or from a file, works either way.
+   *
+   * Nothing is fetched until an admin opens the Systems panel.
+   */
+  systemCatalogUrl:
+    process.env.DEVILS_TOYS_SYSTEM_CATALOG_URL ??
+    "https://raw.githubusercontent.com/tpskowski/devils-toys-systems/main/index.json",
+  /**
+   * The only hosts this server will fetch a system from.
+   *
+   * Importing is the one thing that makes the server open an outbound
+   * connection, and an admin naming a repository is the one thing that decides
+   * where to. An allowlist keeps that from becoming "fetch any URL an admin can
+   * type", which is a request-forgery primitive pointed at whatever this server
+   * can reach that a browser cannot.
+   */
+  systemSourceHosts: (
+    process.env.DEVILS_TOYS_SYSTEM_HOSTS ??
+    "codeload.github.com,raw.githubusercontent.com,api.github.com,objects.githubusercontent.com"
+  )
+    .split(",")
+    .map((host) => host.trim().toLowerCase())
+    .filter(Boolean),
+  /** Optional, and only to lift GitHub's unauthenticated rate limit. */
+  githubToken: process.env.DEVILS_TOYS_GITHUB_TOKEN ?? "",
+  /** How long a fetched catalogue is reused before it is asked for again. */
+  systemCatalogTtlSeconds: Number(process.env.DEVILS_TOYS_SYSTEM_CATALOG_TTL ?? 300),
   logLevel: process.env.DEVILS_TOYS_LOG_LEVEL ?? "info",
   isProduction: process.env.NODE_ENV === "production"
 };

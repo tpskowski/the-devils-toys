@@ -16,7 +16,7 @@ await runSmoke("Help guides smoke test", async ({ base, json, request, setup, lo
   const room = (
     await request(
       "/api/rooms",
-      { method: "POST", headers: gm.headers, body: JSON.stringify({ name: "A Table", system: "cairn" }) },
+      { method: "POST", headers: gm.headers, body: JSON.stringify({ name: "A Table", system: "toybox" }) },
       201
     )
   ).room;
