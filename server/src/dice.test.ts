@@ -64,6 +64,22 @@ describe("dice expressions", () => {
     expect(rollDice("d30", () => 0.999)).toMatchObject({ expression: "1d30", total: 30, rolls: [30] });
   });
 
+  /**
+   * A plain die, unlike d44 and d66, which are two dice read as tens and ones.
+   * The regexes that accept it are built from SUPPORTED_DIE_SIDES rather than
+   * spelling the list out, so this covers the roller and the alternation both.
+   */
+  it("rolls a d5 across its full range", () => {
+    expect(rollDice("d5", () => 0)).toMatchObject({ expression: "1d5", total: 1, rolls: [1] });
+    expect(rollDice("d5", () => 0.999)).toMatchObject({ expression: "1d5", total: 5, rolls: [5] });
+    expect(rollDice("3d5kh1+1", sequence(0, 0.5, 0.999)).total).toBe(6);
+  });
+
+  it("still refuses a die it does not have", () => {
+    expect(() => rollDice("d7")).toThrow(/dice expression/);
+    expect(() => rollDice("d50")).toThrow(/dice expression/);
+  });
+
   it("rolls d44 and d66 as separate tens and ones dice", () => {
     const d44 = rollDice("d44", sequence(0, 0.99));
     expect(d44).toMatchObject({

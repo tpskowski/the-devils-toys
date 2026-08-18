@@ -1,8 +1,18 @@
 import type { RollTable, RollTableRow, RollTableSource, RollTableSummary, TableTag } from "./index.js";
 
 /** Sides the dice engine can roll, largest first so inference prefers the widest match. */
-export const SUPPORTED_DIE_SIDES = [100, 66, 44, 30, 20, 12, 10, 8, 6, 4] as const;
-const dicePattern = /^(?:(\d{1,2})\s*)?d\s*(100|66|44|30|20|12|10|8|6|4)$/i;
+export const SUPPORTED_DIE_SIDES = [100, 66, 44, 30, 20, 12, 10, 8, 6, 5, 4] as const;
+
+/**
+ * The same list as a regex alternation, so a die is added in one place rather
+ * than in the five separate patterns that used to spell it out — the parser, the
+ * heading marker, the CSV importer, the roller, and the table validator. Largest
+ * first is what makes it correct as well as tidy: a numeral that prefixes a
+ * longer one is always the smaller of the two, so descending order can never let
+ * `10` match before `100`.
+ */
+export const DIE_SIDES_PATTERN = SUPPORTED_DIE_SIDES.join("|");
+const dicePattern = new RegExp(`^(?:(\\d{1,2})\\s*)?d\\s*(${DIE_SIDES_PATTERN})$`, "i");
 const dieColumnNames = new Set(["roll", "die", "dice", "result of roll", "d"]);
 /** How a table carries its own tags, kept in a comment so rendered Markdown is unchanged. */
 const tagsComment = /^\s*<!--\s*tags:\s*([^>]*?)\s*-->\s*$/i;
@@ -132,7 +142,7 @@ function statedDice(dieColumn: string, headings: string[]) {
   if (named) return `${named[1] ?? ""}d${named[2]}`;
   if (!dieColumnNames.has(dieColumn.toLocaleLowerCase())) return undefined;
   for (const heading of [...headings].reverse()) {
-    const marker = /\(\s*d\s*(100|66|44|30|20|12|10|8|6|4)\s*\)/i.exec(heading);
+    const marker = new RegExp(`\\(\\s*d\\s*(${DIE_SIDES_PATTERN})\\s*\\)`, "i").exec(heading);
     if (marker) return `d${marker[1]}`;
   }
   return undefined;
