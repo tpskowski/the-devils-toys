@@ -103,16 +103,27 @@ describe("what a preview says would happen", () => {
       "campaign.md": "# Tomb of the Serpent Kings",
       "room.json": JSON.stringify({ theme: "ember" }),
       "maps/a.png": "x",
-      "tables/rumours.json": "{}"
+      "tables/rumours.json": JSON.stringify({
+        formatVersion: 1,
+        tables: [
+          {
+            name: "Rumours",
+            dice: "d6",
+            columns: ["Roll", "Rumour"],
+            rows: [{ label: "1", min: 1, max: 6, cells: ["A lie"] }]
+          }
+        ]
+      })
     });
 
     expect(result.overview).toBe("# Tomb of the Serpent Kings");
     expect(result.guessed[0]).toMatch(/carries no manifest\.json/);
     expect(result.warnings).toEqual([
       expect.stringMatching(/theme "ember", which this server does not have/),
-      expect.stringMatching(/tables\/ holds 1 file, which this build does not import yet/)
+      // Tables reach past the room a GM was configuring, so the preview says so.
+      expect.stringMatching(/1 table set would be added to this server's table catalogue/)
     ]);
-    expect(result.pending).toEqual([{ folder: "tables", files: 1 }]);
+    expect(result.kinds.find((kind) => kind.kind === "tables")).toEqual({ kind: "tables", new: 1, conflict: 0 });
   });
 
   it("reports a bundle that names no system as one that needs none", () => {

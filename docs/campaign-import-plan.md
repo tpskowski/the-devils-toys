@@ -500,12 +500,24 @@ the import runs under: one in progress carries hit points, initiative, and
 positions that a re-import has no way to know about, and losing those mid-fight
 would be the worst thing this importer could do. It is skipped by name instead.
 
-### Phase 6 — Tables
+### Phase 6 — Tables — **done**
 
-Import a campaign's sets through the existing table-set writer, behind the GM
-table-authoring gate, named and tagged for the campaign, and flagged server-wide
-in the preview. Small, and separable if the open question below resolves the
-other way.
+Import a campaign's sets through the existing table-set writer, named for the
+campaign — "Tomb of the Serpent Kings — Rumours" — and flagged server-wide in the
+preview, because this is the one kind that reaches past the room a GM was
+configuring.
+
+Tags keep the standing rule: an unknown slug is refused rather than dropped. The
+refusal costs **that set** rather than the whole campaign, though, because a tag
+this server has not heard of says nothing about the forty maps in the same
+bundle. That is the same shape Phases 4 and 5 settled on for everything the
+destination cannot hold — land the rest, name the loss.
+
+With this phase every folder the format declares has a reader, so the "pending"
+machinery that reported the ones that did not is gone rather than left as a
+constant empty list. The test that covered it became one that reads a bundle
+carrying one of everything, which is the check that keeps a folder from being
+added to the allowlist without a reader behind it.
 
 ### Phase 7 — The ledger and re-import
 
@@ -552,7 +564,7 @@ name, theme, and system, makes the room, and runs the import into it. Then
 
 ## Open questions
 
-1. **Do a campaign's tables stay server-wide?** The alternative is `table_sets.room_id`, nullable, with a room seeing global sets plus its own. It is the right shape and it touches the editor, its permissions, and its bundles. My inclination is to ship the server-wide import in Phase 6 and to treat room-scoped sets as its own piece of work — but if the answer is "room-scoped, and soon", Phase 6 should wait for it rather than build something to be undone.
+1. **Do a campaign's tables stay server-wide?** Shipped as server-wide, since that is what `table_sets` can express today: it has no room, and a set added by anybody is readable from every room. The alternative is `table_sets.room_id`, nullable, with a room seeing global sets plus its own — the right shape, touching the editor, its permissions, and its bundles. Nothing in Phase 6 forecloses it: the campaign name in the set's title becomes redundant rather than wrong, and the preview's warning goes away. Still worth deciding before a server accumulates a hundred imported sets nobody can tell apart.
 2. **Should a campaign be able to carry pre-made characters?** Pre-generated PCs are a real thing a published adventure ships. They would import into the character pool unowned, for a GM to assign — which is a mechanism `accounts.md` already describes for handing a character to a player. It is a small addition and it is the one exclusion in decision 7 I am least sure of.
 3. **How large may a campaign be?** [Large bundles](#large-bundles) proposes 2 GB, and argues the number matters less than it looks once the directory is read first. It wants an opinion from whoever runs the largest instance — and, since the upload is the only door, the multi-part split has to be built before the cap can be trusted to be a limit rather than a wall.
 4. **Should `room.json` be applied at all on import into an existing room?** Taking a bundle's theme and renaming a running room is startling. The plan makes both opt-in checkboxes, off by default, and applies them without asking only on the create-a-room-from-a-bundle path.

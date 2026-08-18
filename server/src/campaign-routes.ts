@@ -79,8 +79,6 @@ export interface CampaignPreview {
   kinds: KindCount[];
   /** Whether the bundle carries a calendar, which is taken only if asked for. */
   calendar: boolean;
-  /** Folders this build accepts but does not import yet. */
-  pending: { folder: string; files: number }[];
   /** What was assumed about the bundle rather than read from it. */
   guessed: string[];
   warnings: string[];
@@ -138,6 +136,7 @@ function countKinds(campaign: Campaign, roomId: number): KindCount[] {
   const add = (kind: string, many: number) => {
     if (many) counts.set(kind, { kind, new: many, conflict: 0 });
   };
+  add("tables", campaign.tables.length);
   add("items", campaign.items.added.length + campaign.items.retired.length);
   add("hirelings", campaign.hirelings.length);
   add("assets", campaign.assets.length);
@@ -163,7 +162,6 @@ export function campaignPreview(campaign: Campaign, token: string, roomId: numbe
     },
     kinds: countKinds(campaign, roomId),
     calendar: Boolean(campaign.calendar),
-    pending: campaign.pending,
     guessed: campaign.guessed,
     warnings: campaign.warnings
   };

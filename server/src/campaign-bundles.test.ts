@@ -254,16 +254,51 @@ describe("reading a campaign", () => {
   });
 
   /**
-   * The folders whose readers land with their own phases. They are accepted from
-   * the archive and counted, so a GM is told they were seen and not yet acted on
-   * — the alternative is a bundle that appears to import and quietly drops half
-   * of itself.
+   * Every folder the format declares is now read. This is the check that keeps it
+   * that way: a folder added to the allowlist without a reader would land here as
+   * a bundle that appears to import and quietly drops part of itself, which is the
+   * one failure this format must never have.
    */
-  it("counts the folders this build does not import yet, and says so", () => {
-    const campaign = readCampaign(stage({ "maps/a.png": "x", "tables/rumours.json": "{}", "tables/omens.json": "{}" }));
+  it("reads every folder a campaign may carry", () => {
+    const table = JSON.stringify({
+      formatVersion: 1,
+      tables: [
+        {
+          name: "Rumours",
+          dice: "d6",
+          columns: ["Roll", "Rumour"],
+          rows: [{ label: "1", min: 1, max: 6, cells: ["A lie"] }]
+        }
+      ]
+    });
+    const campaign = readCampaign(
+      stage({
+        "maps/keep.png": "x",
+        "scenes/gate.png": "y",
+        "references/letter.md": "# A letter",
+        "audio/dirge.mp3": "z",
+        "playlists/combat.json": JSON.stringify({ name: "Combat", tracks: ["audio/dirge.mp3"] }),
+        "npcs/vane.json": JSON.stringify({ name: "Vane" }),
+        "encounters/gate.json": JSON.stringify({ name: "The Gate", combatants: [{ npc: "npcs/vane.json" }] }),
+        "items/index.json": JSON.stringify({ added: [{ listKey: "inventory", name: "A Rope" }] }),
+        "hirelings/brann.json": JSON.stringify({ name: "Brann" }),
+        "assets/kestrel.json": JSON.stringify({ name: "The Kestrel", kind: "starship" }),
+        "obligations/debt.json": JSON.stringify({ name: "A debt", owedTo: "The Baron" }),
+        "tables/rumours.json": table
+      })
+    );
 
-    expect(campaign.pending).toEqual([{ folder: "tables", files: 2 }]);
-    expect(campaign.warnings[0]).toMatch(/tables\/ holds 2 files, which this build does not import yet/);
+    expect(campaign.media).toHaveLength(4);
+    expect(campaign.playlists).toHaveLength(1);
+    expect(campaign.npcs).toHaveLength(1);
+    expect(campaign.encounters).toHaveLength(1);
+    expect(campaign.items.added).toHaveLength(1);
+    expect(campaign.hirelings).toHaveLength(1);
+    expect(campaign.assets).toHaveLength(1);
+    expect(campaign.obligations).toHaveLength(1);
+    expect(campaign.tables).toEqual([
+      { path: "tables/rumours.json", name: "rumours", tags: [], json: expect.stringContaining("Rumours") }
+    ]);
   });
 });
 

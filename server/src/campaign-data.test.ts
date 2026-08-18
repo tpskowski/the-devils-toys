@@ -18,7 +18,7 @@ const ACCOUNT = 1;
 
 beforeEach(() => {
   db.exec(
-    `DELETE FROM group_obligations; DELETE FROM group_assets; DELETE FROM group_hirelings;
+    `DELETE FROM table_sets; DELETE FROM group_obligations; DELETE FROM group_assets; DELETE FROM group_hirelings;
      DELETE FROM room_retired_items; DELETE FROM room_items; DELETE FROM custom_npcs;
      DELETE FROM media; DELETE FROM memberships; DELETE FROM rooms; DELETE FROM accounts;`
   );
@@ -292,5 +292,97 @@ describe("the pictures a hireling or a ship carries", () => {
     expect(() =>
       applyCampaign(staged.directory, staged.campaign, roomId, ACCOUNT, { policy: "skip", takeRoomSettings: false })
     ).toThrow(/"assets\/kestrel\.png" is not an image this application stores/);
+  });
+});
+
+describe("a campaign's random tables", () => {
+  const png = () => {
+    const body = Buffer.alloc(64, 5);
+    Buffer.from("89504e470d0a1a0a", "hex").copy(body);
+    return body;
+  };
+  const set = (name = "Rumours") =>
+    JSON.stringify({
+      formatVersion: 1,
+      tables: [
+        {
+          name,
+          dice: "d6",
+          columns: ["Roll", "Rumour"],
+          rows: [
+            { label: "1-3", min: 1, max: 3, cells: ["The tomb moves."] },
+            { label: "4-6", min: 4, max: 6, cells: ["It does not."] }
+          ]
+        }
+      ]
+    });
+
+  const manifest = (name: string) =>
+    JSON.stringify({ app: "devils-toys-campaign", bundleVersion: 1, campaignId: "tomb", name, system: "toybox" });
+
+  const sets = () => all<{ name: string; markdown: string }>("SELECT name, markdown FROM table_sets ORDER BY id");
+
+  /**
+   * `table_sets` has no room. A set added by anybody is readable from every room
+   * on the server, so an imported one is named for the campaign it came from
+   * rather than dropped into the catalogue under a name like "Rumours".
+   */
+  it("names the set for the campaign it came from", () => {
+    const result = apply({
+      "manifest.json": manifest("Tomb of the Serpent Kings"),
+      "tables/rumours.json": set()
+    });
+
+    expect(result.tables).toEqual({ added: 1, replaced: 0, skipped: 0 });
+    expect(sets()[0].name).toBe("Tomb of the Serpent Kings — rumours");
+    // Markdown stays the source of truth, as it is for every other set.
+    expect(sets()[0].markdown).toMatch(/The tomb moves\./);
+  });
+
+  it("skips or replaces a set of the same name, as the policy says", () => {
+    apply({ "manifest.json": manifest("Tomb"), "tables/rumours.json": set("Rumours") });
+    expect(apply({ "manifest.json": manifest("Tomb"), "tables/rumours.json": set("Omens") }).tables).toEqual({
+      added: 0,
+      replaced: 0,
+      skipped: 1
+    });
+    expect(sets()).toHaveLength(1);
+    expect(sets()[0].markdown).toMatch(/Rumours/);
+
+    expect(
+      apply({ "manifest.json": manifest("Tomb"), "tables/rumours.json": set("Omens") }, { policy: "replace" }).tables
+    ).toEqual({ added: 0, replaced: 1, skipped: 0 });
+    expect(sets()[0].markdown).toMatch(/Omens/);
+  });
+
+  /**
+   * The standing rule is that an unknown tag is refused rather than dropped. It
+   * costs the set rather than the campaign, because a tag this server has not
+   * heard of says nothing about the forty maps in the same bundle.
+   */
+  it("refuses a set carrying a tag this instance has not got, and lands the rest", () => {
+    const tagged = JSON.parse(set()) as { tables: { tags?: string[] }[] };
+    tagged.tables[0].tags = ["not-a-real-tag"];
+
+    const result = apply({
+      "manifest.json": manifest("Tomb"),
+      "maps/keep.png": png(),
+      "tables/rumours.json": JSON.stringify(tagged)
+    });
+
+    expect(result.tables).toEqual({ added: 0, replaced: 0, skipped: 1 });
+    expect(result.skipped[0]).toMatch(/tables\/rumours\.json: Unknown table tag "not-a-real-tag"/);
+    expect(sets()).toHaveLength(0);
+    // The map still landed: one bad tag does not cost a campaign its library.
+    expect(result.media.added).toBe(1);
+  });
+
+  it("keeps the tags this instance does know", () => {
+    const known = one<{ slug: string }>("SELECT slug FROM table_tags LIMIT 1")!.slug;
+    const tagged = JSON.parse(set()) as { tags?: string[] };
+    tagged.tags = [known, "not-in-the-vocabulary"];
+
+    apply({ "manifest.json": manifest("Tomb"), "tables/rumours.json": JSON.stringify(tagged) });
+    expect(JSON.parse(one<{ tags_json: string }>("SELECT tags_json FROM table_sets")!.tags_json)).toEqual([known]);
   });
 });

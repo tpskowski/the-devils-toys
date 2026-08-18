@@ -11,6 +11,9 @@ import { nextSortOrder } from "./group-rows.js";
 import { readRoomItem, writeRoomItem, retireForRoom } from "./room-items.js";
 import { readItemCatalog } from "./item-catalog.js";
 import { systemOrThrow } from "./systems.js";
+import { bundleSetMarkdown } from "./table-bundles.js";
+import { parseCustomSet } from "./table-json.js";
+import { knownTags, tagVocabulary } from "./table-tags.js";
 import { storedUploadBytes } from "./upload-usage.js";
 import type { Campaign, CampaignMedia } from "./campaign-bundles.js";
 
@@ -50,6 +53,7 @@ export interface ApplyResult {
   playlists: ApplyTally;
   npcs: ApplyTally;
   encounters: ApplyTally;
+  tables: ApplyTally;
   items: ApplyTally;
   group: ApplyTally;
   /** Which room settings were taken, for the confirmation to name them. */
@@ -170,6 +174,7 @@ export function applyCampaign(
   const playlists = tally();
   const npcs = tally();
   const encounters = tally();
+  const tables = tally();
   const items = tally();
   /** Bundle path to the row it became, which is what an encounter resolves through. */
   const npcIds = new Map<string, number>();
@@ -259,6 +264,7 @@ export function applyCampaign(
       applyItems(campaign, roomId, accountId, system, items, skipped);
       applyGroup(campaign, roomId, system, group, skipped, portraits, hirelingIds);
       applyEncounters(campaign, roomId, accountId, system, mediaIds, npcIds, hirelingIds, encounters, skipped);
+      applyTables(campaign, accountId, options.policy, tables, skipped);
       if (options.takeRoomSettings) room.push(...applyRoomSettings(campaign, roomId));
       db.exec("COMMIT");
     } catch (cause) {
@@ -288,7 +294,7 @@ export function applyCampaign(
     }
   }
 
-  return { media, playlists, npcs, encounters, items, group, room, bytes: incoming, skipped };
+  return { media, playlists, npcs, encounters, tables, items, group, room, bytes: incoming, skipped };
 }
 
 function applyPlaylists(
@@ -693,6 +699,76 @@ function nameOf(npcId?: number, hirelingId?: number) {
   if (npcId) return one<{ name: string }>("SELECT name FROM custom_npcs WHERE id = ?", npcId)?.name;
   if (hirelingId) return one<{ name: string }>("SELECT name FROM group_hirelings WHERE id = ?", hirelingId)?.name;
   return undefined;
+}
+
+/**
+ * A campaign's random tables, which are the one thing here that is not the room's.
+ *
+ * `table_sets` has no room: a set added by anybody is readable by every room on
+ * the server, and there is no room-scoped alternative to write to. So an imported
+ * set is named for the campaign it came from — "Tomb of the Serpent Kings —
+ * Rumours" — and the preview says plainly where it lands, which is the honest way
+ * to do a thing that reaches past the room a GM was configuring.
+ *
+ * Tags are validated against this instance's own vocabulary, which is what
+ * `parseCustomSet` does and what the editor's own routes do. An unknown slug is
+ * refused rather than dropped, per the standing rule — but the refusal costs that
+ * set rather than the whole campaign, because a tag this server has not heard of
+ * says nothing about the forty maps in the same bundle.
+ */
+function applyTables(
+  campaign: Campaign,
+  accountId: number,
+  policy: ConflictPolicy,
+  counts: ApplyTally,
+  skipped: string[]
+) {
+  if (!campaign.tables.length) return;
+  const vocabulary = tagVocabulary();
+  const held = new Map(
+    all<{ id: number; name: string }>("SELECT id, name FROM table_sets").map((row) => [
+      row.name.toLocaleLowerCase(),
+      row.id
+    ])
+  );
+
+  for (const set of campaign.tables) {
+    const name = `${campaign.manifest.name} — ${set.name}`;
+    const match = held.get(name.toLocaleLowerCase());
+    if (match && policy === "skip") {
+      counts.skipped += 1;
+      continue;
+    }
+
+    let markdown: string;
+    let tags: string[];
+    try {
+      const document = parseCustomSet(set.json, name, vocabulary);
+      markdown = bundleSetMarkdown({ name, markdown: "", document, tags: [] });
+      tags = knownTags(set.tags, vocabulary);
+    } catch (cause) {
+      skipped.push(`${set.path}: ${cause instanceof Error ? cause.message : "the table set could not be read."}`);
+      counts.skipped += 1;
+      continue;
+    }
+
+    if (match && policy === "replace") {
+      db.prepare("UPDATE table_sets SET markdown = ?, tags_json = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(
+        markdown,
+        JSON.stringify(tags),
+        match
+      );
+      counts.replaced += 1;
+      continue;
+    }
+    db.prepare("INSERT INTO table_sets (name, markdown, tags_json, created_by) VALUES (?, ?, ?, ?)").run(
+      name,
+      markdown,
+      JSON.stringify(tags),
+      accountId
+    );
+    counts.added += 1;
+  }
 }
 
 /**

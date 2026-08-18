@@ -60,15 +60,6 @@ export type CampaignFolder = keyof typeof FOLDERS;
 export const MEDIA_FOLDERS = ["maps", "scenes", "references", "audio"] as const;
 export type MediaFolder = (typeof MEDIA_FOLDERS)[number];
 
-/**
- * Folders this build accepts from an archive but does not yet read.
- *
- * They are reported in the count so a GM can see they were noticed and are not
- * yet acted on, which is the honest state of a feature being built in phases. As
- * each phase lands its reader, its folder leaves this list.
- */
-const PENDING_FOLDERS = ["tables"] as const;
-
 /** The files a bundle may hold outside any folder. */
 const ROOT_FILES = ["manifest.json", "campaign.md", "room.json", "calendar.json"] as const;
 
@@ -237,6 +228,33 @@ const encounterSchema = z
   })
   .strict();
 
+/**
+ * A table set, in the shape The Devil's Tables already writes one.
+ *
+ * Only the structure is checked here. The tags inside are validated against this
+ * instance's own vocabulary, which is not something a bundle can know about and
+ * not something this reader has — so the JSON travels as text and `parseCustomSet`
+ * has the last word at import.
+ */
+const tableSetSchema = z
+  .object({
+    formatVersion: z.literal(1),
+    setName: z.string().trim().min(1).max(80).optional(),
+    tags: z.array(z.string().min(1).max(60)).max(40).default([]),
+    preamble: z.string().max(20000).optional(),
+    postamble: z.string().max(20000).optional(),
+    tables: z.array(z.unknown()).min(1).max(500)
+  })
+  .passthrough();
+
+export interface CampaignTableSet {
+  path: string;
+  name: string;
+  tags: string[];
+  /** The document as written, handed to `parseCustomSet` with the live vocabulary. */
+  json: string;
+}
+
 export type CampaignEncounter = z.infer<typeof encounterSchema> & { path: string };
 export type CampaignNpc = z.infer<typeof npcSchema> & { path: string };
 export type CampaignItems = z.infer<typeof itemsSchema>;
@@ -279,14 +297,13 @@ export interface Campaign {
   playlists: CampaignPlaylist[];
   npcs: CampaignNpc[];
   encounters: CampaignEncounter[];
+  tables: CampaignTableSet[];
   items: CampaignItems;
   hirelings: CampaignHireling[];
   assets: CampaignAsset[];
   obligations: CampaignObligation[];
   /** Absent unless the bundle carries one; switching the calendar on is opt-in. */
   calendar?: CampaignCalendar;
-  /** Folders this build accepts but does not yet read, by file count. */
-  pending: { folder: string; files: number }[];
   /** Things worth saying to a GM that are not worth refusing an import over. */
   warnings: string[];
 }
@@ -645,6 +662,23 @@ export function readCampaign(directory: string, options: ReadOptions = {}): Camp
   const encounters = readJsonFolder(directory, "encounters", encounterSchema, "the encounter");
   refuseUnresolvedEncounters(encounters, media, npcs, hirelings);
 
+  const tables: CampaignTableSet[] = folderFiles(directory, "tables")
+    .filter((file) => extensionOf(file) === ".json")
+    .map((file) => {
+      const relative = `tables/${file}`;
+      const parsed = readJsonFile(directory, relative, tableSetSchema, "the table set");
+      return {
+        path: relative,
+        name: parsed.setName ?? displayNameFromFile(file),
+        tags: parsed.tags,
+        json: fs.readFileSync(path.join(directory, relative), "utf8")
+      };
+    });
+  if (tables.length)
+    warnings.push(
+      `${tables.length} table set${tables.length === 1 ? "" : "s"} would be added to this server's table catalogue, which every room can read.`
+    );
+
   const items = exists(directory, "items/index.json")
     ? readJsonFile(directory, "items/index.json", itemsSchema, "the item list")
     : { added: [], retired: [] };
@@ -655,14 +689,6 @@ export function readCampaign(directory: string, options: ReadOptions = {}): Camp
     ? calendarSchema.parse(calendarInput(readJsonFile(directory, "calendar.json", z.unknown(), "the calendar")))
     : undefined;
 
-  const pending = PENDING_FOLDERS.map((folder) => ({ folder, files: folderFiles(directory, folder).length })).filter(
-    (entry) => entry.files > 0
-  );
-  for (const entry of pending)
-    warnings.push(
-      `${entry.folder}/ holds ${entry.files} file${entry.files === 1 ? "" : "s"}, which this build does not import yet.`
-    );
-
   return {
     manifest,
     guessed,
@@ -672,12 +698,12 @@ export function readCampaign(directory: string, options: ReadOptions = {}): Camp
     playlists,
     npcs,
     encounters,
+    tables,
     items,
     hirelings,
     assets,
     obligations,
     ...(calendar ? { calendar } : {}),
-    pending,
     warnings
   };
 }
