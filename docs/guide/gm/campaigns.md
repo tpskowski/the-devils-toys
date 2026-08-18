@@ -162,9 +162,11 @@ If one will not upload, split it into parts that share a `campaignId` in their
 manifests — the material in one, the art in another — and import them one after
 the other. They land in the same room and the room treats them as one campaign.
 
-If the upload fails before the application says anything at all, the server is
-probably behind a reverse proxy with its own limit; whoever runs it will find
-that in the [deployment notes](../../deployment.md).
+If the upload fails before the application says anything at all — no preview, no
+refusal, just an error from somewhere else — the server is probably behind a
+reverse proxy with a body limit of its own. That is not something you can fix
+from here; whoever runs the server can, and the deployment notes that ship with
+it say how.
 
 ## Next
 

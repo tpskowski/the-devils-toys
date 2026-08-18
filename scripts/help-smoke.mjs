@@ -59,7 +59,7 @@ await runSmoke("Help guides smoke test", async ({ base, json, request, setup, lo
   const gmGuide = forPlayer.guides.find((guide) => guide.id === "gm");
   assert.deepEqual(
     gmGuide.pages.map((page) => page.slug),
-    ["overview", "your-room", "room-config", "npcs-and-encounters", "at-the-table"],
+    ["overview", "your-room", "room-config", "npcs-and-encounters", "at-the-table", "campaigns"],
     "The README is the table of contents, so the menu is in its order rather than alphabetical."
   );
 
