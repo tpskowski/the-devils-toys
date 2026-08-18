@@ -1,10 +1,16 @@
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
+import { groupAssetDefinitions } from "@devils-toys/shared";
 import { config } from "./config.js";
-import { db, all } from "./db.js";
+import { db, all, one } from "./db.js";
 import { isMp3File } from "./audio.js";
 import { imageSignatureMatches, isUtf8Markdown } from "./media.js";
+import { validateStatblock } from "./npcs.js";
+import { nextSortOrder } from "./group-rows.js";
+import { readRoomItem, writeRoomItem, retireForRoom } from "./room-items.js";
+import { readItemCatalog } from "./item-catalog.js";
+import { systemOrThrow } from "./systems.js";
 import { storedUploadBytes } from "./upload-usage.js";
 import type { Campaign, CampaignMedia } from "./campaign-bundles.js";
 
@@ -42,9 +48,14 @@ export interface ApplyTally {
 export interface ApplyResult {
   media: ApplyTally;
   playlists: ApplyTally;
+  npcs: ApplyTally;
+  items: ApplyTally;
+  group: ApplyTally;
   /** Which room settings were taken, for the confirmation to name them. */
   room: string[];
   bytes: number;
+  /** Said out loud rather than swallowed: what was in the bundle and could not land. */
+  skipped: string[];
 }
 
 const MIME: Record<string, string> = {
@@ -141,9 +152,12 @@ export function applyCampaign(
     return { entry, match, action, mimeType: action === "skip" ? "" : refuseUnusableFile(directory, entry) };
   });
 
-  const incoming = planned
-    .filter((item) => item.action !== "skip")
-    .reduce((total, item) => total + item.entry.bytes, 0);
+  const portraitBytes = [...campaign.hirelings, ...campaign.assets]
+    .filter((wearer) => wearer.portrait)
+    .reduce((total, wearer) => total + fs.statSync(path.join(directory, wearer.portrait!)).size, 0);
+  const incoming =
+    planned.filter((item) => item.action !== "skip").reduce((total, item) => total + item.entry.bytes, 0) +
+    portraitBytes;
   if (storedUploadBytes() + incoming > config.uploadLimitMb * 1024 * 1024)
     throw new Error("This campaign would take the server past its upload-storage allowance.");
 
@@ -153,7 +167,14 @@ export function applyCampaign(
   const mediaIds = new Map<string, number>();
   const media = tally();
   const playlists = tally();
+  const npcs = tally();
+  const items = tally();
+  const group = tally();
   const room: string[] = [];
+  const skipped: string[] = [];
+  /** Portraits, moved beside the media so a failure walks all of them back together. */
+  const portraits = new Map<string, { storedName: string; mimeType: string; bytes: number }>();
+  const system = one<{ system: string }>("SELECT system FROM rooms WHERE id = ?", roomId)?.system ?? "";
 
   try {
     for (const item of planned) {
@@ -168,6 +189,18 @@ export function applyCampaign(
       );
       moved.push(move);
       (item as { storedName?: string }).storedName = move.storedName;
+    }
+
+    for (const wearer of [...campaign.hirelings, ...campaign.assets]) {
+      if (!wearer.portrait) continue;
+      const from = path.join(directory, wearer.portrait);
+      const mimeType = MIME[path.extname(wearer.portrait).toLowerCase()] ?? "";
+      if (!mimeType.startsWith("image/") || !imageSignatureMatches(from, mimeType))
+        throw new Error(`The campaign's "${wearer.portrait}" is not an image this application stores.`);
+      const bytes = fs.statSync(from).size;
+      const move = moveIntoUploads(from, path.extname(wearer.portrait).toLowerCase());
+      moved.push(move);
+      portraits.set(wearer.path, { storedName: move.storedName, mimeType, bytes });
     }
 
     db.exec("BEGIN IMMEDIATE");
@@ -217,6 +250,9 @@ export function applyCampaign(
       }
 
       applyPlaylists(campaign, roomId, mediaIds, options.policy, playlists);
+      applyNpcs(campaign, roomId, accountId, system, options.policy, npcs, skipped);
+      applyItems(campaign, roomId, accountId, system, items, skipped);
+      applyGroup(campaign, roomId, system, group, skipped, portraits);
       if (options.takeRoomSettings) room.push(...applyRoomSettings(campaign, roomId));
       db.exec("COMMIT");
     } catch (cause) {
@@ -246,7 +282,7 @@ export function applyCampaign(
     }
   }
 
-  return { media, playlists, room, bytes: incoming };
+  return { media, playlists, npcs, items, group, room, bytes: incoming, skipped };
 }
 
 function applyPlaylists(
@@ -311,6 +347,191 @@ function applyPlaylists(
 }
 
 /**
+ * The room's cast.
+ *
+ * A statblock is checked against the system the **room** runs, not the one the
+ * bundle claims — a campaign may be system-agnostic, and a field this system does
+ * not declare is one nothing would ever render. The NPC still lands; the field is
+ * dropped and said out loud, because an NPC with an unknown field is mostly right
+ * and refusing the whole import over it would be worse than saying so.
+ */
+function applyNpcs(
+  campaign: Campaign,
+  roomId: number,
+  accountId: number,
+  system: string,
+  policy: ConflictPolicy,
+  counts: ApplyTally,
+  skipped: string[]
+) {
+  if (!campaign.npcs.length) return;
+  const existing = new Map(
+    all<{ id: number; name: string }>("SELECT id, name FROM custom_npcs WHERE room_id = ?", roomId).map((row) => [
+      row.name.toLocaleLowerCase(),
+      row.id
+    ])
+  );
+
+  for (const npc of campaign.npcs) {
+    const match = existing.get(npc.name.toLocaleLowerCase());
+    if (match && policy === "skip") {
+      counts.skipped += 1;
+      continue;
+    }
+
+    let statblock = npc.statblock;
+    const complaint = validateStatblock(system, statblock);
+    if (complaint) {
+      const declared = new Set(systemOrThrow(system).npcStatblock.fields.map((field) => field.key));
+      statblock = Object.fromEntries(Object.entries(statblock).filter(([key]) => declared.has(key)));
+      skipped.push(`${npc.path}: ${complaint} The rest of the NPC was imported.`);
+    }
+
+    if (match && policy === "replace") {
+      db.prepare(
+        "UPDATE custom_npcs SET notes = ?, statblock_json = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?"
+      ).run(npc.notes, JSON.stringify(statblock), match);
+      counts.replaced += 1;
+      continue;
+    }
+    db.prepare("INSERT INTO custom_npcs (room_id, created_by, name, notes, statblock_json) VALUES (?, ?, ?, ?, ?)").run(
+      roomId,
+      accountId,
+      npc.name,
+      npc.notes,
+      JSON.stringify(statblock)
+    );
+    counts.added += 1;
+  }
+}
+
+/**
+ * The room's own additions to its system's gear, and what it takes out.
+ *
+ * Added items go through `readRoomItem`, which is what the Items panel writes
+ * through: an imported weapon is classified a weapon by the same reading a
+ * hand-typed one gets, rather than by a looser second one kept for bundles. Ids
+ * are minted against this room, since `room:<roomId>:<slug>` names the room that
+ * holds it and a carried-over id would be a lie.
+ *
+ * Retired ids are the one thing that travels verbatim, because they name the
+ * system's items rather than the room's — and one this system has never heard of
+ * is reported rather than written, since it is the loudest sign a bundle was
+ * built for a different game.
+ */
+function applyItems(
+  campaign: Campaign,
+  roomId: number,
+  accountId: number,
+  system: string,
+  counts: ApplyTally,
+  skipped: string[]
+) {
+  const { added, retired } = campaign.items;
+  if (!added.length && !retired.length) return;
+  const definition = systemOrThrow(system);
+  const lists = new Set(definition.characterSheet.lists.map((list) => list.key));
+  const held = new Set(
+    Object.values(readItemCatalog(system).lists).flatMap((entries) => entries.map((item) => item.id))
+  );
+
+  for (const input of added) {
+    if (!lists.has(input.listKey)) {
+      skipped.push(`"${input.name}" belongs to a list called "${input.listKey}", which this system has not got.`);
+      counts.skipped += 1;
+      continue;
+    }
+    writeRoomItem(roomId, accountId, input.listKey, readRoomItem(system, roomId, input));
+    counts.added += 1;
+  }
+
+  for (const id of retired) {
+    if (!held.has(id)) {
+      skipped.push(`The campaign retires "${id}", which this system's catalogue has not got.`);
+      counts.skipped += 1;
+      continue;
+    }
+    retireForRoom(roomId, id);
+    counts.replaced += 1;
+  }
+}
+
+/**
+ * Hirelings, shared property, and what the party owes.
+ *
+ * Each is gated on the system declaring it: a system with no hireling sheet has
+ * nowhere to put a hireling, and writing rows the room can never show would be a
+ * silent loss. The refusal is per kind and named, so a campaign that carries a
+ * starship into a system without one still lands everything else.
+ */
+function applyGroup(
+  campaign: Campaign,
+  roomId: number,
+  system: string,
+  counts: ApplyTally,
+  skipped: string[],
+  portraits: Map<string, { storedName: string; mimeType: string; bytes: number }>
+) {
+  /** The four columns a portrait is, in the shape `characters` already carries them. */
+  const wearing = (
+    row: number | bigint,
+    table: "group_hirelings" | "group_assets",
+    wearer: string,
+    filename?: string
+  ) => {
+    const portrait = portraits.get(wearer);
+    if (!portrait) return;
+    db.prepare(
+      `UPDATE ${table} SET portrait_filename = ?, portrait_stored_name = ?, portrait_mime_type = ?, portrait_size = ?
+       WHERE id = ?`
+    ).run(path.basename(filename ?? ""), portrait.storedName, portrait.mimeType, portrait.bytes, Number(row));
+  };
+
+  const { groupPage } = systemOrThrow(system);
+
+  for (const hireling of campaign.hirelings) {
+    if (!groupPage?.hirelings) {
+      skipped.push(`${hireling.path}: this system has no hirelings.`);
+      counts.skipped += 1;
+      continue;
+    }
+    const row = db
+      .prepare("INSERT INTO group_hirelings (room_id, name, sort_order, sheet_json) VALUES (?, ?, ?, ?)")
+      .run(roomId, hireling.name, nextSortOrder("group_hirelings", roomId), JSON.stringify(hireling.sheet));
+    wearing(row.lastInsertRowid, "group_hirelings", hireling.path, hireling.portrait);
+    counts.added += 1;
+  }
+
+  const kinds = new Set(groupAssetDefinitions(groupPage).map((asset) => asset.kind));
+  for (const asset of campaign.assets) {
+    if (!kinds.has(asset.kind)) {
+      skipped.push(`${asset.path}: this system has no shared property of the kind "${asset.kind}".`);
+      counts.skipped += 1;
+      continue;
+    }
+    const row = db
+      .prepare("INSERT INTO group_assets (room_id, kind, name, sort_order, sheet_json) VALUES (?, ?, ?, ?, ?)")
+      .run(roomId, asset.kind, asset.name, nextSortOrder("group_assets", roomId), JSON.stringify(asset.sheet));
+    wearing(row.lastInsertRowid, "group_assets", asset.path, asset.portrait);
+    counts.added += 1;
+  }
+
+  for (const obligation of campaign.obligations) {
+    db.prepare(
+      "INSERT INTO group_obligations (room_id, name, owed_to, amount, details, sort_order) VALUES (?, ?, ?, ?, ?, ?)"
+    ).run(
+      roomId,
+      obligation.name,
+      obligation.owedTo,
+      obligation.amount,
+      obligation.details,
+      nextSortOrder("group_obligations", roomId)
+    );
+    counts.added += 1;
+  }
+}
+
+/**
  * `room.json`, applied only when asked for.
  *
  * Renaming a running room and changing its theme out from under the people in it
@@ -326,6 +547,16 @@ function applyRoomSettings(campaign: Campaign, roomId: number) {
   };
 
   const { room } = campaign;
+  // The calendar is a room setting in every sense: it is one column beside the
+  // switch that shows it, and taking a campaign's dates without being asked would
+  // move a running game's clock.
+  if (campaign.calendar) {
+    db.prepare("UPDATE rooms SET calendar_json = ?, calendar_enabled = 1 WHERE id = ?").run(
+      JSON.stringify(campaign.calendar),
+      roomId
+    );
+    taken.push("calendar taken from the campaign");
+  }
   if (room.name) set("name", room.name, `renamed to "${room.name}"`);
   if (room.theme) set("theme", room.theme, `theme set to ${room.theme}`);
   if (room.calendarEnabled !== undefined)

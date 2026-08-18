@@ -479,7 +479,7 @@ stages a gigabyte and finds out whether it needs it. Building a job queue to wat
 an operation that is already instant would have been machinery in the shape of a
 plan rather than in the shape of the problem.
 
-### Phase 4 — NPCs, items, calendar, group content
+### Phase 4 — NPCs, items, calendar, group content — **done**
 
 Statblocks validated against the room's system, item ids minted for the room,
 retired ids checked against the catalogue, the calendar through `calendarSchema`,

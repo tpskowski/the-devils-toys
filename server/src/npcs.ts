@@ -48,7 +48,13 @@ function parseStatblock(json: string | null | undefined) {
   }
 }
 
-function validateStatblock(system: SystemId, value: Record<string, string | number>) {
+/**
+ * Whether a statblock only carries fields this system declares, and of the kind
+ * it declares them. Exported so the campaign importer holds an imported NPC to
+ * the same reading a hand-written one gets — a bundle can say anything, and a
+ * field nothing renders is a silent loss rather than a loud one.
+ */
+export function validateStatblock(system: SystemId, value: Record<string, string | number>) {
   const definitions = new Map(systemOrThrow(system).npcStatblock.fields.map((field) => [field.key, field]));
   for (const [key, fieldValue] of Object.entries(value)) {
     const definition = definitions.get(key);

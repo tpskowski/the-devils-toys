@@ -260,10 +260,12 @@ describe("reading a campaign", () => {
    * of itself.
    */
   it("counts the folders this build does not import yet, and says so", () => {
-    const campaign = readCampaign(stage({ "maps/a.png": "x", "npcs/vane.json": "{}", "npcs/priest.json": "{}" }));
+    const campaign = readCampaign(
+      stage({ "maps/a.png": "x", "encounters/gate.json": "{}", "encounters/hall.json": "{}" })
+    );
 
-    expect(campaign.pending).toEqual([{ folder: "npcs", files: 2 }]);
-    expect(campaign.warnings[0]).toMatch(/npcs\/ holds 2 files, which this build does not import yet/);
+    expect(campaign.pending).toEqual([{ folder: "encounters", files: 2 }]);
+    expect(campaign.warnings[0]).toMatch(/encounters\/ holds 2 files, which this build does not import yet/);
   });
 });
 

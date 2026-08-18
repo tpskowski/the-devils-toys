@@ -77,6 +77,8 @@ export interface CampaignPreview {
   overview: string;
   bytes: { incoming: number; remaining: number };
   kinds: KindCount[];
+  /** Whether the bundle carries a calendar, which is taken only if asked for. */
+  calendar: boolean;
   /** Folders this build accepts but does not import yet. */
   pending: { folder: string; files: number }[];
   /** What was assumed about the bundle rather than read from it. */
@@ -113,8 +115,26 @@ function countKinds(campaign: Campaign, roomId: number): KindCount[] {
     counts.set(kind, entry);
   };
 
+  const npcs = new Set(
+    all<{ name: string }>("SELECT name FROM custom_npcs WHERE room_id = ?", roomId).map((row) =>
+      row.name.toLocaleLowerCase()
+    )
+  );
+
   for (const entry of campaign.media) count(entry.folder, held.has(`${entry.category}/${entry.filename}`));
   for (const playlist of campaign.playlists) count("playlists", playlists.has(playlist.name.toLocaleLowerCase()));
+  for (const npc of campaign.npcs) count("npcs", npcs.has(npc.name.toLocaleLowerCase()));
+
+  // Gear, hirelings, shared property, and debts are added rather than matched:
+  // nothing about them carries an identity a re-import could recognise, which is
+  // what the ledger is for. Until then they are honestly reported as additions.
+  const add = (kind: string, many: number) => {
+    if (many) counts.set(kind, { kind, new: many, conflict: 0 });
+  };
+  add("items", campaign.items.added.length + campaign.items.retired.length);
+  add("hirelings", campaign.hirelings.length);
+  add("assets", campaign.assets.length);
+  add("obligations", campaign.obligations.length);
   return [...counts.values()];
 }
 
@@ -135,6 +155,7 @@ export function campaignPreview(campaign: Campaign, token: string, roomId: numbe
       remaining: Math.max(0, config.uploadLimitMb * 1024 * 1024 - storedUploadBytes())
     },
     kinds: countKinds(campaign, roomId),
+    calendar: Boolean(campaign.calendar),
     pending: campaign.pending,
     guessed: campaign.guessed,
     warnings: campaign.warnings
