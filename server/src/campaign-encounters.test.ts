@@ -89,7 +89,7 @@ const encounterRow = () =>
 describe("a prepared encounter", () => {
   it("resolves its map, its NPCs, and its hirelings to the rows they became", () => {
     const result = apply(fullBundle());
-    expect(result.encounters).toEqual({ added: 1, replaced: 0, skipped: 0 });
+    expect(result.encounters).toEqual({ added: 1, replaced: 0, skipped: 0, unchanged: 0 });
 
     const encounter = encounterRow();
     expect(encounter.name).toBe("The Gate");
@@ -203,7 +203,7 @@ describe("what an encounter does about what is already there", () => {
     apply(fullBundle());
     for (const policy of ["skip", "replace", "add"] as const) {
       const result = apply(fullBundle(), { policy });
-      expect(result.encounters).toEqual({ added: 0, replaced: 0, skipped: 1 });
+      expect(result.encounters).toEqual({ added: 0, replaced: 0, skipped: 1, unchanged: 0 });
       expect(result.skipped.some((line) => /already has an encounter called "The Gate"/.test(line))).toBe(true);
     }
     expect(all("SELECT id FROM encounters WHERE room_id = ?", roomId)).toHaveLength(1);

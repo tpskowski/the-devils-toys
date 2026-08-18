@@ -287,17 +287,31 @@ CREATE TABLE IF NOT EXISTS room_import_entries (
   kind TEXT NOT NULL,
   path TEXT NOT NULL,
   row_id INTEGER NOT NULL,
-  digest TEXT NOT NULL,
+  source_digest TEXT NOT NULL,
+  state_digest TEXT NOT NULL,
   PRIMARY KEY (import_id, kind, path)
 );
 ```
 
-`digest` is what the importer wrote, so a second import can tell three cases
-apart that a name comparison cannot: unchanged in both (skip), changed in the
-bundle only (update), and changed in the room since the import (a real conflict,
-and the only one worth asking about). It is also what makes "remove this
-campaign's contribution" answerable later, which is a feature this plan does not
-build but must not foreclose.
+**Two digests, because one cannot answer both questions** — this is the thing
+building it corrected. `source_digest` is what the bundle carried, and comparing
+it to an incoming bundle says whether the _campaign_ has changed.
+`state_digest` is the row as the importer left it, and comparing it to the row
+now says whether the _room_ has been at it since. A single column had to stand
+for both and could not: every entry came back "edited".
+
+Together they tell three cases apart that a name comparison cannot: unchanged in
+both (nothing to do), changed in the bundle only (update it), and changed in the
+room since the import (a real conflict, and the only one worth asking about).
+They are also what makes "remove this campaign's contribution" answerable later,
+which is a feature this plan does not build but must not foreclose.
+
+**The ledger outranks the conflict policy for a row this campaign made**, which
+is what "chapter 2" needs to mean. Under `skip`, a corrected map still lands if
+the room has not touched it — the policy governs collisions with things the
+campaign did _not_ make, and those are what a GM is actually being asked about.
+Where the room _has_ edited something, the policy has the last word: `skip`
+keeps the GM's version, `replace` takes them at their word.
 
 Entries are keyed by bundle path rather than by name, so renaming a map in the
 bundle is a delete plus an add — honest, and cheaper than guessing.
@@ -519,7 +533,7 @@ constant empty list. The test that covered it became one that reads a bundle
 carrying one of everything, which is the check that keeps a folder from being
 added to the allowlist without a reader behind it.
 
-### Phase 7 — The ledger and re-import
+### Phase 7 — The ledger and re-import — **done**
 
 `room_imports` and `room_import_entries`, digests written on the way in, and the
 three-way comparison on the second import. Deliberately after a working import:

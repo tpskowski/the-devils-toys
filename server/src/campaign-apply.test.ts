@@ -70,7 +70,7 @@ describe("landing a campaign's library in a room", () => {
     });
     const result = apply(staged);
 
-    expect(result.media).toEqual({ added: 3, replaced: 0, skipped: 0 });
+    expect(result.media).toEqual({ added: 3, replaced: 0, skipped: 0, unchanged: 0 });
     const rows = mediaRows();
     expect(rows.map((row) => [row.category, row.filename, row.display_name])).toEqual([
       ["map", "the-keep.png", "The Keep"],
@@ -131,8 +131,18 @@ describe("landing a campaign's library in a room", () => {
 });
 
 describe("what happens to something the room already holds", () => {
+  /**
+   * Put here by hand, as a GM's own upload — which is what the conflict policy is
+   * for. A row a previous import of this campaign made is the ledger's business,
+   * and it is covered in its own file.
+   */
   const held = () => {
-    apply(stage({ "maps/keep.png": png(1) }));
+    const storedName = `${Math.random().toString(36).slice(2)}.png`;
+    fs.writeFileSync(path.join(uploads(), storedName), Buffer.from(png(1)));
+    db.prepare(
+      `INSERT INTO media (room_id, uploaded_by, kind, category, filename, display_name, stored_name, mime_type, size)
+       VALUES (?, ?, 'scene', 'map', 'keep.png', 'keep', ?, 'image/png', 64)`
+    ).run(roomId, ACCOUNT, storedName);
     return mediaRows()[0];
   };
 
@@ -140,7 +150,7 @@ describe("what happens to something the room already holds", () => {
     const before = held();
     const result = apply(stage({ "maps/keep.png": png(2) }));
 
-    expect(result.media).toEqual({ added: 0, replaced: 0, skipped: 1 });
+    expect(result.media).toEqual({ added: 0, replaced: 0, skipped: 1, unchanged: 0 });
     expect(mediaRows()).toHaveLength(1);
     expect(mediaRows()[0].stored_name).toBe(before.stored_name);
   });
@@ -149,7 +159,7 @@ describe("what happens to something the room already holds", () => {
     const before = held();
     const result = apply(stage({ "maps/keep.png": png(2) }), { policy: "replace" });
 
-    expect(result.media).toEqual({ added: 0, replaced: 1, skipped: 0 });
+    expect(result.media).toEqual({ added: 0, replaced: 1, skipped: 0, unchanged: 0 });
     const after = mediaRows();
     expect(after).toHaveLength(1);
     // The same row — so a playlist or an encounter pointing at it still does.
@@ -163,7 +173,7 @@ describe("what happens to something the room already holds", () => {
     held();
     const result = apply(stage({ "maps/keep.png": png(2) }), { policy: "add" });
 
-    expect(result.media).toEqual({ added: 1, replaced: 0, skipped: 0 });
+    expect(result.media).toEqual({ added: 1, replaced: 0, skipped: 0, unchanged: 0 });
     expect(mediaRows()).toHaveLength(2);
   });
 
@@ -188,12 +198,8 @@ describe("what happens to something the room already holds", () => {
   });
 
   it("names a playlist conflict by name, whatever its case", () => {
-    apply(
-      stage({
-        "audio/dirge.mp3": mp3(),
-        "playlists/combat.json": text(JSON.stringify({ name: "Combat", tracks: ["audio/dirge.mp3"] }))
-      })
-    );
+    // A playlist the GM made, so the policy is what decides.
+    db.prepare("INSERT INTO room_playlists (room_id, name) VALUES (?, 'Combat')").run(roomId);
     const result = apply(
       stage({
         "audio/dirge.mp3": mp3(),
@@ -201,7 +207,7 @@ describe("what happens to something the room already holds", () => {
       })
     );
 
-    expect(result.playlists).toEqual({ added: 0, replaced: 0, skipped: 1 });
+    expect(result.playlists).toEqual({ added: 0, replaced: 0, skipped: 1, unchanged: 0 });
     expect(all("SELECT id FROM room_playlists WHERE room_id = ?", roomId)).toHaveLength(1);
   });
 });

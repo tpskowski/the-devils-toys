@@ -11,6 +11,7 @@ import { nextSortOrder } from "./group-rows.js";
 import { readRoomItem, writeRoomItem, retireForRoom } from "./room-items.js";
 import { readItemCatalog } from "./item-catalog.js";
 import { systemOrThrow } from "./systems.js";
+import { CampaignLedger, digestOf, digestOfFile } from "./campaign-ledger.js";
 import { bundleSetMarkdown } from "./table-bundles.js";
 import { parseCustomSet } from "./table-json.js";
 import { knownTags, tagVocabulary } from "./table-tags.js";
@@ -46,6 +47,8 @@ export interface ApplyTally {
   added: number;
   replaced: number;
   skipped: number;
+  /** Already here from a previous import of this campaign, and unchanged since. */
+  unchanged: number;
 }
 
 export interface ApplyResult {
@@ -73,14 +76,25 @@ const MIME: Record<string, string> = {
 };
 
 const uploadsDir = () => path.join(config.dataDir, "uploads");
-const tally = (): ApplyTally => ({ added: 0, replaced: 0, skipped: 0 });
+const tally = (): ApplyTally => ({ added: 0, replaced: 0, skipped: 0, unchanged: 0 });
 
 interface ExistingMedia {
   id: number;
   kind: string;
   filename: string;
   stored_name: string;
+  display_name: string | null;
 }
+
+/**
+ * A media row as this importer left it.
+ *
+ * `stored_name` is the whole trick: replacing a file through the media routes
+ * mints a new one, so comparing it says whether the room has swapped the picture
+ * without reading a single byte back off disk.
+ */
+const mediaState = (row: Pick<ExistingMedia, "stored_name" | "display_name">) =>
+  digestOf(row.stored_name, row.display_name ?? "");
 
 /**
  * Whether a staged file is what its extension says it is.
@@ -144,25 +158,61 @@ export function applyCampaign(
   accountId: number,
   options: ApplyOptions
 ): ApplyResult {
+  /**
+   * What the last import of this campaign into this room left behind. A campaign
+   * this room has never taken has an empty one, and every path in it is fresh —
+   * which is precisely the behaviour that existed before the ledger did.
+   */
+  const ledger = new CampaignLedger(roomId, campaign.manifest.campaignId);
+
   const existing = all<ExistingMedia>(
-    "SELECT id, COALESCE(category, kind) AS kind, filename, stored_name FROM media WHERE room_id = ?",
+    "SELECT id, COALESCE(category, kind) AS kind, filename, stored_name, display_name FROM media WHERE room_id = ?",
     roomId
   );
   const held = new Map(existing.map((row) => [`${row.kind}/${row.filename}`, row]));
 
-  // Decide everything before touching anything, so a refusal costs nothing.
+  /**
+   * Decide everything before touching anything, so a refusal costs nothing.
+   *
+   * The ledger is asked first, because it knows something a name comparison
+   * cannot: whether this exact file came from this campaign last time, and
+   * whether the room has touched it since. Only when it has nothing to say does
+   * the conflict policy get a vote.
+   */
+  const byId = new Map(existing.map((row) => [row.id, row]));
   const planned = campaign.media.map((entry) => {
+    const mimeType = refuseUnusableFile(directory, entry);
+    const source = digestOf(digestOfFile(path.join(directory, entry.path)), entry.displayName);
+    const verdict = ledger.verdict("media", entry.path, source, (rowId) => {
+      const row = byId.get(rowId);
+      return row && mediaState(row);
+    });
+
+    if (verdict.state === "unchanged" || verdict.state === "updatable" || verdict.state === "edited") {
+      const match = byId.get(verdict.rowId)!;
+      const action =
+        verdict.state === "unchanged"
+          ? "unchanged"
+          : verdict.state === "updatable"
+            ? "replace"
+            : options.policy === "add"
+              ? "add"
+              : options.policy;
+      return { entry, match, action, mimeType, source };
+    }
+
     const match = held.get(`${entry.category}/${entry.filename}`);
     const action = !match ? "add" : options.policy === "add" ? "add" : options.policy;
-    return { entry, match, action, mimeType: action === "skip" ? "" : refuseUnusableFile(directory, entry) };
+    return { entry, match, action, mimeType, source };
   });
 
   const portraitBytes = [...campaign.hirelings, ...campaign.assets]
     .filter((wearer) => wearer.portrait)
     .reduce((total, wearer) => total + fs.statSync(path.join(directory, wearer.portrait!)).size, 0);
   const incoming =
-    planned.filter((item) => item.action !== "skip").reduce((total, item) => total + item.entry.bytes, 0) +
-    portraitBytes;
+    planned
+      .filter((item) => item.action !== "skip" && item.action !== "unchanged")
+      .reduce((total, item) => total + item.entry.bytes, 0) + portraitBytes;
   if (storedUploadBytes() + incoming > config.uploadLimitMb * 1024 * 1024)
     throw new Error("This campaign would take the server past its upload-storage allowance.");
 
@@ -188,9 +238,12 @@ export function applyCampaign(
 
   try {
     for (const item of planned) {
-      if (item.action === "skip") {
+      if (item.action === "skip" || item.action === "unchanged") {
         mediaIds.set(item.entry.path, item.match!.id);
-        media.skipped += 1;
+        if (item.action === "unchanged") {
+          media.unchanged += 1;
+          ledger.record("media", item.entry.path, item.match!.id, item.source, mediaState(item.match!));
+        } else media.skipped += 1;
         continue;
       }
       const move = moveIntoUploads(
@@ -216,7 +269,7 @@ export function applyCampaign(
     db.exec("BEGIN IMMEDIATE");
     try {
       for (const item of planned) {
-        if (item.action === "skip") continue;
+        if (item.action === "skip" || item.action === "unchanged") continue;
         const { entry } = item;
         const storedName = (item as { storedName?: string }).storedName!;
         // `kind` predates `category`, and a map is stored as a scene under it —
@@ -230,6 +283,13 @@ export function applyCampaign(
              WHERE id = ?`
           ).run(storedName, item.mimeType, entry.bytes, entry.displayName, item.match!.id);
           mediaIds.set(entry.path, item.match!.id);
+          ledger.record(
+            "media",
+            entry.path,
+            item.match!.id,
+            item.source,
+            mediaState({ stored_name: storedName, display_name: entry.displayName })
+          );
           media.replaced += 1;
           continue;
         }
@@ -256,16 +316,29 @@ export function applyCampaign(
             entry.bytes
           );
         mediaIds.set(entry.path, Number(result.lastInsertRowid));
+        ledger.record(
+          "media",
+          entry.path,
+          Number(result.lastInsertRowid),
+          item.source,
+          mediaState({ stored_name: storedName, display_name: entry.displayName })
+        );
         media.added += 1;
       }
 
-      applyPlaylists(campaign, roomId, mediaIds, options.policy, playlists);
-      applyNpcs(campaign, roomId, accountId, system, options.policy, npcs, skipped, npcIds);
+      applyPlaylists(campaign, roomId, mediaIds, options.policy, playlists, ledger);
+      applyNpcs(campaign, roomId, accountId, system, options.policy, npcs, skipped, npcIds, ledger);
       applyItems(campaign, roomId, accountId, system, items, skipped);
-      applyGroup(campaign, roomId, system, group, skipped, portraits, hirelingIds);
+      applyGroup(campaign, roomId, system, group, skipped, portraits, hirelingIds, ledger);
       applyEncounters(campaign, roomId, accountId, system, mediaIds, npcIds, hirelingIds, encounters, skipped);
       applyTables(campaign, accountId, options.policy, tables, skipped);
       if (options.takeRoomSettings) room.push(...applyRoomSettings(campaign, roomId));
+      ledger.commit({
+        name: campaign.manifest.name,
+        version: campaign.manifest.version,
+        manifest: campaign.manifest,
+        accountId
+      });
       db.exec("COMMIT");
     } catch (cause) {
       db.exec("ROLLBACK");
@@ -302,7 +375,8 @@ function applyPlaylists(
   roomId: number,
   mediaIds: Map<string, number>,
   policy: ConflictPolicy,
-  counts: ApplyTally
+  counts: ApplyTally,
+  ledger: CampaignLedger
 ) {
   if (!campaign.playlists.length) return;
   const existing = new Map(
@@ -318,16 +392,38 @@ function applyPlaylists(
       roomId
     )[0]?.next ?? 0;
 
+  const playlistState = (id: number) => {
+    const row = one<{ name: string }>("SELECT name FROM room_playlists WHERE id = ?", id);
+    if (!row) return undefined;
+    const tracks = all<{ media_id: number }>(
+      "SELECT media_id FROM room_playlist_tracks WHERE playlist_id = ? ORDER BY sort_order",
+      id
+    );
+    return digestOf(row.name, tracks.map((track) => track.media_id).join(","));
+  };
+
   for (const playlist of campaign.playlists) {
-    const match = existing.get(playlist.name.toLocaleLowerCase());
-    if (match && policy === "skip") {
+    const source = digestOf(playlist.name, playlist.tracks.join(","));
+    const verdict = ledger.verdict("playlists", playlist.path, source, playlistState);
+    if (verdict.state === "unchanged") {
+      ledger.record("playlists", playlist.path, verdict.rowId, source, playlistState(verdict.rowId)!);
+      counts.unchanged += 1;
+      continue;
+    }
+
+    const match = verdict.state === "updatable" ? verdict.rowId : existing.get(playlist.name.toLocaleLowerCase());
+    const effective = verdict.state === "updatable" ? "replace" : policy;
+    if (match && effective === "skip") {
       counts.skipped += 1;
       continue;
     }
 
     let playlistId: number;
-    if (match && policy === "replace") {
-      db.prepare("UPDATE room_playlists SET updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(match);
+    if (match && effective === "replace") {
+      db.prepare("UPDATE room_playlists SET name = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(
+        playlist.name,
+        match
+      );
       db.prepare("DELETE FROM room_playlist_tracks WHERE playlist_id = ?").run(match);
       playlistId = match;
       counts.replaced += 1;
@@ -355,6 +451,7 @@ function applyPlaylists(
       );
       order += 1;
     }
+    ledger.record("playlists", playlist.path, playlistId, source, playlistState(playlistId)!);
   }
 }
 
@@ -375,19 +472,37 @@ function applyNpcs(
   policy: ConflictPolicy,
   counts: ApplyTally,
   skipped: string[],
-  npcIds: Map<string, number>
+  npcIds: Map<string, number>,
+  ledger: CampaignLedger
 ) {
   if (!campaign.npcs.length) return;
-  const existing = new Map(
-    all<{ id: number; name: string }>("SELECT id, name FROM custom_npcs WHERE room_id = ?", roomId).map((row) => [
-      row.name.toLocaleLowerCase(),
-      row.id
-    ])
+  const rows = all<{ id: number; name: string; notes: string; statblock_json: string }>(
+    "SELECT id, name, notes, statblock_json FROM custom_npcs WHERE room_id = ?",
+    roomId
   );
+  const existing = new Map(rows.map((row) => [row.name.toLocaleLowerCase(), row.id]));
+  const byId = new Map(rows.map((row) => [row.id, row]));
+  const npcState = (row: { name: string; notes: string; statblock_json: string }) =>
+    digestOf(row.name, row.notes, row.statblock_json);
 
   for (const npc of campaign.npcs) {
-    const match = existing.get(npc.name.toLocaleLowerCase());
-    if (match && policy === "skip") {
+    const source = digestOf(npc.name, npc.notes, JSON.stringify(npc.statblock));
+    const verdict = ledger.verdict("npcs", npc.path, source, (rowId) => {
+      const row = byId.get(rowId);
+      return row && npcState(row);
+    });
+    if (verdict.state === "unchanged") {
+      npcIds.set(npc.path, verdict.rowId);
+      ledger.record("npcs", npc.path, verdict.rowId, source, npcState(byId.get(verdict.rowId)!));
+      counts.unchanged += 1;
+      continue;
+    }
+
+    // A row this campaign made and the room has not touched is this campaign's to
+    // correct, whatever the policy says about things it did not make.
+    const match = verdict.state === "updatable" ? verdict.rowId : existing.get(npc.name.toLocaleLowerCase());
+    const effective = verdict.state === "updatable" ? "replace" : policy;
+    if (match && effective === "skip") {
       // Resolves to the row the room already held, so an encounter naming this
       // NPC still finds one rather than losing a combatant to a decision that
       // was about something else.
@@ -404,11 +519,18 @@ function applyNpcs(
       skipped.push(`${npc.path}: ${complaint} The rest of the NPC was imported.`);
     }
 
-    if (match && policy === "replace") {
+    if (match && effective === "replace") {
       db.prepare(
-        "UPDATE custom_npcs SET notes = ?, statblock_json = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?"
-      ).run(npc.notes, JSON.stringify(statblock), match);
+        "UPDATE custom_npcs SET name = ?, notes = ?, statblock_json = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?"
+      ).run(npc.name, npc.notes, JSON.stringify(statblock), match);
       npcIds.set(npc.path, match);
+      ledger.record(
+        "npcs",
+        npc.path,
+        match,
+        source,
+        npcState({ name: npc.name, notes: npc.notes, statblock_json: JSON.stringify(statblock) })
+      );
       counts.replaced += 1;
       continue;
     }
@@ -416,6 +538,13 @@ function applyNpcs(
       .prepare("INSERT INTO custom_npcs (room_id, created_by, name, notes, statblock_json) VALUES (?, ?, ?, ?, ?)")
       .run(roomId, accountId, npc.name, npc.notes, JSON.stringify(statblock));
     npcIds.set(npc.path, Number(row.lastInsertRowid));
+    ledger.record(
+      "npcs",
+      npc.path,
+      Number(row.lastInsertRowid),
+      source,
+      npcState({ name: npc.name, notes: npc.notes, statblock_json: JSON.stringify(statblock) })
+    );
     counts.added += 1;
   }
 }
@@ -486,7 +615,8 @@ function applyGroup(
   counts: ApplyTally,
   skipped: string[],
   portraits: Map<string, { storedName: string; mimeType: string; bytes: number }>,
-  hirelingIds: Map<string, number>
+  hirelingIds: Map<string, number>,
+  ledger: CampaignLedger
 ) {
   /** The four columns a portrait is, in the shape `characters` already carries them. */
   const wearing = (
@@ -505,18 +635,56 @@ function applyGroup(
 
   const { groupPage } = systemOrThrow(system);
 
+  /**
+   * Hirelings, ships, and debts have no identity of their own — nothing about a
+   * hireling says which hireling it is, which is why the preview counts them as
+   * additions. The ledger is what gives them one: the bundle path. Without it a
+   * second import of the same campaign lays down a second Brann, and a third
+   * lays down a third.
+   */
+  const rowState = (table: string, id: number) => {
+    const row = one<{ name: string; sheet_json?: string; owed_to?: string; amount?: string; details?: string }>(
+      `SELECT * FROM ${table} WHERE id = ?`,
+      id
+    );
+    return row && digestOf(row.name, row.sheet_json ?? "", row.owed_to ?? "", row.amount ?? "", row.details ?? "");
+  };
+
   for (const hireling of campaign.hirelings) {
     if (!groupPage?.hirelings) {
       skipped.push(`${hireling.path}: this system has no hirelings.`);
       counts.skipped += 1;
       continue;
     }
-    const row = db
-      .prepare("INSERT INTO group_hirelings (room_id, name, sort_order, sheet_json) VALUES (?, ?, ?, ?)")
-      .run(roomId, hireling.name, nextSortOrder("group_hirelings", roomId), JSON.stringify(hireling.sheet));
-    wearing(row.lastInsertRowid, "group_hirelings", hireling.path, hireling.portrait);
-    hirelingIds.set(hireling.path, Number(row.lastInsertRowid));
-    counts.added += 1;
+    const source = digestOf(hireling.name, JSON.stringify(hireling.sheet), hireling.portrait ?? "");
+    const verdict = ledger.verdict("hirelings", hireling.path, source, (id) => rowState("group_hirelings", id));
+    if (verdict.state === "unchanged" || verdict.state === "edited") {
+      // Untouched needs nothing; edited belongs to whoever edited it.
+      hirelingIds.set(hireling.path, verdict.rowId);
+      const state = rowState("group_hirelings", verdict.rowId)!;
+      ledger.record("hirelings", hireling.path, verdict.rowId, verdict.state === "unchanged" ? source : "", state);
+      if (verdict.state === "unchanged") counts.unchanged += 1;
+      else counts.skipped += 1;
+      continue;
+    }
+
+    const id =
+      verdict.state === "updatable"
+        ? (db
+            .prepare("UPDATE group_hirelings SET name = ?, sheet_json = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?")
+            .run(hireling.name, JSON.stringify(hireling.sheet), verdict.rowId),
+          verdict.rowId)
+        : Number(
+            db
+              .prepare("INSERT INTO group_hirelings (room_id, name, sort_order, sheet_json) VALUES (?, ?, ?, ?)")
+              .run(roomId, hireling.name, nextSortOrder("group_hirelings", roomId), JSON.stringify(hireling.sheet))
+              .lastInsertRowid
+          );
+    wearing(id, "group_hirelings", hireling.path, hireling.portrait);
+    hirelingIds.set(hireling.path, id);
+    ledger.record("hirelings", hireling.path, id, source, rowState("group_hirelings", id)!);
+    if (verdict.state === "updatable") counts.replaced += 1;
+    else counts.added += 1;
   }
 
   const kinds = new Set(groupAssetDefinitions(groupPage).map((asset) => asset.kind));
@@ -526,25 +694,72 @@ function applyGroup(
       counts.skipped += 1;
       continue;
     }
-    const row = db
-      .prepare("INSERT INTO group_assets (room_id, kind, name, sort_order, sheet_json) VALUES (?, ?, ?, ?, ?)")
-      .run(roomId, asset.kind, asset.name, nextSortOrder("group_assets", roomId), JSON.stringify(asset.sheet));
-    wearing(row.lastInsertRowid, "group_assets", asset.path, asset.portrait);
-    counts.added += 1;
+    const source = digestOf(asset.kind, asset.name, JSON.stringify(asset.sheet), asset.portrait ?? "");
+    const verdict = ledger.verdict("assets", asset.path, source, (id) => rowState("group_assets", id));
+    if (verdict.state === "unchanged" || verdict.state === "edited") {
+      const state = rowState("group_assets", verdict.rowId)!;
+      ledger.record("assets", asset.path, verdict.rowId, verdict.state === "unchanged" ? source : "", state);
+      if (verdict.state === "unchanged") counts.unchanged += 1;
+      else counts.skipped += 1;
+      continue;
+    }
+
+    const id =
+      verdict.state === "updatable"
+        ? (db
+            .prepare("UPDATE group_assets SET name = ?, sheet_json = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?")
+            .run(asset.name, JSON.stringify(asset.sheet), verdict.rowId),
+          verdict.rowId)
+        : Number(
+            db
+              .prepare("INSERT INTO group_assets (room_id, kind, name, sort_order, sheet_json) VALUES (?, ?, ?, ?, ?)")
+              .run(roomId, asset.kind, asset.name, nextSortOrder("group_assets", roomId), JSON.stringify(asset.sheet))
+              .lastInsertRowid
+          );
+    wearing(id, "group_assets", asset.path, asset.portrait);
+    ledger.record("assets", asset.path, id, source, rowState("group_assets", id)!);
+    if (verdict.state === "updatable") counts.replaced += 1;
+    else counts.added += 1;
   }
 
   for (const obligation of campaign.obligations) {
-    db.prepare(
-      "INSERT INTO group_obligations (room_id, name, owed_to, amount, details, sort_order) VALUES (?, ?, ?, ?, ?, ?)"
-    ).run(
-      roomId,
-      obligation.name,
-      obligation.owedTo,
-      obligation.amount,
-      obligation.details,
-      nextSortOrder("group_obligations", roomId)
-    );
-    counts.added += 1;
+    const source = digestOf(obligation.name, obligation.owedTo, obligation.amount, obligation.details);
+    const verdict = ledger.verdict("obligations", obligation.path, source, (id) => rowState("group_obligations", id));
+    if (verdict.state === "unchanged" || verdict.state === "edited") {
+      const state = rowState("group_obligations", verdict.rowId)!;
+      ledger.record("obligations", obligation.path, verdict.rowId, verdict.state === "unchanged" ? source : "", state);
+      if (verdict.state === "unchanged") counts.unchanged += 1;
+      else counts.skipped += 1;
+      continue;
+    }
+
+    const id =
+      verdict.state === "updatable"
+        ? (db
+            .prepare(
+              `UPDATE group_obligations SET name = ?, owed_to = ?, amount = ?, details = ?, updated_at = CURRENT_TIMESTAMP
+               WHERE id = ?`
+            )
+            .run(obligation.name, obligation.owedTo, obligation.amount, obligation.details, verdict.rowId),
+          verdict.rowId)
+        : Number(
+            db
+              .prepare(
+                `INSERT INTO group_obligations (room_id, name, owed_to, amount, details, sort_order)
+                 VALUES (?, ?, ?, ?, ?, ?)`
+              )
+              .run(
+                roomId,
+                obligation.name,
+                obligation.owedTo,
+                obligation.amount,
+                obligation.details,
+                nextSortOrder("group_obligations", roomId)
+              ).lastInsertRowid
+          );
+    ledger.record("obligations", obligation.path, id, source, rowState("group_obligations", id)!);
+    if (verdict.state === "updatable") counts.replaced += 1;
+    else counts.added += 1;
   }
 }
 

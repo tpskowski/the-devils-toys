@@ -11,6 +11,7 @@ import { all } from "./db.js";
 import { logger } from "./logger.js";
 import { ANY_SYSTEM, type Campaign } from "./campaign-bundles.js";
 import { applyCampaign } from "./campaign-apply.js";
+import { previousImport, type PreviousImport } from "./campaign-ledger.js";
 import { discardStage, stageCampaignArchive, stagedCampaign } from "./campaign-staging.js";
 import { broadcastRoom } from "./realtime.js";
 import { configurableRoom, requireRoomConfig } from "./room-config-permissions.js";
@@ -79,6 +80,8 @@ export interface CampaignPreview {
   kinds: KindCount[];
   /** Whether the bundle carries a calendar, which is taken only if asked for. */
   calendar: boolean;
+  /** What this room last took from this campaign, so the panel can say "update" rather than "import". */
+  previous?: PreviousImport;
   /** What was assumed about the bundle rather than read from it. */
   guessed: string[];
   warnings: string[];
@@ -146,6 +149,7 @@ function countKinds(campaign: Campaign, roomId: number): KindCount[] {
 
 /** The preview payload, built where a test can reach it without an HTTP round trip. */
 export function campaignPreview(campaign: Campaign, token: string, roomId: number): CampaignPreview {
+  const previous = previousImport(roomId, campaign.manifest.campaignId);
   return {
     token,
     campaign: {
@@ -162,6 +166,7 @@ export function campaignPreview(campaign: Campaign, token: string, roomId: numbe
     },
     kinds: countKinds(campaign, roomId),
     calendar: Boolean(campaign.calendar),
+    ...(previous ? { previous } : {}),
     guessed: campaign.guessed,
     warnings: campaign.warnings
   };

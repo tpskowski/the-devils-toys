@@ -72,7 +72,7 @@ describe("the room's cast", () => {
       }
     });
 
-    expect(result.npcs).toEqual({ added: 1, replaced: 0, skipped: 0 });
+    expect(result.npcs).toEqual({ added: 1, replaced: 0, skipped: 0, unchanged: 0 });
     const npc = one<{ name: string; notes: string; statblock_json: string }>(
       "SELECT name, notes, statblock_json FROM custom_npcs WHERE room_id = ?",
       roomId
@@ -102,19 +102,25 @@ describe("the room's cast", () => {
   });
 
   it("skips or replaces an NPC of the same name, as the policy says", () => {
-    apply({ "npcs/vane.json": { name: "Vane", notes: "First." } });
+    // The GM's own NPC, which is what the policy governs.
+    db.prepare("INSERT INTO custom_npcs (room_id, created_by, name, notes) VALUES (?, ?, 'Vane', 'First.')").run(
+      roomId,
+      ACCOUNT
+    );
 
     expect(apply({ "npcs/vane.json": { name: "vane", notes: "Second." } }).npcs).toEqual({
       added: 0,
       replaced: 0,
-      skipped: 1
+      skipped: 1,
+      unchanged: 0
     });
     expect(one<{ notes: string }>("SELECT notes FROM custom_npcs WHERE room_id = ?", roomId)!.notes).toBe("First.");
 
     expect(apply({ "npcs/vane.json": { name: "Vane", notes: "Third." } }, { policy: "replace" }).npcs).toEqual({
       added: 0,
       replaced: 1,
-      skipped: 0
+      skipped: 0,
+      unchanged: 0
     });
     expect(one<{ notes: string }>("SELECT notes FROM custom_npcs WHERE room_id = ?", roomId)!.notes).toBe("Third.");
   });
@@ -126,7 +132,7 @@ describe("the room's gear", () => {
       "items/index.json": { added: [{ listKey, name: "Serpent Blade", spec: "d8", cost: "20gp" }] }
     });
 
-    expect(result.items).toEqual({ added: 1, replaced: 0, skipped: 0 });
+    expect(result.items).toEqual({ added: 1, replaced: 0, skipped: 0, unchanged: 0 });
     const row = one<{ item_id: string; list_key: string }>(
       "SELECT item_id, list_key FROM room_items WHERE room_id = ?",
       roomId
@@ -148,7 +154,7 @@ describe("the room's gear", () => {
       }
     });
 
-    expect(result.items).toEqual({ added: 1, replaced: 0, skipped: 1 });
+    expect(result.items).toEqual({ added: 1, replaced: 0, skipped: 1, unchanged: 0 });
     expect(result.skipped[0]).toMatch(
       /"A Bad Idea" belongs to a list called "trinkets", which this system has not got/
     );
@@ -333,7 +339,7 @@ describe("a campaign's random tables", () => {
       "tables/rumours.json": set()
     });
 
-    expect(result.tables).toEqual({ added: 1, replaced: 0, skipped: 0 });
+    expect(result.tables).toEqual({ added: 1, replaced: 0, skipped: 0, unchanged: 0 });
     expect(sets()[0].name).toBe("Tomb of the Serpent Kings — rumours");
     // Markdown stays the source of truth, as it is for every other set.
     expect(sets()[0].markdown).toMatch(/The tomb moves\./);
@@ -344,14 +350,15 @@ describe("a campaign's random tables", () => {
     expect(apply({ "manifest.json": manifest("Tomb"), "tables/rumours.json": set("Omens") }).tables).toEqual({
       added: 0,
       replaced: 0,
-      skipped: 1
+      skipped: 1,
+      unchanged: 0
     });
     expect(sets()).toHaveLength(1);
     expect(sets()[0].markdown).toMatch(/Rumours/);
 
     expect(
       apply({ "manifest.json": manifest("Tomb"), "tables/rumours.json": set("Omens") }, { policy: "replace" }).tables
-    ).toEqual({ added: 0, replaced: 1, skipped: 0 });
+    ).toEqual({ added: 0, replaced: 1, skipped: 0, unchanged: 0 });
     expect(sets()[0].markdown).toMatch(/Omens/);
   });
 
@@ -370,7 +377,7 @@ describe("a campaign's random tables", () => {
       "tables/rumours.json": JSON.stringify(tagged)
     });
 
-    expect(result.tables).toEqual({ added: 0, replaced: 0, skipped: 1 });
+    expect(result.tables).toEqual({ added: 0, replaced: 0, skipped: 1, unchanged: 0 });
     expect(result.skipped[0]).toMatch(/tables\/rumours\.json: Unknown table tag "not-a-real-tag"/);
     expect(sets()).toHaveLength(0);
     // The map still landed: one bad tag does not cost a campaign its library.
