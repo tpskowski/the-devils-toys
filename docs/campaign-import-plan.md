@@ -424,7 +424,7 @@ exporting the lot would be a surprise.
 
 ## Work
 
-### Phase 1 — Archive plumbing
+### Phase 1 — Archive plumbing — **done**
 
 Lift the safety checks out of `system-bundles.ts` into a `zip-safety.ts` both
 readers use — `refuseUnsafePaths` moves as-is, and the caps become parameters.
