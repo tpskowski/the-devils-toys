@@ -7,13 +7,16 @@ import { z } from "zod";
 import type { AuthedRequest } from "./auth.js";
 import { requireAuth } from "./auth.js";
 import { config } from "./config.js";
-import { all } from "./db.js";
+import { all, db } from "./db.js";
+import { hasSystem, systemOrThrow } from "./systems.js";
+import { isSystemOffered } from "./system-registry.js";
 import { logger } from "./logger.js";
+import { THEME_IDS, type ThemeId } from "@devils-toys/shared";
 import { ANY_SYSTEM, type Campaign } from "./campaign-bundles.js";
 import { applyCampaign } from "./campaign-apply.js";
 import { exportRoomCampaign } from "./campaign-export.js";
 import { previousImport, type PreviousImport } from "./campaign-ledger.js";
-import { discardStage, stageCampaignArchive, stagedCampaign } from "./campaign-staging.js";
+import { discardStage, expandCampaignArchive, stageCampaignArchive, stagedCampaign } from "./campaign-staging.js";
 import { broadcastRoom } from "./realtime.js";
 import { configurableRoom, requireRoomConfig } from "./room-config-permissions.js";
 import { storedUploadBytes } from "./upload-usage.js";
@@ -172,6 +175,132 @@ export function campaignPreview(campaign: Campaign, token: string, roomId: numbe
     warnings: campaign.warnings
   };
 }
+
+/**
+ * A room made out of a campaign.
+ *
+ * The one place `room.json` is applied without being asked about, because there
+ * is no running room to startle: the bundle names the room, its theme, and its
+ * switches, and a room that did not exist a moment ago has nobody at its table
+ * to surprise.
+ *
+ * There is no preview here either, and none is wanted. A preview answers "what
+ * would this do to what I already have", and the answer for a room made this
+ * second is "nothing, it is all new". So this is one request: read the bundle,
+ * make the room it describes, and import into it.
+ */
+campaignRouter.post(
+  "/rooms/from-campaign",
+  requireAuth,
+  upload.single("campaign"),
+  (req: AuthedRequest, res: express.Response) => {
+    if (!req.account || req.account.role === "player") {
+      removeUpload(req.file);
+      return res.status(403).json({ error: "A GM or admin account is required." });
+    }
+    if (!req.file) return res.status(400).json({ error: "Attach a campaign bundle to import." });
+
+    let expanded;
+    try {
+      expanded = expandCampaignArchive(req.file.path, req.file.originalname);
+    } catch (cause) {
+      const message = cause instanceof Error ? cause.message : "That campaign could not be read.";
+      logger.warn("Room from campaign refused", { error: message, by: req.account.username });
+      return res.status(400).json({ error: message });
+    } finally {
+      removeUpload(req.file);
+    }
+
+    try {
+      const { campaign } = expanded;
+      /**
+       * A campaign that names a system needs that system, and says so by name —
+       * this is the "install Cairn first" the plan promised. One that names none
+       * needs the caller to say which system the new room runs, since a room
+       * cannot exist without one.
+       */
+      const wanted = campaign.manifest.system;
+      const asked = typeof req.body?.system === "string" ? req.body.system.trim() : "";
+      const system = wanted === ANY_SYSTEM ? asked : wanted;
+      if (!system)
+        return res.status(400).json({
+          error: `${campaign.manifest.name} names no game system, so choose which system the new room runs.`
+        });
+      if (!hasSystem(system))
+        return res
+          .status(409)
+          .json({ error: `${campaign.manifest.name} needs the "${system}" system, which this server has not got.` });
+      if (!isSystemOffered(system))
+        return res.status(409).json({ error: `${systemOrThrow(system).name} is retired and cannot take new rooms.` });
+
+      const name = (campaign.room.name ?? campaign.manifest.name).slice(0, 80);
+      const theme = (campaign.room.theme ?? systemOrThrow(system).defaultTheme) as ThemeId satisfies ThemeId;
+
+      let roomId = 0;
+      db.exec("BEGIN");
+      try {
+        roomId = Number(
+          db
+            .prepare("INSERT INTO rooms (name, system, theme, created_by) VALUES (?, ?, ?, ?)")
+            .run(name, system, (THEME_IDS as readonly string[]).includes(theme) ? theme : "grim", req.account.id)
+            .lastInsertRowid
+        );
+        db.prepare("INSERT INTO memberships (room_id, account_id, role) VALUES (?, ?, 'gm')").run(
+          roomId,
+          req.account.id
+        );
+        db.prepare("INSERT INTO room_state (room_id) VALUES (?)").run(roomId);
+        db.exec("COMMIT");
+      } catch (cause) {
+        db.exec("ROLLBACK");
+        throw cause;
+      }
+
+      let result;
+      try {
+        // Everything the bundle says about the room is taken, since the room is
+        // the bundle's own.
+        result = applyCampaign(expanded.directory, campaign, roomId, req.account.id, {
+          policy: "skip",
+          takeRoomSettings: true
+        });
+      } catch (cause) {
+        // A room made a second ago and imported into unsuccessfully is a room
+        // nobody wants. It holds nothing, so removing it loses nothing.
+        db.prepare("DELETE FROM rooms WHERE id = ?").run(roomId);
+        const message = cause instanceof Error ? cause.message : "That campaign could not be imported.";
+        logger.warn("Room from campaign refused", { error: message, by: req.account.username });
+        return res.status(400).json({ error: message });
+      }
+
+      logger.info("Room made from campaign", {
+        room: roomId,
+        campaign: campaign.manifest.campaignId,
+        by: req.account.username
+      });
+      res.status(201).json({
+        room: {
+          id: roomId,
+          name,
+          system,
+          systemName: systemOrThrow(system).name,
+          theme,
+          role: "gm",
+          archived: false,
+          calendarEnabled: Boolean(campaign.calendar),
+          mapNotationEnabled: Boolean(campaign.room.mapNotationEnabled),
+          musicEnabled: Boolean(campaign.room.musicEnabled)
+        },
+        campaign: campaign.manifest.name,
+        // Nested rather than spread: the import result has a `room` of its own —
+        // the settings it took — and it is not the room this made.
+        imported: result
+      });
+    } finally {
+      expanded.discard();
+    }
+  }
+);
 
 campaignRouter.post(
   "/rooms/:roomId/campaign/stage",

@@ -89,6 +89,54 @@ export interface StageDetails {
 }
 
 /**
+ * The limits an archive is held to, in one place because two callers need them:
+ * a GM importing into a room they have, and one making a room out of a bundle.
+ */
+function archiveLimits() {
+  return {
+    maxBytes: config.campaignUploadLimitMb * 1024 * 1024,
+    maxImageBytes: config.sceneImageUploadLimitMb * 1024 * 1024,
+    maxAudioBytes: config.audioUploadLimitMb * 1024 * 1024,
+    maxEntries: config.campaignEntryLimit
+  };
+}
+
+export interface ExpandedCampaign {
+  directory: string;
+  campaign: Campaign;
+  bytes: number;
+  /** Removes everything this expansion wrote. The caller owns it. */
+  discard: () => void;
+}
+
+/**
+ * Expands and reads an archive that is not destined for any room yet.
+ *
+ * Making a room from a bundle has to know what the bundle says — which system it
+ * needs, what it would call the room — before there is a room to stage against.
+ * So this does the reading half without the record-keeping half, and hands back
+ * the means to throw it away.
+ */
+export function expandCampaignArchive(archive: string, archiveName: string): ExpandedCampaign {
+  reapStages();
+  const limits = archiveLimits();
+  const { entries } = readZipDirectory(archive, "campaign");
+  refuseUnacceptableEntries(entries, limits);
+
+  const token = crypto.randomUUID();
+  const directory = stagedFiles(token);
+  fs.mkdirSync(directory, { recursive: true });
+  try {
+    const bytes = extractZipEntries(archive, entries, directory, { maxBytes: limits.maxBytes, source: "campaign" });
+    const campaign = readCampaign(directory, { fallbackName: campaignNameFromFile(archiveName) });
+    return { directory, campaign, bytes, discard: () => fs.rmSync(stageRoot(token), { recursive: true, force: true }) };
+  } catch (cause) {
+    fs.rmSync(stageRoot(token), { recursive: true, force: true });
+    throw cause;
+  }
+}
+
+/**
  * Expands an uploaded archive into a stage, and reads what it holds.
  *
  * The order is the whole of it, and it is the order `installValidated` uses for
@@ -104,13 +152,7 @@ export interface StageDetails {
 export function stageCampaignArchive(archive: string, details: StageDetails): StagedCampaign {
   reapStages();
 
-  const limits = {
-    maxBytes: config.campaignUploadLimitMb * 1024 * 1024,
-    maxImageBytes: config.sceneImageUploadLimitMb * 1024 * 1024,
-    maxAudioBytes: config.audioUploadLimitMb * 1024 * 1024,
-    maxEntries: config.campaignEntryLimit
-  };
-
+  const limits = archiveLimits();
   const { entries } = readZipDirectory(archive, "campaign");
   refuseUnacceptableEntries(entries, limits);
 

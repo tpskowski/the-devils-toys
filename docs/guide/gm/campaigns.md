@@ -133,6 +133,17 @@ and applies `room.json` and `calendar.json` when you turn it on. Leave it off
 when you are adding material to a room that is already running — renaming a room
 and moving its calendar out from under the people at the table is startling.
 
+## Starting a room from one
+
+A campaign that describes a whole room — its name, its theme, its calendar — can
+make the room rather than being poured into one that exists. There is no preview
+on that path and none is needed: a room made this second has nothing for the
+campaign to collide with, so everything the bundle says about the room is taken.
+
+A campaign that names no system has to be told which system the new room runs,
+since a room cannot exist without one. A campaign that names a system this server
+has not got says so, by name, and whoever runs the server can install it.
+
 ## What never travels
 
 A campaign is prepared material, not a save file. It carries none of this:

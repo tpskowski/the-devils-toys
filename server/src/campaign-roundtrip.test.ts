@@ -317,3 +317,37 @@ describe("a room exported and imported again", () => {
     expect(Object.keys(files).some((name) => /characters|messages|rolls/.test(name))).toBe(false);
   });
 });
+
+describe("a room made out of a campaign", () => {
+  /**
+   * The create-from-bundle path has no room to preview against — everything in a
+   * room made this second is new — so it is one act: read the bundle, make the
+   * room it describes, import into it. These exercise the writer half through
+   * `applyCampaign` with `takeRoomSettings` on, which is what that route does.
+   */
+  it("takes its name, theme, and switches from the bundle without being asked", () => {
+    const roomId = makeRoom("Untitled");
+    importInto(roomId, source());
+
+    expect(
+      one<{ name: string; theme: string; music_enabled: number; calendar_enabled: number }>(
+        "SELECT name, theme, music_enabled, calendar_enabled FROM rooms WHERE id = ?",
+        roomId
+      )
+    ).toMatchObject({ name: "The Tomb", theme: "grim", music_enabled: 1, calendar_enabled: 1 });
+  });
+
+  it("lands everything the bundle carries in one go", () => {
+    const roomId = makeRoom("Untitled");
+    const result = importInto(roomId, source());
+
+    // Five media rows: two maps, a scene, a handout, a track. The hireling's
+    // portrait is a column on their row rather than a sixth entry in the library.
+    expect(result.media.added).toBe(5);
+    expect(result.npcs.added).toBe(2);
+    expect(result.encounters.added).toBe(1);
+    expect(result.group.added).toBe(3);
+    expect(result.items.added).toBe(1);
+    expect(result.skipped).toEqual([]);
+  });
+});

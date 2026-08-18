@@ -554,7 +554,7 @@ room number rather than expecting two rooms to mint the same id; and `room.json`
 renames a room on the way in, so an export is named for what the room is called
 now, not what it was called when it was made.
 
-### Phase 9 — The UI and the guide — **panel and guide done; create-from-bundle remains**
+### Phase 9 — The UI and the guide — **done**
 
 A **Campaign** section in Room Config: drop a zip, read the preview, choose the
 policy, confirm, and a record of what was imported and when. Then
@@ -564,11 +564,22 @@ The section sits last in the rail, because it is the only one that writes to
 every other: a GM reaches for it while setting a room up rather than while
 adjusting it.
 
-**Creating a room from a bundle is still to do.** It needs the room-creation
-route to accept an archive, read `room.json` and the manifest for the name,
-theme, and system, make the room, and import into it — which is a second entry
-point to the same machinery rather than more machinery, and reads better as its
-own change than as a tail on this one. Nothing in the panel forecloses it.
+`POST /api/rooms/from-campaign` makes a room out of a bundle: it reads the
+archive, takes the name, theme, and switches from `room.json`, makes the room,
+and imports into it. **No preview, and none is wanted** — a preview answers "what
+would this do to what I already have", and for a room made this second the answer
+is "nothing, it is all new". It is the one place `room.json` applies without
+being asked about, because there is no running room to startle.
+
+Two refusals it owes: a campaign naming a system this server has not got is
+refused by name, which is decision 11’s "install Cairn first"; and one naming no
+system at all asks which system the new room should run, since a room cannot
+exist without one. A failure part-way through the import deletes the room it just
+made — a room made a second ago and imported into unsuccessfully is a room nobody
+wants, and it holds nothing, so removing it loses nothing.
+
+No UI for it yet. The route is what the room list would call, and the room list is
+a bigger surface than this change should quietly grow into.
 
 ---
 
