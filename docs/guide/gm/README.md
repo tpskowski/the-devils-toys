@@ -39,6 +39,8 @@ Room Config opens in its own tab, so you can leave it open beside the game.
    and running a fight.
 4. **[At the table](at-the-table.md)** — what you drive during a session:
    scenes, handouts, secret rolls, random tables, the clock, and music.
+5. **[Campaigns](campaigns.md)** — importing a room's worth of prepared material
+   in one zip, and exporting your own room as one.
 
 ## What you cannot do
 
