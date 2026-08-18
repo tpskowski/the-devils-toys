@@ -11,6 +11,7 @@ import { all } from "./db.js";
 import { logger } from "./logger.js";
 import { ANY_SYSTEM, type Campaign } from "./campaign-bundles.js";
 import { applyCampaign } from "./campaign-apply.js";
+import { exportRoomCampaign } from "./campaign-export.js";
 import { previousImport, type PreviousImport } from "./campaign-ledger.js";
 import { discardStage, stageCampaignArchive, stagedCampaign } from "./campaign-staging.js";
 import { broadcastRoom } from "./realtime.js";
@@ -221,6 +222,25 @@ campaignRouter.post(
     res.status(201).json(campaignPreview(staged.campaign, staged.record.token, roomId));
   }
 );
+
+/**
+ * A room, as a campaign bundle.
+ *
+ * The format's documentation and its acceptance test at once: this is what an
+ * author opens to learn the layout, and re-importing it into an empty room is
+ * what keeps the reader and the writer describing the same thing.
+ *
+ * Registered above `/campaign/:token`, which would otherwise match "export" as a
+ * token and answer that the upload has expired.
+ */
+campaignRouter.get("/rooms/:roomId/campaign/export", requireAuth, (req: AuthedRequest, res: express.Response) => {
+  const roomId = requireRoomConfig(req, res);
+  if (!roomId) return;
+  const exported = exportRoomCampaign(roomId);
+  logger.info("Campaign exported", { room: roomId, bytes: exported.archive.byteLength, by: req.account!.username });
+  res.type("application/zip").attachment(exported.filename);
+  res.send(Buffer.from(exported.archive));
+});
 
 campaignRouter.get("/rooms/:roomId/campaign/:token", requireAuth, (req: AuthedRequest, res: express.Response) => {
   const roomId = requireRoomConfig(req, res);

@@ -430,9 +430,11 @@ Two things it must get right:
 - **Filenames are slugged from display names and deduplicated**, the way `slugFor` in `table-bundles.ts:39` already does it. A room with two maps called "The Keep" exports as `the-keep.png` and `the-keep-2.png`.
 - **A room's exported bundle re-imports into an empty room and produces the same room.** That equality — media by content and metadata, NPCs by name and statblock, encounters by structure — is the round-trip test.
 
-Tables are the exception: a room's exported campaign carries only sets tagged for
-that campaign, because everything in `table_sets` is visible to every room and
-exporting the lot would be a surprise.
+Tables are the exception: a room's exported campaign carries only the sets its
+**ledger** says it imported, which turned out to be a better answer than tagging
+them. Everything in `table_sets` is visible to every room, and exporting a
+server's whole catalogue because one room was exported would be a surprise nobody
+asked for — while a set the room never imported is not the room's to hand out.
 
 ---
 
@@ -539,10 +541,18 @@ added to the allowlist without a reader behind it.
 three-way comparison on the second import. Deliberately after a working import:
 the ledger is what makes the feature good, not what makes it work.
 
-### Phase 8 — Export and the round trip
+### Phase 8 — Export and the round trip — **done**
 
 The export route, the slugging, the stored-not-deflated entries for media, and
 the round-trip test that is this plan's acceptance.
+
+Confirmed the test fails when the export is broken — dropping one `index.json`
+is enough — which is the only way to know an equality check of this size is
+checking anything. Two things it caught about itself rather than about the code:
+a room item id carries the room that holds it, so the comparison normalises the
+room number rather than expecting two rooms to mint the same id; and `room.json`
+renames a room on the way in, so an export is named for what the room is called
+now, not what it was called when it was made.
 
 ### Phase 9 — The UI and the guide
 
