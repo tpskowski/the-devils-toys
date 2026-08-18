@@ -458,17 +458,26 @@ reported in the preview as pending. That is the honest state of a feature built 
 phases, and it is the opposite of the failure this format must not have: a bundle
 that appears to import and quietly drops half of itself.
 
-### Phase 3 — Media, handouts, and playlists
+### Phase 3 — Media, handouts, and playlists — **done**
 
 The byte movers and the simplest data. Maps, scenes, references, audio, and the
-playlists over them, through the existing type policy. The apply becomes a job
-with progress here, because this is the phase where it stops being fast, and
-`docs/deployment.md` gains the `client_max_body_size` paragraph on the same day —
-a feature whose first failure mode is a proxy default is not shipped until that is
-written down, and `campaignUploadLimitMb` joins `config.ts` and `.env.example`. At
-the end of this phase a map pack is a working feature — a
-`system: "*"` bundle of images imports into any room — and that is worth shipping
-before the rest exists.
+playlists over them, through the existing type policy — which is called rather
+than restated: `imageSignatureMatches`, `isUtf8Markdown`, and `isMp3File` moved
+to take a path so an imported file is held to exactly what a hand-uploaded one
+is. `docs/deployment.md` gains the `client_max_body_size` section on the same
+day, because a feature whose first failure mode is a proxy default is not shipped
+until that is written down. At the end of this phase a map pack is a working
+feature — a `system: "*"` bundle of images imports into any room.
+
+**The apply does not become a job, and this plan was wrong to say it would.** The
+reasoning was that this is the phase where importing stops being fast. It is not:
+expansion happens at staging, and the commit is renames within one filesystem plus
+one insert per file, so a gigabyte costs the same syscalls as a megabyte and
+finishes in milliseconds. Whatever wants progress reporting is the **staging**
+request, whose cost is the upload — and that can wait until somebody actually
+stages a gigabyte and finds out whether it needs it. Building a job queue to watch
+an operation that is already instant would have been machinery in the shape of a
+plan rather than in the shape of the problem.
 
 ### Phase 4 — NPCs, items, calendar, group content
 

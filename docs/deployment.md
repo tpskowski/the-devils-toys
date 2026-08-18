@@ -4,6 +4,54 @@
 
 Install Node.js 22.5 or later, run `npm ci`, then `npm run build` and `npm start`. Put the process behind a reverse proxy for TLS when exposing it beyond a trusted local network. Persist and back up the directory configured by `DEVILS_TOYS_DATA_DIR`.
 
+## Uploads, and the reverse proxy in front of them
+
+A campaign bundle is the largest thing this application accepts: a room's maps
+and music, in one zip, which is measured in hundreds of megabytes rather than the
+kilobytes a game system weighs. Two limits decide whether one can arrive, and only
+the second belongs to this application.
+
+**The reverse proxy's body limit comes first**, and its default will refuse a
+campaign before any of this application's own checks run. nginx allows **1 MB**
+unless told otherwise, and answers a larger request with a 413 that says nothing
+about what to do next:
+
+```nginx
+client_max_body_size 2048m;
+```
+
+Set it at least as high as `DEVILS_TOYS_CAMPAIGN_LIMIT_MB`, and give the upload
+room to finish — `proxy_read_timeout` and `proxy_send_timeout` are counted per
+read, not per request, but a slow connection sending a gigabyte still wants more
+than the 60 seconds most defaults allow. Apache's `LimitRequestBody`, Caddy's
+`request_body max_size`, and a cloud load balancer's own ceiling are the same
+setting under other names. A platform whose limit cannot be raised is a platform
+where campaigns have to be split.
+
+**Then this application's own limits**, all optional and all documented in
+`.env.example`:
+
+| Setting                                | Default | What it holds                              |
+| -------------------------------------- | ------- | ------------------------------------------ |
+| `DEVILS_TOYS_CAMPAIGN_LIMIT_MB`        | 2048    | One campaign, expanded                     |
+| `DEVILS_TOYS_CAMPAIGN_ENTRY_LIMIT`     | 5000    | Files in one campaign                      |
+| `DEVILS_TOYS_UPLOAD_LIMIT_MB`          | 1024    | Everything this instance stores, all rooms |
+| `DEVILS_TOYS_CAMPAIGN_STAGE_TTL_HOURS` | 24      | How long an unconfirmed upload waits       |
+
+The instance allowance is the one that usually bites: a campaign is refused when
+it would take the total past `DEVILS_TOYS_UPLOAD_LIMIT_MB`, whatever the campaign
+limit says, and the preview shows that arithmetic before anything is written.
+
+**Disk.** An import needs room for the campaign twice over while it is in
+progress — once staged, once stored — because the upload is expanded under
+`<dataDir>/imports/` before it lands in `<dataDir>/uploads/`. The move between
+them is a rename rather than a copy, so the second copy is transient, but the
+free space has to be there. Unconfirmed uploads are reaped on their TTL, and
+`<dataDir>/imports/` is safe to empty while the server is stopped.
+
+A campaign too large for any of this is split into parts that share a
+`campaignId` and imported one after another, which is what the refusal says.
+
 ## The Devil's Tables
 
 The table editor is a second process, started with `npm run start:tables` and listening on `DEVILS_TABLES_PORT` (4100 by default). It is optional: the game server does not need it, and it can be stopped and restarted while a game is running.

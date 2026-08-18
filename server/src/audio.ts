@@ -118,9 +118,13 @@ function removeUpload(file?: Express.Multer.File) {
   if (file && path.basename(file.filename) === file.filename) fs.rmSync(file.path, { force: true });
 }
 
-function isMp3(file: Express.Multer.File) {
+/**
+ * An ID3 tag or a bare frame header. Taken by path so the campaign importer holds
+ * imported music to exactly what a hand upload is held to.
+ */
+export function isMp3File(file: string) {
   const bytes = Buffer.alloc(3);
-  const descriptor = fs.openSync(file.path, "r");
+  const descriptor = fs.openSync(file, "r");
   try {
     fs.readSync(descriptor, bytes, 0, 3, 0);
   } finally {
@@ -128,6 +132,8 @@ function isMp3(file: Express.Multer.File) {
   }
   return bytes.toString("ascii") === "ID3" || (bytes[0] === 0xff && (bytes[1] & 0xe0) === 0xe0);
 }
+
+const isMp3 = (file: Express.Multer.File) => isMp3File(file.path);
 
 function storedPlayback(roomId: number): AudioPlaybackState {
   const raw = one<{ audio_json: string }>("SELECT audio_json FROM room_state WHERE room_id = ?", roomId)?.audio_json;

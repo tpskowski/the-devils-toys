@@ -3,23 +3,27 @@ import fs from "node:fs";
 import path from "node:path";
 import express from "express";
 import multer from "multer";
+import { z } from "zod";
 import type { AuthedRequest } from "./auth.js";
 import { requireAuth } from "./auth.js";
 import { config } from "./config.js";
 import { all } from "./db.js";
 import { logger } from "./logger.js";
 import { ANY_SYSTEM, type Campaign } from "./campaign-bundles.js";
+import { applyCampaign } from "./campaign-apply.js";
 import { discardStage, stageCampaignArchive, stagedCampaign } from "./campaign-staging.js";
+import { broadcastRoom } from "./realtime.js";
 import { configurableRoom, requireRoomConfig } from "./room-config-permissions.js";
 import { storedUploadBytes } from "./upload-usage.js";
 
 /**
- * Importing a campaign into a room: the upload, and what it would do.
+ * Importing a campaign into a room: the upload, what it would do, and doing it.
  *
- * Nothing here writes to the room. An upload is expanded into a stage and read,
- * and what comes back is a description of what confirming it would land — which
- * is the half of the feature a GM has to be able to trust before the other half
- * is worth having.
+ * Preview then commit, and the split is the point. An upload is expanded into a
+ * stage and read, and what comes back describes what confirming it would land; a
+ * second request confirms it. Nothing is written to the room until that second
+ * request, and a GM who does not like what the first one said can walk away
+ * having changed nothing.
  *
  * Everything is behind `requireRoomConfig`, so it is the room's GM and any
  * admin: a campaign is room content, not a server-wide install. An uploaded zip
@@ -200,6 +204,51 @@ campaignRouter.get("/rooms/:roomId/campaign/:token", requireAuth, (req: AuthedRe
   if (!staged) return res.status(404).json({ error: "That upload has expired. Upload the campaign again." });
   res.json(campaignPreview(staged.campaign, staged.record.token, roomId));
 });
+
+campaignRouter.post(
+  "/rooms/:roomId/campaign/:token/apply",
+  requireAuth,
+  (req: AuthedRequest, res: express.Response) => {
+    const roomId = requireRoomConfig(req, res);
+    if (!roomId) return;
+
+    const parsed = z
+      .object({
+        policy: z.enum(["skip", "replace", "add"]).default("skip"),
+        takeRoomSettings: z.boolean().default(false)
+      })
+      .safeParse(req.body ?? {});
+    if (!parsed.success) return res.status(400).json({ error: "Choose what to do about anything already there." });
+
+    const staged = stagedCampaign(String(req.params.token), roomId);
+    if (!staged) return res.status(404).json({ error: "That upload has expired. Upload the campaign again." });
+
+    let result;
+    try {
+      result = applyCampaign(staged.directory, staged.campaign, roomId, req.account!.id, parsed.data);
+    } catch (cause) {
+      const message = cause instanceof Error ? cause.message : "That campaign could not be imported.";
+      logger.warn("Campaign import refused", { room: roomId, error: message, by: req.account!.username });
+      // The stage is left exactly as it was: a refusal here is something a GM can
+      // answer — clear some space, choose another policy — and then try again
+      // without uploading a gigabyte a second time.
+      return res.status(400).json({ error: message });
+    }
+
+    discardStage(staged.record.token);
+    broadcastRoom(roomId, { type: "media-updated" });
+    if (result.playlists.added || result.playlists.replaced) broadcastRoom(roomId, { type: "audio-updated" });
+    if (result.room.length) broadcastRoom(roomId, { type: "room-updated" });
+
+    logger.info("Campaign imported", {
+      room: roomId,
+      campaign: staged.campaign.manifest.campaignId,
+      media: result.media,
+      by: req.account!.username
+    });
+    res.json({ campaign: staged.campaign.manifest.name, ...result });
+  }
+);
 
 campaignRouter.delete("/rooms/:roomId/campaign/:token", requireAuth, (req: AuthedRequest, res: express.Response) => {
   const roomId = requireRoomConfig(req, res);
