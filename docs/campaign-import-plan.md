@@ -434,14 +434,29 @@ escaping the directory, a bomb whose directory understates it, an over-budget
 archive, a truncated zip, and one with no End of Central Directory record at
 all — each refused for its own reason.
 
-### Phase 2 — Manifest, reader, and preview
+### Phase 2 — Manifest, reader, and preview — **reader done; routes remain**
 
 `campaign-bundles.ts`: the manifest schema, the folder allowlist, the per-folder
-readers, and the cross-reference resolver — all in memory over a staged
-directory, all pure, all refusing with a message naming the file. The stage and
-preview routes, the staging reaper, and `config.campaignUploadLimitMb`. Nothing
-writes to the database yet, which means the preview is testable on its own and is
-the first thing that can be demonstrated.
+readers, and the cross-reference resolver — all over a staged directory, all
+pure, all refusing with a message naming the file. The stage and preview routes,
+the staging reaper, and `config.campaignUploadLimitMb`. Nothing writes to the
+database yet, which means the preview is testable on its own and is the first
+thing that can be demonstrated.
+
+One departure from what this said when it was written, which is worth recording
+rather than absorbing: the **data-kind readers move to the phases that write
+them**. Reading `npcs/` months before anything can import an NPC would be code
+with no caller and no test that exercises what it is for, and Phase 4 already
+described each kind as "a small reader and a small writer" — those two halves
+belong in one change. What Phase 2 owns is the frame every kind hangs off: the
+manifest, the folder allowlist, the listing checks, the `index.json` convention,
+and cross-reference resolution, with the media folders as the first kind read
+through all of it.
+
+A folder whose reader has not landed yet is still accepted from the archive and
+reported in the preview as pending. That is the honest state of a feature built in
+phases, and it is the opposite of the failure this format must not have: a bundle
+that appears to import and quietly drops half of itself.
 
 ### Phase 3 — Media, handouts, and playlists
 
