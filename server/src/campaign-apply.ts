@@ -49,6 +49,7 @@ export interface ApplyResult {
   media: ApplyTally;
   playlists: ApplyTally;
   npcs: ApplyTally;
+  encounters: ApplyTally;
   items: ApplyTally;
   group: ApplyTally;
   /** Which room settings were taken, for the confirmation to name them. */
@@ -168,7 +169,11 @@ export function applyCampaign(
   const media = tally();
   const playlists = tally();
   const npcs = tally();
+  const encounters = tally();
   const items = tally();
+  /** Bundle path to the row it became, which is what an encounter resolves through. */
+  const npcIds = new Map<string, number>();
+  const hirelingIds = new Map<string, number>();
   const group = tally();
   const room: string[] = [];
   const skipped: string[] = [];
@@ -250,9 +255,10 @@ export function applyCampaign(
       }
 
       applyPlaylists(campaign, roomId, mediaIds, options.policy, playlists);
-      applyNpcs(campaign, roomId, accountId, system, options.policy, npcs, skipped);
+      applyNpcs(campaign, roomId, accountId, system, options.policy, npcs, skipped, npcIds);
       applyItems(campaign, roomId, accountId, system, items, skipped);
-      applyGroup(campaign, roomId, system, group, skipped, portraits);
+      applyGroup(campaign, roomId, system, group, skipped, portraits, hirelingIds);
+      applyEncounters(campaign, roomId, accountId, system, mediaIds, npcIds, hirelingIds, encounters, skipped);
       if (options.takeRoomSettings) room.push(...applyRoomSettings(campaign, roomId));
       db.exec("COMMIT");
     } catch (cause) {
@@ -282,7 +288,7 @@ export function applyCampaign(
     }
   }
 
-  return { media, playlists, npcs, items, group, room, bytes: incoming, skipped };
+  return { media, playlists, npcs, encounters, items, group, room, bytes: incoming, skipped };
 }
 
 function applyPlaylists(
@@ -362,7 +368,8 @@ function applyNpcs(
   system: string,
   policy: ConflictPolicy,
   counts: ApplyTally,
-  skipped: string[]
+  skipped: string[],
+  npcIds: Map<string, number>
 ) {
   if (!campaign.npcs.length) return;
   const existing = new Map(
@@ -375,6 +382,10 @@ function applyNpcs(
   for (const npc of campaign.npcs) {
     const match = existing.get(npc.name.toLocaleLowerCase());
     if (match && policy === "skip") {
+      // Resolves to the row the room already held, so an encounter naming this
+      // NPC still finds one rather than losing a combatant to a decision that
+      // was about something else.
+      npcIds.set(npc.path, match);
       counts.skipped += 1;
       continue;
     }
@@ -391,16 +402,14 @@ function applyNpcs(
       db.prepare(
         "UPDATE custom_npcs SET notes = ?, statblock_json = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?"
       ).run(npc.notes, JSON.stringify(statblock), match);
+      npcIds.set(npc.path, match);
       counts.replaced += 1;
       continue;
     }
-    db.prepare("INSERT INTO custom_npcs (room_id, created_by, name, notes, statblock_json) VALUES (?, ?, ?, ?, ?)").run(
-      roomId,
-      accountId,
-      npc.name,
-      npc.notes,
-      JSON.stringify(statblock)
-    );
+    const row = db
+      .prepare("INSERT INTO custom_npcs (room_id, created_by, name, notes, statblock_json) VALUES (?, ?, ?, ?, ?)")
+      .run(roomId, accountId, npc.name, npc.notes, JSON.stringify(statblock));
+    npcIds.set(npc.path, Number(row.lastInsertRowid));
     counts.added += 1;
   }
 }
@@ -470,7 +479,8 @@ function applyGroup(
   system: string,
   counts: ApplyTally,
   skipped: string[],
-  portraits: Map<string, { storedName: string; mimeType: string; bytes: number }>
+  portraits: Map<string, { storedName: string; mimeType: string; bytes: number }>,
+  hirelingIds: Map<string, number>
 ) {
   /** The four columns a portrait is, in the shape `characters` already carries them. */
   const wearing = (
@@ -499,6 +509,7 @@ function applyGroup(
       .prepare("INSERT INTO group_hirelings (room_id, name, sort_order, sheet_json) VALUES (?, ?, ?, ?)")
       .run(roomId, hireling.name, nextSortOrder("group_hirelings", roomId), JSON.stringify(hireling.sheet));
     wearing(row.lastInsertRowid, "group_hirelings", hireling.path, hireling.portrait);
+    hirelingIds.set(hireling.path, Number(row.lastInsertRowid));
     counts.added += 1;
   }
 
@@ -529,6 +540,159 @@ function applyGroup(
     );
     counts.added += 1;
   }
+}
+
+/**
+ * The fights a campaign comes with.
+ *
+ * The last kind, and the only one that points at three others: a map, its NPCs,
+ * and the party's hirelings. Every one of those arrives as a bundle path and
+ * leaves as a row id, resolved through the maps the earlier writers filled in —
+ * which is why this runs after them and not beside them.
+ *
+ * An imported encounter is always **prepared, never running**. `active` stays 0:
+ * a bundle landing mid-session must not put a fight on everybody's screen, and
+ * starting one is a GM's own act.
+ */
+function applyEncounters(
+  campaign: Campaign,
+  roomId: number,
+  accountId: number,
+  system: string,
+  mediaIds: Map<string, number>,
+  npcIds: Map<string, number>,
+  hirelingIds: Map<string, number>,
+  counts: ApplyTally,
+  skipped: string[]
+) {
+  if (!campaign.encounters.length) return;
+  const definition = systemOrThrow(system);
+  const declaredSides = new Set((definition.initiative.sides ?? []).map((side) => side.id));
+  const hitPointsKey = definition.npcStatblock.hitPointsKey;
+  const held = new Set(
+    all<{ name: string }>("SELECT name FROM encounters WHERE room_id = ?", roomId).map((row) =>
+      row.name.toLocaleLowerCase()
+    )
+  );
+
+  for (const encounter of campaign.encounters) {
+    if (held.has(encounter.name.toLocaleLowerCase())) {
+      // Encounters are never replaced. One in progress has hit points, initiative,
+      // and positions on it that a re-import has no way to know about, and losing
+      // those mid-fight would be the worst thing this importer could do.
+      skipped.push(`${encounter.path}: this room already has an encounter called "${encounter.name}".`);
+      counts.skipped += 1;
+      continue;
+    }
+    if (encounter.individualInitiative && !definition.initiative.allowIndividualVariant) {
+      skipped.push(`${encounter.path}: this system has no individual initiative.`);
+      counts.skipped += 1;
+      continue;
+    }
+
+    const encounterId = Number(
+      db
+        .prepare(
+          `INSERT INTO encounters (room_id, name, media_id, notes, individual_initiative, active, created_by)
+           VALUES (?, ?, ?, ?, ?, 0, ?)`
+        )
+        .run(
+          roomId,
+          encounter.name,
+          encounter.map ? (mediaIds.get(encounter.map) ?? null) : null,
+          encounter.notes,
+          encounter.individualInitiative ? 1 : 0,
+          accountId
+        ).lastInsertRowid
+    );
+
+    // Every side the system declares, so the tracker has the rows it expects,
+    // with the campaign's initiative written onto the ones it named.
+    const stated = new Map(encounter.sides.map((side) => [side.side, side.initiative]));
+    for (const side of definition.initiative.sides ?? [])
+      db.prepare("INSERT INTO encounter_sides (encounter_id, side, initiative) VALUES (?, ?, ?)").run(
+        encounterId,
+        side.id,
+        stated.get(side.id) ?? null
+      );
+    for (const side of stated.keys())
+      if (!declaredSides.has(side)) skipped.push(`${encounter.path}: this system has no side called "${side}".`);
+
+    const zoneIds = new Map<string, number>();
+    encounter.zones.forEach((zone, order) => {
+      zoneIds.set(
+        zone,
+        Number(
+          db
+            .prepare("INSERT INTO encounter_zones (encounter_id, name, sort_order) VALUES (?, ?, ?)")
+            .run(encounterId, zone, order).lastInsertRowid
+        )
+      );
+    });
+
+    for (const combatant of encounter.combatants) {
+      const npcId = combatant.npc ? npcIds.get(combatant.npc) : undefined;
+      const hirelingId = combatant.hireling ? hirelingIds.get(combatant.hireling) : undefined;
+      // The reader refused a path the bundle does not hold, so this is only
+      // reachable for one an earlier writer left out — a hireling this system
+      // cannot have, say. Dropping the combatant is honest; a row pointing at
+      // nothing is not, and the CHECK constraint would refuse it anyway.
+      if (!npcId && !hirelingId) {
+        skipped.push(
+          `${encounter.path}: "${combatant.npc ?? combatant.hireling}" was not imported, so it is not in the fight.`
+        );
+        continue;
+      }
+
+      const side = combatant.side ?? (npcId ? "enemies" : "party");
+      if (!declaredSides.has(side)) {
+        skipped.push(`${encounter.path}: this system has no side called "${side}".`);
+        continue;
+      }
+
+      const snapshot = npcId
+        ? statblockOf(one<{ statblock_json: string }>("SELECT statblock_json FROM custom_npcs WHERE id = ?", npcId))
+        : {};
+      // From the key the system declares rather than a hardcoded "hp", so a
+      // system that calls it something else still arrives with its hit points.
+      const hp = typeof snapshot[hitPointsKey] === "number" ? Number(snapshot[hitPointsKey]) : null;
+      const name = combatant.name ?? nameOf(npcId, hirelingId) ?? "Combatant";
+
+      db.prepare(
+        `INSERT INTO encounter_combatants
+           (encounter_id, kind, npc_id, hireling_id, name, side, sort_order, hp_current, hp_max, statblock_json, zone_id)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      ).run(
+        encounterId,
+        npcId ? "npc" : "hireling",
+        npcId ?? null,
+        hirelingId ?? null,
+        name,
+        side,
+        combatant.sortOrder,
+        hp,
+        hp,
+        JSON.stringify(snapshot),
+        combatant.zone ? (zoneIds.get(combatant.zone) ?? null) : null
+      );
+    }
+    counts.added += 1;
+  }
+}
+
+function statblockOf(row: { statblock_json: string } | undefined): Record<string, unknown> {
+  try {
+    const parsed: unknown = JSON.parse(row?.statblock_json ?? "{}");
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? (parsed as Record<string, unknown>) : {};
+  } catch {
+    return {};
+  }
+}
+
+function nameOf(npcId?: number, hirelingId?: number) {
+  if (npcId) return one<{ name: string }>("SELECT name FROM custom_npcs WHERE id = ?", npcId)?.name;
+  if (hirelingId) return one<{ name: string }>("SELECT name FROM group_hirelings WHERE id = ?", hirelingId)?.name;
+  return undefined;
 }
 
 /**

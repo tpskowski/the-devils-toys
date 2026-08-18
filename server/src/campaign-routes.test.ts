@@ -103,16 +103,16 @@ describe("what a preview says would happen", () => {
       "campaign.md": "# Tomb of the Serpent Kings",
       "room.json": JSON.stringify({ theme: "ember" }),
       "maps/a.png": "x",
-      "encounters/gate.json": "{}"
+      "tables/rumours.json": "{}"
     });
 
     expect(result.overview).toBe("# Tomb of the Serpent Kings");
     expect(result.guessed[0]).toMatch(/carries no manifest\.json/);
     expect(result.warnings).toEqual([
       expect.stringMatching(/theme "ember", which this server does not have/),
-      expect.stringMatching(/encounters\/ holds 1 file, which this build does not import yet/)
+      expect.stringMatching(/tables\/ holds 1 file, which this build does not import yet/)
     ]);
-    expect(result.pending).toEqual([{ folder: "encounters", files: 1 }]);
+    expect(result.pending).toEqual([{ folder: "tables", files: 1 }]);
   });
 
   it("reports a bundle that names no system as one that needs none", () => {

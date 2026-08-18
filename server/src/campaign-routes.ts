@@ -125,6 +125,13 @@ function countKinds(campaign: Campaign, roomId: number): KindCount[] {
   for (const playlist of campaign.playlists) count("playlists", playlists.has(playlist.name.toLocaleLowerCase()));
   for (const npc of campaign.npcs) count("npcs", npcs.has(npc.name.toLocaleLowerCase()));
 
+  const fights = new Set(
+    all<{ name: string }>("SELECT name FROM encounters WHERE room_id = ?", roomId).map((row) =>
+      row.name.toLocaleLowerCase()
+    )
+  );
+  for (const encounter of campaign.encounters) count("encounters", fights.has(encounter.name.toLocaleLowerCase()));
+
   // Gear, hirelings, shared property, and debts are added rather than matched:
   // nothing about them carries an identity a re-import could recognise, which is
   // what the ledger is for. Until then they are honestly reported as additions.

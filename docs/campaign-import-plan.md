@@ -486,11 +486,19 @@ retired ids checked against the catalogue, the calendar through `calendarSchema`
 and hirelings, assets, and obligations with their portraits. Each one is a small
 reader and a small writer against a table that already exists.
 
-### Phase 5 — Encounters
+### Phase 5 — Encounters — **done**
 
 Last of the content because it is the only kind that references three others.
-Sides, zones, and NPC combatants; character and hireling combatants resolved
-through the same path map or refused. `active = 0` on everything.
+Sides, zones, and combatants; NPC and hireling combatants resolved through the
+same path map or refused. `active = 0` on everything, so a bundle landing
+mid-session cannot put a fight on everybody's screen.
+
+Two things the writing settled. **Characters do not travel** — a campaign carries
+no people, so a combatant is an NPC or a hireling and the schema will not accept
+anything else. And an encounter is **never replaced**, whatever conflict policy
+the import runs under: one in progress carries hit points, initiative, and
+positions that a re-import has no way to know about, and losing those mid-fight
+would be the worst thing this importer could do. It is skipped by name instead.
 
 ### Phase 6 — Tables
 

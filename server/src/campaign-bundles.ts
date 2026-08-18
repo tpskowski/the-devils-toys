@@ -67,7 +67,7 @@ export type MediaFolder = (typeof MEDIA_FOLDERS)[number];
  * yet acted on, which is the honest state of a feature being built in phases. As
  * each phase lands its reader, its folder leaves this list.
  */
-const PENDING_FOLDERS = ["encounters", "tables"] as const;
+const PENDING_FOLDERS = ["tables"] as const;
 
 /** The files a bundle may hold outside any folder. */
 const ROOT_FILES = ["manifest.json", "campaign.md", "room.json", "calendar.json"] as const;
@@ -195,6 +195,49 @@ const obligationSchema = z
   })
   .strict();
 
+/**
+ * A prepared encounter.
+ *
+ * Every reference is a path into the bundle — the map it happens on, the NPC a
+ * combatant is — because a database id in a zip is a lie the moment the zip
+ * leaves the machine that wrote it. A zone is named rather than pathed: zones
+ * exist only inside their own encounter, so their name is already unique where it
+ * has to be.
+ */
+const encounterSchema = z
+  .object({
+    name: z.string().trim().min(1).max(120),
+    notes: z.string().max(10000).default(""),
+    individualInitiative: z.boolean().default(false),
+    /** A path into `maps/` or `scenes/`, or nothing. */
+    map: z.string().min(1).max(300).optional(),
+    zones: z.array(z.string().trim().min(1).max(60)).max(60).default([]),
+    sides: z
+      .array(
+        z.object({ side: z.string().min(1).max(40), initiative: z.number().int().nullable().default(null) }).strict()
+      )
+      .max(20)
+      .default([]),
+    combatants: z
+      .array(
+        z
+          .object({
+            /** A path into `npcs/` or `hirelings/`; exactly one of them. */
+            npc: z.string().min(1).max(300).optional(),
+            hireling: z.string().min(1).max(300).optional(),
+            name: z.string().trim().min(1).max(120).optional(),
+            side: z.string().min(1).max(40).optional(),
+            zone: z.string().trim().min(1).max(60).optional(),
+            sortOrder: z.number().int().min(0).max(9999).default(0)
+          })
+          .strict()
+      )
+      .max(200)
+      .default([])
+  })
+  .strict();
+
+export type CampaignEncounter = z.infer<typeof encounterSchema> & { path: string };
 export type CampaignNpc = z.infer<typeof npcSchema> & { path: string };
 export type CampaignItems = z.infer<typeof itemsSchema>;
 export type CampaignHireling = z.infer<typeof sheetSchema> & { path: string };
@@ -235,6 +278,7 @@ export interface Campaign {
   media: CampaignMedia[];
   playlists: CampaignPlaylist[];
   npcs: CampaignNpc[];
+  encounters: CampaignEncounter[];
   items: CampaignItems;
   hirelings: CampaignHireling[];
   assets: CampaignAsset[];
@@ -481,6 +525,46 @@ function refuseUnwornPortraits(
   }
 }
 
+/**
+ * Encounters, resolved against everything else the bundle holds.
+ *
+ * This is where the format's one rule earns itself: an encounter is the only
+ * thing that points at three other kinds, and every one of those points is a
+ * path. A reference that does not resolve is refused rather than dropped —
+ * a combatant quietly missing from a prepared fight is found mid-session, and
+ * the bundle is wrong in a way its author can fix in ten seconds.
+ */
+function refuseUnresolvedEncounters(
+  encounters: readonly CampaignEncounter[],
+  media: readonly CampaignMedia[],
+  npcs: readonly CampaignNpc[],
+  hirelings: readonly CampaignHireling[]
+) {
+  const maps = new Set(
+    media.filter((entry) => entry.folder === "maps" || entry.folder === "scenes").map((entry) => entry.path)
+  );
+  const npcPaths = new Set(npcs.map((npc) => npc.path));
+  const hirelingPaths = new Set(hirelings.map((hireling) => hireling.path));
+
+  for (const encounter of encounters) {
+    const names = (what: string) => `The campaign's ${encounter.path} names ${what}`;
+    if (encounter.map && !maps.has(encounter.map))
+      throw new Error(`${names(`"${encounter.map}"`)}, which the bundle does not contain as a map or a scene.`);
+
+    const zones = new Set(encounter.zones);
+    for (const combatant of encounter.combatants) {
+      if (Boolean(combatant.npc) === Boolean(combatant.hireling))
+        throw new Error(`${names("a combatant")} that is neither one NPC nor one hireling.`);
+      if (combatant.npc && !npcPaths.has(combatant.npc))
+        throw new Error(`${names(`"${combatant.npc}"`)}, which the bundle does not contain.`);
+      if (combatant.hireling && !hirelingPaths.has(combatant.hireling))
+        throw new Error(`${names(`"${combatant.hireling}"`)}, which the bundle does not contain.`);
+      if (combatant.zone && !zones.has(combatant.zone))
+        throw new Error(`${names(`the zone "${combatant.zone}"`)}, which it does not declare.`);
+    }
+  }
+}
+
 export interface ReadOptions {
   /** Names a campaign whose bundle carries no manifest — the uploaded filename, less its suffixes. */
   fallbackName?: string;
@@ -558,6 +642,9 @@ export function readCampaign(directory: string, options: ReadOptions = {}): Camp
 
   // Gear is one list rather than a file per item: it is a catalogue, and a
   // hundred one-line files would be a worse thing to hand-edit than one array.
+  const encounters = readJsonFolder(directory, "encounters", encounterSchema, "the encounter");
+  refuseUnresolvedEncounters(encounters, media, npcs, hirelings);
+
   const items = exists(directory, "items/index.json")
     ? readJsonFile(directory, "items/index.json", itemsSchema, "the item list")
     : { added: [], retired: [] };
@@ -584,6 +671,7 @@ export function readCampaign(directory: string, options: ReadOptions = {}): Camp
     media,
     playlists,
     npcs,
+    encounters,
     items,
     hirelings,
     assets,
