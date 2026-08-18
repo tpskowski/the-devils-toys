@@ -40,6 +40,13 @@ export const config = {
   /** The most files one campaign may carry. More than this is a mistake worth naming. */
   campaignEntryLimit: Number(process.env.DEVILS_TOYS_CAMPAIGN_ENTRY_LIMIT ?? 5000),
   /**
+   * How long an uploaded campaign waits between its preview and its confirmation.
+   * Long enough to read what would land, think about it, and come back after a
+   * night's sleep; short enough that an import nobody finished is not a permanent
+   * tenant of the disk.
+   */
+  campaignStageTtlHours: Number(process.env.DEVILS_TOYS_CAMPAIGN_STAGE_TTL_HOURS ?? 24),
+  /**
    * The menu of systems an admin can install without going looking for one.
    *
    * A JSON index, fetched over HTTPS and cached. It is a URL rather than a

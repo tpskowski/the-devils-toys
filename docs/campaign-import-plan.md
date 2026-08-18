@@ -434,7 +434,7 @@ escaping the directory, a bomb whose directory understates it, an over-budget
 archive, a truncated zip, and one with no End of Central Directory record at
 all — each refused for its own reason.
 
-### Phase 2 — Manifest, reader, and preview — **reader done; routes remain**
+### Phase 2 — Manifest, reader, and preview — **done**
 
 `campaign-bundles.ts`: the manifest schema, the folder allowlist, the per-folder
 readers, and the cross-reference resolver — all over a staged directory, all
