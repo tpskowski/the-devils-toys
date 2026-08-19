@@ -22,6 +22,7 @@ import { attachRealtime, broadcastRoom, disconnectAccount, sendToRoomGms } from 
 import { npcRouter } from "./npcs.js";
 import { DEFAULT_TABLE_ROLL_NOTICE, tableRouter } from "./tables.js";
 import { tagRouter } from "./table-tags.js";
+import { roomTagRouter } from "./room-tags.js";
 import { tableSetRouter } from "./table-sets.js";
 import { tablesLinkRouter } from "./tables-link.js";
 import { asyncRoute, parse, publicAccount, sessionRouter } from "./session-routes.js";
@@ -38,6 +39,7 @@ import { helpRouter } from "./help.js";
 import { roomAccessRole } from "./room-config-permissions.js";
 import { projectFile } from "./paths.js";
 import { rulesMarkdown, systemIdSchema, systemOrThrow } from "./systems.js";
+import { roomRules, setRoomRules, systemRules } from "./system-rules.js";
 import {
   calendarNowMessage,
   damageExpression,
@@ -73,6 +75,7 @@ app.use("/api", npcRouter);
 app.use("/api", tableRouter);
 app.use("/api", tableSetRouter);
 app.use("/api", tagRouter);
+app.use("/api", roomTagRouter);
 app.use("/api", tablesLinkRouter);
 app.use("/api", groupRouter);
 app.use("/api", encounterRouter);
@@ -340,7 +343,8 @@ app.get("/api/rooms", requireAuth, (req: AuthedRequest, res) => {
     archived: Boolean(room.archived),
     calendarEnabled: Boolean(calendar_enabled),
     mapNotationEnabled: Boolean(map_notation_enabled),
-    musicEnabled: Boolean(music_enabled)
+    musicEnabled: Boolean(music_enabled),
+    rules: roomRules(room.id, room.system)
   }));
   res.json({ rooms });
 });
@@ -382,7 +386,10 @@ app.post("/api/rooms", requireAuth, (req: AuthedRequest, res) => {
         archived: false,
         calendarEnabled: false,
         mapNotationEnabled: false,
-        musicEnabled: false
+        musicEnabled: false,
+        // Nothing is recorded for a room this new, so these are the system's
+        // own defaults — which is what the room is actually playing by.
+        rules: roomRules(roomId, body.system)
       }
     });
   } catch (error) {
@@ -440,9 +447,13 @@ app.get("/api/rooms/:roomId", requireAuth, (req: AuthedRequest, res) => {
       calendarEnabled: Boolean(calendar_enabled),
       calendar: readCalendar(calendar_json),
       mapNotationEnabled: Boolean(map_notation_enabled),
-      musicEnabled: Boolean(music_enabled)
+      musicEnabled: Boolean(music_enabled),
+      rules: roomRules(roomId, room.system)
     },
-    members
+    members,
+    // The declarations rather than the settings: the labels and hints belong to
+    // the system, and only the GM's settings panel has anywhere to put them.
+    optionalRules: systemRules(room.system)
   });
 });
 
@@ -457,7 +468,9 @@ app.patch("/api/rooms/:roomId", requireAuth, (req: AuthedRequest, res) => {
         archived: z.boolean().optional(),
         calendarEnabled: z.boolean().optional(),
         mapNotationEnabled: z.boolean().optional(),
-        musicEnabled: z.boolean().optional()
+        musicEnabled: z.boolean().optional(),
+        /** Only the rules being moved, by the ids the system declared them under. */
+        rules: z.record(z.string(), z.boolean()).optional()
       })
       .refine(
         (value) =>
@@ -465,17 +478,24 @@ app.patch("/api/rooms/:roomId", requireAuth, (req: AuthedRequest, res) => {
           value.archived !== undefined ||
           value.calendarEnabled !== undefined ||
           value.mapNotationEnabled !== undefined ||
-          value.musicEnabled !== undefined
+          value.musicEnabled !== undefined ||
+          value.rules !== undefined
       ),
     req.body,
     res
   );
   if (!body) return;
-  const currentRoom = one<{ calendar_enabled: number; map_notation_enabled: number; music_enabled: number }>(
-    "SELECT calendar_enabled, map_notation_enabled, music_enabled FROM rooms WHERE id = ?",
-    roomId
-  );
+  const currentRoom = one<{
+    system: SystemId;
+    calendar_enabled: number;
+    map_notation_enabled: number;
+    music_enabled: number;
+  }>("SELECT system, calendar_enabled, map_notation_enabled, music_enabled FROM rooms WHERE id = ?", roomId);
   if (!currentRoom) return res.status(404).json({ error: "Room not found." });
+  if (body.rules) {
+    const refused = setRoomRules(roomId, currentRoom.system, body.rules);
+    if (refused) return res.status(400).json(refused);
+  }
   const firstCalendarEnable =
     body.calendarEnabled === true &&
     !currentRoom.calendar_enabled &&

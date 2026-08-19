@@ -54,7 +54,9 @@ import type {
   PresenceMember,
   RoomSummary,
   RoomCalendar,
+  RoomRuleSettings,
   SystemId,
+  SystemOptionalRule,
   ThemeId
 } from "@devils-toys/shared";
 import { api } from "./api";
@@ -76,7 +78,7 @@ import { TableMediaViewer } from "./TableMediaViewer";
 import { AudioDock, AudioModal } from "./AudioPlayer";
 import { ManagementWorkspace } from "./ManagementWorkspace";
 import { defaultGroupView, GroupPage, type GroupView } from "./GroupPage";
-import { PARTY_VIEW, type GroupViewOption } from "@devils-toys/shared";
+import { PARTY_VIEW, switchableRules, type GroupViewOption } from "@devils-toys/shared";
 
 import { AppearanceModal } from "./AppearanceModal";
 import { effectiveTheme, readPersonalTheme, writePersonalTheme } from "./personal-theme";
@@ -105,6 +107,8 @@ interface SystemStatus {
   rollRulesQuery: string;
   dice: DiceRules;
   groupPage: boolean;
+  /** What this system offers rather than imposes, for the switches in room settings. */
+  optionalRules: SystemOptionalRule[];
   /** What this system's weapon words mean, for the tooltips that show them. */
   traits: ItemTrait[];
 }
@@ -906,6 +910,12 @@ function TableRoom({
         if (data.type === "encounters-updated") {
           loadEncounters();
         }
+        // Tags are read by the panels that show what they are on, so both are
+        // told to read themselves again.
+        if (data.type === "tags-updated") {
+          setCharactersRevision((current) => current + 1);
+          setNpcRevision((current) => current + 1);
+        }
         if (data.type === "map-notations-updated") setMapNotationSyncRevision((current) => current + 1);
         if (data.type === "calendar-updated") applyCalendar(data.calendar as RoomCalendar);
         if (
@@ -1307,6 +1317,7 @@ function TableRoom({
       {settingsOpen && (
         <RoomSettings
           room={detail.room}
+          optionalRules={systemDefinition.optionalRules}
           isAdmin={isAdmin}
           onChanged={async () => {
             await load();
@@ -1827,6 +1838,7 @@ function CreatePlayer({ roomId, onClose }: { roomId: number; onClose: () => void
 
 function RoomSettings({
   room,
+  optionalRules,
   isAdmin,
   onChanged,
   onDeleted,
@@ -1834,6 +1846,8 @@ function RoomSettings({
   onClose
 }: {
   room: RoomSummary;
+  /** What the room's system offers rather than imposes, straight from its definition. */
+  optionalRules: readonly SystemOptionalRule[];
   isAdmin: boolean;
   onChanged: () => void | Promise<void>;
   onDeleted: () => void | Promise<void>;
@@ -1844,15 +1858,22 @@ function RoomSettings({
   const [calendarEnabled, setCalendarEnabled] = useState(room.calendarEnabled);
   const [mapNotationEnabled, setMapNotationEnabled] = useState(room.mapNotationEnabled);
   const [musicEnabled, setMusicEnabled] = useState(room.musicEnabled);
+  const [rules, setRules] = useState<RoomRuleSettings>(room.rules);
   const [confirmName, setConfirmName] = useState("");
   const [error, setError] = useState("");
+
+  // A required rule is on in every room and has no switch, so only what a GM
+  // could actually have moved is sent back.
+  const switched = Object.fromEntries(
+    switchableRules(optionalRules).map((rule) => [rule.id, rules[rule.id] ?? rule.default])
+  );
 
   async function save() {
     setError("");
     try {
       await api(`/api/rooms/${room.id}`, {
         method: "PATCH",
-        body: JSON.stringify({ theme, calendarEnabled, mapNotationEnabled, musicEnabled })
+        body: JSON.stringify({ theme, calendarEnabled, mapNotationEnabled, musicEnabled, rules: switched })
       });
       await onChanged();
       onClose();
@@ -1937,6 +1958,31 @@ function RoomSettings({
             <span aria-hidden="true" />
           </span>
         </label>
+        {optionalRules.map((rule) =>
+          rule.required ? (
+            // A switch that cannot move is a lie, so a required rule is stated
+            // rather than drawn as one: this is the game the room is playing.
+            <p className="modal-intro" key={rule.id}>
+              <strong>{rule.label}</strong> is part of {room.systemName}
+              {rule.hint ? `. ${rule.hint}` : "."}
+            </p>
+          ) : (
+            <label className={`toggle-row ${rules[rule.id] ? "enabled" : ""}`} key={rule.id}>
+              <span className="toggle-copy">
+                <strong>{rule.label}</strong>
+                <small>{rule.hint ?? `An optional rule ${room.systemName} offers.`}</small>
+              </span>
+              <span className="toggle-control">
+                <input
+                  type="checkbox"
+                  checked={Boolean(rules[rule.id])}
+                  onChange={(event) => setRules((current) => ({ ...current, [rule.id]: event.target.checked }))}
+                />
+                <span aria-hidden="true" />
+              </span>
+            </label>
+          )
+        )}
         {error && <p className="form-error">{error}</p>}
         <button className="primary-button" onClick={save}>
           Save changes

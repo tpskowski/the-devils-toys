@@ -1,5 +1,6 @@
 import type { RangedWeaponIcon, WeaponRangeRules } from "./character-items.js";
 import type { CharacterWarningRule } from "./character-warnings.js";
+import type { RoomRuleSettings, SystemOptionalRule } from "./system-rules.js";
 
 export * from "./character-items.js";
 export * from "./character-warnings.js";
@@ -8,6 +9,8 @@ export * from "./roll-tables.js";
 export * from "./table-csv.js";
 export * from "./table-markdown.js";
 export * from "./table-tags.js";
+export * from "./room-tags.js";
+export * from "./system-rules.js";
 export * from "./calendar.js";
 
 /**
@@ -65,6 +68,12 @@ export interface RoomSummary {
   calendarEnabled: boolean;
   mapNotationEnabled: boolean;
   musicEnabled: boolean;
+  /**
+   * Where this room stands on each of its system's optional rules, already
+   * resolved: the room's own setting, the rule's default, or on regardless for a
+   * rule the system requires. A client never has to work that out for itself.
+   */
+  rules: RoomRuleSettings;
 }
 
 /**
@@ -117,6 +126,7 @@ export interface RoomConfigRoom {
   calendarEnabled: boolean;
   mapNotationEnabled: boolean;
   musicEnabled: boolean;
+  rules: RoomRuleSettings;
   access: RoomConfigAccess;
 }
 
@@ -130,6 +140,8 @@ export interface RoomConfigPayload {
     partyLabel: string;
     /** The fields an NPC of this system has, so the panel edits a real statblock. */
     npcStatblock: NpcStatblockDefinition;
+    /** What the system offers rather than imposes, so the panel can say why a section is there. */
+    optionalRules: readonly SystemOptionalRule[];
   };
   sections: RoomConfigSection[];
   /**
@@ -1021,5 +1033,12 @@ export interface GameSystem {
     /** Tags inherited by every table parsed from this system catalog. */
     tags: readonly TableTag[];
   };
+  /**
+   * The rules this system offers rather than imposes, each naming the
+   * application behaviour it switches on. A room decides where each one stands;
+   * one the system marks `required` is on in every room and offers no switch.
+   * Omit the field for a system that offers none.
+   */
+  optionalRules?: readonly SystemOptionalRule[];
   dice: DiceRules;
 }

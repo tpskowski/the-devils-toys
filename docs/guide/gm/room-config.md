@@ -49,6 +49,9 @@ The columns are worth reading properly:
   a handout, or sees the active map at all.
 - **In use** — whether this is the room's current map or scene.
 - **Make active** / **Reveal** — the action that puts it in front of the table.
+- **Tags** — only in a room whose system offers tags and has them switched on.
+  Type your own words on any asset and the search box finds by them, which is
+  how a library of two hundred handouts stays usable.
 
 Selecting rows with the checkboxes gives you a bulk bar for refiling, showing,
 hiding, and deleting several at once.
@@ -148,6 +151,17 @@ change them.
 ## NPCs
 
 Covered in [NPCs and encounters](npcs-and-encounters.md).
+
+## What your system offers
+
+The bottom of the rail lists the optional rules your system has, if it has any:
+the parts of the game the book offers rather than imposes. They are the same
+switches the room's own settings carry, and they are here because setting a room
+up is when you decide them.
+
+They change this panel as well as the room. Switch **Tags** on and the Library
+gains a Tags column and every NPC gains a tag field; switch it off and both go
+away again, with the words kept for if you change your mind.
 
 ## Working with someone else
 

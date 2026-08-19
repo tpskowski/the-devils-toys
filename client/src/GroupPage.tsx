@@ -61,6 +61,8 @@ import { headingSlug, rulesAnchorPath, rulesQueryForField } from "./rules";
 import { readStarshipExpansion, writeStarshipExpansion } from "./starship-expansion";
 import { applyStarshipSize, holdSlots, setHoldValue, starshipHolds, starshipSizeFor } from "./starship";
 import { HoldEditor } from "./StarshipHoldEditor";
+import { useRoomTags } from "./room-tags";
+import { TagField } from "./TagField";
 import "./GroupPage.css";
 
 interface GroupResponse {
@@ -177,6 +179,8 @@ export function GroupPage({
   onViewsChange?: (views: GroupViewOption[]) => void;
 }) {
   const canEditGroup = role === "gm";
+  // Off in every room whose system does not offer tags, which is most of them.
+  const roomTags = useRoomTags(roomId, revision);
   const [definition, setDefinition] = useState<GroupPageDefinition>();
   const [state, setState] = useState<Record<string, unknown>>({});
   const [status, setStatus] = useState<SaveStatus>("Saved");
@@ -1259,6 +1263,16 @@ export function GroupPage({
                             )}
                           </div>
                         </div>
+                        {roomTags.enabled && (
+                          <TagField
+                            tags={roomTags.tagsOn("hireling", hireling.id)}
+                            vocabulary={roomTags.vocabulary}
+                            canEdit={canEditGroup}
+                            label="Tags"
+                            of={label}
+                            onChange={(next) => roomTags.save("hireling", hireling.id, next)}
+                          />
+                        )}
                         {definition.hirelings!.sheet.sections.map((section) => {
                           const maximumEditKey = `${hireling.id}:${section.id}`;
                           const editingMaxima = editingHirelingMaximums === maximumEditKey;

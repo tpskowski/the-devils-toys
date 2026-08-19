@@ -1,0 +1,96 @@
+/**
+ * Tags on characters, the cast, and the library. A room only has them when its
+ * system's optional rules say so, so nothing here is drawn in most rooms.
+ */
+
+.tag-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.tag-field-label,
+.tag-chips-label {
+  color: var(--muted);
+  font:
+    600 10px "DM Mono",
+    monospace;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.tag-field-box {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  padding: 5px 6px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.tag-field-box:focus-within {
+  border-color: var(--accent);
+}
+
+.tag-field-box input {
+  flex: 1 1 7rem;
+  min-width: 5rem;
+  height: 24px;
+  padding: 0 2px;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  font:
+    500 12px Inter,
+    sans-serif;
+}
+
+.tag-field-box input:focus {
+  outline: none;
+}
+
+.tag-chip,
+.tag-chips li {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 6px;
+  border: 1px solid var(--line);
+  color: var(--muted);
+  font:
+    500 10px "DM Mono",
+    monospace;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.tag-chip button {
+  display: inline-flex;
+  align-items: center;
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+}
+
+.tag-chip button:hover {
+  color: var(--accent);
+}
+
+.tag-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tag-field-error {
+  margin: 0;
+}

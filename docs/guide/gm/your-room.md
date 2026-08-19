@@ -39,6 +39,30 @@ people go looking for it.
 Turning music off pauses whatever is playing rather than leaving it running
 silently.
 
+## What your system offers
+
+Below those switches you may find more, under the name of the game you are
+playing. These are **optional rules**: parts the book offers rather than
+imposes, which your system declares and your table decides on. What is listed
+depends entirely on the system — a game that offers none shows none, and a game
+that _requires_ one says so in a line of text rather than offering a switch you
+could not have moved anyway.
+
+**Tags** is the one to know about today, and Monolith offers it. Switch it on
+and everything the room keeps a record of can carry words of your own: your
+characters, the cast, the party's hirelings, and everything in the Library. They
+are your words rather than a list anybody publishes — `inner ring`, `arc two`,
+`owes the crew money` — and the boxes you already search in the cast and the
+Library search them too, so tagging is how you find something again three months
+later.
+
+The same switches are on the Room Config rail, since setting a room up is when
+you decide these.
+
+Switching a rule off hides what it added; it does not throw anything away.
+Switch tags off and the words stop being shown, and switch them back on and they
+are all still there.
+
 ## Archiving
 
 **Archive room**, at the bottom of the same panel. An archived room drops out of

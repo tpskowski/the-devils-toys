@@ -2158,6 +2158,47 @@
       ],
       "additionalProperties": false
     },
+    "optionalRules": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+          },
+          "label": {
+            "type": "string",
+            "minLength": 1
+          },
+          "hint": {
+            "type": "string"
+          },
+          "feature": {
+            "type": "string",
+            "enum": [
+              "tags"
+            ]
+          },
+          "default": {
+            "type": "boolean"
+          },
+          "required": {
+            "type": "boolean"
+          },
+          "rulesQuery": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "feature",
+          "default"
+        ],
+        "additionalProperties": false
+      }
+    },
     "dice": {
       "type": "object",
       "properties": {

@@ -1,7 +1,10 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Plus, Save, Search, Trash2, X } from "lucide-react";
+import { tagsMatch } from "@devils-toys/shared";
 import { RulesMarkdown } from "./RulesMarkdown";
 import { api } from "./api";
+import { useRoomTags } from "./room-tags";
+import { TagChips, TagField } from "./TagField";
 
 interface BuiltInNpc {
   name: string;
@@ -22,6 +25,7 @@ export function NpcModal({ roomId, revision, onClose }: { roomId: number; revisi
   const [name, setName] = useState("");
   const [notes, setNotes] = useState("");
   const [error, setError] = useState("");
+  const roomTags = useRoomTags(roomId, revision);
 
   async function load(preferred?: string) {
     const result = await api<{ catalog: BuiltInNpc[]; custom: CustomNpc[] }>(`/api/rooms/${roomId}/npcs`);
@@ -34,9 +38,16 @@ export function NpcModal({ roomId, revision, onClose }: { roomId: number; revisi
   }, [roomId, revision]);
 
   const items = [
-    ...catalog.map((npc) => ({ key: `builtin:${npc.name}`, name: npc.name, kind: "System" })),
-    ...custom.map((npc) => ({ key: `custom:${npc.id}`, name: npc.name, kind: "Custom" }))
-  ].filter((npc) => npc.name.toLocaleLowerCase().includes(query.toLocaleLowerCase()));
+    ...catalog.map((npc) => ({ key: `builtin:${npc.name}`, name: npc.name, kind: "System", tags: [] as string[] })),
+    ...custom.map((npc) => ({
+      key: `custom:${npc.id}`,
+      name: npc.name,
+      kind: "Custom",
+      tags: roomTags.tagsOn("npc", npc.id)
+    }))
+    // The search box the panel already has finds by tag as well as by name,
+    // rather than the cast gaining a second box beside the first.
+  ].filter((npc) => npc.name.toLocaleLowerCase().includes(query.toLocaleLowerCase()) || tagsMatch(npc.tags, query));
   const builtIn = selected?.startsWith("builtin:")
     ? catalog.find((npc) => `builtin:${npc.name}` === selected)
     : undefined;
@@ -117,6 +128,7 @@ export function NpcModal({ roomId, revision, onClose }: { roomId: number; revisi
               >
                 <strong>{npc.name}</strong>
                 <small>{npc.kind}</small>
+                {roomTags.enabled && <TagChips tags={npc.tags} />}
               </button>
             ))}
           </aside>
@@ -145,6 +157,17 @@ export function NpcModal({ roomId, revision, onClose }: { roomId: number; revisi
                   }
                   placeholder="Stats, motives, abilities, and notes…"
                 />
+                {roomTags.enabled && (
+                  <TagField
+                    tags={roomTags.tagsOn("npc", customNpc.id)}
+                    vocabulary={roomTags.vocabulary}
+                    canEdit
+                    label="Tags"
+                    of={customNpc.name}
+                    hint="Faction, location, whatever you look them up by"
+                    onChange={(next) => roomTags.save("npc", customNpc.id, next)}
+                  />
+                )}
                 <div className="npc-actions">
                   <button onClick={save}>
                     <Save /> Save

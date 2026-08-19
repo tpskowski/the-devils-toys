@@ -23,6 +23,7 @@ import "./rules-links.css";
 import "./dice.css";
 import "./npcs.css";
 import "./tables.css";
+import "./room-tags.css";
 
 const rulesSystem = rulesSystemFromPath(window.location.pathname);
 // Room Config is a GM tool most of this application's users never open, so it is
