@@ -484,6 +484,15 @@
     "exclude": [],
     "tags": ["fantasy"]
   },
+  "optionalRules": [
+    {
+      "id": "tags",
+      "label": "Tags",
+      "hint": "Put words of your own on characters, the cast, and the library.",
+      "feature": "tags",
+      "default": false
+    }
+  ],
   "dice": {
     "save": {
       "sides": 20,

@@ -18,6 +18,7 @@ import type {
   RoomConfigSectionId,
   RoomConfigToggle
 } from "@devils-toys/shared";
+import { switchableRules } from "@devils-toys/shared";
 import { api } from "./api";
 import { roomConfigPath, roomIdFromConfigSearch, sectionFromHash, sectionStorageKey } from "./room-config";
 import { RoomConfigCalendar } from "./RoomConfigCalendar";
@@ -129,6 +130,31 @@ export function RoomConfigPage() {
     if (roomId !== undefined) loadConfig(roomId);
   });
 
+  /**
+   * Moves one of the system's optional rules. This is the same switch the room's
+   * own settings carry, offered here because Room Config is where a room is set
+   * up rather than run — and because a section that only appears with a rule is
+   * otherwise unexplainable from in here.
+   */
+  async function setRule(ruleId: string, value: boolean) {
+    if (!config) return;
+    setBusy(true);
+    setError("");
+    try {
+      await api(`/api/rooms/${config.room.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ rules: { [ruleId]: value } })
+      });
+      await loadConfig(config.room.id);
+      // The sections read what they show, and tags are among it.
+      setRevision((current) => current + 1);
+    } catch (cause) {
+      setError((cause as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function setToggle(toggle: RoomConfigToggle, value: boolean) {
     if (!config) return;
     setBusy(true);
@@ -228,6 +254,22 @@ export function RoomConfigPage() {
             );
           })}
         </nav>
+        {switchableRules(config.system.optionalRules).length > 0 && (
+          <div className="room-config-rules">
+            <p className="room-config-rules-heading">{config.system.name} options</p>
+            {switchableRules(config.system.optionalRules).map((rule) => (
+              <label key={rule.id} title={rule.hint}>
+                <input
+                  type="checkbox"
+                  checked={Boolean(config.room.rules[rule.id])}
+                  disabled={busy}
+                  onChange={(event) => setRule(rule.id, event.target.checked)}
+                />
+                <span>{rule.label}</span>
+              </label>
+            ))}
+          </div>
+        )}
         <footer>
           <span className="room-config-badge">{config.room.access === "admin" ? "Server admin" : "Game master"}</span>
           <a className="room-config-link" href="/" target="_blank" rel="noreferrer">

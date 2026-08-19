@@ -3,6 +3,8 @@ import { BookOpen, Copy, CopyPlus, Plus, Save, Trash2 } from "lucide-react";
 import type { CharacterItem, NpcStatblockDefinition, RoomConfigRoom, SystemId } from "@devils-toys/shared";
 import { api } from "./api";
 import { RulesMarkdown } from "./RulesMarkdown";
+import { useRoomTags } from "./room-tags";
+import { TagField } from "./TagField";
 
 interface BuiltInNpc {
   name: string;
@@ -101,6 +103,7 @@ export function RoomConfigNpcs({
   const [busy, setBusy] = useState("");
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
+  const roomTags = useRoomTags(roomId, revision);
 
   const load = useCallback(async () => {
     const result = await api<{ catalog: BuiltInNpc[]; custom: CustomNpc[] }>(`/api/rooms/${roomId}/npcs`);
@@ -398,6 +401,18 @@ export function RoomConfigNpcs({
                 );
               })}
             </div>
+
+            {roomTags.enabled && (
+              <TagField
+                tags={roomTags.tagsOn("npc", selected.id)}
+                vocabulary={roomTags.vocabulary}
+                canEdit
+                label="Tags"
+                of={selected.name}
+                hint="Faction, location, whatever you look them up by"
+                onChange={(next) => roomTags.save("npc", selected.id, next)}
+              />
+            )}
 
             <label className="rc-notes">
               <span>Notes</span>

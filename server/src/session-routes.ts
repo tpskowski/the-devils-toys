@@ -50,7 +50,7 @@ sessionRouter.get("/status", (_req, res) => {
     // Only what a new room may be made on. A retired system keeps its rooms
     // working, but nothing offers to start another on it.
     systems: offeredSystems().map(
-      ({ id, name, shortName, glyph, tagline, defaultTheme, rollRulesQuery, dice, groupPage }) => ({
+      ({ id, name, shortName, glyph, tagline, defaultTheme, rollRulesQuery, dice, groupPage, optionalRules }) => ({
         id,
         name,
         shortName,
@@ -60,6 +60,9 @@ sessionRouter.get("/status", (_req, res) => {
         rollRulesQuery,
         dice,
         groupPage: Boolean(groupPage),
+        // What the system offers rather than imposes. A room's own settings come
+        // with the room; these are the labels a switch needs to be drawn with.
+        optionalRules: optionalRules ?? [],
         // What this system's weapon words mean, so anything that shows one can
         // say so rather than repeating the word back.
         traits: itemTraitsFor(id)

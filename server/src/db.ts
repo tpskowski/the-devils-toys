@@ -94,6 +94,38 @@ const encounterCombatantColumns = `
     )`;
 
 /**
+ * A tag points at whichever of the four kinds of subject it is, and the CHECK is
+ * what keeps it pointing at exactly one. This is the shape
+ * `encounter_combatants` already uses, and it is used here for the same reason:
+ * a column per kind is the only way a tag can carry a real foreign key, so a
+ * deleted NPC takes its tags with it rather than leaving rows behind that a
+ * later NPC with the same id would inherit.
+ *
+ * `room_id` is here as well as on the subject because a character belongs to no
+ * room — it is a player's, and travels between them. Tags are the table's notes
+ * about its own game, so two rooms tag the same character differently and
+ * neither sees the other's words.
+ */
+const roomTagColumns = `
+    id INTEGER PRIMARY KEY,
+    room_id INTEGER NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
+    subject TEXT NOT NULL CHECK (subject IN ('character', 'npc', 'hireling', 'scene')),
+    character_id INTEGER REFERENCES characters(id) ON DELETE CASCADE,
+    npc_id INTEGER REFERENCES custom_npcs(id) ON DELETE CASCADE,
+    hireling_id INTEGER REFERENCES group_hirelings(id) ON DELETE CASCADE,
+    media_id INTEGER REFERENCES media(id) ON DELETE CASCADE,
+    tag TEXT NOT NULL COLLATE NOCASE,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    created_by INTEGER REFERENCES accounts(id) ON DELETE SET NULL,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CHECK (
+      (subject = 'character' AND character_id IS NOT NULL AND npc_id IS NULL AND hireling_id IS NULL AND media_id IS NULL) OR
+      (subject = 'npc' AND npc_id IS NOT NULL AND character_id IS NULL AND hireling_id IS NULL AND media_id IS NULL) OR
+      (subject = 'hireling' AND hireling_id IS NOT NULL AND character_id IS NULL AND npc_id IS NULL AND media_id IS NULL) OR
+      (subject = 'scene' AND media_id IS NOT NULL AND character_id IS NULL AND npc_id IS NULL AND hireling_id IS NULL)
+    )`;
+
+/**
  * Portrait columns, in the shape `characters` already carries them. A hireling
  * and a ship own their picture the same way a character does, rather than
  * through a side table keyed by a string nothing enforces.
@@ -367,6 +399,24 @@ db.exec(`
     state_digest TEXT NOT NULL,
     PRIMARY KEY (import_id, kind, path)
   );
+  CREATE TABLE IF NOT EXISTS room_system_rules (
+    room_id INTEGER NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
+    rule_id TEXT NOT NULL,
+    enabled INTEGER NOT NULL,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (room_id, rule_id)
+  );
+  CREATE TABLE IF NOT EXISTS room_tags (${roomTagColumns}
+  );
+  CREATE INDEX IF NOT EXISTS room_tags_room ON room_tags (room_id, subject, sort_order);
+  CREATE UNIQUE INDEX IF NOT EXISTS room_tags_character
+    ON room_tags (room_id, character_id, tag) WHERE character_id IS NOT NULL;
+  CREATE UNIQUE INDEX IF NOT EXISTS room_tags_npc
+    ON room_tags (room_id, npc_id, tag) WHERE npc_id IS NOT NULL;
+  CREATE UNIQUE INDEX IF NOT EXISTS room_tags_hireling
+    ON room_tags (room_id, hireling_id, tag) WHERE hireling_id IS NOT NULL;
+  CREATE UNIQUE INDEX IF NOT EXISTS room_tags_scene
+    ON room_tags (room_id, media_id, tag) WHERE media_id IS NOT NULL;
 `);
 
 /**

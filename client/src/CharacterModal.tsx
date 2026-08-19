@@ -38,6 +38,8 @@ import { currentsToBackfill } from "./character-stats";
 import { saveSetupForField, type SaveRollSetup } from "./save-roll";
 import { rollableDamage, rollWeapon } from "./weapon-roll";
 import { findRuleAnchorId, findRuleExcerpt, rulesAnchorPath, rulesQueryForField as fieldRulesQuery } from "./rules";
+import { useRoomTags } from "./room-tags";
+import { TagField } from "./TagField";
 import "./CharacterModal.css";
 
 interface Character {
@@ -210,6 +212,8 @@ export function CharacterModal({
 
   const selected = characters.find((character) => character.id === selectedId);
   const canEdit = selected ? canEditCharacter({ accountId, role }, selected) : false;
+  // Off in every room whose system does not offer tags, which is most of them.
+  const roomTags = useRoomTags(roomId, revision);
   // Rolling is narrower than editing: a character's attacks are their player's,
   // even where the GM may write the sheet.
   const canRoll = selected ? canRollAttack({ accountId, role }, { kind: "character", ...selected }) : false;
@@ -1397,6 +1401,17 @@ export function CharacterModal({
                     {selected.activeBy.length > 0 &&
                       ` · Active: ${selected.activeBy.map((item) => item.displayName).join(", ")}`}
                   </p>
+                  {roomTags.enabled && (
+                    <TagField
+                      tags={roomTags.tagsOn("character", selected.id)}
+                      vocabulary={roomTags.vocabulary}
+                      canEdit={canEdit}
+                      label="Tags"
+                      of={selected.name}
+                      hint="Faction, arc, whatever you look them up by"
+                      onChange={(next) => roomTags.save("character", selected.id, next)}
+                    />
+                  )}
                 </div>
               </div>
               {(canMakeActive || canClaim) && (

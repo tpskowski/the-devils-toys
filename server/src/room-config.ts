@@ -6,6 +6,7 @@ import { readCalendar } from "./calendar.js";
 import { one } from "./db.js";
 import { configurableRoom, configurableRooms, requireRoomConfig } from "./room-config-permissions.js";
 import { systemOrThrow } from "./systems.js";
+import { systemRules } from "./system-rules.js";
 import type { ConfigurableRoom } from "./room-config-permissions.js";
 
 /**
@@ -94,7 +95,8 @@ roomConfigRouter.get("/room-config/:roomId", requireAuth, (req: AuthedRequest, r
       shortName: definition.shortName,
       glyph: definition.glyph,
       partyLabel: definition.partyLabel,
-      npcStatblock: definition.npcStatblock
+      npcStatblock: definition.npcStatblock,
+      optionalRules: systemRules(definition.id)
     },
     sections: sectionsFor(room),
     calendar: readCalendar(

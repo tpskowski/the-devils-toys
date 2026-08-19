@@ -54,6 +54,21 @@ test that needs a system also exercises the installer.
 - An archive is capped as it is read, not measured afterwards, and a path that climbs out of the archive is refused outright rather than filtered out. Do not let the set of files we read become the thing that provides that guarantee.
 - Everything after the download is the code an uploaded bundle already goes through. Arriving over the network buys no trust.
 
+## Optional rules and the features they switch on
+
+- A system declares what it **offers** rather than imposes in `optionalRules`, and each rule names the `feature` it switches on. Nothing anywhere reads a rule's id to decide what it means: the id is only what a room's setting is recorded against, and `SYSTEM_RULE_FEATURES` in `shared/src/system-rules.ts` is the list of behaviours the application knows how to withhold. A rule naming a feature this build does not have is refused at install rather than ignored, because a system whose tags silently never appear is worse than one that will not install.
+- A rule marked `required` is on in every room and is drawn as a sentence rather than a switch. A switch that cannot move is a lie, and a GM cannot un-declare what their game is played by.
+- A room records only where it has **moved** a rule, in `room_system_rules`. That is what keeps a default meaningful, and what makes `effectiveRules` — the room's setting, then the rule's default, then on regardless where required — the one place that resolves it. A setting recorded against a rule the system no longer declares is dropped on read and left in the table: an install replaces a system in place, and a rule that goes missing in one version and returns in the next comes back as the room left it.
+- Ask `roomHasFeature` on the server rather than sending a client the rules and trusting it to work them out. A room with a feature switched off has no routes for it at all, which is why nothing can be written that the room would never show.
+
+## Tags
+
+- Tags are a room's own words on the things in it — characters, NPCs, hirelings, and the Library — and they exist only where the system's optional rules switch them on. They are **not** the table editor's tags: that vocabulary is a database table an admin curates so two sets can be browsed together, and this one is read back out of the tags in use so a table settles on its words by using them.
+- `room_tags` carries a column per kind with a CHECK that exactly one is set, the shape `encounter_combatants` already uses. It is the only way a tag can carry a real foreign key, so a deleted NPC takes its tags with it rather than leaving rows a later NPC with the same id would inherit.
+- A tag row is the room's, including on a character. A character belongs to a player and travels between rooms; tags are the table's notes on its own game, so two rooms tag the same character differently and neither sees the other's words.
+- What a reader is sent is decided by role, in `readRoomTags`: a GM sees the room, and a player sees their own characters, the party's hirelings, and the Library entries revealed to them. The vocabulary is read from what that reader was sent, so it cannot leak the words on the cast they have not met.
+- A subject's tags are written whole rather than a tag at a time. The editor sends the list it is showing, so a tag someone else removed while this one was typing loses to whoever saved last rather than coming back on its own.
+
 ## Adding a room theme
 
 1. Add the theme id to `THEME_IDS` in `shared/src/index.ts`. The status payload, the room settings menu, request validation, and the database CHECK constraint all read that list.

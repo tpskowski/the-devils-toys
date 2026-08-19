@@ -1,8 +1,9 @@
 import type express from "express";
-import type { RoomConfigAccess, SystemId, ThemeId } from "@devils-toys/shared";
+import type { RoomConfigAccess, RoomRuleSettings, SystemId, ThemeId } from "@devils-toys/shared";
 import type { AuthAccount, AuthedRequest } from "./auth.js";
 import { roomRole } from "./auth.js";
 import { all, one } from "./db.js";
+import { roomRules } from "./system-rules.js";
 
 /**
  * Who may open a room's configuration, in one place because Room Config is a
@@ -34,6 +35,8 @@ export interface ConfigurableRoom {
   calendarEnabled: boolean;
   mapNotationEnabled: boolean;
   musicEnabled: boolean;
+  /** Where the room stands on its system's optional rules, already resolved. */
+  rules: RoomRuleSettings;
   access: RoomConfigAccess;
 }
 
@@ -64,6 +67,7 @@ function publicRoom(row: RoomRow, access: RoomConfigAccess): ConfigurableRoom {
     calendarEnabled: Boolean(row.calendar_enabled),
     mapNotationEnabled: Boolean(row.map_notation_enabled),
     musicEnabled: Boolean(row.music_enabled),
+    rules: roomRules(row.id, row.system),
     access
   };
 }

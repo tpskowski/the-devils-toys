@@ -1,5 +1,12 @@
 import { z } from "zod";
-import { NPC_STATBLOCK_PARSERS, SYSTEM_ID_PATTERN, THEME_IDS, type GameSystem } from "@devils-toys/shared";
+import {
+  NPC_STATBLOCK_PARSERS,
+  SYSTEM_ID_PATTERN,
+  SYSTEM_RULE_FEATURES,
+  SYSTEM_RULE_ID,
+  THEME_IDS,
+  type GameSystem
+} from "@devils-toys/shared";
 
 /**
  * What a system may say about itself.
@@ -319,6 +326,28 @@ const contentModule = z
   })
   .strict();
 
+/**
+ * An optional rule. `feature` is the whole of what one does: the application
+ * withholds that behaviour until a rule naming it is on, and nothing anywhere
+ * reads a rule's id to decide what it means. A rule naming a feature this build
+ * does not have is refused rather than ignored, because a system whose tags
+ * silently never appear is worse than one that will not install.
+ */
+const optionalRule = z
+  .object({
+    id: z.string().regex(SYSTEM_RULE_ID, "A rule id is lower-case words joined by hyphens."),
+    label: nonEmpty,
+    hint: z.string().optional(),
+    feature: z.enum(SYSTEM_RULE_FEATURES),
+    default: z.boolean(),
+    required: z.boolean().optional(),
+    rulesQuery: z.string().optional()
+  })
+  .strict()
+  .refine((rule) => !rule.required || rule.default, {
+    message: "A required rule is always on, so its default cannot be false."
+  });
+
 const warningRule = z.discriminatedUnion("kind", [
   z
     .object({
@@ -387,6 +416,12 @@ export const gameSystemSchema = z
       .strict(),
     viceCatalog: z.object({ column: nonEmpty }).strict().optional(),
     tableCatalog: z.object({ label: z.string(), exclude: z.array(z.string()), tags: z.array(z.string()) }).strict(),
+    optionalRules: z
+      .array(optionalRule)
+      .refine((rules) => new Set(rules.map((rule) => rule.id)).size === rules.length, {
+        message: "Two optional rules share an id; a room records its settings against those ids."
+      })
+      .optional(),
     dice
   })
   .strict();

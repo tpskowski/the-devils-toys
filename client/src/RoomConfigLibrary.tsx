@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import { Eye, EyeOff, FileText, FileUp, Image as ImageIcon, Map as MapIcon, Radio, Trash2 } from "lucide-react";
-import type { MediaAsset } from "@devils-toys/shared";
+import { tagsMatch, type MediaAsset } from "@devils-toys/shared";
 import { api } from "./api";
+import { useRoomTags } from "./room-tags";
+import { TagField } from "./TagField";
 import { isMarkdownAsset } from "./MediaContent";
 import { mediaKindLabel, mediaLabel } from "./media-label";
 
@@ -46,6 +48,9 @@ export function RoomConfigLibrary({ roomId, revision }: { roomId: number; revisi
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
   const fileInput = useRef<HTMLInputElement>(null);
+  // Nothing is drawn for a room whose system does not offer tags, which is why
+  // the column appears and disappears with the rule rather than sitting empty.
+  const roomTags = useRoomTags(roomId, revision);
 
   const load = useCallback(async () => {
     setPayload(await api<LibraryPayload>(`/api/rooms/${roomId}/media`));
@@ -61,9 +66,12 @@ export function RoomConfigLibrary({ roomId, revision }: { roomId: number; revisi
     return payload.library.filter((asset) => {
       if (filter === "orphans" ? !isOrphan(asset, payload) : filter !== "all" && asset.kind !== filter) return false;
       if (!needle) return true;
+      // The search box the panel already has finds by tag too, rather than the
+      // library gaining a second box beside the first.
+      if (tagsMatch(roomTags.tagsOn("scene", asset.id), needle)) return true;
       return `${mediaLabel(asset)} ${asset.filename} ${asset.kind}`.toLocaleLowerCase().includes(needle);
     });
-  }, [payload, filter, query]);
+  }, [payload, filter, query, roomTags]);
 
   // A selection survives a refresh only where the asset did, so acting on it
   // can never reach something that has since been deleted elsewhere.
@@ -144,7 +152,7 @@ export function RoomConfigLibrary({ roomId, revision }: { roomId: number; revisi
         <input
           className="rc-search"
           value={query}
-          placeholder="Search names and files"
+          placeholder={roomTags.enabled ? "Search names, files, and tags" : "Search names and files"}
           onChange={(event) => setQuery(event.target.value)}
         />
         <div className="rc-upload">
@@ -242,6 +250,7 @@ export function RoomConfigLibrary({ roomId, revision }: { roomId: number; revisi
               </th>
               <th scope="col">Name</th>
               <th scope="col">Filed as</th>
+              {roomTags.enabled && <th scope="col">Tags</th>}
               <th scope="col">Size</th>
               <th scope="col">Visible</th>
               <th scope="col">In use</th>
@@ -298,6 +307,17 @@ export function RoomConfigLibrary({ roomId, revision }: { roomId: number; revisi
                     <small>{asset.filename}</small>
                   </td>
                   <td>{mediaKindLabel(asset.kind)}</td>
+                  {roomTags.enabled && (
+                    <td>
+                      <TagField
+                        tags={roomTags.tagsOn("scene", asset.id)}
+                        vocabulary={roomTags.vocabulary}
+                        canEdit
+                        of={mediaLabel(asset)}
+                        onChange={(next) => roomTags.save("scene", asset.id, next)}
+                      />
+                    </td>
+                  )}
                   <td>{formatSize(asset.size)}</td>
                   <td>
                     <button
