@@ -18,7 +18,8 @@ const ACCOUNT = 1;
 
 beforeEach(() => {
   db.exec(
-    `DELETE FROM table_sets; DELETE FROM group_obligations; DELETE FROM group_assets; DELETE FROM group_hirelings;
+    `DELETE FROM room_import_entries; DELETE FROM room_imports;
+     DELETE FROM table_sets; DELETE FROM group_obligations; DELETE FROM group_assets; DELETE FROM group_hirelings;
      DELETE FROM room_retired_items; DELETE FROM room_items; DELETE FROM custom_npcs;
      DELETE FROM media; DELETE FROM memberships; DELETE FROM rooms; DELETE FROM accounts;`
   );
@@ -391,5 +392,61 @@ describe("a campaign's random tables", () => {
 
     apply({ "manifest.json": manifest("Tomb"), "tables/rumours.json": JSON.stringify(tagged) });
     expect(JSON.parse(one<{ tags_json: string }>("SELECT tags_json FROM table_sets")!.tags_json)).toEqual([known]);
+  });
+});
+
+describe("a portrait is a reference, not a path", () => {
+  const png = () => {
+    const body = Buffer.alloc(64, 6);
+    Buffer.from("89504e470d0a1a0a", "hex").copy(body);
+    return body;
+  };
+
+  /**
+   * Every other name in a bundle resolves inside the bundle. A `portrait` that
+   * asked the filesystem instead could name something outside the stage — and
+   * the importer moves rather than copies, so it would have taken a file that
+   * was not the campaign's to take.
+   */
+  it("refuses a portrait that reaches outside the bundle", () => {
+    const outside = path.join(config.dataDir, "uploads", "not-the-campaigns.png");
+    fs.mkdirSync(path.dirname(outside), { recursive: true });
+    fs.writeFileSync(outside, png());
+
+    // Three levels up from <dataDir>/imports/<token>/files is <dataDir> itself,
+    // so this names the real uploads directory: another room’s file, which a
+    // campaign must never be able to reach, let alone move.
+    expect(() =>
+      stage({ "hirelings/brann.json": { name: "Brann", portrait: "../../../uploads/not-the-campaigns.png" } })
+    ).toThrow(/which the bundle does not contain/);
+    expect(fs.existsSync(outside)).toBe(true);
+  });
+
+  it("refuses a portrait in another folder of the same bundle", () => {
+    expect(() =>
+      stage({
+        "hirelings/brann.json": { name: "Brann", portrait: "maps/keep.png" },
+        "maps/keep.png": png()
+      })
+    ).toThrow(/names "maps\/keep\.png", which the bundle does not contain/);
+  });
+
+  /**
+   * A portrait is moved before the transaction opens, which is before anything
+   * knows whether its wearer will be written. One whose wearer the system cannot
+   * hold must not be left behind in uploads.
+   */
+  it("leaves no file behind when its wearer could not land", () => {
+    const uploads = path.join(config.dataDir, "uploads");
+    const before = fs.readdirSync(uploads).length;
+
+    const result = apply({
+      "assets/kestrel.json": { name: "The Kestrel", kind: "zeppelin", portrait: "assets/kestrel.png" },
+      "assets/kestrel.png": png()
+    });
+
+    expect(result.group.skipped).toBe(1);
+    expect(all("SELECT id FROM group_assets WHERE room_id = ?", roomId)).toHaveLength(0);
+    expect(fs.readdirSync(uploads).length).toBe(before);
   });
 });

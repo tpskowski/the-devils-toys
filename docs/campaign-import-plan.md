@@ -241,19 +241,23 @@ partial write, and nothing outside the staging directory has been touched:
     "items/index.json retires \"cairn/lantern\", which this system does not have.",
     "room.json names the theme \"ember\", which this server does not have. The room keeps its own."
   ],
-  "previousImport": { "campaignId": "tomb-of-the-serpent-kings", "version": "1.1", "importedAt": "…" }
+  "previous": { "campaignId": "tomb-of-the-serpent-kings", "version": "1.1", "importedAt": "…" }
 }
 ```
 
 `systemMatch` is `exact`, `agnostic`, or `mismatch`; a mismatch is a refusal with
-both ids named, not a warning. `previousImport` is what turns the confirm dialog
+both ids named, not a warning. `previous` is what turns the confirm dialog
 from "import" into "update from 1.1 to 1.2".
 
 ### 3. Confirm
 
-`POST /api/rooms/:roomId/campaign/:token/apply` with the conflict policy and the
-opt-ins — whether to take `room.json`'s name and theme, whether to take the
-calendar, whether to import the tables server-wide.
+`POST /api/rooms/:roomId/campaign/:token/apply` with the conflict policy and one
+opt-in: whether to take `room.json`’s name, theme, and calendar.
+
+Tables are **not** an opt-in in the end. A campaign’s sets always land, named
+for the campaign, and the preview says server-wide before the GM confirms — a
+checkbox for one kind among twelve implied the other eleven could be chosen
+too, which they cannot.
 
 The whole write is one transaction over the database. Files move into `uploads/`
 **before** it opens and are removed on rollback, which is the same trade
@@ -313,8 +317,11 @@ campaign did _not_ make, and those are what a GM is actually being asked about.
 Where the room _has_ edited something, the policy has the last word: `skip`
 keeps the GM's version, `replace` takes them at their word.
 
-Entries are keyed by bundle path rather than by name, so renaming a map in the
-bundle is a delete plus an add — honest, and cheaper than guessing.
+Entries are keyed by bundle path rather than by name. Renaming a map in the
+bundle therefore makes a new one: the old path leaves the ledger and the row it
+made stays in the room, unclaimed, for the GM to keep or delete. Nothing is
+deleted on their behalf — removing a campaign's contribution is a feature this
+plan does not build, and a rename is not the place to invent half of it.
 
 ---
 
@@ -329,7 +336,7 @@ below is aimed at that and at nothing else.
 ### The four ceilings, in the order they are hit
 
 1. **The reverse proxy.** nginx's `client_max_body_size` defaults to **1 MB**. A campaign import fails here first, before any code in this repository runs, with a 413 that says nothing useful. This belongs in `docs/deployment.md` on the day Phase 3 lands.
-2. **Memory.** `unzipSync` takes the whole archive as one `Uint8Array` and returns every entry decompressed beside it. Node 22 will not stop you; a 1 GB campaign becomes something over 2 GB resident, which on a small VPS is an OOM kill rather than an error message.
+2. **Memory.** This is the ceiling the design removes rather than raises: `unzipSync` would take the whole archive as one `Uint8Array` and return every entry decompressed beside it, so a 1 GB campaign became something over 2 GB resident and an OOM kill on a small VPS. Reading the central directory and expanding one entry at a time holds a chunk instead, whatever the archive weighs.
 3. **Disk.** Staged bytes plus imported bytes is 2× the campaign, transiently.
 4. **Time.** A gigabyte of extraction and a few thousand inserts is minutes. An HTTP request that takes minutes is a request that a proxy, a laptop lid, or an impatient GM will end halfway.
 
@@ -364,10 +371,13 @@ of disk."_ A GM should learn a campaign will not fit before making tea.
 entries go in through `ZipPassThrough` (stored, level 0); JSON and Markdown keep
 deflate. Deflating a JPEG spends the CPU of the whole export to save nothing.
 
-**Make the apply a job, not a request.** It returns a job id immediately, reports
-progress over the WebSocket the room already holds, and takes a per-room import
-lock so two of them cannot interleave. The preview stays a plain request, because
-after the above it is a directory read and it is fast.
+**Make the apply a job, not a request — superseded.** This was written expecting
+the apply to be slow. It is not: expansion happens at staging, and the commit is
+renames within one filesystem plus one insert per file, so it finishes in
+milliseconds whatever the campaign weighs. Phase 3 records the correction; the
+apply stayed a plain request, with no job id, no progress events, and no import
+lock. What could still want progress is the **staging** request, whose cost is
+the upload.
 
 ### And the one that means nobody has to upload a gigabyte
 
@@ -392,9 +402,13 @@ caution: this must stay a decision about whether to _write_, not an invitation t
 point two `media` rows at one stored file. Deleting a media row removes its file
 today, and sharing files means refcounting them, which is a different change.
 
-**Media-optional bundles.** An `index.json` may name a file the bundle does not
-carry. The preview lists it as missing, the room takes it later, and a campaign
-that cannot redistribute its art ships as text.
+**Media-optional bundles — not built, and the opposite shipped.** The idea was
+that an `index.json` could name a file the bundle does not carry, so a campaign
+that cannot redistribute its art could ship as text. What the reader does instead
+is refuse a name that resolves to nothing, because that rule is what makes every
+other reference in a bundle trustworthy, and one exception to it would be the
+exception a GM discovers mid-session. A campaign without art simply carries no
+`maps/` folder, which is already valid.
 
 ### The one to leave alone
 
@@ -469,10 +483,12 @@ manifest, the folder allowlist, the listing checks, the `index.json` convention,
 and cross-reference resolution, with the media folders as the first kind read
 through all of it.
 
-A folder whose reader has not landed yet is still accepted from the archive and
-reported in the preview as pending. That is the honest state of a feature built in
-phases, and it is the opposite of the failure this format must not have: a bundle
-that appears to import and quietly drops half of itself.
+While the phases were in flight, a folder whose reader had not landed was still
+accepted from the archive and reported as pending — the honest state of a feature
+built in pieces, and the opposite of a bundle that appears to import and quietly
+drops half of itself. **Every declared folder has a reader now**, so that
+machinery is gone rather than left as a permanently empty list, and a folder in
+the allowlist without a reader behind it is a bug the reader tests catch.
 
 ### Phase 3 — Media, handouts, and playlists — **done**
 

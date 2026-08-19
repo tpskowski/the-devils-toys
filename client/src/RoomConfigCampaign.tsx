@@ -1,5 +1,7 @@
 import { useRef, useState, type ChangeEvent } from "react";
 import { Download, FileUp, TriangleAlert } from "lucide-react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { api } from "./api";
 
 /**
@@ -179,8 +181,12 @@ export function RoomConfigCampaign({ roomId, onImported }: { roomId: number; onI
         </>
       )}
 
-      {busy && <p className="campaign-busy">{busy}</p>}
-      {error && <p className="campaign-error">{error}</p>}
+      <p className="campaign-busy" role="status" aria-live="polite">
+        {busy}
+      </p>
+      <p className="campaign-error" role="alert">
+        {error}
+      </p>
 
       {preview && (
         <div className="campaign-preview">
@@ -188,6 +194,12 @@ export function RoomConfigCampaign({ roomId, onImported }: { roomId: number; onI
             {preview.campaign.name}
             {preview.campaign.version && <span className="campaign-version"> {preview.campaign.version}</span>}
           </h4>
+          {preview.overview.trim() && (
+            <details className="campaign-overview">
+              <summary>What this campaign says about itself</summary>
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>{preview.overview}</ReactMarkdown>
+            </details>
+          )}
           {preview.previous && (
             <p className="campaign-previous">
               This room last took {preview.previous.name}

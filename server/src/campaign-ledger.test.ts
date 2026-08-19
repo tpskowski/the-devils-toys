@@ -236,3 +236,46 @@ describe("what the ledger records", () => {
     expect(previousImport(roomId, "tomb")).toBeUndefined();
   });
 });
+
+describe("what belongs to the room stays the room's", () => {
+  /**
+   * The ledger's whole promise, across more than one re-import. An edited row
+   * keeps its original entry rather than being re-recorded, so it goes on
+   * reading as edited — a version that records what the bundle carried would
+   * make the row look up to date and let the next import take the edit back.
+   */
+  it("keeps a hireling the room renamed, however many times the campaign returns", () => {
+    importBundle({ "hirelings/brann.json": { name: "Brann", sheet: {} } });
+    db.prepare("UPDATE group_hirelings SET name = 'Brann the Brave' WHERE room_id = ?").run(roomId);
+
+    const named = () =>
+      all<{ name: string }>("SELECT name FROM group_hirelings WHERE room_id = ?", roomId).map((row) => row.name);
+
+    // The same bundle again, then a corrected one, then the corrected one twice.
+    expect(importBundle({ "hirelings/brann.json": { name: "Brann", sheet: {} } }).group.skipped).toBe(1);
+    expect(named()).toEqual(["Brann the Brave"]);
+
+    expect(importBundle({ "hirelings/brann.json": { name: "Brann", sheet: { trade: "Scout" } } }).group.skipped).toBe(
+      1
+    );
+    expect(importBundle({ "hirelings/brann.json": { name: "Brann", sheet: { trade: "Scout" } } }).group.skipped).toBe(
+      1
+    );
+    expect(named()).toEqual(["Brann the Brave"]);
+    // And still one of them: the path is remembered rather than forgotten.
+    expect(all("SELECT id FROM group_hirelings WHERE room_id = ?", roomId)).toHaveLength(1);
+  });
+
+  it("keeps an obligation the room rewrote", () => {
+    importBundle({ "obligations/debt.json": { name: "A debt", owedTo: "The Baron", amount: "500gp" } });
+    db.prepare("UPDATE group_obligations SET amount = '50gp, and he knows it' WHERE room_id = ?").run(roomId);
+
+    importBundle({ "obligations/debt.json": { name: "A debt", owedTo: "The Baron", amount: "900gp" } });
+    importBundle({ "obligations/debt.json": { name: "A debt", owedTo: "The Baron", amount: "900gp" } });
+
+    expect(one<{ amount: string }>("SELECT amount FROM group_obligations WHERE room_id = ?", roomId)!.amount).toBe(
+      "50gp, and he knows it"
+    );
+    expect(all("SELECT id FROM group_obligations WHERE room_id = ?", roomId)).toHaveLength(1);
+  });
+});

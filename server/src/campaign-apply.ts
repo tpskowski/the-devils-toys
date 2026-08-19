@@ -76,6 +76,21 @@ const MIME: Record<string, string> = {
 };
 
 const uploadsDir = () => path.join(config.dataDir, "uploads");
+
+/**
+ * What a campaign would store: its library, and the portraits its party wears.
+ *
+ * Shared with the preview so the number a GM is shown before they confirm is the
+ * number the allowance is checked against when they do.
+ */
+export function incomingBytes(campaign: Campaign) {
+  const media = campaign.media.reduce((total, entry) => total + entry.bytes, 0);
+  const portraits = [...campaign.hirelings, ...campaign.assets].reduce(
+    (total, wearer) => total + (wearer.portraitBytes ?? 0),
+    0
+  );
+  return media + portraits;
+}
 const tally = (): ApplyTally => ({ added: 0, replaced: 0, skipped: 0, unchanged: 0 });
 
 interface ExistingMedia {
@@ -206,9 +221,10 @@ export function applyCampaign(
     return { entry, match, action, mimeType, source };
   });
 
-  const portraitBytes = [...campaign.hirelings, ...campaign.assets]
-    .filter((wearer) => wearer.portrait)
-    .reduce((total, wearer) => total + fs.statSync(path.join(directory, wearer.portrait!)).size, 0);
+  const portraitBytes = [...campaign.hirelings, ...campaign.assets].reduce(
+    (total, wearer) => total + (wearer.portraitBytes ?? 0),
+    0
+  );
   const incoming =
     planned
       .filter((item) => item.action !== "skip" && item.action !== "unchanged")
@@ -357,6 +373,12 @@ export function applyCampaign(
     }
     throw cause;
   }
+
+  // A wearer the system could not hold, or one the room has edited, is not
+  // written — and its portrait was moved before any of that was known, since
+  // files move before the transaction opens. `wearing` takes each one it uses,
+  // so whatever is left here was moved for nothing.
+  for (const unused of portraits.values()) superseded.push(unused.storedName);
 
   for (const stored of superseded) {
     if (path.basename(stored) !== stored) continue;
@@ -627,6 +649,9 @@ function applyGroup(
   ) => {
     const portrait = portraits.get(wearer);
     if (!portrait) return;
+    // Taken rather than read: what is left in the map when this is done is what
+    // was moved for a wearer that never landed, and is cleaned up after commit.
+    portraits.delete(wearer);
     db.prepare(
       `UPDATE ${table} SET portrait_filename = ?, portrait_stored_name = ?, portrait_mime_type = ?, portrait_size = ?
        WHERE id = ?`
@@ -659,12 +684,17 @@ function applyGroup(
     const source = digestOf(hireling.name, JSON.stringify(hireling.sheet), hireling.portrait ?? "");
     const verdict = ledger.verdict("hirelings", hireling.path, source, (id) => rowState("group_hirelings", id));
     if (verdict.state === "unchanged" || verdict.state === "edited") {
-      // Untouched needs nothing; edited belongs to whoever edited it.
+      // Untouched needs nothing; edited belongs to whoever edited it, and its
+      // ledger entry is carried forward rather than rewritten so it keeps
+      // reading as edited however many times this campaign is imported again.
       hirelingIds.set(hireling.path, verdict.rowId);
-      const state = rowState("group_hirelings", verdict.rowId)!;
-      ledger.record("hirelings", hireling.path, verdict.rowId, verdict.state === "unchanged" ? source : "", state);
-      if (verdict.state === "unchanged") counts.unchanged += 1;
-      else counts.skipped += 1;
+      if (verdict.state === "unchanged") {
+        ledger.record("hirelings", hireling.path, verdict.rowId, source, rowState("group_hirelings", verdict.rowId)!);
+        counts.unchanged += 1;
+      } else {
+        ledger.keep("hirelings", hireling.path);
+        counts.skipped += 1;
+      }
       continue;
     }
 
@@ -697,10 +727,13 @@ function applyGroup(
     const source = digestOf(asset.kind, asset.name, JSON.stringify(asset.sheet), asset.portrait ?? "");
     const verdict = ledger.verdict("assets", asset.path, source, (id) => rowState("group_assets", id));
     if (verdict.state === "unchanged" || verdict.state === "edited") {
-      const state = rowState("group_assets", verdict.rowId)!;
-      ledger.record("assets", asset.path, verdict.rowId, verdict.state === "unchanged" ? source : "", state);
-      if (verdict.state === "unchanged") counts.unchanged += 1;
-      else counts.skipped += 1;
+      if (verdict.state === "unchanged") {
+        ledger.record("assets", asset.path, verdict.rowId, source, rowState("group_assets", verdict.rowId)!);
+        counts.unchanged += 1;
+      } else {
+        ledger.keep("assets", asset.path);
+        counts.skipped += 1;
+      }
       continue;
     }
 
@@ -726,10 +759,19 @@ function applyGroup(
     const source = digestOf(obligation.name, obligation.owedTo, obligation.amount, obligation.details);
     const verdict = ledger.verdict("obligations", obligation.path, source, (id) => rowState("group_obligations", id));
     if (verdict.state === "unchanged" || verdict.state === "edited") {
-      const state = rowState("group_obligations", verdict.rowId)!;
-      ledger.record("obligations", obligation.path, verdict.rowId, verdict.state === "unchanged" ? source : "", state);
-      if (verdict.state === "unchanged") counts.unchanged += 1;
-      else counts.skipped += 1;
+      if (verdict.state === "unchanged") {
+        ledger.record(
+          "obligations",
+          obligation.path,
+          verdict.rowId,
+          source,
+          rowState("group_obligations", verdict.rowId)!
+        );
+        counts.unchanged += 1;
+      } else {
+        ledger.keep("obligations", obligation.path);
+        counts.skipped += 1;
+      }
       continue;
     }
 
@@ -897,6 +939,10 @@ function applyEncounters(
         combatant.zone ? (zoneIds.get(combatant.zone) ?? null) : null
       );
     }
+    // Named now as well as read at the start, so a bundle carrying two
+    // encounters of one name lands the first and skips the second rather than
+    // leaving a GM two they cannot tell apart.
+    held.add(encounter.name.toLocaleLowerCase());
     counts.added += 1;
   }
 }

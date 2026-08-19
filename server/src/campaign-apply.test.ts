@@ -16,7 +16,9 @@ const uploads = () => path.join(config.dataDir, "uploads");
 
 beforeEach(() => {
   db.exec(
-    "DELETE FROM room_playlist_tracks; DELETE FROM room_playlists; DELETE FROM media; DELETE FROM memberships; DELETE FROM rooms; DELETE FROM accounts;"
+    `DELETE FROM room_import_entries; DELETE FROM room_imports; DELETE FROM room_playlist_tracks;
+     DELETE FROM room_playlists; DELETE FROM media; DELETE FROM memberships; DELETE FROM rooms;
+     DELETE FROM accounts;`
   );
   db.prepare(
     "INSERT INTO accounts (id, username, password_hash, is_admin, account_role) VALUES (?, ?, '', 1, 'admin')"
@@ -248,14 +250,21 @@ describe("what it refuses, and what it leaves behind when it does", () => {
     const room = one<{ id: number }>("SELECT id FROM rooms WHERE id = ?", roomId)!;
 
     // A room that vanishes between the plan and the write: the foreign key fails
-    // the insert, which is as good a mid-write failure as any.
+    // the insert, which is as good a mid-write failure as any. Put back
+    // afterwards, since it is a connection-wide setting and the next test did
+    // not ask for it.
+    const enforced = one<{ foreign_keys: number }>("PRAGMA foreign_keys")?.foreign_keys ?? 0;
     db.exec("PRAGMA foreign_keys = ON");
     db.prepare("DELETE FROM rooms WHERE id = ?").run(room.id);
 
-    const before = fs.readdirSync(uploads());
-    expect(() => apply(staged)).toThrow();
-    expect(fs.existsSync(path.join(staged.directory, "maps", "keep.png"))).toBe(true);
-    expect(fs.existsSync(path.join(staged.directory, "audio", "dirge.mp3"))).toBe(true);
-    expect(fs.readdirSync(uploads())).toEqual(before);
+    try {
+      const before = fs.readdirSync(uploads());
+      expect(() => apply(staged)).toThrow();
+      expect(fs.existsSync(path.join(staged.directory, "maps", "keep.png"))).toBe(true);
+      expect(fs.existsSync(path.join(staged.directory, "audio", "dirge.mp3"))).toBe(true);
+      expect(fs.readdirSync(uploads())).toEqual(before);
+    } finally {
+      db.exec(`PRAGMA foreign_keys = ${enforced ? "ON" : "OFF"}`);
+    }
   });
 });

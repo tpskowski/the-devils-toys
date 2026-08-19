@@ -36,8 +36,9 @@ export const ANY_SYSTEM = "*";
  * The folders a bundle may hold, and what each one's files are.
  *
  * `index.json` is allowed in any of them and is the one file whose name is not
- * its content. A folder listed here but not yet read by this module is still
- * accepted from the archive and reported as pending — see `PENDING_FOLDERS`.
+ * its content. Every folder here has a reader; a file one of them does not read
+ * — anything in `items/` beside its index — is accepted and reported as a
+ * warning rather than dropped in silence.
  */
 const FOLDERS = {
   maps: { extensions: [".png", ".jpg", ".jpeg", ".webp"], what: "an image" },
@@ -258,8 +259,9 @@ export interface CampaignTableSet {
 export type CampaignEncounter = z.infer<typeof encounterSchema> & { path: string };
 export type CampaignNpc = z.infer<typeof npcSchema> & { path: string };
 export type CampaignItems = z.infer<typeof itemsSchema>;
-export type CampaignHireling = z.infer<typeof sheetSchema> & { path: string };
-export type CampaignAsset = z.infer<typeof assetSchema> & { path: string };
+/** A wearer's portrait weighs something, and the preview has to say so too. */
+export type CampaignHireling = z.infer<typeof sheetSchema> & { path: string; portraitBytes?: number };
+export type CampaignAsset = z.infer<typeof assetSchema> & { path: string; portraitBytes?: number };
 export type CampaignObligation = z.infer<typeof obligationSchema> & { path: string };
 export type CampaignCalendar = z.infer<typeof calendarSchema>;
 
@@ -330,7 +332,10 @@ const extensionOf = (name: string) => path.extname(name).toLowerCase();
 export function refuseUnacceptableEntries(entries: readonly ZipEntry[], limits: EntryLimits, source = "campaign") {
   if (!entries.length) throw new Error(`The ${source} is empty.`);
   if (entries.length > limits.maxEntries)
-    throw new Error(`The ${source} holds ${entries.length} files, and at most ${limits.maxEntries} may be imported.`);
+    throw new Error(
+      `The ${source} holds ${entries.length} file${entries.length === 1 ? "" : "s"}, ` +
+        `and at most ${limits.maxEntries} may be imported.`
+    );
 
   let declared = 0;
   for (const entry of entries) {
@@ -444,6 +449,8 @@ function readMediaFolder(directory: string, folder: MediaFolder, warnings: strin
     : { files: [] };
 
   const listed = new Map(index.files.map((entry) => [entry.file, entry]));
+  if (listed.size !== index.files.length)
+    throw new Error(`The campaign's ${folder}/index.json names the same file twice.`);
   for (const entry of index.files)
     if (!files.includes(entry.file))
       throw new Error(`The campaign's ${folder}/index.json names "${entry.file}", which the folder does not hold.`);
@@ -521,8 +528,14 @@ function readJsonFolder<S extends z.ZodTypeAny>(
  *
  * A portrait is named by the JSON that wears it, so an image nothing names is
  * an image nothing will import — which is the silent loss this format exists to
- * avoid, and so it is said out loud. A name that points at no file is refused
- * outright, the same way a media index naming a missing file is.
+ * avoid, and so it is said out loud.
+ *
+ * A name is checked against **the files this folder actually holds**, the way a
+ * playlist's tracks are, rather than against the filesystem. That is the whole
+ * of the difference between a reference and a path: every other name in a bundle
+ * resolves inside the bundle, and a `portrait` that asked the disk a question
+ * could name something outside the stage entirely — which the importer would
+ * then move, since it moves rather than copies.
  */
 function refuseUnwornPortraits(
   directory: string,
@@ -530,10 +543,10 @@ function refuseUnwornPortraits(
   worn: readonly (string | undefined)[],
   warnings: string[]
 ) {
+  const held = new Set(folderFiles(directory, folder).map((file) => `${folder}/${file}`));
   const named = new Set(worn.filter((entry): entry is string => Boolean(entry)));
   for (const portrait of named)
-    if (!fs.existsSync(path.join(directory, portrait)))
-      throw new Error(`The campaign names "${portrait}", which the bundle does not contain.`);
+    if (!held.has(portrait)) throw new Error(`The campaign names "${portrait}", which the bundle does not contain.`);
 
   for (const file of folderFiles(directory, folder)) {
     if (extensionOf(file) === ".json") continue;
@@ -611,8 +624,11 @@ export function readCampaign(directory: string, options: ReadOptions = {}): Camp
       app: CAMPAIGN_BUNDLE_APP,
       bundleVersion: CAMPAIGN_BUNDLE_VERSION,
       campaignId:
+        // Not `toLocaleLowerCase`: this is an identifier the ledger keys on, and
+        // it must not depend on the server's locale. Turkish lower-cases "I" to
+        // a dotless "ı", which would make the same bundle a different campaign.
         name
-          .toLocaleLowerCase()
+          .toLowerCase()
           .replace(/[^a-z0-9]+/g, "-")
           .replace(/^-+|-+$/g, "")
           .slice(0, 64) || "campaign",
@@ -641,8 +657,8 @@ export function readCampaign(directory: string, options: ReadOptions = {}): Camp
   );
 
   const npcs = readJsonFolder(directory, "npcs", npcSchema, "the NPC");
-  const hirelings = readJsonFolder(directory, "hirelings", sheetSchema, "the hireling");
-  const assets = readJsonFolder(directory, "assets", assetSchema, "the group asset");
+  const hirelings: CampaignHireling[] = readJsonFolder(directory, "hirelings", sheetSchema, "the hireling");
+  const assets: CampaignAsset[] = readJsonFolder(directory, "assets", assetSchema, "the group asset");
   refuseUnwornPortraits(
     directory,
     "hirelings",
@@ -655,6 +671,10 @@ export function readCampaign(directory: string, options: ReadOptions = {}): Camp
     assets.map((asset) => asset.portrait),
     warnings
   );
+  // Weighed here, where the portrait has just been proved to be a file this
+  // bundle holds, so the preview and the import agree about what it costs.
+  for (const wearer of [...hirelings, ...assets])
+    if (wearer.portrait) wearer.portraitBytes = fs.statSync(path.join(directory, wearer.portrait)).size;
   const obligations = readJsonFolder(directory, "obligations", obligationSchema, "the obligation");
 
   // Gear is one list rather than a file per item: it is a catalogue, and a
@@ -685,8 +705,16 @@ export function readCampaign(directory: string, options: ReadOptions = {}): Camp
   for (const file of folderFiles(directory, "items"))
     warnings.push(`items/${file} is not read — a campaign's gear is listed in items/index.json.`);
 
+  // Normalised and then validated as one schema, so a calendar that is not one
+  // is refused by `readJsonFile`'s message — naming the file and the field —
+  // rather than by a raw schema error from outside it.
   const calendar = exists(directory, "calendar.json")
-    ? calendarSchema.parse(calendarInput(readJsonFile(directory, "calendar.json", z.unknown(), "the calendar")))
+    ? readJsonFile(
+        directory,
+        "calendar.json",
+        z.unknown().transform(calendarInput).pipe(calendarSchema),
+        "the calendar"
+      )
     : undefined;
 
   return {

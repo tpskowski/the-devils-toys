@@ -54,6 +54,16 @@ const json = (value: unknown): [Uint8Array, typeof DEFLATE] => [
   DEFLATE
 ];
 
+/** A set's stored tags, which are an array rather than an object. */
+function parseTags(value: string | null | undefined): string[] {
+  try {
+    const parsed: unknown = JSON.parse(value ?? "[]");
+    return Array.isArray(parsed) ? parsed.filter((tag): tag is string => typeof tag === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
 function parseJson(value: string | null | undefined): Record<string, unknown> {
   try {
     const parsed: unknown = JSON.parse(value ?? "{}");
@@ -138,7 +148,9 @@ export function exportRoomCampaign(roomId: number): ExportedCampaign {
     mapNotationEnabled: Boolean(room.map_notation_enabled)
   });
 
-  if (room.calendar_json) files["calendar.json"] = json(JSON.parse(room.calendar_json));
+  // Through the same forgiving reader as every other stored blob: a calendar
+  // somebody hand-edited into nonsense should cost the calendar, not the export.
+  if (room.calendar_json) files["calendar.json"] = json(parseJson(room.calendar_json));
 
   /* ---- the library ------------------------------------------------------- */
 
@@ -362,7 +374,7 @@ export function exportRoomCampaign(roomId: number): ExportedCampaign {
    * one room was exported would be a surprise nobody asked for.
    */
   const setIds = all<{ row_id: number }>(
-    `SELECT e.row_id FROM room_import_entries e
+    `SELECT DISTINCT e.row_id FROM room_import_entries e
        JOIN room_imports i ON i.id = e.import_id
      WHERE i.room_id = ? AND e.kind = 'tables'`,
     roomId
@@ -397,7 +409,7 @@ export function exportRoomCampaign(roomId: number): ExportedCampaign {
       files[`tables/${tableSlug(set.name, ".json")}`] = json({
         formatVersion: 1,
         setName: set.name,
-        tags: JSON.parse(set.tags_json || "[]"),
+        tags: parseTags(set.tags_json),
         tables
       });
     }

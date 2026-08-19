@@ -21,9 +21,18 @@ client_max_body_size 2048m;
 ```
 
 Set it at least as high as `DEVILS_TOYS_CAMPAIGN_LIMIT_MB`, and give the upload
-room to finish — `proxy_read_timeout` and `proxy_send_timeout` are counted per
-read, not per request, but a slow connection sending a gigabyte still wants more
-than the 60 seconds most defaults allow. Apache's `LimitRequestBody`, Caddy's
+room to finish. The timeout that bites here is **`client_body_timeout`**, which
+is the gap nginx will wait between reads _from the browser_ — its 60-second
+default ends a slow upload with a 408 before this application is handed the
+request at all, so nothing in the logs here explains it:
+
+```nginx
+client_body_timeout 300s;
+```
+
+`proxy_read_timeout` and `proxy_send_timeout` are a different thing — they govern
+waiting on the application's own response — and are worth raising too, but they
+are not what refuses a slow upload. Apache's `LimitRequestBody`, Caddy's
 `request_body max_size`, and a cloud load balancer's own ceiling are the same
 setting under other names. A platform whose limit cannot be raised is a platform
 where campaigns have to be split.

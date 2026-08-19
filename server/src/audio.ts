@@ -124,7 +124,12 @@ function removeUpload(file?: Express.Multer.File) {
  */
 export function isMp3File(file: string) {
   const bytes = Buffer.alloc(3);
-  const descriptor = fs.openSync(file, "r");
+  let descriptor: number;
+  try {
+    descriptor = fs.openSync(file, "r");
+  } catch {
+    return false;
+  }
   try {
     fs.readSync(descriptor, bytes, 0, 3, 0);
   } finally {

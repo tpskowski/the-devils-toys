@@ -13,10 +13,16 @@ import { isSystemOffered } from "./system-registry.js";
 import { logger } from "./logger.js";
 import { THEME_IDS, type ThemeId } from "@devils-toys/shared";
 import { ANY_SYSTEM, type Campaign } from "./campaign-bundles.js";
-import { applyCampaign } from "./campaign-apply.js";
+import { applyCampaign, incomingBytes } from "./campaign-apply.js";
 import { exportRoomCampaign } from "./campaign-export.js";
 import { previousImport, type PreviousImport } from "./campaign-ledger.js";
-import { discardStage, expandCampaignArchive, stageCampaignArchive, stagedCampaign } from "./campaign-staging.js";
+import {
+  discardStage,
+  expandCampaignArchive,
+  stageCampaignArchive,
+  stagedCampaign,
+  stagedRecordFor
+} from "./campaign-staging.js";
 import { broadcastRoom } from "./realtime.js";
 import { configurableRoom, requireRoomConfig } from "./room-config-permissions.js";
 import { storedUploadBytes } from "./upload-usage.js";
@@ -165,7 +171,10 @@ export function campaignPreview(campaign: Campaign, token: string, roomId: numbe
     systemMatch: campaign.manifest.system === ANY_SYSTEM ? "agnostic" : "exact",
     overview: campaign.overview,
     bytes: {
-      incoming: campaign.media.reduce((total, entry) => total + entry.bytes, 0),
+      // Portraits included, because the import counts them against the same
+      // allowance. A preview that leaves them out is a preview that can say a
+      // campaign fits and then refuse it.
+      incoming: incomingBytes(campaign),
       remaining: Math.max(0, config.uploadLimitMb * 1024 * 1024 - storedUploadBytes())
     },
     kinds: countKinds(campaign, roomId),
@@ -234,7 +243,11 @@ campaignRouter.post(
         return res.status(409).json({ error: `${systemOrThrow(system).name} is retired and cannot take new rooms.` });
 
       const name = (campaign.room.name ?? campaign.manifest.name).slice(0, 80);
-      const theme = (campaign.room.theme ?? systemOrThrow(system).defaultTheme) as ThemeId satisfies ThemeId;
+      // Resolved once, and validated rather than asserted. The row and the
+      // response have to be told the same thing, and `as ThemeId` asserted a
+      // string the reader had already been asked to drop.
+      const themeAsked = campaign.room.theme ?? systemOrThrow(system).defaultTheme;
+      const theme = ((THEME_IDS as readonly string[]).includes(themeAsked) ? themeAsked : "grim") as ThemeId;
 
       let roomId = 0;
       db.exec("BEGIN");
@@ -242,8 +255,7 @@ campaignRouter.post(
         roomId = Number(
           db
             .prepare("INSERT INTO rooms (name, system, theme, created_by) VALUES (?, ?, ?, ?)")
-            .run(name, system, (THEME_IDS as readonly string[]).includes(theme) ? theme : "grim", req.account.id)
-            .lastInsertRowid
+            .run(name, system, theme, req.account.id).lastInsertRowid
         );
         db.prepare("INSERT INTO memberships (room_id, account_id, role) VALUES (?, ?, 'gm')").run(
           roomId,
@@ -400,7 +412,14 @@ campaignRouter.post(
       .safeParse(req.body ?? {});
     if (!parsed.success) return res.status(400).json({ error: "Choose what to do about anything already there." });
 
-    const staged = stagedCampaign(String(req.params.token), roomId);
+    let staged;
+    try {
+      staged = stagedCampaign(String(req.params.token), roomId);
+    } catch (cause) {
+      return res
+        .status(400)
+        .json({ error: cause instanceof Error ? cause.message : "That campaign could not be read." });
+    }
     if (!staged) return res.status(404).json({ error: "That upload has expired. Upload the campaign again." });
 
     let result;
@@ -434,9 +453,16 @@ campaignRouter.delete("/rooms/:roomId/campaign/:token", requireAuth, (req: Authe
   const roomId = requireRoomConfig(req, res);
   if (!roomId) return;
   // Confirming the stage belongs to this room before removing it, so a token
-  // from another room cannot be discarded by guessing at it.
-  if (!stagedCampaign(String(req.params.token), roomId))
-    return res.status(404).json({ error: "That upload has expired." });
+  // from another room cannot be discarded by guessing at it. A stage too broken
+  // to read is still this room's to throw away, so it is discarded rather than
+  // left for the reaper.
+  let readable = false;
+  try {
+    readable = Boolean(stagedCampaign(String(req.params.token), roomId));
+  } catch {
+    readable = Boolean(stagedRecordFor(String(req.params.token), roomId));
+  }
+  if (!readable) return res.status(404).json({ error: "That upload has expired." });
   discardStage(String(req.params.token));
   res.status(204).end();
 });

@@ -121,7 +121,7 @@ describe("what an archive has to look like to be a campaign", () => {
 
   it("refuses an archive with too many files, and an empty one", () => {
     expect(() => refuseUnacceptableEntries(entriesOf({ "maps/a.png": "x" }), { ...limits, maxEntries: 0 })).toThrow(
-      /holds 1 files, and at most 0 may be imported/
+      /holds 1 file, and at most 0 may be imported/
     );
     expect(() => refuseUnacceptableEntries([], limits)).toThrow(/The campaign is empty/);
   });

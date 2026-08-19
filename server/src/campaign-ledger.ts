@@ -131,6 +131,23 @@ export class CampaignLedger {
   }
 
   /**
+   * Carries the previous entry forward exactly as it was.
+   *
+   * For a row the room has edited since it arrived, which this import is
+   * therefore leaving alone. The entry has to be written — `commit` replaces
+   * every entry, so a path left out is a path forgotten, and a forgotten
+   * hireling is a second one on the next import — but it must not be written
+   * with anything new. Recording what the bundle carried would make the row
+   * read as up to date and let the next version overwrite an edit the GM made;
+   * recording the row as it stands now would forget that they ever diverged.
+   * Keeping both halves is what makes "yours stays yours" survive a re-import.
+   */
+  keep(kind: string, path: string) {
+    const entry = this.previous.get(`${kind}\u0000${path}`);
+    if (entry) this.written.set(`${kind}\u0000${path}`, { kind, path, ...entry });
+  }
+
+  /**
    * Writes the ledger for this import, replacing the previous one.
    *
    * Entries are replaced wholesale rather than merged: a path the new bundle no

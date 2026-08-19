@@ -68,7 +68,14 @@ export function reapStages(now = Date.now()) {
     if (!entry.isDirectory()) continue;
     const directory = path.join(root, entry.name);
     const record = TOKEN.test(entry.name) ? readRecord(entry.name) : undefined;
-    const at = record ? Date.parse(record.createdAt) : fs.statSync(directory).mtimeMs;
+    let at: number;
+    try {
+      at = record ? Date.parse(record.createdAt) : fs.statSync(directory).mtimeMs;
+    } catch {
+      // Gone between the listing and the question — another import's reaper, or
+      // an apply that finished. Nothing to clean up, and nothing to report.
+      continue;
+    }
     if (Number.isFinite(at) && at > cutoff) continue;
     fs.rmSync(directory, { recursive: true, force: true });
     reaped += 1;
@@ -195,6 +202,19 @@ export function stagedCampaign(token: string, roomId: number): StagedCampaign | 
     campaign: readCampaign(directory, { fallbackName: campaignNameFromFile(record.archiveName) }),
     directory
   };
+}
+
+/**
+ * The stage's own record, without reading the campaign inside it.
+ *
+ * For the one question that does not need the campaign: whose stage is this? A
+ * bundle too broken to read is still the room's to throw away, and refusing to
+ * delete it because it cannot be parsed would leave it there until the reaper.
+ */
+export function stagedRecordFor(token: string, roomId: number): StageRecord | undefined {
+  if (!TOKEN.test(token)) return undefined;
+  const record = readRecord(token);
+  return record && record.roomId === roomId ? record : undefined;
 }
 
 export function discardStage(token: string) {

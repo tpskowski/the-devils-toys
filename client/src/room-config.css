@@ -1400,3 +1400,35 @@ button.rc-name {
   color: var(--muted);
   font-size: 12px;
 }
+
+.campaign-overview {
+  margin: 14px 0 0;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--line), transparent 40%);
+  font-size: 13px;
+}
+
+.campaign-overview summary {
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.campaign-overview > *:not(summary) {
+  max-width: 70ch;
+  line-height: 1.6;
+}
+
+.campaign-overview h1,
+.campaign-overview h2,
+.campaign-overview h3 {
+  margin: 12px 0 4px;
+  font-size: 14px;
+}
+
+/* The status lines stay in the tree so a screen reader has something to watch,
+   which leaves them holding empty space until they have something to say. */
+.campaign-busy:empty,
+.campaign-error:empty {
+  display: none;
+}

@@ -86,7 +86,14 @@ function removeUploaded(file?: Express.Multer.File) {
  */
 export function imageSignatureMatches(file: string, mimeType: string) {
   const bytes = Buffer.alloc(12);
-  const descriptor = fs.openSync(file, "r");
+  let descriptor: number;
+  try {
+    descriptor = fs.openSync(file, "r");
+  } catch {
+    // Unreadable is not the image it claims to be, which is the only question
+    // this answers. Saying why belongs to the caller, which has the context.
+    return false;
+  }
   try {
     fs.readSync(descriptor, bytes, 0, bytes.length, 0);
   } finally {

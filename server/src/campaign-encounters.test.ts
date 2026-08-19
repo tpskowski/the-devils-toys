@@ -19,7 +19,8 @@ const hpKey = toybox.npcStatblock.hitPointsKey;
 
 beforeEach(() => {
   db.exec(
-    `DELETE FROM encounter_combatants; DELETE FROM encounter_zones; DELETE FROM encounter_sides;
+    `DELETE FROM room_import_entries; DELETE FROM room_imports;
+     DELETE FROM encounter_combatants; DELETE FROM encounter_zones; DELETE FROM encounter_sides;
      DELETE FROM encounters; DELETE FROM group_hirelings; DELETE FROM custom_npcs;
      DELETE FROM media; DELETE FROM memberships; DELETE FROM rooms; DELETE FROM accounts;`
   );
