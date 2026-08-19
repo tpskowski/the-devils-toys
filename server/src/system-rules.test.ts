@@ -1,5 +1,11 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { effectiveRules, hasRuleFeature, switchableRules, type SystemOptionalRule } from "@devils-toys/shared";
+import {
+  effectiveRules,
+  hasRuleFeature,
+  movedRules,
+  switchableRules,
+  type SystemOptionalRule
+} from "@devils-toys/shared";
 import { db } from "./db.js";
 import { roomHasFeature, roomRules, setRoomRules, storedRoomRules, systemRules } from "./system-rules.js";
 import { installToybox } from "./test-fixture.js";
@@ -44,6 +50,24 @@ describe("where a room stands on its system's optional rules", () => {
   it("offers no switch for a rule the system requires", () => {
     expect(switchableRules(demanded)).toEqual([]);
     expect(switchableRules(offered).map((rule) => rule.id)).toEqual(["tags", "labels"]);
+  });
+
+  it("sends back only the switches a panel actually moved", () => {
+    const room = effectiveRules(offered, {});
+    expect(movedRules(offered, room, room)).toEqual({});
+    expect(movedRules(offered, room, { ...room, tags: true })).toEqual({ tags: true });
+  });
+
+  it("counts a switch put back where it started as not moved", () => {
+    // Saving the theme with every switch untouched must record nothing, or a
+    // rule nobody touched stops following the default the system may change.
+    const room = effectiveRules(offered, { tags: true });
+    expect(movedRules(offered, room, { tags: true, labels: true })).toEqual({});
+    expect(movedRules(offered, room, { tags: false, labels: true })).toEqual({ tags: false });
+  });
+
+  it("never moves a rule the system requires, whatever a panel sends", () => {
+    expect(movedRules(demanded, { tags: true }, { tags: false })).toEqual({});
   });
 
   it("has a feature when any rule naming it is on", () => {

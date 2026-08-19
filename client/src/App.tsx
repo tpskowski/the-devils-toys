@@ -78,7 +78,7 @@ import { TableMediaViewer } from "./TableMediaViewer";
 import { AudioDock, AudioModal } from "./AudioPlayer";
 import { ManagementWorkspace } from "./ManagementWorkspace";
 import { defaultGroupView, GroupPage, type GroupView } from "./GroupPage";
-import { PARTY_VIEW, switchableRules, type GroupViewOption } from "@devils-toys/shared";
+import { movedRules, PARTY_VIEW, type GroupViewOption } from "@devils-toys/shared";
 
 import { AppearanceModal } from "./AppearanceModal";
 import { effectiveTheme, readPersonalTheme, writePersonalTheme } from "./personal-theme";
@@ -910,11 +910,13 @@ function TableRoom({
         if (data.type === "encounters-updated") {
           loadEncounters();
         }
-        // Tags are read by the panels that show what they are on, so both are
-        // told to read themselves again.
+        // Tags are read by the panels that show what they are on, and all three
+        // of them are told to read themselves again: the sheet, the cast, and
+        // the group page, which carries the hirelings' own tags.
         if (data.type === "tags-updated") {
           setCharactersRevision((current) => current + 1);
           setNpcRevision((current) => current + 1);
+          setGroupRevision((current) => current + 1);
         }
         if (data.type === "map-notations-updated") setMapNotationSyncRevision((current) => current + 1);
         if (data.type === "calendar-updated") applyCalendar(data.calendar as RoomCalendar);
@@ -1862,18 +1864,18 @@ function RoomSettings({
   const [confirmName, setConfirmName] = useState("");
   const [error, setError] = useState("");
 
-  // A required rule is on in every room and has no switch, so only what a GM
-  // could actually have moved is sent back.
-  const switched = Object.fromEntries(
-    switchableRules(optionalRules).map((rule) => [rule.id, rules[rule.id] ?? rule.default])
-  );
+  // Only what this panel actually moved. A room records where it has moved a
+  // rule and nothing else, so sending every switch back would record a setting
+  // against rules the GM never touched — and pin them against a default the
+  // system might change later, which is the one thing recording a move avoids.
+  const moved = movedRules(optionalRules, room.rules, rules);
 
   async function save() {
     setError("");
     try {
       await api(`/api/rooms/${room.id}`, {
         method: "PATCH",
-        body: JSON.stringify({ theme, calendarEnabled, mapNotationEnabled, musicEnabled, rules: switched })
+        body: JSON.stringify({ theme, calendarEnabled, mapNotationEnabled, musicEnabled, rules: moved })
       });
       await onChanged();
       onClose();
@@ -1967,7 +1969,7 @@ function RoomSettings({
               {rule.hint ? `. ${rule.hint}` : "."}
             </p>
           ) : (
-            <label className={`toggle-row ${rules[rule.id] ? "enabled" : ""}`} key={rule.id}>
+            <label className={`toggle-row ${(rules[rule.id] ?? rule.default) ? "enabled" : ""}`} key={rule.id}>
               <span className="toggle-copy">
                 <strong>{rule.label}</strong>
                 <small>{rule.hint ?? `An optional rule ${room.systemName} offers.`}</small>
@@ -1975,7 +1977,7 @@ function RoomSettings({
               <span className="toggle-control">
                 <input
                   type="checkbox"
-                  checked={Boolean(rules[rule.id])}
+                  checked={rules[rule.id] ?? rule.default}
                   onChange={(event) => setRules((current) => ({ ...current, [rule.id]: event.target.checked }))}
                 />
                 <span aria-hidden="true" />

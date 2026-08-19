@@ -52,6 +52,12 @@
   outline: none;
 }
 
+/**
+ * A tag is shown in the spelling it was given. The table editor's tags are
+ * upper-cased here because they are slugs from a vocabulary an admin keeps;
+ * these are somebody's own words, kept as typed on purpose, and "Vex" that
+ * reads back as "VEX" is not what was typed.
+ */
 .tag-chip,
 .tag-chips li {
   display: inline-flex;
@@ -61,10 +67,9 @@
   border: 1px solid var(--line);
   color: var(--muted);
   font:
-    500 10px "DM Mono",
+    500 11px "DM Mono",
     monospace;
   letter-spacing: 0.04em;
-  text-transform: uppercase;
   white-space: nowrap;
 }
 

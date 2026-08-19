@@ -79,3 +79,26 @@ export function hasRuleFeature(
 export function switchableRules(rules: readonly SystemOptionalRule[] = []): SystemOptionalRule[] {
   return rules.filter((rule) => !rule.required);
 }
+
+/**
+ * What a settings panel actually moved: the rules whose switch is somewhere
+ * other than where the room reported it.
+ *
+ * A panel holds every switch and sends back only these. Sending them all would
+ * record a setting against rules nobody touched, which is the same as pinning
+ * them — and a rule a room has never moved is exactly the one that should follow
+ * its system's default when the system changes it.
+ */
+export function movedRules(
+  rules: readonly SystemOptionalRule[] = [],
+  before: RoomRuleSettings = {},
+  after: RoomRuleSettings = {}
+): RoomRuleSettings {
+  const moved: RoomRuleSettings = {};
+  for (const rule of switchableRules(rules)) {
+    const wanted = after[rule.id];
+    if (wanted === undefined) continue;
+    if (wanted !== (before[rule.id] ?? rule.default)) moved[rule.id] = wanted;
+  }
+  return moved;
+}
