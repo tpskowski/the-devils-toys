@@ -1231,3 +1231,204 @@ button.rc-name {
     justify-content: space-between;
   }
 }
+
+/* Campaign — importing a prepared campaign, and exporting this room as one. */
+
+.campaign-panel h3 {
+  margin: 0 0 6px;
+}
+
+.campaign-lead {
+  margin: 0 0 16px;
+  max-width: 60ch;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.campaign-lead code {
+  font-size: 12px;
+}
+
+.campaign-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin: 16px 0 0;
+}
+
+.campaign-export {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 34px;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 13px;
+  text-decoration: none;
+}
+
+.campaign-export:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.campaign-busy,
+.campaign-error,
+.campaign-guessed,
+.campaign-previous,
+.campaign-bytes {
+  margin: 12px 0 0;
+  max-width: 70ch;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.campaign-busy,
+.campaign-guessed,
+.campaign-previous,
+.campaign-bytes {
+  color: var(--muted);
+}
+
+.campaign-error {
+  color: var(--hostile, var(--accent));
+}
+
+.campaign-preview,
+.campaign-result {
+  margin: 18px 0 0;
+  padding: 16px;
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--surface), transparent 40%);
+}
+
+.campaign-preview h4,
+.campaign-result h4 {
+  margin: 0;
+}
+
+.campaign-version {
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.campaign-kinds {
+  width: 100%;
+  margin: 14px 0 0;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.campaign-kinds th,
+.campaign-kinds td {
+  padding: 6px 8px;
+  border-bottom: 1px solid color-mix(in srgb, var(--line), transparent 50%);
+  text-align: left;
+}
+
+.campaign-kinds thead th {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.campaign-kinds td {
+  width: 6ch;
+  font-variant-numeric: tabular-nums;
+}
+
+.campaign-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 10px 0 0;
+  max-width: 70ch;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.campaign-warning svg {
+  flex: 0 0 auto;
+  margin-top: 2px;
+}
+
+.campaign-policy {
+  margin: 18px 0 0;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+}
+
+.campaign-policy legend {
+  padding: 0 6px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.campaign-policy label,
+.campaign-room-settings {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  font-size: 13px;
+}
+
+.campaign-room-settings {
+  margin: 16px 0 0;
+  max-width: 70ch;
+}
+
+.campaign-secondary {
+  color: var(--muted);
+}
+
+.campaign-result ul {
+  margin: 12px 0 0;
+  padding-left: 18px;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.campaign-skipped {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.campaign-overview {
+  margin: 14px 0 0;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--line), transparent 40%);
+  font-size: 13px;
+}
+
+.campaign-overview summary {
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.campaign-overview > *:not(summary) {
+  max-width: 70ch;
+  line-height: 1.6;
+}
+
+.campaign-overview h1,
+.campaign-overview h2,
+.campaign-overview h3 {
+  margin: 12px 0 4px;
+  font-size: 14px;
+}
+
+/* The status lines stay in the tree so a screen reader has something to watch,
+   which leaves them holding empty space until they have something to say. */
+.campaign-busy:empty,
+.campaign-error:empty {
+  display: none;
+}

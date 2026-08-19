@@ -1,0 +1,737 @@
+import fs from "node:fs";
+import path from "node:path";
+import { z } from "zod";
+import { SYSTEM_ID_PATTERN, THEME_IDS } from "@devils-toys/shared";
+import { calendarInput, calendarSchema } from "./calendar.js";
+import type { ZipEntry } from "./zip-safety.js";
+
+/**
+ * What a campaign bundle is, read off a staged directory.
+ *
+ * A system bundle names every file it may hold in one regular expression,
+ * because a system is a fixed set of things. A campaign is whatever a GM has
+ * prepared, so the shape is the other way round: **a folder's name declares what
+ * its contents are**, and a zip holding nothing but `maps/*.png` is a complete,
+ * valid campaign that imports without a manifest, an index, or a text editor
+ * having been opened.
+ *
+ * Everything else decorates that. `manifest.json` says which campaign and which
+ * system; an `index.json` inside a folder gives display names and ordering. Each
+ * is optional, each only ever adds detail, and a malformed one is refused by name
+ * rather than ignored — the failure this format must never have is the silent
+ * one, where a typo drops forty maps and nothing says so.
+ *
+ * Nothing here touches the database or the uploads directory. A caller gets a
+ * complete description of what a bundle holds, or an error naming the file that
+ * is wrong with it.
+ */
+
+export const CAMPAIGN_BUNDLE_VERSION = 1;
+export const CAMPAIGN_BUNDLE_APP = "devils-toys-campaign";
+
+/** A campaign that carries only these needs no system, and imports into any room. */
+export const ANY_SYSTEM = "*";
+
+/**
+ * The folders a bundle may hold, and what each one's files are.
+ *
+ * `index.json` is allowed in any of them and is the one file whose name is not
+ * its content. Every folder here has a reader; a file one of them does not read
+ * — anything in `items/` beside its index — is accepted and reported as a
+ * warning rather than dropped in silence.
+ */
+const FOLDERS = {
+  maps: { extensions: [".png", ".jpg", ".jpeg", ".webp"], what: "an image" },
+  scenes: { extensions: [".png", ".jpg", ".jpeg", ".webp"], what: "an image" },
+  references: { extensions: [".png", ".jpg", ".jpeg", ".webp", ".md"], what: "an image or Markdown" },
+  audio: { extensions: [".mp3"], what: "an MP3" },
+  playlists: { extensions: [".json"], what: "JSON" },
+  npcs: { extensions: [".json"], what: "JSON" },
+  encounters: { extensions: [".json"], what: "JSON" },
+  items: { extensions: [".json"], what: "JSON" },
+  hirelings: { extensions: [".png", ".jpg", ".jpeg", ".webp", ".json"], what: "JSON or a portrait" },
+  assets: { extensions: [".png", ".jpg", ".jpeg", ".webp", ".json"], what: "JSON or a portrait" },
+  obligations: { extensions: [".json"], what: "JSON" },
+  tables: { extensions: [".json"], what: "JSON" }
+} as const;
+
+export type CampaignFolder = keyof typeof FOLDERS;
+
+/** The four folders whose contents are files rather than descriptions of things. */
+export const MEDIA_FOLDERS = ["maps", "scenes", "references", "audio"] as const;
+export type MediaFolder = (typeof MEDIA_FOLDERS)[number];
+
+/** The files a bundle may hold outside any folder. */
+const ROOT_FILES = ["manifest.json", "campaign.md", "room.json", "calendar.json"] as const;
+
+const manifestSchema = z.object({
+  app: z.literal(CAMPAIGN_BUNDLE_APP),
+  bundleVersion: z.number().int().positive(),
+  campaignId: z.string().regex(/^[a-z0-9][a-z0-9-]{0,63}$/, "a campaign id is lower-case letters, digits, and dashes"),
+  name: z.string().trim().min(1).max(120),
+  version: z.string().trim().max(40).default(""),
+  system: z.string().refine((value) => value === ANY_SYSTEM || SYSTEM_ID_PATTERN.test(value), {
+    message: `a system id, or "${ANY_SYSTEM}" for a campaign that needs none`
+  }),
+  exportedAt: z.string().default(""),
+  licenses: z.array(z.string()).default([])
+});
+
+export type CampaignManifest = z.infer<typeof manifestSchema>;
+
+const roomSchema = z
+  .object({
+    name: z.string().trim().min(1).max(80).optional(),
+    theme: z.string().optional(),
+    calendarEnabled: z.boolean().optional(),
+    musicEnabled: z.boolean().optional(),
+    mapNotationEnabled: z.boolean().optional()
+  })
+  .strict();
+
+export type CampaignRoom = z.infer<typeof roomSchema>;
+
+/**
+ * A media folder's index. The array's order is the display order, so a GM who
+ * wants their maps in the order the adventure visits them writes them that way
+ * rather than renaming files `01-`, `02-`.
+ */
+const mediaIndexSchema = z
+  .object({
+    files: z
+      .array(
+        z
+          .object({
+            file: z.string().min(1),
+            name: z.string().trim().max(200).optional(),
+            artist: z.string().trim().max(200).optional(),
+            title: z.string().trim().max(200).optional(),
+            album: z.string().trim().max(200).optional()
+          })
+          .strict()
+      )
+      .max(5000)
+  })
+  .strict();
+
+const playlistSchema = z
+  .object({
+    name: z.string().trim().min(1).max(80),
+    sortOrder: z.number().int().min(0).max(9999).default(0),
+    tracks: z.array(z.string().min(1)).max(2000).default([])
+  })
+  .strict();
+
+/**
+ * An NPC, in the shape `custom_npcs` holds one. The statblock stays a plain
+ * record here and is checked against the room's system at import: a bundle is
+ * read before a room is chosen, and which fields are legal is the room's
+ * question rather than the bundle's.
+ */
+const npcSchema = z
+  .object({
+    name: z.string().trim().min(1).max(100),
+    notes: z.string().max(10000).default(""),
+    statblock: z.record(z.union([z.string(), z.number()])).default({})
+  })
+  .strict();
+
+/**
+ * A room's own gear, as `items/index.json`.
+ *
+ * `added` is minted with ids belonging to the destination room, because a room
+ * item id names the room that holds it. `retired` names ids in the **system's**
+ * catalogue, so those travel verbatim — and are checked against the system the
+ * room is actually running.
+ */
+const itemsSchema = z
+  .object({
+    added: z
+      .array(
+        z
+          .object({
+            listKey: z.string().min(1).max(80),
+            name: z.string().trim().min(1).max(120),
+            spec: z.string().trim().max(200).default(""),
+            detail: z.string().trim().max(2000).default(""),
+            cost: z.string().trim().max(60).default(""),
+            category: z.string().trim().max(120).default("")
+          })
+          .strict()
+      )
+      .max(2000)
+      .default([]),
+    retired: z.array(z.string().min(1).max(200)).max(2000).default([])
+  })
+  .strict();
+
+const sheetSchema = z
+  .object({
+    name: z.string().trim().max(120).default(""),
+    sortOrder: z.number().int().min(0).max(9999).default(0),
+    sheet: z.record(z.unknown()).default({}),
+    /** A path into this thing's own folder — `hirelings/brann.png`. */
+    portrait: z.string().min(1).max(300).optional()
+  })
+  .strict();
+
+const assetSchema = sheetSchema.extend({ kind: z.string().trim().min(1).max(40).default("starship") }).strict();
+
+const obligationSchema = z
+  .object({
+    name: z.string().trim().max(120).default(""),
+    owedTo: z.string().trim().max(120).default(""),
+    amount: z.string().trim().max(60).default(""),
+    details: z.string().max(4000).default(""),
+    sortOrder: z.number().int().min(0).max(9999).default(0)
+  })
+  .strict();
+
+/**
+ * A prepared encounter.
+ *
+ * Every reference is a path into the bundle — the map it happens on, the NPC a
+ * combatant is — because a database id in a zip is a lie the moment the zip
+ * leaves the machine that wrote it. A zone is named rather than pathed: zones
+ * exist only inside their own encounter, so their name is already unique where it
+ * has to be.
+ */
+const encounterSchema = z
+  .object({
+    name: z.string().trim().min(1).max(120),
+    notes: z.string().max(10000).default(""),
+    individualInitiative: z.boolean().default(false),
+    /** A path into `maps/` or `scenes/`, or nothing. */
+    map: z.string().min(1).max(300).optional(),
+    zones: z.array(z.string().trim().min(1).max(60)).max(60).default([]),
+    sides: z
+      .array(
+        z.object({ side: z.string().min(1).max(40), initiative: z.number().int().nullable().default(null) }).strict()
+      )
+      .max(20)
+      .default([]),
+    combatants: z
+      .array(
+        z
+          .object({
+            /** A path into `npcs/` or `hirelings/`; exactly one of them. */
+            npc: z.string().min(1).max(300).optional(),
+            hireling: z.string().min(1).max(300).optional(),
+            name: z.string().trim().min(1).max(120).optional(),
+            side: z.string().min(1).max(40).optional(),
+            zone: z.string().trim().min(1).max(60).optional(),
+            sortOrder: z.number().int().min(0).max(9999).default(0)
+          })
+          .strict()
+      )
+      .max(200)
+      .default([])
+  })
+  .strict();
+
+/**
+ * A table set, in the shape The Devil's Tables already writes one.
+ *
+ * Only the structure is checked here. The tags inside are validated against this
+ * instance's own vocabulary, which is not something a bundle can know about and
+ * not something this reader has — so the JSON travels as text and `parseCustomSet`
+ * has the last word at import.
+ */
+const tableSetSchema = z
+  .object({
+    formatVersion: z.literal(1),
+    setName: z.string().trim().min(1).max(80).optional(),
+    tags: z.array(z.string().min(1).max(60)).max(40).default([]),
+    preamble: z.string().max(20000).optional(),
+    postamble: z.string().max(20000).optional(),
+    tables: z.array(z.unknown()).min(1).max(500)
+  })
+  .passthrough();
+
+export interface CampaignTableSet {
+  path: string;
+  name: string;
+  tags: string[];
+  /** The document as written, handed to `parseCustomSet` with the live vocabulary. */
+  json: string;
+}
+
+export type CampaignEncounter = z.infer<typeof encounterSchema> & { path: string };
+export type CampaignNpc = z.infer<typeof npcSchema> & { path: string };
+export type CampaignItems = z.infer<typeof itemsSchema>;
+/** A wearer's portrait weighs something, and the preview has to say so too. */
+export type CampaignHireling = z.infer<typeof sheetSchema> & { path: string; portraitBytes?: number };
+export type CampaignAsset = z.infer<typeof assetSchema> & { path: string; portraitBytes?: number };
+export type CampaignObligation = z.infer<typeof obligationSchema> & { path: string };
+export type CampaignCalendar = z.infer<typeof calendarSchema>;
+
+export interface CampaignMedia {
+  /** The path inside the bundle, which is this file's identity everywhere else. */
+  path: string;
+  folder: MediaFolder;
+  /** What `media.category` becomes; `kind` is derived from it as `media.ts` does. */
+  category: "map" | "scene" | "reference" | "audio";
+  filename: string;
+  displayName: string;
+  sortOrder: number;
+  bytes: number;
+  markdown: boolean;
+  /** Only ever set from an audio index; the ID3 tags win when it is not. */
+  tags?: { artist?: string; title?: string; album?: string };
+}
+
+export interface CampaignPlaylist {
+  path: string;
+  name: string;
+  sortOrder: number;
+  /** Bundle paths into `audio/`, resolved against what the bundle actually holds. */
+  tracks: string[];
+}
+
+export interface Campaign {
+  manifest: CampaignManifest;
+  /** What was assumed rather than read, so a preview can say so out loud. */
+  guessed: string[];
+  /** `campaign.md`, as written. */
+  overview: string;
+  room: CampaignRoom;
+  media: CampaignMedia[];
+  playlists: CampaignPlaylist[];
+  npcs: CampaignNpc[];
+  encounters: CampaignEncounter[];
+  tables: CampaignTableSet[];
+  items: CampaignItems;
+  hirelings: CampaignHireling[];
+  assets: CampaignAsset[];
+  obligations: CampaignObligation[];
+  /** Absent unless the bundle carries one; switching the calendar on is opt-in. */
+  calendar?: CampaignCalendar;
+  /** Things worth saying to a GM that are not worth refusing an import over. */
+  warnings: string[];
+}
+
+export interface EntryLimits {
+  /** The most an archive may weigh expanded, across every entry. */
+  maxBytes: number;
+  /** The most any one image may weigh, matching what a hand upload is held to. */
+  maxImageBytes: number;
+  maxAudioBytes: number;
+  maxEntries: number;
+}
+
+const extensionOf = (name: string) => path.extname(name).toLowerCase();
+
+/**
+ * Whether an archive is shaped like a campaign at all, decided from its central
+ * directory and before anything is expanded.
+ *
+ * An unknown folder is refused by name rather than skipped. A GM who wrote
+ * `map/` instead of `maps/` has a bundle that would otherwise import cleanly and
+ * silently contain no maps, and they would find out during a session.
+ */
+export function refuseUnacceptableEntries(entries: readonly ZipEntry[], limits: EntryLimits, source = "campaign") {
+  if (!entries.length) throw new Error(`The ${source} is empty.`);
+  if (entries.length > limits.maxEntries)
+    throw new Error(
+      `The ${source} holds ${entries.length} file${entries.length === 1 ? "" : "s"}, ` +
+        `and at most ${limits.maxEntries} may be imported.`
+    );
+
+  let declared = 0;
+  for (const entry of entries) {
+    const [head, ...rest] = entry.name.split("/");
+    declared += entry.uncompressedSize;
+
+    if (!rest.length) {
+      if (!(ROOT_FILES as readonly string[]).includes(head))
+        throw new Error(
+          `The ${source} holds "${entry.name}". A file outside a folder must be one of ${ROOT_FILES.join(", ")}.`
+        );
+      continue;
+    }
+
+    const folder = FOLDERS[head as CampaignFolder];
+    if (!folder)
+      throw new Error(
+        `The ${source} holds a "${head}" folder, which is not one a campaign may carry. ` +
+          `The folders are ${Object.keys(FOLDERS).join(", ")}.`
+      );
+    if (rest.length > 1)
+      throw new Error(`The ${source}'s "${entry.name}" is nested; a campaign's folders hold files directly.`);
+
+    const file = rest[0];
+    const extension = extensionOf(file);
+    if (file !== "index.json" && !(folder.extensions as readonly string[]).includes(extension))
+      throw new Error(`The ${source}'s "${entry.name}" is not ${folder.what}, which is what "${head}" holds.`);
+
+    const cap = extension === ".mp3" ? limits.maxAudioBytes : limits.maxImageBytes;
+    if (extension !== ".json" && extension !== ".md" && entry.uncompressedSize > cap)
+      throw new Error(
+        `The ${source}'s "${entry.name}" is ${Math.ceil(entry.uncompressedSize / (1024 * 1024))} MB, ` +
+          `and one file may be at most ${Math.floor(cap / (1024 * 1024))} MB.`
+      );
+  }
+
+  if (declared > limits.maxBytes)
+    throw new Error(
+      `The ${source} expands to ${Math.ceil(declared / (1024 * 1024))} MB, ` +
+        `and at most ${Math.floor(limits.maxBytes / (1024 * 1024))} MB may be imported at once.`
+    );
+  return declared;
+}
+
+/**
+ * Generic over the schema rather than over its result, because a schema with a
+ * `.default()` has two types — what it accepts and what it produces — and naming
+ * only the result makes TypeScript pick the accepting one, leaving every
+ * defaulted field optional at the call site.
+ */
+function readJsonFile<S extends z.ZodTypeAny>(
+  directory: string,
+  relative: string,
+  schema: S,
+  what: string
+): z.infer<S> {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(fs.readFileSync(path.join(directory, relative), "utf8"));
+  } catch {
+    throw new Error(`The campaign's ${relative} could not be read as JSON, so ${what} cannot be checked.`);
+  }
+  const result = schema.safeParse(parsed);
+  if (!result.success) {
+    const issue = result.error.issues[0];
+    const where = issue.path.length ? `${issue.path.join(".")}: ` : "";
+    throw new Error(`The campaign's ${relative} is not valid — ${where}${issue.message}`);
+  }
+  return result.data;
+}
+
+const exists = (directory: string, relative: string) => fs.existsSync(path.join(directory, relative));
+
+/** Files in a folder, sorted, with `index.json` kept apart because it is not content. */
+function folderFiles(directory: string, folder: string) {
+  const root = path.join(directory, folder);
+  if (!fs.existsSync(root)) return [];
+  return fs
+    .readdirSync(root, { withFileTypes: true })
+    .filter((entry) => entry.isFile() && entry.name !== "index.json")
+    .map((entry) => entry.name)
+    .sort((left, right) => left.localeCompare(right));
+}
+
+/**
+ * A name for a file nothing named. The extension goes, separators become spaces,
+ * and nothing else is done to it — `the-keep.png` becomes "the keep" rather than
+ * a guess at capitalisation that would be wrong for "the TOMB of the serpent
+ * kings" as often as it was right.
+ */
+export function displayNameFromFile(file: string) {
+  return (
+    file
+      .replace(/\.[^.]+$/, "")
+      .replace(/[-_]+/g, " ")
+      .trim() || file
+  );
+}
+
+const CATEGORY: Record<MediaFolder, CampaignMedia["category"]> = {
+  maps: "map",
+  scenes: "scene",
+  references: "reference",
+  audio: "audio"
+};
+
+function readMediaFolder(directory: string, folder: MediaFolder, warnings: string[]): CampaignMedia[] {
+  const files = folderFiles(directory, folder);
+  const index = exists(directory, `${folder}/index.json`)
+    ? readJsonFile(directory, `${folder}/index.json`, mediaIndexSchema, `the ${folder} listing`)
+    : { files: [] };
+
+  const listed = new Map(index.files.map((entry) => [entry.file, entry]));
+  if (listed.size !== index.files.length)
+    throw new Error(`The campaign's ${folder}/index.json names the same file twice.`);
+  for (const entry of index.files)
+    if (!files.includes(entry.file))
+      throw new Error(`The campaign's ${folder}/index.json names "${entry.file}", which the folder does not hold.`);
+
+  // Indexed files first, in the order the index gave them, then whatever else the
+  // folder holds. A GM who orders half their maps gets those in that order rather
+  // than an error about the other half.
+  const ordered = [...index.files.map((entry) => entry.file), ...files.filter((file) => !listed.has(file))];
+
+  return ordered.map((file, sortOrder) => {
+    const entry = listed.get(file);
+    const markdown = extensionOf(file) === ".md";
+    if (markdown && folder !== "references")
+      warnings.push(`${folder}/${file} is Markdown, which only References may be.`);
+    return {
+      path: `${folder}/${file}`,
+      folder,
+      category: CATEGORY[folder],
+      filename: file,
+      displayName: entry?.name?.trim() || displayNameFromFile(file),
+      sortOrder,
+      bytes: fs.statSync(path.join(directory, folder, file)).size,
+      markdown,
+      ...(entry && (entry.artist || entry.title || entry.album)
+        ? { tags: { artist: entry.artist, title: entry.title, album: entry.album } }
+        : {})
+    };
+  });
+}
+
+/**
+ * Playlists, resolved against the audio the bundle actually holds.
+ *
+ * A track naming a file that is not there is refused rather than dropped: a
+ * playlist that quietly loses its third track is a bug a GM finds mid-session,
+ * and the bundle is wrong in a way its author can fix in ten seconds.
+ */
+function readPlaylists(directory: string, audio: readonly CampaignMedia[]): CampaignPlaylist[] {
+  const known = new Set(audio.map((track) => track.path));
+  return folderFiles(directory, "playlists")
+    .map((file) => {
+      const relative = `playlists/${file}`;
+      const playlist = readJsonFile(directory, relative, playlistSchema, "the playlist");
+      for (const track of playlist.tracks)
+        if (!known.has(track))
+          throw new Error(`The campaign's ${relative} names "${track}", which the bundle does not contain.`);
+      return { path: relative, name: playlist.name, sortOrder: playlist.sortOrder, tracks: playlist.tracks };
+    })
+    .sort((left, right) => left.sortOrder - right.sortOrder || left.name.localeCompare(right.name));
+}
+
+/**
+ * A folder of one JSON per thing, each carrying the path it came from.
+ *
+ * The path is the identity: an encounter names an NPC by `npcs/lady-vane.json`
+ * and by nothing else, so a file's own name is what it is called for as long as
+ * the bundle exists.
+ */
+function readJsonFolder<S extends z.ZodTypeAny>(
+  directory: string,
+  folder: string,
+  schema: S,
+  what: string
+): (z.infer<S> & { path: string })[] {
+  return folderFiles(directory, folder)
+    .filter((file) => extensionOf(file) === ".json")
+    .map((file) => {
+      const relative = `${folder}/${file}`;
+      return { ...readJsonFile(directory, relative, schema, what), path: relative };
+    });
+}
+
+/**
+ * The pictures a hireling or a ship carries.
+ *
+ * A portrait is named by the JSON that wears it, so an image nothing names is
+ * an image nothing will import — which is the silent loss this format exists to
+ * avoid, and so it is said out loud.
+ *
+ * A name is checked against **the files this folder actually holds**, the way a
+ * playlist's tracks are, rather than against the filesystem. That is the whole
+ * of the difference between a reference and a path: every other name in a bundle
+ * resolves inside the bundle, and a `portrait` that asked the disk a question
+ * could name something outside the stage entirely — which the importer would
+ * then move, since it moves rather than copies.
+ */
+function refuseUnwornPortraits(
+  directory: string,
+  folder: string,
+  worn: readonly (string | undefined)[],
+  warnings: string[]
+) {
+  const held = new Set(folderFiles(directory, folder).map((file) => `${folder}/${file}`));
+  const named = new Set(worn.filter((entry): entry is string => Boolean(entry)));
+  for (const portrait of named)
+    if (!held.has(portrait)) throw new Error(`The campaign names "${portrait}", which the bundle does not contain.`);
+
+  for (const file of folderFiles(directory, folder)) {
+    if (extensionOf(file) === ".json") continue;
+    if (!named.has(`${folder}/${file}`))
+      warnings.push(`${folder}/${file} is not named as a portrait, so nothing imports it.`);
+  }
+}
+
+/**
+ * Encounters, resolved against everything else the bundle holds.
+ *
+ * This is where the format's one rule earns itself: an encounter is the only
+ * thing that points at three other kinds, and every one of those points is a
+ * path. A reference that does not resolve is refused rather than dropped —
+ * a combatant quietly missing from a prepared fight is found mid-session, and
+ * the bundle is wrong in a way its author can fix in ten seconds.
+ */
+function refuseUnresolvedEncounters(
+  encounters: readonly CampaignEncounter[],
+  media: readonly CampaignMedia[],
+  npcs: readonly CampaignNpc[],
+  hirelings: readonly CampaignHireling[]
+) {
+  const maps = new Set(
+    media.filter((entry) => entry.folder === "maps" || entry.folder === "scenes").map((entry) => entry.path)
+  );
+  const npcPaths = new Set(npcs.map((npc) => npc.path));
+  const hirelingPaths = new Set(hirelings.map((hireling) => hireling.path));
+
+  for (const encounter of encounters) {
+    const names = (what: string) => `The campaign's ${encounter.path} names ${what}`;
+    if (encounter.map && !maps.has(encounter.map))
+      throw new Error(`${names(`"${encounter.map}"`)}, which the bundle does not contain as a map or a scene.`);
+
+    const zones = new Set(encounter.zones);
+    for (const combatant of encounter.combatants) {
+      if (Boolean(combatant.npc) === Boolean(combatant.hireling))
+        throw new Error(`${names("a combatant")} that is neither one NPC nor one hireling.`);
+      if (combatant.npc && !npcPaths.has(combatant.npc))
+        throw new Error(`${names(`"${combatant.npc}"`)}, which the bundle does not contain.`);
+      if (combatant.hireling && !hirelingPaths.has(combatant.hireling))
+        throw new Error(`${names(`"${combatant.hireling}"`)}, which the bundle does not contain.`);
+      if (combatant.zone && !zones.has(combatant.zone))
+        throw new Error(`${names(`the zone "${combatant.zone}"`)}, which it does not declare.`);
+    }
+  }
+}
+
+export interface ReadOptions {
+  /** Names a campaign whose bundle carries no manifest — the uploaded filename, less its suffixes. */
+  fallbackName?: string;
+}
+
+/**
+ * Everything a staged bundle holds, checked against itself.
+ *
+ * A missing `manifest.json` is not an error. A GM who dragged four folders
+ * together has a campaign; it is named after the file it arrived in, it declares
+ * no system, and the preview says both of those were assumed rather than read.
+ */
+export function readCampaign(directory: string, options: ReadOptions = {}): Campaign {
+  const guessed: string[] = [];
+  const warnings: string[] = [];
+
+  let manifest: CampaignManifest;
+  if (exists(directory, "manifest.json")) {
+    manifest = readJsonFile(directory, "manifest.json", manifestSchema, "the campaign");
+    if (manifest.bundleVersion > CAMPAIGN_BUNDLE_VERSION)
+      throw new Error(
+        `That campaign was written by a newer version (${manifest.bundleVersion}). Update this application first.`
+      );
+  } else {
+    const name = options.fallbackName?.trim() || "Untitled campaign";
+    manifest = {
+      app: CAMPAIGN_BUNDLE_APP,
+      bundleVersion: CAMPAIGN_BUNDLE_VERSION,
+      campaignId:
+        // Not `toLocaleLowerCase`: this is an identifier the ledger keys on, and
+        // it must not depend on the server's locale. Turkish lower-cases "I" to
+        // a dotless "ı", which would make the same bundle a different campaign.
+        name
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/^-+|-+$/g, "")
+          .slice(0, 64) || "campaign",
+      name,
+      version: "",
+      system: ANY_SYSTEM,
+      exportedAt: "",
+      licenses: []
+    };
+    guessed.push(`This bundle carries no manifest.json, so it is called "${name}" after the file it arrived in.`);
+    guessed.push("It names no game system, so it is treated as one that needs none.");
+  }
+
+  const room = exists(directory, "room.json") ? readJsonFile(directory, "room.json", roomSchema, "the room") : {};
+  if (room.theme && !(THEME_IDS as readonly string[]).includes(room.theme)) {
+    warnings.push(
+      `room.json names the theme "${room.theme}", which this server does not have. The room keeps its own.`
+    );
+    delete room.theme;
+  }
+
+  const media = MEDIA_FOLDERS.flatMap((folder) => readMediaFolder(directory, folder, warnings));
+  const playlists = readPlaylists(
+    directory,
+    media.filter((entry) => entry.folder === "audio")
+  );
+
+  const npcs = readJsonFolder(directory, "npcs", npcSchema, "the NPC");
+  const hirelings: CampaignHireling[] = readJsonFolder(directory, "hirelings", sheetSchema, "the hireling");
+  const assets: CampaignAsset[] = readJsonFolder(directory, "assets", assetSchema, "the group asset");
+  refuseUnwornPortraits(
+    directory,
+    "hirelings",
+    hirelings.map((hireling) => hireling.portrait),
+    warnings
+  );
+  refuseUnwornPortraits(
+    directory,
+    "assets",
+    assets.map((asset) => asset.portrait),
+    warnings
+  );
+  // Weighed here, where the portrait has just been proved to be a file this
+  // bundle holds, so the preview and the import agree about what it costs.
+  for (const wearer of [...hirelings, ...assets])
+    if (wearer.portrait) wearer.portraitBytes = fs.statSync(path.join(directory, wearer.portrait)).size;
+  const obligations = readJsonFolder(directory, "obligations", obligationSchema, "the obligation");
+
+  // Gear is one list rather than a file per item: it is a catalogue, and a
+  // hundred one-line files would be a worse thing to hand-edit than one array.
+  const encounters = readJsonFolder(directory, "encounters", encounterSchema, "the encounter");
+  refuseUnresolvedEncounters(encounters, media, npcs, hirelings);
+
+  const tables: CampaignTableSet[] = folderFiles(directory, "tables")
+    .filter((file) => extensionOf(file) === ".json")
+    .map((file) => {
+      const relative = `tables/${file}`;
+      const parsed = readJsonFile(directory, relative, tableSetSchema, "the table set");
+      return {
+        path: relative,
+        name: parsed.setName ?? displayNameFromFile(file),
+        tags: parsed.tags,
+        json: fs.readFileSync(path.join(directory, relative), "utf8")
+      };
+    });
+  if (tables.length)
+    warnings.push(
+      `${tables.length} table set${tables.length === 1 ? "" : "s"} would be added to this server's table catalogue, which every room can read.`
+    );
+
+  const items = exists(directory, "items/index.json")
+    ? readJsonFile(directory, "items/index.json", itemsSchema, "the item list")
+    : { added: [], retired: [] };
+  for (const file of folderFiles(directory, "items"))
+    warnings.push(`items/${file} is not read — a campaign's gear is listed in items/index.json.`);
+
+  // Normalised and then validated as one schema, so a calendar that is not one
+  // is refused by `readJsonFile`'s message — naming the file and the field —
+  // rather than by a raw schema error from outside it.
+  const calendar = exists(directory, "calendar.json")
+    ? readJsonFile(
+        directory,
+        "calendar.json",
+        z.unknown().transform(calendarInput).pipe(calendarSchema),
+        "the calendar"
+      )
+    : undefined;
+
+  return {
+    manifest,
+    guessed,
+    overview: exists(directory, "campaign.md") ? fs.readFileSync(path.join(directory, "campaign.md"), "utf8") : "",
+    room,
+    media,
+    playlists,
+    npcs,
+    encounters,
+    tables,
+    items,
+    hirelings,
+    assets,
+    obligations,
+    ...(calendar ? { calendar } : {}),
+    warnings
+  };
+}

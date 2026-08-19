@@ -31,6 +31,7 @@ import { groupRouter } from "./group.js";
 import { encounterRouter } from "./encounters.js";
 import { mapNotationRouter } from "./map-notations.js";
 import { roomConfigRouter } from "./room-config.js";
+import { campaignRouter } from "./campaign-routes.js";
 import { roomItemRouter } from "./room-item-routes.js";
 import { playlistRouter } from "./playlists.js";
 import { helpRouter } from "./help.js";
@@ -82,6 +83,7 @@ app.use("/api", mapNotationRouter);
 app.use("/api", roomConfigRouter);
 app.use("/api", roomItemRouter);
 app.use("/api", playlistRouter);
+app.use("/api", campaignRouter);
 app.use("/api", helpRouter);
 app.use("/api", systemRouter);
 function publicMessage(row: {

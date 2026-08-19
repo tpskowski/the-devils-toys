@@ -4,6 +4,7 @@ import {
   ExternalLink,
   Images,
   ListMusic,
+  PackageOpen,
   Rocket,
   Settings2,
   Swords,
@@ -21,6 +22,7 @@ import { api } from "./api";
 import { roomConfigPath, roomIdFromConfigSearch, sectionFromHash, sectionStorageKey } from "./room-config";
 import { RoomConfigCalendar } from "./RoomConfigCalendar";
 import { RoomConfigItems } from "./RoomConfigItems";
+import { RoomConfigCampaign } from "./RoomConfigCampaign";
 import { RoomConfigLibrary } from "./RoomConfigLibrary";
 import { RoomConfigNpcs } from "./RoomConfigNpcs";
 import { RoomConfigPlaylists } from "./RoomConfigPlaylists";
@@ -34,7 +36,8 @@ const sectionIcons: Record<RoomConfigSectionId, typeof Images> = {
   calendar: CalendarDays,
   playlists: ListMusic,
   hirelings: UsersRound,
-  assets: Rocket
+  assets: Rocket,
+  campaign: PackageOpen
 };
 
 const toggleLabels: Record<RoomConfigToggle, string> = {
@@ -283,6 +286,18 @@ export function RoomConfigPage() {
         ) : current?.id === "hirelings" || current?.id === "assets" ? (
           <div className="room-config-section">
             <RoomConfigRoster roomId={config.room.id} kind={current.id} revision={revision} />
+          </div>
+        ) : current?.id === "campaign" ? (
+          <div className="room-config-section">
+            <RoomConfigCampaign
+              roomId={config.room.id}
+              onImported={() => {
+                // An import writes to every other section, so the panel reloads
+                // rather than leaving a Library that is one campaign out of date.
+                setRevision((count) => count + 1);
+                loadConfig(config.room.id);
+              }}
+            />
           </div>
         ) : (
           current && <SectionPlaceholder section={current} />

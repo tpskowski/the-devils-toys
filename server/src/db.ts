@@ -347,6 +347,26 @@ db.exec(`
     ON encounter_combatants (encounter_id, character_id) WHERE character_id IS NOT NULL;
   CREATE UNIQUE INDEX IF NOT EXISTS encounter_combatants_hireling
     ON encounter_combatants (encounter_id, hireling_id) WHERE hireling_id IS NOT NULL;
+  CREATE TABLE IF NOT EXISTS room_imports (
+    id INTEGER PRIMARY KEY,
+    room_id INTEGER NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
+    campaign_id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    version TEXT NOT NULL DEFAULT '',
+    manifest_json TEXT NOT NULL DEFAULT '{}',
+    imported_by INTEGER REFERENCES accounts(id) ON DELETE SET NULL,
+    imported_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+  );
+  CREATE UNIQUE INDEX IF NOT EXISTS room_imports_campaign ON room_imports (room_id, campaign_id);
+  CREATE TABLE IF NOT EXISTS room_import_entries (
+    import_id INTEGER NOT NULL REFERENCES room_imports(id) ON DELETE CASCADE,
+    kind TEXT NOT NULL,
+    path TEXT NOT NULL,
+    row_id INTEGER NOT NULL,
+    source_digest TEXT NOT NULL,
+    state_digest TEXT NOT NULL,
+    PRIMARY KEY (import_id, kind, path)
+  );
 `);
 
 /**

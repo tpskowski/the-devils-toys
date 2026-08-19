@@ -118,6 +118,31 @@ describe("finding rollable tables in system Markdown", () => {
     expect(unreachableRows(table)).toBe(0);
   });
 
+  it("reads, infers, and rolls a d5 table", () => {
+    const [named] = parseRollTables(`### Watches
+
+| D5 | Who is awake |
+| --- | --- |
+| 1 | Nobody, and something is at the fire |
+| 2-4 | The one who drew the short straw |
+| 5 | Everybody, and nobody will say why |
+`);
+    expect(named.dice).toBe("d5");
+    expect(rowForRoll(named, 5)?.cells).toEqual(["Everybody, and nobody will say why"]);
+    expect(unreachableRows(named)).toBe(0);
+
+    // The rows imply the die when the column does not name it — 1 to 5 was not a
+    // die this application had before, so such a table was not rollable at all.
+    const [inferred] = parseRollTables(`### Watches
+
+| Roll | Who is awake |
+| --- | --- |
+| 1 | Nobody |
+| 5 | Everybody |
+`);
+    expect(inferred.dice).toBe("d5");
+  });
+
   it("infers d30 from a heading marker when the die column only says Roll", () => {
     const [table] = parseRollTables(`### Omens (d30)
 

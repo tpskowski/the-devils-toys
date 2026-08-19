@@ -18,10 +18,39 @@ coverage/
 playwright-report/
 test-results/
 
-# Mutable application data: the database, uploads, and logs a table has added
+# Mutable application data, and everything a running server has been given.
+#
+# This is a licensing boundary as much as a tidiness one. An installed game
+# system carries its publisher's rulebook under `<dataDir>/systems/<id>/rules/`;
+# a room's Library holds whatever art and handouts a table uploaded; the database
+# holds both. None of it is this repository's to publish, and all of it arrives
+# as files rather than as a commit anybody reviews.
+#
+# `.data/` is the default. The rules under it cover a data directory pointed
+# somewhere else with DEVILS_TOYS_DATA_DIR — but they cannot cover every name a
+# person might choose, so **if you point it somewhere these do not match, add it
+# here first**. `server/src/gitignore.test.ts` is what keeps this honest.
 .data/
+/.data-*/
+/data/
+# Wherever the data directory ends up: the database holds every installed
+# system's tables and every room's own, so its name is worth matching alone.
+devils-toys.sqlite*
+# An installed system's rulebook, and the two directories an install stages
+# through. Deliberately not a bare `rules/`, which is tracked under `fixtures/`.
+**/systems/*/rules/
+**/systems/*.incoming/
+**/systems/*.replaced/
 /.codex-ui-data/
 *.log
+
+# What the application hands out: a system or a campaign, exported. Both carry
+# somebody else's material, and a browser download lands wherever it is pointed.
+*.devilsystem.zip
+*.devilcampaign.zip
+# `npm run systems:export` writes a sibling of this checkout by default; an
+# explicit --out could put one inside it.
+/devils-toys-*/
 
 # Local scratch directories used while developing. `scratch/` is the place for
 # throwaway scripts, notes, and working files: nothing in it is ever committed.

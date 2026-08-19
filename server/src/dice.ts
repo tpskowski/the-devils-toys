@@ -1,3 +1,4 @@
+import { DIE_SIDES_PATTERN } from "@devils-toys/shared";
 import type { DiceRules, SavePosition } from "@devils-toys/shared";
 
 export interface DiceResult {
@@ -33,7 +34,9 @@ function selectedIndexes(rolls: number[], selector?: string, selectorCount = 1) 
 
 export function rollDice(input: string, random = Math.random): DiceResult {
   const expression = input.trim().toLowerCase().replace(/\s+/g, "");
-  const match = /^(\d{0,2})d(100|66|44|30|20|12|10|8|6|4)(?:(kh|kl|dh|dl)(\d{0,2}))?([+-]\d{1,3})?$/.exec(expression);
+  const match = new RegExp(`^(\\d{0,2})d(${DIE_SIDES_PATTERN})(?:(kh|kl|dh|dl)(\\d{0,2}))?([+-]\\d{1,3})?$`).exec(
+    expression
+  );
   if (!match) throw new Error("Use a dice expression like 2d6+1 or 2d20kl1.");
 
   const count = Number(match[1] || 1);

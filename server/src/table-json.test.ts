@@ -28,6 +28,17 @@ describe("custom table JSON compatibility", () => {
     ).toThrow(/overlapping or unordered/);
   });
 
+  it("takes a d5 table, and still refuses a die this application has not got", () => {
+    const [normalized] = normalizeCustomTables(
+      [{ ...table, dice: "d5", rows: [{ label: "1-5", min: 1, max: 5, cells: ["Something"] }] }],
+      vocabulary
+    );
+    expect(normalized.dice).toBe("d5");
+    expect(() => normalizeCustomTables([{ ...table, dice: "d7" }], vocabulary)).toThrow(
+      /invalid name, die, or columns/
+    );
+  });
+
   it("requires the effective vocabulary when parsing legacy bundles", () => {
     const value = JSON.stringify({ formatVersion: 1, tables: [{ ...table, tags: ["undeclared"] }] });
     expect(() => parseCustomSet(value, "Imported", vocabulary)).toThrow(/Unknown table tag/);

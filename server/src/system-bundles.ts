@@ -7,6 +7,7 @@ import {
   type SystemTraitCatalog
 } from "@devils-toys/shared";
 import { gameSystemSchema } from "./system-schema.js";
+import { refuseUnsafePaths } from "./zip-safety.js";
 import { config } from "./config.js";
 
 /**
@@ -156,18 +157,12 @@ export function buildSystemBundle(content: SystemBundleContent): Uint8Array {
 }
 
 /**
- * Refuses anything absolute and anything reaching upwards — the zip-slip check,
- * which has to happen before a single byte is written. Kept apart from the
- * allowlist below because a repository holds files a bundle may not, but nothing
- * may ever hold a path that escapes the directory it is being written into.
+ * Re-exported because a repository checkout and a fetched tarball are read
+ * through this module too, and the zip-slip check is the one thing all three of
+ * them owe. It lives in `zip-safety.ts` now, beside the archive reader a campaign
+ * needs and a system does not.
  */
-export function refuseUnsafePaths(names: readonly string[], source = "bundle") {
-  for (const name of names) {
-    const normalized = name.replace(/\\/g, "/");
-    if (normalized.startsWith("/") || /^[A-Za-z]:/.test(normalized) || normalized.split("/").includes(".."))
-      throw new Error(`The ${source} holds an entry that would write outside it: "${name}".`);
-  }
-}
+export { refuseUnsafePaths };
 
 /** The four places a bundle keeps files, and nothing else. */
 const ALLOWED_ENTRY = /^(manifest\.json|system\.json|items\.json|traits\.json|(rules|tables)\/[^/]+)$/;

@@ -78,22 +78,36 @@ function removeUploaded(file?: Express.Multer.File) {
   }
 }
 
-function validImageSignature(file: Express.Multer.File) {
+/**
+ * Whether a file is the image its type claims, by its first bytes rather than by
+ * its name. Taken by path so the campaign importer can ask the same question of a
+ * staged file: the rule about what this application will store is one rule, and a
+ * second copy of it would be a second chance to get it wrong.
+ */
+export function imageSignatureMatches(file: string, mimeType: string) {
   const bytes = Buffer.alloc(12);
-  const descriptor = fs.openSync(file.path, "r");
+  let descriptor: number;
+  try {
+    descriptor = fs.openSync(file, "r");
+  } catch {
+    // Unreadable is not the image it claims to be, which is the only question
+    // this answers. Saying why belongs to the caller, which has the context.
+    return false;
+  }
   try {
     fs.readSync(descriptor, bytes, 0, bytes.length, 0);
   } finally {
     fs.closeSync(descriptor);
   }
-  if (file.mimetype === "image/png") return bytes.subarray(0, 8).equals(Buffer.from("89504e470d0a1a0a", "hex"));
-  if (file.mimetype === "image/jpeg") return bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff;
+  if (mimeType === "image/png") return bytes.subarray(0, 8).equals(Buffer.from("89504e470d0a1a0a", "hex"));
+  if (mimeType === "image/jpeg") return bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff;
   return bytes.subarray(0, 4).toString("ascii") === "RIFF" && bytes.subarray(8, 12).toString("ascii") === "WEBP";
 }
 
-function validMarkdownFile(file: Express.Multer.File) {
+/** UTF-8, and no NUL bytes. The same question, asked of a path. */
+export function isUtf8Markdown(file: string) {
   try {
-    const bytes = fs.readFileSync(file.path);
+    const bytes = fs.readFileSync(file);
     if (bytes.includes(0)) return false;
     new TextDecoder("utf-8", { fatal: true }).decode(bytes);
     return true;
@@ -101,6 +115,9 @@ function validMarkdownFile(file: Express.Multer.File) {
     return false;
   }
 }
+
+const validImageSignature = (file: Express.Multer.File) => imageSignatureMatches(file.path, file.mimetype);
+const validMarkdownFile = (file: Express.Multer.File) => isUtf8Markdown(file.path);
 
 function requireGm(req: AuthedRequest, res: express.Response) {
   const roomId = Number(req.params.roomId);

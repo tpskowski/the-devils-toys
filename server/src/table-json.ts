@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import {
+  DIE_SIDES_PATTERN,
   parseRowLabel,
   type RollTable,
   type RollTableRow,
@@ -196,7 +197,7 @@ export function normalizeCustomTables(
     const columns = Array.isArray(value.columns) ? value.columns.map(String) : [];
     if (
       !name ||
-      !/^\d*d(?:100|66|44|30|20|12|10|8|6|4)$/.test(dice) ||
+      !new RegExp(`^\\d*d(?:${DIE_SIDES_PATTERN})$`).test(dice) ||
       !columns.length ||
       columns.some((column) => !column.trim())
     )

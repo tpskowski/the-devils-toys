@@ -63,6 +63,15 @@ export function sectionsFor(room: ConfigurableRoom): RoomConfigSection[] {
       hint: `The party's shared ${assets.map((asset) => asset.singularLabel.toLocaleLowerCase()).join(" and ")}`,
       enabled: true
     });
+  // Last, because it is the only section that writes to every other one: a GM
+  // reaches for it when they are setting a room up rather than while they are
+  // adjusting it.
+  sections.push({
+    id: "campaign",
+    label: "Campaign",
+    hint: "Import a prepared campaign, or export this room as one",
+    enabled: true
+  });
   return sections;
 }
 

@@ -25,6 +25,28 @@ export const config = {
    */
   systemUploadLimitMb: Number(process.env.DEVILS_TOYS_SYSTEM_LIMIT_MB ?? 25),
   /**
+   * A campaign is the other size of thing entirely: its JSON and Markdown are
+   * kilobytes and its maps and music are gigabytes, so this cap is about the art
+   * and nothing else.
+   *
+   * It is deliberately generous, because the upload is the only door — nothing
+   * may be imported from a path on this server. A campaign that will not fit
+   * through it is split into parts sharing a `campaignId` and imported one after
+   * another, which is what the refusal says. Raising this is not the only way
+   * past it, and should not be the first thing an operator reaches for: a
+   * reverse proxy's own body limit will refuse the request long before this does.
+   */
+  campaignUploadLimitMb: Number(process.env.DEVILS_TOYS_CAMPAIGN_LIMIT_MB ?? 2048),
+  /** The most files one campaign may carry. More than this is a mistake worth naming. */
+  campaignEntryLimit: Number(process.env.DEVILS_TOYS_CAMPAIGN_ENTRY_LIMIT ?? 5000),
+  /**
+   * How long an uploaded campaign waits between its preview and its confirmation.
+   * Long enough to read what would land, think about it, and come back after a
+   * night's sleep; short enough that an import nobody finished is not a permanent
+   * tenant of the disk.
+   */
+  campaignStageTtlHours: Number(process.env.DEVILS_TOYS_CAMPAIGN_STAGE_TTL_HOURS ?? 24),
+  /**
    * The menu of systems an admin can install without going looking for one.
    *
    * A JSON index, fetched over HTTPS and cached. It is a URL rather than a

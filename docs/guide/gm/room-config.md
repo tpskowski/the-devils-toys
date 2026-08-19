@@ -23,6 +23,7 @@ rooms necessarily offer the same thing.
 | **Playlists**                   | Only once the room's Music setting is on    |
 | **Hirelings** / **Freelancers** | Only where the system has them              |
 | **Starship** / **Group assets** | Only where the system has them              |
+| **Campaign**                    | Yes                                         |
 
 A section your **system** does not have is left out entirely, because there is
 nothing you could do to gain it. A section your **room** has switched off is
@@ -153,6 +154,20 @@ Covered in [NPCs and encounters](npcs-and-encounters.md).
 A save carries the revision it was built from. If somebody else saved first, the
 panel tells you what changed and offers you the choice, rather than silently
 overwriting them or failing with an error and losing what you typed.
+
+## Campaign
+
+Importing a whole room’s worth of prepared material — maps, scenes, handouts,
+music, a cast, prepared fights, gear, the calendar — from one zip, and exporting
+this room as one. It writes to every other section on this list, which is why it
+sits at the bottom of it.
+
+Nothing lands until you have seen what it would do: the upload is read first and
+summarised, and you confirm or walk away. Importing the same campaign again later
+brings across what its author has corrected and leaves what you have changed
+since exactly as you left it.
+
+It has [a page of its own](campaigns.md), including how to build one.
 
 ## Next
 

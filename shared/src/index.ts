@@ -79,7 +79,8 @@ export const ROOM_CONFIG_SECTIONS = [
   "calendar",
   "playlists",
   "hirelings",
-  "assets"
+  "assets",
+  "campaign"
 ] as const;
 
 export type RoomConfigSectionId = (typeof ROOM_CONFIG_SECTIONS)[number];
