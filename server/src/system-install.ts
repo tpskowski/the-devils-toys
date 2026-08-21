@@ -4,6 +4,7 @@ import {
   CREATION_NAME_KEY,
   SYSTEM_CREATION_STEPS,
   creationStepDice,
+  creationStepEntryField,
   creationStepFieldKeys,
   creationStepListKeys,
   creationStepPacketTables,
@@ -306,10 +307,36 @@ export function refuseUninstallableCreation(bundle: SystemBundleContent) {
       if (kind === undefined || (write.kinds as readonly string[]).includes(kind)) continue;
       throw new Error(
         `Creation step "${step.id}" writes ${write.as} to "${key}", which the sheet keeps as ${
-          kind === "entries" ? "entries — no creation step produces one" : `a ${kind} field`
+          kind === "entries" ? "entries — only an entryInto files one of those" : `a ${kind} field`
         }.`
       );
     }
+
+  // An `entries` field is the one destination a reviewed result may be filed in
+  // whole, as a name and what it does rather than as a line of prose. It is
+  // checked here rather than through `creationFieldWrites` because nothing else
+  // writes one: the shapes above are what a step puts in a box, and a talent is
+  // a record the panel draws.
+  for (const step of steps) {
+    const field = creationStepEntryField(step);
+    if (field === undefined) continue;
+    const kind = kindByKey.get(field);
+    if (kind !== "entries")
+      throw new Error(
+        `Creation step "${step.id}" files reviewed results into "${field}", which the sheet keeps as ${
+          kind === undefined ? "no field at all" : `a ${kind} field`
+        } rather than entries.`
+      );
+  }
+
+  // One roll of a step carries one choice, so two tables in it cannot both ask
+  // the player which one to roll. An author who wants two decisions has two
+  // steps, which is what the wizard draws them as anyway.
+  for (const step of steps)
+    if (step.kind === "roll-table" && step.tables.filter((entry) => entry.choose).length > 1)
+      throw new Error(
+        `Creation step "${step.id}" lets the player choose the table for more than one of its rolls, and one roll carries one choice.`
+      );
 
   // An array is assigned across the scores it is offered for, one number each.
   // A book printing six numbers for five scores has printed one of them wrong,
@@ -448,6 +475,8 @@ export function refuseUninstallableCreation(bundle: SystemBundleContent) {
     if (step.kind !== "grant") continue;
     if (step.describeInto && !step.reviewFrom?.length)
       throw new Error(`Creation step "${step.id}" describes reviewed gear but reviews no earlier step.`);
+    if (step.entryInto && !step.reviewFrom?.length)
+      throw new Error(`Creation step "${step.id}" files reviewed gear as entries but reviews no earlier step.`);
     for (const source of step.reviewFrom ?? []) {
       const from = steps.findIndex((candidate) => candidate.id === source);
       if (from < 0 || from >= index)

@@ -20,7 +20,7 @@
  * where only the server can reach it is a payload the client restates.
  */
 
-import type { SystemId } from "./index.js";
+import type { CharacterEntry, SystemId } from "./index.js";
 
 /**
  * What a creation step may be. Deliberately short, and short for a reason: each
@@ -179,6 +179,22 @@ export type CreationColumnChoice =
 export type CreationTableRoll = CreationTableChoice &
   CreationColumnChoice &
   CreationRollSource & {
+    /**
+     * Let the player say which of `firstOf`'s tables is rolled, rather than
+     * leaving it to the same coin the server would have flipped.
+     *
+     * Monolith's three first-name tables are the case this exists for: which of
+     * them a character's name comes off is a decision about the character, not
+     * a die roll, and a player who rolled a name off the wrong one of them has
+     * to roll again until the coin agrees with them. Nothing else changes — the
+     * chosen table is still rolled on the server, and a roll that names no
+     * choice still chooses at random, which is what a system declaring nothing
+     * here has always got.
+     *
+     * Only one entry in a step may declare it, because one roll of a step
+     * carries one choice.
+     */
+    choose?: boolean;
     /** Where this one result is written. Omit to show it and write it nowhere. */
     field?: string;
     /**
@@ -210,6 +226,51 @@ export interface CreationJoin {
   prefixWith?: "table" | "column";
 }
 
+/**
+ * A sheet's `entries` field offered as a home for a reviewed result.
+ *
+ * The third destination beside a slot and the description box, and the one the
+ * other two could never be: Monolith's backgrounds roll a talent off a table
+ * whose rows read `**Hot-Wiring:** You know how to cross the right wires`, and
+ * a talent is neither a thing you carry nor a line about your face. Filed as
+ * gear it takes up a slot it should not; filed as description it is a sentence
+ * in a box with five others, and the Talents panel the sheet already draws
+ * stays empty.
+ *
+ * `creationEntryFrom` is what splits one into a title and a body, and it is
+ * shared rather than restated in the browser so the preview a player is shown
+ * before they file it is the same parse the server performs when they do.
+ */
+export interface CreationEntryDestination {
+  /** An `entries` field on the sheet, such as Monolith's `abilities`. */
+  field: string;
+}
+
+/**
+ * A reviewed result as an `entries` field holds it: the words before the first
+ * colon as its name, and everything after as what it does.
+ *
+ * A book bolds the name it is about to define — `**Hot-Wiring:** …` — so the
+ * emphasis around the title is taken off with it rather than left sitting in
+ * the middle of a name. A line with no colon at all defines nothing: it is kept
+ * as the entry's own name where it is short enough to read as one, and as an
+ * untitled body where it is a sentence, because a talent called "You know how
+ * to cross the right wires to get vehicles running" is not a name.
+ */
+const EMPHASISED_TITLE = /^(\*{1,3}|_{1,3})\s*([^*_]+?)\s*:?\s*\1\s*:?\s*([\s\S]*)$/;
+const PLAIN_TITLE = /^([^:\n]+?)\s*:\s*([\s\S]*)$/;
+/** Longer than this and a colonless line is a sentence rather than a name. */
+const ENTRY_TITLE_LIMIT = 60;
+
+export function creationEntryFrom(text: string): CharacterEntry {
+  const line = text.trim();
+  const emphasised = EMPHASISED_TITLE.exec(line);
+  if (emphasised) return { title: emphasised[2].trim(), text: emphasised[3].trim() };
+  const plain = PLAIN_TITLE.exec(line);
+  if (plain) return { title: plain[1].trim(), text: plain[2].trim() };
+  return line.length <= ENTRY_TITLE_LIMIT ? { title: line, text: "" } : { title: "", text: line };
+}
+
 export interface CreationRollTableStep extends CreationStepBase {
   kind: "roll-table";
   /** The part of the book the tables are read from, matching a table's section or category. */
@@ -217,6 +278,8 @@ export interface CreationRollTableStep extends CreationStepBase {
   tables: readonly CreationTableRoll[];
   /** Collect every result into one field, for a sheet with one box rather than five. */
   joinInto?: CreationJoin;
+  /** An `entries` field a reviewed result may be filed in, beside a slot and the description. */
+  entryInto?: CreationEntryDestination;
   /**
    * Let the player replace the joined result with their own words. The generated
    * result remains the starting value, so this is one editable answer rather
@@ -304,6 +367,8 @@ export interface CreationGrantStep extends CreationStepBase {
    * destination, so the UI can present one explicit choice between the two.
    */
   describeInto?: { field: string; separator: string };
+  /** An `entries` field a reviewed result may be filed in, beside a slot and the description. */
+  entryInto?: CreationEntryDestination;
 }
 
 /**
@@ -604,7 +669,8 @@ export function creationStepFieldKeys(step: CreationStep): string[] {
     case "roll-table":
       return [
         ...step.tables.flatMap((table) => (table.field ? [table.field] : [])),
-        ...(step.joinInto ? [step.joinInto.field] : [])
+        ...(step.joinInto ? [step.joinInto.field] : []),
+        ...(step.entryInto ? [step.entryInto.field] : [])
       ];
     case "packet":
       return [
@@ -612,7 +678,11 @@ export function creationStepFieldKeys(step: CreationStep): string[] {
         ...(step.into?.joinInto ? [step.into.joinInto.field] : [])
       ];
     case "grant":
-      return [...(step.roll ?? []).map((roll) => roll.field), ...(step.describeInto ? [step.describeInto.field] : [])];
+      return [
+        ...(step.roll ?? []).map((roll) => roll.field),
+        ...(step.describeInto ? [step.describeInto.field] : []),
+        ...(step.entryInto ? [step.entryInto.field] : [])
+      ];
     case "save":
       return [];
     case "derive":
@@ -651,6 +721,17 @@ export function creationStepListKeys(step: CreationStep): string[] {
       derivation.op === "equipment-armor" ? [...(derivation.from ?? [])] : []
     );
   return [];
+}
+
+/**
+ * The `entries` field a step files reviewed results into, where it declares one.
+ *
+ * Both kinds that offer a review may declare it and both spell it the same way,
+ * so the install check, the engine, and the screen ask this rather than each
+ * repeating which kinds those are.
+ */
+export function creationStepEntryField(step: CreationStep): string | undefined {
+  return step.kind === "grant" || step.kind === "roll-table" ? step.entryInto?.field : undefined;
 }
 
 /**

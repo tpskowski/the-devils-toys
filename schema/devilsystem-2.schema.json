@@ -2406,6 +2406,9 @@
                           },
                           "minItems": 1
                         },
+                        "choose": {
+                          "type": "boolean"
+                        },
                         "field": {
                           "type": "string",
                           "minLength": 1
@@ -2444,6 +2447,19 @@
                     "required": [
                       "field",
                       "separator"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "entryInto": {
+                    "type": "object",
+                    "properties": {
+                      "field": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    },
+                    "required": [
+                      "field"
                     ],
                     "additionalProperties": false
                   },
@@ -2666,6 +2682,19 @@
                     "required": [
                       "field",
                       "separator"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "entryInto": {
+                    "type": "object",
+                    "properties": {
+                      "field": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    },
+                    "required": [
+                      "field"
                     ],
                     "additionalProperties": false
                   }
@@ -3139,6 +3168,9 @@
                                     },
                                     "minItems": 1
                                   },
+                                  "choose": {
+                                    "type": "boolean"
+                                  },
                                   "field": {
                                     "type": "string",
                                     "minLength": 1
@@ -3177,6 +3209,19 @@
                               "required": [
                                 "field",
                                 "separator"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "entryInto": {
+                              "type": "object",
+                              "properties": {
+                                "field": {
+                                  "type": "string",
+                                  "minLength": 1
+                                }
+                              },
+                              "required": [
+                                "field"
                               ],
                               "additionalProperties": false
                             },
@@ -3399,6 +3444,19 @@
                               "required": [
                                 "field",
                                 "separator"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "entryInto": {
+                              "type": "object",
+                              "properties": {
+                                "field": {
+                                  "type": "string",
+                                  "minLength": 1
+                                }
+                              },
+                              "required": [
+                                "field"
                               ],
                               "additionalProperties": false
                             }

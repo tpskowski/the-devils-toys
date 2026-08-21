@@ -72,6 +72,42 @@ thing a book does and a thing worth having a fixture for.
 | 5 | Ewe | Nine | Rookwood |
 | 6 | Frost | Bell | Stollen |
 
+### Guild Knacks (d6)
+
+One of two knack tables, and the player says which. The application is asked to
+pick one of two *tables* here rather than one of two columns, and to let the
+person building the character make that pick rather than the dice — which is
+what a book means when it prints three name tables and expects you to know which
+one you are.
+
+<!-- tags: character-building -->
+
+| d6 | Knack |
+| --- | --- |
+| 1 | **Cooperage:** You can tell a sound barrel from a leaking one by the sound of a knuckle on it. |
+| 2 | **Ledgers:** You read a merchant's books faster than the merchant does. |
+| 3 | **Apprentice's Ear:** You remember every instruction you were ever given badly. |
+| 4 | **Guild Word:** One guildhall in any town will hear you out. |
+| 5 | **Steady Hands:** Nothing you are carrying has ever been dropped. |
+| 6 | **Short Measure:** You know exactly how much is missing. |
+
+### Road Knacks (d6)
+
+The other one. Its rows are written the way the first one's are — a bolded name,
+a colon, and what it does — because that is how a book writes a talent, and the
+application takes the name off the front of it when the result is filed as one.
+
+<!-- tags: character-building -->
+
+| d6 | Knack |
+| --- | --- |
+| 1 | **Weatherwise:** You know what the sky is going to do before it does it. |
+| 2 | **Night Walking:** You keep a road under your feet in the dark. |
+| 3 | **Cold Camp:** You can sleep anywhere once. |
+| 4 | **Toll Dodging:** You know where every gate is not. |
+| 5 | **Common Tongue:** You can make yourself understood two valleys over. |
+| 6 | **Long Wind:** You can walk all day and talk all of it. |
+
 ### Odds and Ends (d6)
 
 One thing you have carried since before any of this. It is offered into a slot

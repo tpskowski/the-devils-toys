@@ -126,13 +126,13 @@ describe("the tag vocabulary", () => {
   it("counts inherited tags across a registered system's catalogue", () => {
     db.exec("DELETE FROM table_sets");
     // The fixture's catalogue declares "fantasy", so every one of its tables
-    // inherits it; one table names "character-building" for itself.
+    // inherits it; three of them name "character-building" for themselves.
     const fantasy = tagUsage("fantasy");
     const character = tagUsage("character-building");
 
     expect(fantasy.sets).toBeGreaterThanOrEqual(1);
     expect(fantasy.tables).toBeGreaterThan(1);
-    expect(character.tables).toBe(1);
+    expect(character.tables).toBe(3);
     // A tag nothing carries is counted as such rather than being absent.
     expect(tagUsage("scifi")).toEqual({ sets: 0, tables: 0 });
   });

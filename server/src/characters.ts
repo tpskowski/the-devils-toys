@@ -5,7 +5,10 @@ import multer from "multer";
 import { z } from "zod";
 import {
   CREATION_NAME_KEY,
+  creationEntryFrom,
+  creationStepEntryField,
   type CharacterCreationDefinition,
+  type CharacterEntry,
   type CreationDraft,
   type CreationStep,
   type CreationStepRecord,
@@ -473,6 +476,8 @@ export interface CreationChange {
   take?: string[];
   /** The reviewed candidates the player filed as character description instead. */
   describe?: string[];
+  /** The reviewed candidates the player filed into the step's `entries` field — a talent rather than gear. */
+  entry?: string[];
   /** Passing on a step, or taking that back. A skipped step writes nothing. */
   skip?: boolean;
 }
@@ -559,19 +564,37 @@ export function updateCreationDraft(
     record.skipped = false;
   }
 
-  if (change.take !== undefined || change.describe !== undefined) {
-    if (change.take && change.describe) {
-      const described = new Set(change.describe);
-      const overlap = change.take.find((text) => described.has(text));
-      if (overlap) return { error: `"${overlap}" cannot be added to both description and inventory.`, status: 400 };
-    }
+  if (change.take !== undefined || change.describe !== undefined || change.entry !== undefined) {
+    // One result goes to one place. The three destinations are drawn as one
+    // choice, so a payload naming the same line twice is a client that has lost
+    // track of what the player pressed rather than something to reconcile here.
+    const destinations: [string, readonly string[] | undefined][] = [
+      ["inventory", change.take],
+      ["description", change.describe],
+      ["talents", change.entry]
+    ];
+    for (const [name, chosen] of destinations)
+      for (const [other, against] of destinations) {
+        if (chosen === against || !chosen || !against) continue;
+        const overlap = chosen.find((text) => against.includes(text));
+        if (overlap) return { error: `"${overlap}" cannot be added to both ${name} and ${other}.`, status: 400 };
+      }
 
     const stowed = change.take === undefined ? undefined : takeCandidates(record, change.take);
     if (stowed && "error" in stowed) return { error: stowed.error, status: 400 };
     const described = change.describe === undefined ? undefined : describeCandidates(step, record, change.describe);
     if (described && "error" in described) return { error: described.error, status: 400 };
+    const entered = change.entry === undefined ? undefined : entryCandidates(step, record, change.entry);
+    if (entered && "error" in entered) return { error: entered.error, status: 400 };
 
     const candidateItems = new Set((record.candidates ?? []).map((candidate) => candidate.label ?? candidate.text));
+    // An entry is a record rather than a line, so it is recognised by its
+    // content the way `applyCreationWrite` removes one. Comparing `String(item)`
+    // would call every one of them "[object Object]" and leave a talent on the
+    // sheet after the player had moved it somewhere else.
+    const candidateEntries = new Set(
+      (record.candidates ?? []).map((candidate) => JSON.stringify(creationEntryFrom(candidate.text)))
+    );
     const fixedItems = new Set(
       step.kind === "grant"
         ? (step.items ?? []).map(
@@ -583,9 +606,14 @@ export function updateCreationDraft(
     for (const entry of record.applied?.stow ?? [])
       byList.set(
         entry.key,
-        entry.items.filter((item) => fixedItems.has(String(item)) || !candidateItems.has(String(item)))
+        entry.items.filter(
+          (item) =>
+            fixedItems.has(String(item)) ||
+            (!candidateItems.has(String(item)) && !candidateEntries.has(JSON.stringify(item)))
+        )
       );
-    for (const entry of stowed?.stow ?? []) byList.set(entry.key, [...(byList.get(entry.key) ?? []), ...entry.items]);
+    for (const stow of [...(stowed?.stow ?? []), ...(entered?.stow ?? [])])
+      byList.set(stow.key, [...(byList.get(stow.key) ?? []), ...stow.items]);
 
     const joins = [...(record.applied?.join ?? [])];
     if (described) {
@@ -594,7 +622,9 @@ export function updateCreationDraft(
     }
     const write: CreationWrite = {
       ...record.applied,
-      ...(change.take !== undefined ? { stow: [...byList].map(([key, items]) => ({ key, items })) } : {}),
+      ...(change.take !== undefined || change.entry !== undefined
+        ? { stow: [...byList].map(([key, items]) => ({ key, items })) }
+        : {}),
       ...(described ? { join: joins } : {})
     };
     next = applyCreationWrite(next, write, previous);
@@ -647,6 +677,32 @@ function describeCandidates(
   return { join: { field: target.field, separator: target.separator, lines } };
 }
 
+/**
+ * Files reviewed results in the sheet's own `entries` field — Monolith's
+ * Talents panel, for the talent its backgrounds roll.
+ *
+ * The split into a name and what it does is `creationEntryFrom`, which is
+ * shared so the title the player was shown before they pressed the button is
+ * the title that lands on the sheet. The book's own words are what is parsed:
+ * a joined line carries the table's name in front of it, and a talent called
+ * "Pilot - Other Talents" is the caption rather than the talent.
+ */
+function entryCandidates(
+  step: CreationStep,
+  record: CreationStepRecord,
+  selected: readonly string[]
+): { stow: { key: string; items: CharacterEntry[] }[] } | { error: string } {
+  const field = creationStepEntryField(step);
+  if (!field) return { error: "This step does not offer an entries destination." };
+  const items: CharacterEntry[] = [];
+  for (const text of selected) {
+    const candidate = (record.candidates ?? []).find((entry) => entry.text === text);
+    if (!candidate) return { error: `"${text}" is not one of the things this step offered.` };
+    items.push(creationEntryFrom(candidate.text));
+  }
+  return { stow: [{ key: field, items }] };
+}
+
 /** Drops the draft. What remains is a sheet, which is decision 4 in one statement. */
 export function finishCreation(accountId: number, roomId: number, characterId: number): CreationResult {
   const accessible = findAccessibleCharacter(accountId, roomId, characterId);
@@ -693,6 +749,7 @@ const creationChangeSchema = z
     text: z.string().max(2000).optional(),
     take: z.array(z.string().max(400)).max(50).optional(),
     describe: z.array(z.string().max(400)).max(50).optional(),
+    entry: z.array(z.string().max(400)).max(50).optional(),
     skip: z.boolean().optional()
   })
   .strict();
