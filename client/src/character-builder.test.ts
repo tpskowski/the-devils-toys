@@ -5,11 +5,13 @@ import type {
   ResolvedCreationDefinition,
   ResolvedCreationStep
 } from "@devils-toys/shared";
+import { creationEntryFrom } from "@devils-toys/shared";
 import {
   builderSteps,
   currentStepIndex,
   describedCandidates,
   describeDerivation,
+  enteredCandidates,
   plannedRolls,
   rearrangeWarning,
   seedArrangement,
@@ -17,6 +19,8 @@ import {
   stepState,
   swapValues,
   swapsUsed,
+  tableChoice,
+  tableChoiceLabel,
   takenCandidates,
   unfinishedSteps
 } from "./character-builder";
@@ -282,6 +286,72 @@ describe("the gear a packet offered", () => {
     };
     expect(describedCandidates(record, "notes")).toEqual(["**Ace:** Never gets lost."]);
     expect(describedCandidates(record, "other")).toEqual([]);
+  });
+
+  it("reads back which reviewed results were filed in the sheet's entries panel", () => {
+    const record = {
+      candidates: [{ text: "**Ace:** Never gets lost." }, { text: "**Hard Turns:** An extra point of mobility." }],
+      applied: { stow: [{ key: "abilities", items: [{ title: "Ace", text: "Never gets lost." }] }] }
+    };
+    expect(enteredCandidates(record, "abilities")).toEqual(["**Ace:** Never gets lost."]);
+    expect(enteredCandidates(record, "equipment")).toEqual([]);
+    expect(enteredCandidates(record, undefined)).toEqual([]);
+  });
+});
+
+/**
+ * A book bolds the name it is about to define, so the parse takes the emphasis
+ * off with the colon rather than leaving a run of asterisks in the middle of a
+ * talent's name.
+ */
+describe("a reviewed result read as an entry", () => {
+  it("takes the words before the colon as the name and the rest as what it does", () => {
+    expect(creationEntryFrom("**Ace:** Never gets lost.")).toEqual({ title: "Ace", text: "Never gets lost." });
+    expect(creationEntryFrom("**Hot-Wiring**: You cross the right wires.")).toEqual({
+      title: "Hot-Wiring",
+      text: "You cross the right wires."
+    });
+    expect(creationEntryFrom("Ace: Never gets lost.")).toEqual({ title: "Ace", text: "Never gets lost." });
+  });
+
+  it("keeps a short colonless line as the name and a long one as the body", () => {
+    expect(creationEntryFrom("Nerve")).toEqual({ title: "Nerve", text: "" });
+    const sentence = "You know how to cross the right wires to get vehicles running that do not belong to you.";
+    expect(creationEntryFrom(sentence)).toEqual({ title: "", text: sentence });
+  });
+});
+
+describe("which table a step is about to roll on", () => {
+  const knack = {
+    id: "knack",
+    kind: "roll-table" as const,
+    label: "A knack",
+    section: "Character Creation",
+    tables: [{ firstOf: ["Guild Knacks (d6)", "Road Knacks (d6)"], choose: true, column: "Knack" }]
+  };
+
+  it("offers the step's own tables, and reports the one the last roll used", () => {
+    expect(tableChoice(knack, undefined)).toEqual({ options: ["Guild Knacks (d6)", "Road Knacks (d6)"] });
+    expect(
+      tableChoice(knack, {
+        rolled: [{ label: "x", expression: "d6", total: 3, detail: "3", table: "Road Knacks (d6)" }]
+      })
+    ).toMatchObject({ rolled: "Road Knacks (d6)" });
+    expect(tableChoice({ ...knack, tables: [{ table: "Vices (d6)" }] }, undefined)).toBeUndefined();
+  });
+
+  it("says the table the way the roll button does", () => {
+    expect(tableChoiceLabel("Male Names")).toBe("male name");
+    expect(tableChoiceLabel("Guild Knacks (d6)")).toBe("guild knack");
+  });
+
+  it("announces the chosen table rather than every table it could have been", () => {
+    expect(plannedRolls(knack.tables, undefined, undefined, undefined, "Road Knacks (d6)")).toEqual([
+      { table: "Road Knacks (d6)", columns: ["Knack"] }
+    ]);
+    expect(plannedRolls(knack.tables)).toEqual([
+      { table: "Guild Knacks (d6) or Road Knacks (d6)", columns: ["Knack"] }
+    ]);
   });
 });
 

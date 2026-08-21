@@ -111,7 +111,10 @@ export interface CreationRunContext {
   /** Defaults to the system's own installed tables. */
   tables?: CreationTableSource;
   random?: () => number;
-  /** A packet section the player picked instead of rolling for it. */
+  /**
+   * What the player picked rather than left to the dice: a packet's section, or
+   * the table a `roll-table` entry declaring `choose` is rolled on.
+   */
   choice?: string;
 }
 
@@ -244,9 +247,10 @@ function tablesIn(run: Run, section: string): Map<string, CompactRollTable> {
 /**
  * Rolls one entry of a `roll-table`, or reports that it has nothing to roll at.
  *
- * A `firstOf` chooses at random before anything else, which is how Monolith
- * picks between its three first-name tables, and is the one piece of the old
- * hireling roll with no other home. A `columnFirstOf` is the same choice one
+ * A `firstOf` chooses at random before anything else, which is the one piece of
+ * the old hireling roll with no other home, and is what a `choose` hands to the
+ * player instead: Monolith's three first-name tables are a decision about the
+ * character rather than a die roll. A `columnFirstOf` is the same choice one
  * level down, and is made on the same terms and at the same moment.
  */
 function rollTableEntry(
@@ -273,6 +277,12 @@ function rollTableEntry(
       throw new Error(
         `The "${run.step.id}" step reads table ${entry.position} from "${chosen}", which has only ${option.tables.length}.`
       );
+  } else if (entry.choose && run.context.choice !== undefined) {
+    // The player named one of the tables the step offers. It is checked against
+    // the declaration rather than trusted, on the same terms a packet's chosen
+    // section is: what arrives is a string a browser sent.
+    name = (entry.firstOf ?? []).find((candidate) => folded(candidate) === folded(run.context.choice ?? ""));
+    if (!name) throw new Error(`"${run.context.choice}" is not one of the tables the "${run.step.id}" step offers.`);
   } else {
     name = entry.table ?? choose(entry.firstOf ?? [], run.random);
   }
@@ -318,7 +328,11 @@ function rollTableEntry(
 function performRollTable(run: Run, step: CreationRollTableStep): PartialOutcome {
   const tables = tablesIn(run, step.section);
   const lines: string[] = [];
-  const offered: { text: string; listKey: string; description?: string }[] = [];
+  // A result is offered where it has somewhere to go: a slot the step names, or
+  // the sheet's entries panel. The second carries no list at all, which is why
+  // the list is optional here — a talent is not gear, and a step that rolls one
+  // has no `stowInto` to declare.
+  const offered: { text: string; listKey?: string; description?: string }[] = [];
   let only: number | undefined;
   let ran = 0;
 
@@ -331,7 +345,8 @@ function performRollTable(run: Run, step: CreationRollTableStep): PartialOutcome
     const description = step.joinInto
       ? joinLine(step.joinInto, result.table.name, result.column, result.value)
       : undefined;
-    if (entry.stowInto) offered.push({ text: result.value, listKey: entry.stowInto, description });
+    if (entry.stowInto || step.entryInto)
+      offered.push({ text: result.value, ...(entry.stowInto ? { listKey: entry.stowInto } : {}), description });
     if (description) lines.push(description);
   }
 

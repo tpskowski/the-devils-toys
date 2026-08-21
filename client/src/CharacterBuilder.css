@@ -176,6 +176,30 @@
   margin: 0 0 16px;
 }
 
+/* Which of a step's tables the die is about to be thrown on: one row of
+   toggles above the roll, drawn as the gear destinations are so the two read as
+   the same kind of decision. */
+.cb-table-choice {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 0 12px;
+}
+
+.cb-table-choice button {
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  background: var(--surface-raised);
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.cb-table-choice button.is-current {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent), transparent 86%);
+  color: var(--text);
+}
+
 /* The step's own passage of the book, folded away until it is wanted. */
 .cb-rules {
   margin: 0 0 16px;

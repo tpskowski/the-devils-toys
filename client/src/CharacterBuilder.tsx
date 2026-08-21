@@ -19,7 +19,7 @@ import type {
   ResolvedCreationDefinition,
   SystemId
 } from "@devils-toys/shared";
-import { CREATION_NAME_KEY } from "@devils-toys/shared";
+import { CREATION_NAME_KEY, creationEntryFrom, creationStepEntryField } from "@devils-toys/shared";
 import { api } from "./api";
 import { InlineMarkdown } from "./InlineMarkdown";
 import { ReadOnlyCharacterSheet, type ReadOnlyCharacter } from "./ReadOnlyCharacterSheet";
@@ -30,15 +30,19 @@ import {
   currentStepIndex,
   describedCandidates,
   describeDerivation,
+  enteredCandidates,
   plannedRolls,
   rearrangeWarning,
   seedArrangement,
   stepDecision,
   stepState,
   swapValues,
+  tableChoice,
+  tableChoiceLabel,
   takenCandidates,
   unfinishedSteps
 } from "./character-builder";
+import { singularLabel } from "./character-entries";
 import "./CharacterBuilder.css";
 
 /**
@@ -116,8 +120,11 @@ export function CharacterBuilder<C extends BuilderCharacter>({
     runs: number;
     inventory: string[];
     description: string[];
+    entries: string[];
   }>();
   const [typing, setTyping] = useState<{ stepId: string; runs: number; value: string }>();
+  /** Which of a `choose` roll's tables the player has picked, before the die is thrown. */
+  const [picking, setPicking] = useState<{ stepId: string; table: string }>();
   const [portalHost] = useState<HTMLElement | null>(() =>
     typeof document === "undefined" ? null : (document.querySelector<HTMLElement>("main.workspace") ?? document.body)
   );
@@ -167,6 +174,8 @@ export function CharacterBuilder<C extends BuilderCharacter>({
   const descriptionField =
     step.kind === "grant" ? step.describeInto?.field : step.kind === "roll-table" ? step.joinInto?.field : undefined;
   const described = new Set(filed?.description ?? describedCandidates(record, descriptionField));
+  const entryField = creationStepEntryField(step);
+  const entered = new Set(filed?.entries ?? enteredCandidates(record, entryField));
   const joined =
     step.kind === "roll-table" && step.editable && step.joinInto
       ? record?.applied?.join
@@ -223,6 +232,7 @@ export function CharacterBuilder<C extends BuilderCharacter>({
       body.take = [...inventoried];
       if ((step.kind === "grant" && step.describeInto) || (step.kind === "roll-table" && step.joinInto))
         body.describe = [...described];
+      if (entryField) body.entry = [...entered];
     }
     return Object.keys(body).length > 1 ? body : undefined;
   }
@@ -427,17 +437,54 @@ export function CharacterBuilder<C extends BuilderCharacter>({
   /* ------------------------------------------------------------------------ */
 
   function renderRollTable(rollTable: CreationRollTableStep) {
+    // Which of the step's tables the player has said they want. The screen's own
+    // pick first, then the one the last roll used, then the book's first — so a
+    // build resumed elsewhere opens on the table that produced what is on the
+    // sheet rather than on whichever the system happened to list first.
+    const choice = tableChoice(rollTable, record);
+    const chosenTable =
+      (picking?.stepId === step.id ? picking.table : undefined) ?? choice?.rolled ?? choice?.options[0];
+    const rolled = Boolean(record?.rolled?.length);
+    const rollLabel = chosenTable
+      ? `Roll ${tableChoiceLabel(chosenTable)}${rolled ? " again" : ""}`
+      : rolled
+        ? "Roll again"
+        : "Roll";
     return (
       <>
-        {plannedRolls(rollTable.tables, entry.tables, definition, draft).map((planned) => (
+        {plannedRolls(rollTable.tables, entry.tables, definition, draft, chosenTable).map((planned) => (
           <p className="cb-note" key={planned.table}>
             {planned.table}
             {planned.columns.length > 0 && ` — ${planned.columns.join(", ")}`}
           </p>
         ))}
+        {/* The book prints three name tables and expects you to know which one
+            you are. Leaving that to the same coin the server would have flipped
+            makes a player roll until it agrees with them. */}
+        {choice && (
+          <div className="cb-table-choice" role="group" aria-label={`Which table ${step.label} rolls on`}>
+            {choice.options.map((option) => (
+              <button
+                type="button"
+                key={option}
+                className={option === chosenTable ? "is-current" : ""}
+                aria-pressed={option === chosenTable}
+                disabled={busy}
+                onClick={() => setPicking({ stepId: step.id, table: option })}
+              >
+                {option}
+              </button>
+            ))}
+          </div>
+        )}
         <div className="cb-actions">
-          <button type="button" className="cb-roll" disabled={busy} onClick={() => roll({ stepId: step.id })}>
-            <Dices size={15} aria-hidden="true" /> {record?.rolled?.length ? "Roll again" : "Roll"}
+          <button
+            type="button"
+            className="cb-roll"
+            disabled={busy}
+            onClick={() => roll({ stepId: step.id, ...(choice && chosenTable ? { choice: chosenTable } : {}) })}
+          >
+            <Dices size={15} aria-hidden="true" /> {rollLabel}
           </button>
         </div>
         {renderRolls(record?.rolled)}
@@ -479,23 +526,33 @@ export function CharacterBuilder<C extends BuilderCharacter>({
     const unmatched = candidates.filter((candidate) => !candidate.listKey);
     const canDescribe =
       (step.kind === "grant" && Boolean(step.describeInto)) || (step.kind === "roll-table" && Boolean(step.joinInto));
+    // "Add as talent" on Monolith, and whatever the sheet calls its own entries
+    // panel elsewhere. The label is read off the sheet rather than declared,
+    // because the field already carries the word the player sees above it.
+    const entryLabel = entryField ? singularLabel(labelFor(entryField)).toLocaleLowerCase() : "";
 
-    function file(text: string, destination: "description" | "inventory") {
+    function file(text: string, destination: "description" | "inventory" | "entry") {
       const nextInventory = new Set(inventoried);
       const nextDescription = new Set(described);
+      const nextEntries = new Set(entered);
+      // One result, one home: pressing a second destination moves it rather
+      // than filing it twice, which the route refuses anyway.
       nextInventory.delete(text);
       nextDescription.delete(text);
+      nextEntries.delete(text);
       if (destination === "inventory") nextInventory.add(text);
+      else if (destination === "entry") nextEntries.add(text);
       else nextDescription.add(text);
       setFiling({
         stepId: step.id,
         runs,
         inventory: [...nextInventory],
-        description: [...nextDescription]
+        description: [...nextDescription],
+        entries: [...nextEntries]
       });
     }
 
-    if (canDescribe)
+    if (canDescribe || entryField)
       return (
         <section className="cb-gear" aria-label="File background results">
           <h4>{step.kind === "roll-table" ? "File this result" : "File background results"}</h4>
@@ -509,6 +566,12 @@ export function CharacterBuilder<C extends BuilderCharacter>({
                 {candidate.itemId && candidate.label !== candidate.text ? (
                   <small>The book calls it {candidate.text}</small>
                 ) : null}
+                {/* The split is shown before it is made, because the words
+                    before the colon becoming a name is a parse rather than
+                    something the player typed. */}
+                {entered.has(candidate.text) && creationEntryFrom(candidate.text).title ? (
+                  <small>Filed as “{creationEntryFrom(candidate.text).title}”</small>
+                ) : null}
               </div>
               <div
                 className="cb-gear-destinations"
@@ -519,7 +582,7 @@ export function CharacterBuilder<C extends BuilderCharacter>({
                   type="button"
                   className={described.has(candidate.text) ? "is-current" : ""}
                   aria-pressed={described.has(candidate.text)}
-                  disabled={busy}
+                  disabled={busy || !canDescribe}
                   onClick={() => file(candidate.text, "description")}
                 >
                   Add to description
@@ -531,8 +594,19 @@ export function CharacterBuilder<C extends BuilderCharacter>({
                   disabled={busy || !candidate.listKey}
                   onClick={() => file(candidate.text, "inventory")}
                 >
-                  Add to slot
+                  Add to inventory
                 </button>
+                {entryField && (
+                  <button
+                    type="button"
+                    className={entered.has(candidate.text) ? "is-current" : ""}
+                    aria-pressed={entered.has(candidate.text)}
+                    disabled={busy}
+                    onClick={() => file(candidate.text, "entry")}
+                  >
+                    Add as {entryLabel}
+                  </button>
+                )}
               </div>
             </div>
           ))}
@@ -553,7 +627,13 @@ export function CharacterBuilder<C extends BuilderCharacter>({
                 const next = new Set(inventoried);
                 if (event.target.checked) next.add(candidate.text);
                 else next.delete(candidate.text);
-                setFiling({ stepId: step.id, runs, inventory: [...next], description: [...described] });
+                setFiling({
+                  stepId: step.id,
+                  runs,
+                  inventory: [...next],
+                  description: [...described],
+                  entries: [...entered]
+                });
               }}
             />
             <span className="cb-gear-copy">

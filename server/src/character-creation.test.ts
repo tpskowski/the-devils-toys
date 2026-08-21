@@ -886,6 +886,83 @@ describe("the creation routes", () => {
     expect(described.sheet.notes).toBe(offered[0].description);
   });
 
+  /**
+   * The third destination. A knack is neither a thing you carry nor a line about
+   * your face, and the sheet already draws a panel for it — so the review offers
+   * it beside the other two, and the words before the colon become its name.
+   */
+  it("files a rolled result as an entry, taking its name off the front of it", () => {
+    const rolled = expectCharacter(
+      rollCreationStep(owner, roomId, characterId, { stepId: "knack", choice: "Road Knacks (d6)" })
+    );
+    const offered = rolled.creation!.steps.knack.candidates!;
+    expect(offered).toHaveLength(1);
+    // A knack is not gear: the step names no list, and the catalogue has never
+    // heard of one, so the only homes on offer are the notes and the panel.
+    expect(offered[0].listKey).toBeUndefined();
+    expect(rolled.sheet.knacks).toBeUndefined();
+
+    const filed = expectCharacter(
+      updateCreationDraft(owner, roomId, characterId, { stepId: "knack", describe: [], entry: [offered[0].text] })
+    );
+    const [entry] = filed.sheet.knacks as { title: string; text: string }[];
+    expect(entry.title).toMatch(/^[A-Z]/);
+    expect(entry.title).not.toContain("*");
+    expect(entry.title).not.toContain(":");
+    expect(entry.text.length).toBeGreaterThan(0);
+    expect(offered[0].text).toContain(entry.text);
+  });
+
+  it("moves a result out of the entries panel when it is filed somewhere else", () => {
+    const rolled = expectCharacter(rollCreationStep(owner, roomId, characterId, { stepId: "knack" }));
+    const offered = rolled.creation!.steps.knack.candidates!;
+    updateCreationDraft(owner, roomId, characterId, { stepId: "knack", entry: [offered[0].text] });
+
+    const described = expectCharacter(
+      updateCreationDraft(owner, roomId, characterId, { stepId: "knack", describe: [offered[0].text], entry: [] })
+    );
+    expect(described.sheet.knacks).toEqual([]);
+    expect(described.sheet.notes).toBe(offered[0].description);
+  });
+
+  it("refuses a result filed in two places at once", () => {
+    const rolled = expectCharacter(rollCreationStep(owner, roomId, characterId, { stepId: "knack" }));
+    const offered = rolled.creation!.steps.knack.candidates!;
+    expect(
+      updateCreationDraft(owner, roomId, characterId, {
+        stepId: "knack",
+        describe: [offered[0].text],
+        entry: [offered[0].text]
+      })
+    ).toMatchObject({ status: 400 });
+  });
+
+  /**
+   * Which of the book's two knack tables a character's is off is a decision
+   * about the character rather than a die roll, so the player names it and the
+   * server checks the name against what the step declared.
+   */
+  it("rolls the table the player chose out of the ones the step offers", () => {
+    const chosen = expectCharacter(
+      rollCreationStep(owner, roomId, characterId, { stepId: "knack", choice: "Guild Knacks (d6)" })
+    );
+    expect(chosen.creation?.steps.knack.rolled?.[0].table).toBe("Guild Knacks (d6)");
+
+    const other = expectCharacter(
+      rollCreationStep(owner, roomId, characterId, { stepId: "knack", choice: "Road Knacks (d6)" })
+    );
+    expect(other.creation?.steps.knack.rolled?.[0].table).toBe("Road Knacks (d6)");
+  });
+
+  it("refuses a table the step does not offer, and rolls one at random when none is named", () => {
+    expect(rollCreationStep(owner, roomId, characterId, { stepId: "knack", choice: "Vices (d6)" })).toMatchObject({
+      status: 400
+    });
+
+    const rolled = expectCharacter(rollCreationStep(owner, roomId, characterId, { stepId: "knack" }));
+    expect(["Guild Knacks (d6)", "Road Knacks (d6)"]).toContain(rolled.creation?.steps.knack.rolled?.[0].table);
+  });
+
   it("moves between steps without touching the sheet", () => {
     const moved = expectCharacter(updateCreationDraft(owner, roomId, characterId, { stepId: "kit" }));
     expect(moved.creation?.stepId).toBe("kit");

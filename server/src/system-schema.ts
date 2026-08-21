@@ -442,6 +442,9 @@ const creationJoin = z
   .object({ field: nonEmpty, separator: z.string(), prefixWith: z.enum(["table", "column"]).optional() })
   .strict();
 
+/** The `entries` field a reviewed result may be filed in, beside a slot and the description. */
+const creationEntryDestination = z.object({ field: nonEmpty }).strict();
+
 const creationTableRoll = z
   .object({
     table: nonEmpty.optional(),
@@ -450,11 +453,17 @@ const creationTableRoll = z
     position: z.number().int().positive().optional(),
     column: nonEmpty.optional(),
     columnFirstOf: z.array(nonEmpty).min(1).optional(),
+    choose: z.boolean().optional(),
     field: nonEmpty.optional(),
     stowInto: nonEmpty.optional(),
     fromStep: creationStepId.optional()
   })
   .strict()
+  // Choosing is choosing between things. A `choose` on anything but a `firstOf`
+  // offers a player one button naming the one table the step was going to roll.
+  .refine((roll) => !roll.choose || Boolean(roll.firstOf), {
+    message: "A table roll only lets the player choose where it offers a firstOf to choose between."
+  })
   // One table, a choice between several, or a position under an earlier packet:
   // never none and never more than one. A roll naming none references nothing
   // and then rolls nothing at all.
@@ -498,6 +507,7 @@ const creationRollTableStep = z
     section: nonEmpty,
     tables: z.array(creationTableRoll).min(1),
     joinInto: creationJoin.optional(),
+    entryInto: creationEntryDestination.optional(),
     editable: z.object({ placeholder: z.string().optional(), multiline: z.boolean().optional() }).strict().optional()
   })
   .strict();
@@ -526,7 +536,8 @@ const creationGrantStep = z
     items: z.array(nonEmpty).optional(),
     roll: z.array(z.object({ dice: nonEmpty, field: nonEmpty, label: nonEmpty }).strict()).optional(),
     reviewFrom: z.array(creationStepId).min(1).optional(),
-    describeInto: z.object({ field: nonEmpty, separator: z.string() }).strict().optional()
+    describeInto: z.object({ field: nonEmpty, separator: z.string() }).strict().optional(),
+    entryInto: creationEntryDestination.optional()
   })
   .strict();
 

@@ -153,6 +153,11 @@
             "key": "notes",
             "label": "Notes",
             "kind": "textarea"
+          },
+          {
+            "key": "knacks",
+            "label": "Knacks",
+            "kind": "entries"
           }
         ]
       }
@@ -612,6 +617,30 @@
         }
       },
       {
+        "id": "knack",
+        "kind": "roll-table",
+        "label": "A knack you picked up",
+        "optional": true,
+        "hint": "Say which set yours came from, then roll. File it as a knack, or as a note.",
+        "rulesQuery": "Character Creation",
+        "section": "Character Creation",
+        "tables": [
+          {
+            "firstOf": ["Guild Knacks (d6)", "Road Knacks (d6)"],
+            "choose": true,
+            "column": "Knack"
+          }
+        ],
+        "joinInto": {
+          "field": "notes",
+          "separator": "\n",
+          "prefixWith": "table"
+        },
+        "entryInto": {
+          "field": "knacks"
+        }
+      },
+      {
         "id": "odds-and-ends",
         "kind": "roll-table",
         "label": "Something you kept",
@@ -638,14 +667,20 @@
         "listKey": "inventory",
         "items": ["Cudgel", "Lantern", "Chalk and twine"],
         "reviewFrom": ["trade"],
-        "describeInto": { "field": "notes", "separator": "\n" },
+        "describeInto": {
+          "field": "notes",
+          "separator": "\n"
+        },
         "roll": [
           {
             "dice": "3d6",
             "field": "coin",
             "label": "Coin"
           }
-        ]
+        ],
+        "entryInto": {
+          "field": "knacks"
+        }
       },
       {
         "id": "vice",
