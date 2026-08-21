@@ -3,6 +3,7 @@ import {
   Boxes,
   Check,
   ContactRound,
+  DoorOpen,
   KeyRound,
   Plus,
   Save,
@@ -14,6 +15,14 @@ import {
 import type { AccountRole, SystemId } from "@devils-toys/shared";
 import { api } from "./api";
 import { accountRoleLabels, requiresOwnedRoomDowngradeWarning } from "./account-roles";
+import {
+  playsInRoom,
+  roomCastSummary,
+  roomDeletionArmed,
+  seatableGms,
+  type ManagedRoomRecord,
+  type RoomGmCandidate
+} from "./room-management";
 import { SystemsManagement } from "./SystemsManagement";
 import "./management.css";
 
@@ -46,17 +55,28 @@ interface ManagedCharacter {
 
 interface ManagementData {
   viewerRole: AccountRole;
+  viewerAccountId: number;
   systems: { id: SystemId; name: string; glyph: string }[];
-  rooms: ManagedRoom[];
+  rooms: ManagedRoomRecord[];
+  /** Empty for a GM: only an admin seats somebody else at a table. */
+  gmCandidates: RoomGmCandidate[];
   players: ManagedPlayer[];
   characters: ManagedCharacter[];
 }
 
-type Section = "players" | "characters" | "systems";
+type Section = "rooms" | "players" | "characters" | "systems";
 
-export function ManagementWorkspace({ onSystemsChanged }: { onSystemsChanged?: () => Promise<void> }) {
+export function ManagementWorkspace({
+  onSystemsChanged,
+  onRoomsChanged
+}: {
+  onSystemsChanged?: () => Promise<void>;
+  /** The rail keeps its own list of rooms, and this panel makes and unmakes them. */
+  onRoomsChanged?: () => Promise<void>;
+}) {
   const [data, setData] = useState<ManagementData>();
-  const [section, setSection] = useState<Section>("players");
+  const [section, setSection] = useState<Section>("rooms");
+  const [selectedRoomId, setSelectedRoomId] = useState<number>();
   const [selectedPlayerId, setSelectedPlayerId] = useState<number>();
   const [selectedCharacterId, setSelectedCharacterId] = useState<number>();
   const [error, setError] = useState("");
@@ -66,6 +86,9 @@ export function ManagementWorkspace({ onSystemsChanged }: { onSystemsChanged?: (
   async function load() {
     const next = await api<ManagementData>("/api/management");
     setData(next);
+    setSelectedRoomId((current) =>
+      current && next.rooms.some((room) => room.id === current) ? current : next.rooms[0]?.id
+    );
     setSelectedPlayerId((current) =>
       current && next.players.some((player) => player.id === current) ? current : next.players[0]?.id
     );
@@ -93,6 +116,7 @@ export function ManagementWorkspace({ onSystemsChanged }: { onSystemsChanged?: (
     }
   }
 
+  const selectedRoom = data?.rooms.find((room) => room.id === selectedRoomId);
   const selectedPlayer = data?.players.find((player) => player.id === selectedPlayerId);
   const selectedCharacter = data?.characters.find((character) => character.id === selectedCharacterId);
 
@@ -102,7 +126,9 @@ export function ManagementWorkspace({ onSystemsChanged }: { onSystemsChanged?: (
         <div>
           <p className="eyebrow">Company management</p>
           <h1>Prepare the company.</h1>
-          <p>Create accounts and characters before the table gathers, then place them when the campaign is ready.</p>
+          <p>
+            Open a table, create the accounts and characters it will need, then place them when the campaign is ready.
+          </p>
         </div>
         <div className="management-stat">
           <ShieldCheck size={18} />
@@ -114,6 +140,12 @@ export function ManagementWorkspace({ onSystemsChanged }: { onSystemsChanged?: (
       </header>
 
       <nav className="management-tabs" aria-label="Management sections">
+        {/* The room comes first because everything else in this panel is placed
+            into one: an account is given room access, a character is pooled in a
+            room, and a system is what a room is played on. */}
+        <button className={section === "rooms" ? "active" : ""} onClick={() => setSection("rooms")}>
+          <DoorOpen size={17} /> Rooms <span>{data?.rooms.length ?? 0}</span>
+        </button>
         <button className={section === "players" ? "active" : ""} onClick={() => setSection("players")}>
           <UsersRound size={17} /> {data?.viewerRole === "admin" ? "Accounts" : "Players"}{" "}
           <span>{data?.players.length ?? 0}</span>
@@ -140,6 +172,16 @@ export function ManagementWorkspace({ onSystemsChanged }: { onSystemsChanged?: (
         <div className="management-loading">Opening the company ledger…</div>
       ) : section === "systems" ? (
         <SystemsManagement onSystemsChanged={onSystemsChanged} />
+      ) : section === "rooms" ? (
+        <RoomManagement
+          data={data}
+          selected={selectedRoom}
+          selectedId={selectedRoomId}
+          onSelect={setSelectedRoomId}
+          busy={busy}
+          act={act}
+          onRoomsChanged={onRoomsChanged}
+        />
       ) : section === "players" ? (
         <PlayerManagement
           data={data}
@@ -161,6 +203,285 @@ export function ManagementWorkspace({ onSystemsChanged }: { onSystemsChanged?: (
         />
       )}
     </section>
+  );
+}
+
+function RoomManagement({
+  data,
+  selected,
+  selectedId,
+  onSelect,
+  busy,
+  act,
+  onRoomsChanged
+}: {
+  data: ManagementData;
+  selected: ManagedRoomRecord | undefined;
+  selectedId: number | undefined;
+  onSelect: (id: number) => void;
+  busy: boolean;
+  act: (action: () => Promise<void>, success: string) => Promise<void>;
+  onRoomsChanged?: () => Promise<void>;
+}) {
+  const [gmAccountId, setGmAccountId] = useState("");
+  const [confirmName, setConfirmName] = useState("");
+  const isAdmin = data.viewerRole === "admin";
+
+  useEffect(() => {
+    setGmAccountId(selected?.gm?.id.toString() ?? "");
+    setConfirmName("");
+  }, [selected?.id, selected?.gm?.id]);
+
+  const gmOptions = useMemo(() => seatableGms(data.gmCandidates, selected), [data.gmCandidates, selected]);
+  // The GM is listed as the room's GM rather than as one of its players, and
+  // holds a membership already: offering them the player toggle would only ever
+  // produce a refusal.
+  const assignablePlayers = data.players.filter((player) => player.id !== selected?.gm?.id);
+
+  async function createRoom(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!data.systems.length) return;
+    const form = event.currentTarget;
+    const values = new FormData(form);
+    const gm = values.get("gm");
+    await act(async () => {
+      const result = await api<{ room: ManagedRoomRecord }>("/api/management/rooms", {
+        method: "POST",
+        body: JSON.stringify({
+          name: values.get("name"),
+          system: values.get("system"),
+          ...(gm ? { gmAccountId: Number(gm) } : {})
+        })
+      });
+      onSelect(result.room.id);
+      form.reset();
+      await onRoomsChanged?.();
+    }, "Room created. Assign its players when the table is ready.");
+  }
+
+  async function assignGm() {
+    if (!selected || !gmAccountId || Number(gmAccountId) === selected.gm?.id) return;
+    const incoming = gmOptions.find((candidate) => candidate.id === Number(gmAccountId));
+    if (
+      selected.gm &&
+      !window.confirm(
+        `${incoming?.username ?? "That account"} will run ${selected.name}. ` +
+          `${selected.gm.username} stays at the table as a player. Continue?`
+      )
+    )
+      return;
+    await act(
+      async () => {
+        await api(`/api/management/rooms/${selected.id}`, {
+          method: "PATCH",
+          body: JSON.stringify({ gmAccountId: Number(gmAccountId) })
+        });
+        await onRoomsChanged?.();
+      },
+      `${incoming?.username ?? "That account"} now runs ${selected.name}.`
+    );
+  }
+
+  async function togglePlayer(player: ManagedPlayer, assigned: boolean) {
+    if (!selected) return;
+    await act(
+      () =>
+        api(`/api/management/players/${player.id}/rooms/${selected.id}`, {
+          method: assigned ? "DELETE" : "PUT"
+        }),
+      assigned ? `${player.username} removed from ${selected.name}.` : `${player.username} joined ${selected.name}.`
+    );
+  }
+
+  return (
+    <>
+      <form className={`management-create room-create${isAdmin ? " with-gm" : ""}`} onSubmit={createRoom}>
+        <div className="create-heading">
+          <DoorOpen size={19} />
+          <span>
+            Open a room
+            <small>{isAdmin ? "Choose the system, and who will run it." : "You will be its game master."}</small>
+          </span>
+        </div>
+        <label>
+          Room name
+          <input name="name" minLength={2} maxLength={80} required placeholder="The Moss-Covered Door" />
+        </label>
+        <label>
+          System
+          <select name="system" defaultValue={data.systems[0]?.id} disabled={!data.systems.length}>
+            {data.systems.map((system) => (
+              <option value={system.id} key={system.id}>
+                {system.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        {isAdmin && (
+          <label>
+            Game master
+            <select name="gm" defaultValue={data.viewerAccountId}>
+              {data.gmCandidates.map((candidate) => (
+                <option key={candidate.id} value={candidate.id}>
+                  {candidate.username}
+                  {candidate.id === data.viewerAccountId ? " (you)" : ""}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+        {!data.systems.length && (
+          <p className="form-error">
+            No game systems are available. An administrator must install or restore one before a room can be opened.
+          </p>
+        )}
+        <button className="primary-button compact" disabled={busy || !data.systems.length}>
+          <Plus size={16} /> Create room
+        </button>
+      </form>
+
+      <div className="management-ledger">
+        <div className="ledger-index">
+          <div className="ledger-label">
+            Room register <span>{data.rooms.length}</span>
+          </div>
+          {data.rooms.length === 0 ? (
+            <p className="ledger-empty">No rooms yet. Open the first one above.</p>
+          ) : (
+            data.rooms.map((room) => (
+              <button
+                key={room.id}
+                className={selectedId === room.id ? "selected" : ""}
+                onClick={() => onSelect(room.id)}
+              >
+                <span className="system-glyph">
+                  {data.systems.find((system) => system.id === room.system)?.glyph ?? "?"}
+                </span>
+                <span className="ledger-name">
+                  {room.name}
+                  <small>{roomCastSummary(room)}</small>
+                </span>
+                {room.archived && <span className="registry-status open">Archived</span>}
+              </button>
+            ))
+          )}
+        </div>
+
+        <div className="ledger-inspector">
+          {selected ? (
+            <>
+              <div className="inspector-heading">
+                <div>
+                  <p className="eyebrow">
+                    {selected.system} room{selected.archived ? " · archived" : ""}
+                  </p>
+                  <h2>{selected.name}</h2>
+                </div>
+                <span className="record-number">R-{String(selected.id).padStart(3, "0")}</span>
+              </div>
+              <section className="inspector-section role-setting">
+                <h3>Game master</h3>
+                {isAdmin ? (
+                  <>
+                    <p>Whoever sits here runs the room. The GM they replace stays at the table as a player.</p>
+                    <div>
+                      <select
+                        value={gmAccountId}
+                        onChange={(event) => setGmAccountId(event.target.value)}
+                        aria-label="Room game master"
+                      >
+                        {!selected.gm && <option value="">Nobody</option>}
+                        {gmOptions.map((candidate) => (
+                          <option key={candidate.id} value={candidate.id}>
+                            {candidate.username}
+                            {candidate.id === data.viewerAccountId ? " (you)" : ""}
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        type="button"
+                        className="secondary-button"
+                        disabled={busy || !gmAccountId || Number(gmAccountId) === selected.gm?.id}
+                        onClick={assignGm}
+                      >
+                        <Save size={15} /> Assign GM
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <p>
+                    {selected.gm ? `${selected.gm.username} runs this room.` : "Nobody runs this room."} Only an admin
+                    can hand it to a different GM.
+                  </p>
+                )}
+              </section>
+              <section className="inspector-section">
+                <h3>Players at this table</h3>
+                <p>Assign any account you manage. A player reaches the room as soon as they are added.</p>
+                <div className="assignment-list">
+                  {assignablePlayers.length === 0 ? (
+                    <p className="ledger-empty">
+                      No accounts to assign yet. Create one under {isAdmin ? "Accounts" : "Players"}.
+                    </p>
+                  ) : (
+                    assignablePlayers.map((player) => {
+                      const assigned = playsInRoom(selected, player.id);
+                      return (
+                        <button
+                          key={player.id}
+                          className={assigned ? "assigned" : ""}
+                          disabled={busy}
+                          onClick={() => togglePlayer(player, assigned)}
+                        >
+                          <span className="ledger-monogram">{player.username.slice(0, 2).toUpperCase()}</span>
+                          <span>
+                            {player.username}
+                            <small>{accountRoleLabels[player.role]}</small>
+                          </span>
+                          <span className="assignment-state">{assigned ? <Check size={15} /> : "Add"}</span>
+                        </button>
+                      );
+                    })
+                  )}
+                </div>
+              </section>
+              {isAdmin && (
+                <details className="danger-zone">
+                  <summary>Permanent deletion</summary>
+                  <p>
+                    Delete this room and all of its messages, memberships, and stored room data. This cannot be undone —
+                    archive it from the room's own settings if you may want it back.
+                  </p>
+                  <label>
+                    Type {selected.name} to confirm
+                    <input
+                      value={confirmName}
+                      onChange={(event) => setConfirmName(event.target.value)}
+                      autoComplete="off"
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    className="danger-button"
+                    disabled={busy || !roomDeletionArmed(confirmName, selected.name)}
+                    onClick={() =>
+                      act(async () => {
+                        await api(`/api/management/rooms/${selected.id}`, { method: "DELETE" });
+                        await onRoomsChanged?.();
+                      }, `${selected.name} deleted.`)
+                    }
+                  >
+                    <Trash2 size={15} /> Delete room permanently
+                  </button>
+                </details>
+              )}
+            </>
+          ) : (
+            <p className="ledger-empty">Select a room to seat its GM and assign its players.</p>
+          )}
+        </div>
+      </div>
+    </>
   );
 }
 

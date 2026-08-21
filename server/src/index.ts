@@ -14,6 +14,7 @@ import { invitationRouter } from "./invitations.js";
 import { evaluateCheck, evaluateSave, parseRollCommand, rollDice } from "./dice.js";
 import { characterRouter } from "./characters.js";
 import { roomAdminRouter } from "./room-admin.js";
+import { createRoom } from "./rooms.js";
 import { canResetAccountPassword } from "./account-permissions.js";
 import { managementRouter } from "./management.js";
 import { mediaRouter } from "./media.js";
@@ -366,36 +367,24 @@ app.post("/api/rooms", requireAuth, (req: AuthedRequest, res) => {
   if (!isSystemOffered(body.system))
     return res.status(409).json({ error: `${systemOrThrow(body.system).name} is retired and cannot take new rooms.` });
   const theme = body.theme ?? systemOrThrow(body.system).defaultTheme;
-  db.exec("BEGIN");
-  try {
-    const result = db
-      .prepare("INSERT INTO rooms (name, system, theme, created_by) VALUES (?, ?, ?, ?)")
-      .run(body.name, body.system, theme, req.account!.id);
-    const roomId = Number(result.lastInsertRowid);
-    db.prepare("INSERT INTO memberships (room_id, account_id, role) VALUES (?, ?, 'gm')").run(roomId, req.account!.id);
-    db.prepare("INSERT INTO room_state (room_id) VALUES (?)").run(roomId);
-    db.exec("COMMIT");
-    res.status(201).json({
-      room: {
-        id: roomId,
-        name: body.name,
-        system: body.system,
-        systemName: systemOrThrow(body.system).name,
-        theme,
-        role: "gm",
-        archived: false,
-        calendarEnabled: false,
-        mapNotationEnabled: false,
-        musicEnabled: false,
-        // Nothing is recorded for a room this new, so these are the system's
-        // own defaults — which is what the room is actually playing by.
-        rules: roomRules(roomId, body.system)
-      }
-    });
-  } catch (error) {
-    db.exec("ROLLBACK");
-    throw error;
-  }
+  const roomId = createRoom({ name: body.name, system: body.system, theme, gmAccountId: req.account!.id });
+  res.status(201).json({
+    room: {
+      id: roomId,
+      name: body.name,
+      system: body.system,
+      systemName: systemOrThrow(body.system).name,
+      theme,
+      role: "gm",
+      archived: false,
+      calendarEnabled: false,
+      mapNotationEnabled: false,
+      musicEnabled: false,
+      // Nothing is recorded for a room this new, so these are the system's
+      // own defaults — which is what the room is actually playing by.
+      rules: roomRules(roomId, body.system)
+    }
+  });
 });
 
 app.get("/api/rooms/:roomId", requireAuth, (req: AuthedRequest, res) => {

@@ -559,7 +559,7 @@ function Workspace({
         <Menu />
       </button>
       {managementOpen && canManage ? (
-        <ManagementWorkspace onSystemsChanged={onSystemsChanged} />
+        <ManagementWorkspace onSystemsChanged={onSystemsChanged} onRoomsChanged={loadRooms} />
       ) : active ? (
         <TableRoom
           room={active}

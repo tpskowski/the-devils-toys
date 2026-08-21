@@ -2,6 +2,26 @@
 
 [← Back to the admin guide](README.md)
 
+## The Rooms section
+
+**Management → Rooms** in the rail is the register of every room on the server:
+what each one is played on, who runs it, and who sits at it. A GM sees the same
+screen holding only the rooms they run.
+
+Three things happen here that happen nowhere else:
+
+- **Opening a room for somebody else.** The create form takes a name, a system,
+  and — for an admin — the account that will run it. A GM's form has no such
+  field: a GM makes rooms for themselves.
+- **Assigning its players.** The room's record lists every account you manage
+  with a toggle beside each. It writes the same memberships as **Room access**
+  on an account's own record; this is the other way round, and one room at a
+  time rather than one account at a time.
+- **Handing the room to a different GM**, below.
+
+Deleting a room is here too, and is the same permanent deletion the room's own
+settings offers.
+
 ## Reaching every room
 
 **Room Config** is where a room is set up rather than run. It opens from the
@@ -53,8 +73,9 @@ this campaign, for now".
 
 ## Deleting a room
 
-**Admins only.** It is in the room's settings, behind a **Permanent deletion**
-disclosure, and you must type the room's name to arm the button.
+**Admins only.** It is in the room's settings and on the room's record under
+**Management → Rooms**, behind a **Permanent deletion** disclosure in both, and
+you must type the room's name to arm the button.
 
 > Delete this room and all of its messages, memberships, and stored room data.
 > This cannot be undone.
@@ -73,28 +94,35 @@ next month when you still feel the same way.
 
 ## Who a room's GM is, and how that changes
 
-A room has exactly two ways of acquiring a GM:
+A room acquires a GM in three ways:
 
 1. **Whoever created it** becomes its GM.
-2. **Whoever demotes its GM to player** inherits it — see
+2. **An admin names one** when they open the room, or hands the room over
+   afterwards from **Management → Rooms**.
+3. **Whoever demotes its GM to player** inherits it — see
    [Accounts](accounts.md#changing-a-role).
 
-That is the whole list. **There is no "make this member the GM" action.** Adding
-somebody to a room always adds them as a player, and nothing promotes them
-afterwards.
+Adding somebody to a room still always adds them as a **player**. The GM chair
+is a separate control, on the room's own record, and only an admin sees it.
 
-So handing a table from one person to another is awkward, and worth knowing
-before you need it. The route that works today:
+Handing a table over takes one action:
 
-1. Make the incoming GM a **server admin**.
-2. Have **them** demote the outgoing GM to player. The rooms transfer to
-   whoever clicks, so they must perform this step themselves — not you.
-3. They are now the rooms' GM. You can then set their account role back down to
-   game master; that does not disturb the memberships they just gained.
+1. Open **Management → Rooms** and select the room.
+2. Choose the incoming GM under **Game master** and assign it.
 
-If you would rather not hand out admin, the alternative is for the new GM to
-create a fresh room and for the old one to be archived. There is currently no
-tidier path.
+What that does, and it says so before it does it:
+
+- the account you chose becomes the room's GM;
+- the outgoing GM **stays at the table as a player**, rather than being turned
+  out of it;
+- the room's recorded creator becomes the new GM.
+
+Only a game master or admin account can be seated. A player-level account is not
+offered, because demoting an account to player already takes its rooms away —
+seating one would be undone the next time anybody looked.
+
+The incoming GM sees the change where they sit: they are not signed out, and
+neither is the outgoing one.
 
 An admin is never locked out regardless: Room Config reaches every room whether
 or not anyone can run it from the inside.

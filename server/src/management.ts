@@ -1,14 +1,22 @@
 import express from "express";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
-import type { AccountRole, SystemId } from "@devils-toys/shared";
+import { THEME_IDS, type AccountRole, type SystemId, type ThemeId } from "@devils-toys/shared";
 import type { AuthedRequest, AuthAccount } from "./auth.js";
 import { requireAuth } from "./auth.js";
 import { all, db, one } from "./db.js";
 import { removeStoredPortrait } from "./portrait-files.js";
 import { broadcastRoom, disconnectAccount, refreshRoomAccess } from "./realtime.js";
 import { allSystems, characterWarningsFor, systemIdSchema, systemOrThrow } from "./systems.js";
+import { isSystemOffered } from "./system-registry.js";
 import { canCreateAccountRole, requiresRoomTransferConfirmation } from "./account-role-permissions.js";
+import {
+  canAssignRoomGm,
+  canCreateRoomForAnother,
+  canDeleteRoom,
+  canHoldRoomGm
+} from "./room-management-permissions.js";
+import { assignRoomGm, createRoom, deleteRoom } from "./rooms.js";
 
 export const managementRouter = express.Router();
 
@@ -16,6 +24,23 @@ interface ManagedRoom {
   id: number;
   name: string;
   system: SystemId;
+}
+
+/**
+ * A room as the Rooms section lists it: the room itself, whoever runs it, and
+ * whoever plays in it. The panel manages a room from the room's own side, so it
+ * needs the cast in one payload rather than assembling it from the accounts.
+ */
+interface ManagedRoomRecord extends ManagedRoom {
+  theme: ThemeId;
+  archived: boolean;
+  gm: { id: number; username: string } | null;
+  players: { id: number; username: string }[];
+}
+
+interface RoomRow extends ManagedRoom {
+  theme: ThemeId;
+  archived: number;
 }
 
 interface ManagedPlayer {
@@ -58,16 +83,60 @@ const asyncRoute =
     }
   };
 
-function managedRooms(account: AuthAccount): ManagedRoom[] {
-  if (account.isAdmin) return all<ManagedRoom>("SELECT id, name, system FROM rooms ORDER BY archived, name");
+function managedRooms(account: AuthAccount): RoomRow[] {
+  if (account.isAdmin)
+    return all<RoomRow>("SELECT id, name, system, theme, archived FROM rooms ORDER BY archived, name");
   if (account.role === "player") return [];
-  return all<ManagedRoom>(
-    `SELECT r.id, r.name, r.system FROM rooms r
+  return all<RoomRow>(
+    `SELECT r.id, r.name, r.system, r.theme, r.archived FROM rooms r
        JOIN memberships m ON m.room_id = r.id
        WHERE m.account_id = ? AND m.role = 'gm'
        ORDER BY r.archived, r.name`,
     account.id
   );
+}
+
+/**
+ * The managed rooms with their cast attached. One query for every membership
+ * rather than one per room, since an admin's ledger is every room on the server.
+ */
+function roomRecords(rooms: RoomRow[]): ManagedRoomRecord[] {
+  if (rooms.length === 0) return [];
+  const members = all<{ room_id: number; id: number; username: string; role: "gm" | "player" }>(
+    `SELECT m.room_id, a.id, a.username, m.role FROM memberships m
+       JOIN accounts a ON a.id = m.account_id
+       WHERE m.room_id IN (${rooms.map(() => "?").join(",")})
+       ORDER BY a.username`,
+    ...rooms.map((room) => room.id)
+  );
+  return rooms.map((room) => {
+    const cast = members.filter((member) => member.room_id === room.id);
+    const gm = cast.find((member) => member.role === "gm");
+    return {
+      id: room.id,
+      name: room.name,
+      system: room.system,
+      theme: room.theme,
+      archived: Boolean(room.archived),
+      gm: gm ? { id: gm.id, username: gm.username } : null,
+      players: cast
+        .filter((member) => member.role === "player")
+        .map((member) => ({ id: member.id, username: member.username }))
+    };
+  });
+}
+
+/**
+ * The accounts an admin may seat as a room's GM. A player-level account is not
+ * among them — `canHoldRoomGm` says why — and the admin doing the seating is,
+ * since making a room for yourself is the ordinary case.
+ */
+function roomGmCandidates() {
+  return all<{ id: number; username: string; account_role: AccountRole }>(
+    "SELECT id, username, account_role FROM accounts ORDER BY username"
+  )
+    .filter((account) => canHoldRoomGm(account.account_role))
+    .map((account) => ({ id: account.id, username: account.username, role: account.account_role }));
 }
 
 function managerContext(req: AuthedRequest, res: express.Response) {
@@ -179,7 +248,13 @@ managementRouter.get("/management", requireAuth, (req: AuthedRequest, res) => {
   if (!context) return;
   res.json({
     viewerRole: req.account!.role,
-    rooms: context.rooms,
+    // Named rather than implied: the Rooms section offers the reader their own
+    // account as a room's GM, and "me" is not something a list of usernames says.
+    viewerAccountId: req.account!.id,
+    rooms: roomRecords(context.rooms),
+    // Only an admin seats somebody else, so nobody else is sent the roster to
+    // seat them from.
+    gmCandidates: req.account!.isAdmin ? roomGmCandidates() : [],
     players: context.players.map((player) => ({
       id: player.id,
       username: player.username,
@@ -191,6 +266,98 @@ managementRouter.get("/management", requireAuth, (req: AuthedRequest, res) => {
     characters: manageableCharacterRows(context, req.account!).map(publicCharacter),
     systems: allSystems().map(({ id, name, glyph }) => ({ id, name, glyph }))
   });
+});
+
+/*
+ * The Rooms section.
+ *
+ * A room's cast is managed from both ends: an account's rooms under Accounts,
+ * and a room's accounts under Rooms. Both write the same memberships, so the
+ * player assignment routes further down serve either direction, and only the
+ * room itself — making one, handing it over, destroying it — is new here.
+ */
+
+/** One room as the section lists it, for the response to a change. */
+function roomRecord(roomId: number) {
+  const row = one<RoomRow>("SELECT id, name, system, theme, archived FROM rooms WHERE id = ?", roomId)!;
+  return roomRecords([row])[0];
+}
+
+/** The account being seated as a GM, or a refusal saying why it cannot be. */
+function gmToSeat(accountId: number, res: express.Response) {
+  const account = one<{ id: number; username: string; account_role: AccountRole }>(
+    "SELECT id, username, account_role FROM accounts WHERE id = ?",
+    accountId
+  );
+  if (!account) {
+    res.status(404).json({ error: "Account not found." });
+    return;
+  }
+  if (!canHoldRoomGm(account.account_role)) {
+    res.status(409).json({
+      error: `${account.username} is a player account. Make them a game master before giving them a room to run.`
+    });
+    return;
+  }
+  return account;
+}
+
+managementRouter.post("/management/rooms", requireAuth, (req: AuthedRequest, res) => {
+  const context = managerContext(req, res);
+  if (!context) return;
+  const parsed = z
+    .object({
+      name: z.string().trim().min(2).max(80),
+      system: systemIdSchema,
+      theme: z.enum(THEME_IDS).optional(),
+      gmAccountId: z.number().int().positive().optional()
+    })
+    .safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Invalid room." });
+  // Registered but retired: the rooms already on it keep working, and this is
+  // the difference between retiring a system and deleting one.
+  if (!isSystemOffered(parsed.data.system))
+    return res
+      .status(409)
+      .json({ error: `${systemOrThrow(parsed.data.system).name} is retired and cannot take new rooms.` });
+  const gmAccountId = parsed.data.gmAccountId ?? req.account!.id;
+  if (gmAccountId !== req.account!.id && !canCreateRoomForAnother(req.account!.role))
+    return res.status(403).json({ error: "Only an admin can make a room for somebody else to run." });
+  const gm = gmToSeat(gmAccountId, res);
+  if (!gm) return;
+  const theme = parsed.data.theme ?? systemOrThrow(parsed.data.system).defaultTheme;
+  const roomId = createRoom({ name: parsed.data.name, system: parsed.data.system, theme, gmAccountId: gm.id });
+  res.status(201).json({ room: roomRecord(roomId) });
+});
+
+managementRouter.patch("/management/rooms/:roomId", requireAuth, (req: AuthedRequest, res) => {
+  const context = managerContext(req, res);
+  if (!context) return;
+  const roomId = Number(req.params.roomId);
+  if (!context.roomIds.has(roomId)) return res.status(404).json({ error: "Room not found." });
+  if (!canAssignRoomGm(req.account!.role))
+    return res.status(403).json({ error: "Only an admin can hand a room to a different GM." });
+  const parsed = z.object({ gmAccountId: z.number().int().positive() }).safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: "Choose the account that will run this room." });
+  const gm = gmToSeat(parsed.data.gmAccountId, res);
+  if (!gm) return;
+  assignRoomGm(roomId, gm.id);
+  // Whoever was running it a moment ago is sitting in it as a player now, and
+  // is told so where they sit rather than being signed out: the session is
+  // still theirs, only their standing in this one room has changed.
+  refreshRoomAccess(roomId);
+  res.json({ room: roomRecord(roomId) });
+});
+
+managementRouter.delete("/management/rooms/:roomId", requireAuth, (req: AuthedRequest, res) => {
+  const context = managerContext(req, res);
+  if (!context) return;
+  if (!canDeleteRoom(req.account!.role))
+    return res.status(403).json({ error: "Only an admin can delete a room. Archive it instead." });
+  const roomId = Number(req.params.roomId);
+  if (!context.roomIds.has(roomId) || !deleteRoom(roomId)) return res.status(404).json({ error: "Room not found." });
+  refreshRoomAccess(roomId);
+  res.status(204).end();
 });
 
 managementRouter.post(

@@ -1,12 +1,11 @@
-import fs from "node:fs";
-import path from "node:path";
 import express from "express";
 import { z } from "zod";
 import type { AuthedRequest } from "./auth.js";
 import { requireAuth, roomRole } from "./auth.js";
 import { all, db, one } from "./db.js";
-import { config } from "./config.js";
 import { refreshRoomAccess } from "./realtime.js";
+import { canDeleteRoom } from "./room-management-permissions.js";
+import { deleteRoom } from "./rooms.js";
 
 export const roomAdminRouter = express.Router();
 
@@ -78,35 +77,9 @@ roomAdminRouter.delete(
 );
 
 roomAdminRouter.delete("/rooms/:roomId", requireAuth, (req: AuthedRequest, res: express.Response) => {
-  if (!req.account!.isAdmin) return res.status(403).json({ error: "Server admin access required." });
+  if (!canDeleteRoom(req.account!.role)) return res.status(403).json({ error: "Server admin access required." });
   const roomId = Number(req.params.roomId);
-  const room = one<{ id: number }>("SELECT id FROM rooms WHERE id = ?", roomId);
-  if (!room) return res.status(404).json({ error: "Room not found." });
-  // Every uploaded file the room owns, so deleting it does not leave its
-  // pictures behind. Hireling and ship portraits are columns on their rows now
-  // rather than tables of their own.
-  const storedNames = all<{ stored_name: string }>(
-    `SELECT stored_name FROM media WHERE room_id = ?
-     UNION ALL
-     SELECT portrait_stored_name AS stored_name FROM group_hirelings
-       WHERE room_id = ? AND portrait_stored_name IS NOT NULL
-     UNION ALL
-     SELECT portrait_stored_name AS stored_name FROM group_assets
-       WHERE room_id = ? AND portrait_stored_name IS NOT NULL`,
-    roomId,
-    roomId,
-    roomId
-  );
-  db.prepare("DELETE FROM rooms WHERE id = ?").run(roomId);
+  if (!deleteRoom(roomId)) return res.status(404).json({ error: "Room not found." });
   refreshRoomAccess(roomId);
-  const uploadsDir = path.join(config.dataDir, "uploads");
-  for (const media of storedNames) {
-    if (path.basename(media.stored_name) !== media.stored_name) continue;
-    try {
-      fs.rmSync(path.join(uploadsDir, media.stored_name), { force: true });
-    } catch {
-      // The database deletion remains authoritative if an already-missing file cannot be removed.
-    }
-  }
   res.status(204).end();
 });

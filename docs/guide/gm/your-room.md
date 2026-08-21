@@ -4,8 +4,10 @@
 
 ## Making one
 
-**New room** in the left rail. You give it a name and a system, and you become
-its GM.
+**New room** in the left rail, or **Open a room** under **Players & characters →
+Rooms**. Either way you give it a name and a system, and you become its GM. The
+Rooms tab also lists the rooms you run with their players, so it is the place to
+assign a table rather than one player at a time.
 
 **The system cannot be changed afterwards.** It decides the character sheet, the
 dice, the rulebook, the bestiary, and which sections Room Config offers you.

@@ -101,9 +101,18 @@ Confirming does exactly that, for every room they run:
 The demoted account is signed out so it cannot keep acting on the old role from
 a page it already had open.
 
-This is the supported way to hand a table over when someone stops running it. If
-you want a _different_ admin to inherit the rooms, have that admin perform the
-downgrade — the rooms go to whoever clicks.
+This moves **every** room the account runs, to whoever clicked. To hand over one
+table rather than all of them — or to hand one to somebody who is not the admin
+doing the handing — use the GM chair on the room's own record instead
+([Rooms](rooms.md#who-a-rooms-gm-is-and-how-that-changes)).
+
+## Rooms
+
+The **Rooms** tab of the same screen is the register of rooms: opening one,
+choosing who runs it, assigning its players, and deleting it. Room access can be
+given from either end — an account's record lists the rooms, a room's record
+lists the accounts — and the two write the same memberships. See
+[Rooms](rooms.md#the-rooms-section).
 
 ## Characters
 
