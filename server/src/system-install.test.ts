@@ -447,8 +447,9 @@ describe("what a creation declaration has to be true of to install", () => {
     );
   });
 
-  // Nothing this build performs produces an entry, so a step naming an entries
-  // field is a screen that would draw nothing at all.
+  // An entries field holds records rather than prose, and only a review's
+  // `entryInto` files one. A step writing a line there is a screen that would
+  // draw nothing at all.
   it("refuses a step writing to a field the sheet keeps as entries", () => {
     const bundle = bent((system) => {
       const sheet = (system as Record<string, { sections: { fields: unknown[] }[] }>).characterSheet;
@@ -457,7 +458,7 @@ describe("what a creation declaration has to be true of to install", () => {
       (stepOf(creation, "trade").into as { field: string }).field = "log";
     });
     expect(() => refuseUninstallableCreation(bundle)).toThrow(
-      /"trade" writes a line of text to "log", which the sheet keeps as entries — no creation step produces one/
+      /"trade" writes a line of text to "log", which the sheet keeps as entries — only an entryInto files one of those/
     );
   });
 
@@ -467,6 +468,49 @@ describe("what a creation declaration has to be true of to install", () => {
     });
     expect(() => refuseUninstallableCreation(bundle)).toThrow(
       /"trade" stows into "backpack", which is not a list the sheet declares/
+    );
+  });
+
+  // An `entryInto` is the one way a step reaches an entries field, so it is the
+  // one place the field's kind is worth stating: a review filing its results
+  // into a text box would draw a panel that stays empty forever.
+  it("refuses a review that files its results into a field the sheet does not keep as entries", () => {
+    const bundle = bentCreation((creation) => {
+      (stepOf(creation, "knack").entryInto as { field: string }).field = "notes";
+    });
+    expect(() => refuseUninstallableCreation(bundle)).toThrow(
+      /"knack" files reviewed results into "notes", which the sheet keeps as a textarea field rather than entries/
+    );
+  });
+
+  it("refuses a review that files its results into a field the sheet has not got", () => {
+    const bundle = bentCreation((creation) => {
+      (stepOf(creation, "knack").entryInto as { field: string }).field = "habits";
+    });
+    expect(() => refuseUninstallableCreation(bundle)).toThrow(
+      /"knack" writes "habits", which is not a field the sheet declares/
+    );
+  });
+
+  it("refuses a final review that files results as entries but reviews no earlier step", () => {
+    const bundle = bentCreation((creation) => {
+      delete stepOf(creation, "kit").reviewFrom;
+      delete stepOf(creation, "kit").describeInto;
+    });
+    expect(() => refuseUninstallableCreation(bundle)).toThrow(
+      /"kit" files reviewed gear as entries but reviews no earlier step/
+    );
+  });
+
+  // One roll of a step carries one choice, so two of its tables cannot both ask
+  // which table to roll. An author wanting two decisions has two steps.
+  it("refuses a step that lets the player choose the table for more than one roll", () => {
+    const bundle = bentCreation((creation) => {
+      const step = stepOf(creation, "knack") as { tables: Record<string, unknown>[] };
+      step.tables = [step.tables[0], { ...step.tables[0] }];
+    });
+    expect(() => refuseUninstallableCreation(bundle)).toThrow(
+      /"knack" lets the player choose the table for more than one of its rolls/
     );
   });
 

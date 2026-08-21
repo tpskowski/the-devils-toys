@@ -284,6 +284,172 @@
       }
     },
     {
+      "id": "toybox-character-creation-guild-knacks-d6",
+      "name": "Guild Knacks (d6)",
+      "section": "Character Creation",
+      "category": "Character Creation",
+      "dice": "d6",
+      "columns": [
+        "Knack"
+      ],
+      "tags": [
+        "character-building"
+      ],
+      "rows": [
+        {
+          "label": "1",
+          "min": 1,
+          "max": 1,
+          "cells": [
+            "**Cooperage:** You can tell a sound barrel from a leaking one by the sound of a knuckle on it."
+          ]
+        },
+        {
+          "label": "2",
+          "min": 2,
+          "max": 2,
+          "cells": [
+            "**Ledgers:** You read a merchant's books faster than the merchant does."
+          ]
+        },
+        {
+          "label": "3",
+          "min": 3,
+          "max": 3,
+          "cells": [
+            "**Apprentice's Ear:** You remember every instruction you were ever given badly."
+          ]
+        },
+        {
+          "label": "4",
+          "min": 4,
+          "max": 4,
+          "cells": [
+            "**Guild Word:** One guildhall in any town will hear you out."
+          ]
+        },
+        {
+          "label": "5",
+          "min": 5,
+          "max": 5,
+          "cells": [
+            "**Steady Hands:** Nothing you are carrying has ever been dropped."
+          ]
+        },
+        {
+          "label": "6",
+          "min": 6,
+          "max": 6,
+          "cells": [
+            "**Short Measure:** You know exactly how much is missing."
+          ]
+        }
+      ],
+      "classification": "player",
+      "origin": {
+        "heading": {
+          "line": 74,
+          "level": 3,
+          "text": "Guild Knacks (d6)"
+        },
+        "headingPath": [
+          "Toybox",
+          "Character Creation",
+          "Guild Knacks (d6)"
+        ],
+        "tagsLine": 82,
+        "tableStart": 84,
+        "tableEnd": 91,
+        "dieColumn": "d6",
+        "dice": "d6",
+        "soleTable": true,
+        "markdownFile": "Toybox.md"
+      }
+    },
+    {
+      "id": "toybox-character-creation-road-knacks-d6",
+      "name": "Road Knacks (d6)",
+      "section": "Character Creation",
+      "category": "Character Creation",
+      "dice": "d6",
+      "columns": [
+        "Knack"
+      ],
+      "tags": [
+        "character-building"
+      ],
+      "rows": [
+        {
+          "label": "1",
+          "min": 1,
+          "max": 1,
+          "cells": [
+            "**Weatherwise:** You know what the sky is going to do before it does it."
+          ]
+        },
+        {
+          "label": "2",
+          "min": 2,
+          "max": 2,
+          "cells": [
+            "**Night Walking:** You keep a road under your feet in the dark."
+          ]
+        },
+        {
+          "label": "3",
+          "min": 3,
+          "max": 3,
+          "cells": [
+            "**Cold Camp:** You can sleep anywhere once."
+          ]
+        },
+        {
+          "label": "4",
+          "min": 4,
+          "max": 4,
+          "cells": [
+            "**Toll Dodging:** You know where every gate is not."
+          ]
+        },
+        {
+          "label": "5",
+          "min": 5,
+          "max": 5,
+          "cells": [
+            "**Common Tongue:** You can make yourself understood two valleys over."
+          ]
+        },
+        {
+          "label": "6",
+          "min": 6,
+          "max": 6,
+          "cells": [
+            "**Long Wind:** You can walk all day and talk all of it."
+          ]
+        }
+      ],
+      "classification": "player",
+      "origin": {
+        "heading": {
+          "line": 93,
+          "level": 3,
+          "text": "Road Knacks (d6)"
+        },
+        "headingPath": [
+          "Toybox",
+          "Character Creation",
+          "Road Knacks (d6)"
+        ],
+        "tagsLine": 99,
+        "tableStart": 101,
+        "tableEnd": 108,
+        "dieColumn": "d6",
+        "dice": "d6",
+        "soleTable": true,
+        "markdownFile": "Toybox.md"
+      }
+    },
+    {
       "id": "toybox-character-creation-odds-and-ends-d6",
       "name": "Odds and Ends (d6)",
       "section": "Character Creation",
@@ -346,7 +512,7 @@
       "classification": "player",
       "origin": {
         "heading": {
-          "line": 74,
+          "line": 110,
           "level": 3,
           "text": "Odds and Ends (d6)"
         },
@@ -356,8 +522,8 @@
           "Odds and Ends (d6)"
         ],
         "tagsLine": null,
-        "tableStart": 80,
-        "tableEnd": 87,
+        "tableStart": 116,
+        "tableEnd": 123,
         "dieColumn": "d6",
         "dice": "d6",
         "soleTable": true,
@@ -427,7 +593,7 @@
       "classification": "player",
       "origin": {
         "heading": {
-          "line": 111,
+          "line": 147,
           "level": 4,
           "text": "Cooper's Keepsake (d6)"
         },
@@ -438,8 +604,8 @@
           "Cooper's Keepsake (d6)"
         ],
         "tagsLine": null,
-        "tableStart": 113,
-        "tableEnd": 120,
+        "tableStart": 149,
+        "tableEnd": 156,
         "dieColumn": "d6",
         "dice": "d6",
         "soleTable": true,
@@ -509,7 +675,7 @@
       "classification": "player",
       "origin": {
         "heading": {
-          "line": 134,
+          "line": 170,
           "level": 4,
           "text": "Drayman's Keepsake (d6)"
         },
@@ -520,8 +686,8 @@
           "Drayman's Keepsake (d6)"
         ],
         "tagsLine": null,
-        "tableStart": 136,
-        "tableEnd": 143,
+        "tableStart": 172,
+        "tableEnd": 179,
         "dieColumn": "d6",
         "dice": "d6",
         "soleTable": true,
@@ -591,7 +757,7 @@
       "classification": "player",
       "origin": {
         "heading": {
-          "line": 157,
+          "line": 193,
           "level": 4,
           "text": "Fletcher's Keepsake (d6)"
         },
@@ -602,8 +768,8 @@
           "Fletcher's Keepsake (d6)"
         ],
         "tagsLine": null,
-        "tableStart": 159,
-        "tableEnd": 166,
+        "tableStart": 195,
+        "tableEnd": 202,
         "dieColumn": "d6",
         "dice": "d6",
         "soleTable": true,
@@ -673,7 +839,7 @@
       "classification": "player",
       "origin": {
         "heading": {
-          "line": 180,
+          "line": 216,
           "level": 4,
           "text": "Glazier's Keepsake (d6)"
         },
@@ -684,8 +850,8 @@
           "Glazier's Keepsake (d6)"
         ],
         "tagsLine": null,
-        "tableStart": 182,
-        "tableEnd": 189,
+        "tableStart": 218,
+        "tableEnd": 225,
         "dieColumn": "d6",
         "dice": "d6",
         "soleTable": true,
@@ -747,7 +913,7 @@
       "classification": "player",
       "origin": {
         "heading": {
-          "line": 197,
+          "line": 233,
           "level": 3,
           "text": "What the Door Is (d20)"
         },
@@ -757,8 +923,8 @@
           "What the Door Is (d20)"
         ],
         "tagsLine": null,
-        "tableStart": 199,
-        "tableEnd": 205,
+        "tableStart": 235,
+        "tableEnd": 241,
         "dieColumn": "d20",
         "dice": "d20",
         "soleTable": true,
@@ -842,7 +1008,7 @@
       "classification": "player",
       "origin": {
         "heading": {
-          "line": 207,
+          "line": 243,
           "level": 3,
           "text": "Weather (d6)"
         },
@@ -852,8 +1018,8 @@
           "Weather (d6)"
         ],
         "tagsLine": null,
-        "tableStart": 209,
-        "tableEnd": 216,
+        "tableStart": 245,
+        "tableEnd": 252,
         "dieColumn": "d6",
         "dice": "d6",
         "soleTable": true,
@@ -955,7 +1121,7 @@
       "classification": "player",
       "origin": {
         "heading": {
-          "line": 218,
+          "line": 254,
           "level": 3,
           "text": "Complications (d10)"
         },
@@ -965,8 +1131,8 @@
           "Complications (d10)"
         ],
         "tagsLine": null,
-        "tableStart": 220,
-        "tableEnd": 231,
+        "tableStart": 256,
+        "tableEnd": 267,
         "dieColumn": "d10",
         "dice": "d10",
         "soleTable": true,
@@ -1036,7 +1202,7 @@
       "classification": "player",
       "origin": {
         "heading": {
-          "line": 233,
+          "line": 269,
           "level": 3,
           "text": "What Went Wrong (d66)"
         },
@@ -1046,8 +1212,8 @@
           "What Went Wrong (d66)"
         ],
         "tagsLine": null,
-        "tableStart": 237,
-        "tableEnd": 244,
+        "tableStart": 273,
+        "tableEnd": 280,
         "dieColumn": "d66",
         "dice": "d66",
         "soleTable": true,

@@ -3,6 +3,7 @@ import type {
   CreationDraft,
   CreationRearrange,
   CreationRollScoresStep,
+  CreationRollTableStep,
   CreationScoreSource,
   CreationStepRecord,
   CreationTableRoll,
@@ -10,6 +11,8 @@ import type {
   ResolvedCreationDefinition,
   ResolvedCreationStep
 } from "@devils-toys/shared";
+import { creationEntryFrom } from "@devils-toys/shared";
+import { singularLabel } from "./character-entries";
 
 /**
  * What the wizard reads, and the small amount of arithmetic it does before it
@@ -163,7 +166,8 @@ export function plannedRolls(
   declared: readonly CreationTableRoll[],
   resolved?: readonly { name: string; dice: string; columns: readonly string[] }[],
   definition?: ResolvedCreationDefinition,
-  draft?: CreationDraft | null
+  draft?: CreationDraft | null,
+  chosenTable?: string
 ): { table: string; columns: string[] }[] {
   const lines = new Map<string, string[]>();
   for (const entry of declared) {
@@ -180,7 +184,12 @@ export function plannedRolls(
       ? [dynamic.name]
       : entry.fromPacket
         ? [`Table ${packetPosition} from ${packet?.step.label ?? entry.fromPacket}`]
-        : [...(entry.table ? [entry.table] : []), ...(entry.firstOf ?? [])];
+        : // A `choose` has already been decided by the time this is drawn, so it
+          // announces the one table the player picked rather than the three the
+          // step could have rolled.
+          entry.choose && chosenTable
+          ? [chosenTable]
+          : [...(entry.table ? [entry.table] : []), ...(entry.firstOf ?? [])];
     const found =
       dynamic ?? resolved?.find((candidate) => names.some((name) => folded(name) === folded(candidate.name)));
     const die = found && !new RegExp(`\\(${found.dice}\\)\\s*$`, "i").test(names[0] ?? "") ? ` (${found.dice})` : "";
@@ -189,6 +198,37 @@ export function plannedRolls(
     lines.set(table, [...(lines.get(table) ?? []), ...column]);
   }
   return [...lines].map(([table, columns]) => ({ table, columns }));
+}
+
+/**
+ * The tables a step hands the player the choice between, and which one it last
+ * rolled on.
+ *
+ * One entry at most: a step's roll carries one choice, which the install
+ * refuses more than one of. The rolled name is read back off the ledger rather
+ * than kept in the screen's own state, so a build resumed on another device
+ * opens on the table the last roll actually used.
+ */
+export function tableChoice(
+  step: CreationRollTableStep,
+  record: CreationStepRecord | undefined
+): { options: readonly string[]; rolled?: string } | undefined {
+  const entry = step.tables.find((table) => table.choose && table.firstOf?.length);
+  const options = entry?.firstOf;
+  if (!options) return undefined;
+  const rolled = (record?.rolled ?? []).find((roll) =>
+    options.some((name) => folded(name) === folded(roll.table))
+  )?.table;
+  return { options, ...(rolled ? { rolled } : {}) };
+}
+
+/**
+ * A table's name as the roll button says it: "Male Names" becomes "male name",
+ * so the button reads "Roll male name" and a player can see which of the three
+ * they are about to throw a die on.
+ */
+export function tableChoiceLabel(name: string) {
+  return singularLabel(name.replace(/\s*\([^)]*\)\s*$/, "").trim()).toLocaleLowerCase();
 }
 
 /* -------------------------------------------------------------------------- */
@@ -349,5 +389,25 @@ export function describedCandidates(record: CreationStepRecord | undefined, fiel
   );
   return (record?.candidates ?? [])
     .filter((candidate) => described.has(candidate.description ?? candidate.text))
+    .map((candidate) => candidate.text);
+}
+
+/**
+ * Which offered lines this review already filed in the sheet's `entries` field.
+ *
+ * Read back through the same parse that wrote them, for the reason
+ * `takenCandidates` reads back through the catalogue's spelling: the ledger
+ * records what went on the sheet rather than which bullet it came from, and the
+ * title and body are the only handle there is on which one that was.
+ */
+export function enteredCandidates(record: CreationStepRecord | undefined, field: string | undefined): string[] {
+  if (!field) return [];
+  const stowed = new Set(
+    (record?.applied?.stow ?? [])
+      .filter((entry) => entry.key === field)
+      .flatMap((entry) => entry.items.map((item) => JSON.stringify(item)))
+  );
+  return (record?.candidates ?? [])
+    .filter((candidate) => stowed.has(JSON.stringify(creationEntryFrom(candidate.text))))
     .map((candidate) => candidate.text);
 }

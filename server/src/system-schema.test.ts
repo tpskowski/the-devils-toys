@@ -100,6 +100,17 @@ describe("the system schema", () => {
     expect(gameSystemSchema.safeParse(system).success).toBe(true);
   });
 
+  // Choosing is choosing between things: a `choose` on a single named table
+  // offers a player one button naming the table the step was going to roll
+  // anyway, which is a declaration that says nothing.
+  it("refuses a table roll that lets the player choose but offers nothing to choose between", () => {
+    const system = valid();
+    const creation = system.characterCreation as { steps: Record<string, unknown>[] };
+    const step = creation.steps.find((candidate) => candidate.id === "knack") as { tables: Record<string, unknown>[] };
+    step.tables = [{ table: "Guild Knacks (d6)", column: "Knack", choose: true }];
+    expect(gameSystemSchema.safeParse(system).success).toBe(false);
+  });
+
   it("refuses a statblock with no fields, which nothing could edit", () => {
     const system = valid();
     (system.npcStatblock as Record<string, unknown>).fields = [];

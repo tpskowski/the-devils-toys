@@ -350,6 +350,39 @@ are ten headings with bullets directly under them and no sub-headings at all, so
 a packet naming `grantFrom: "Starting Gear"` installs clean and yields an empty
 checklist every time. The check has to descend.
 
+### What Monolith turned up on the second pass
+
+Two more, both about the same screen: what a review does with a result once it
+has one.
+
+**A talent is neither gear nor description.** Monolith's backgrounds roll a
+talent off a table filed under the background — `**Hot-Wiring:** You know how to
+cross the right wires` — and the sheet already draws a Talents panel for exactly
+that, an `entries` field of names and what they do. The review could put the
+line in a slot, where it takes up carrying capacity it should not, or in the
+details box, where it is a sentence among five others and the panel stays empty
+forever. So a `grant` and a `roll-table` gain an `entryInto` naming an `entries`
+field, checked at install to be one — the only thing in a creation declaration
+that reaches such a field, which is why the field-kind check used to say no
+creation step produces one. `creationEntryFrom` in `shared/` is the split, at
+the first colon, taking the emphasis a book bolds the name with off with it; it
+is shared because the screen shows the title before the player commits and the
+server writes it when they do, and a parse done twice is a parse that disagrees
+with itself. A step declaring `entryInto` offers its results for review with no
+`stowInto` at all, since a talent has no slot it was going into.
+
+**A random choice between tables is sometimes the player's.** `firstOf` picks
+one of several tables at random, which is right for a hireling rolled up whole
+and wrong for the three name tables Monolith prints. Which of male, female, and
+ambiguous a character's name comes off is a decision about the character; left
+to the coin, a player rolls until it agrees with them. So an entry gains
+`choose`, and the wizard draws the offered tables as a row above the roll with
+the button naming the one it is about to throw — **Roll male name**. The die
+stays the server's and the name is checked against the declaration, because what
+arrives is a string a browser sent. Only one of a step's rolls may declare it:
+one roll of a step carries one choice, and an author wanting two decisions has
+two steps, which is what the wizard would draw them as anyway.
+
 Two more it names that are **not** being changed. Age is `2d20+10` and rolls
 through a one-score `roll-scores`, which the wizard will draw in an ability-scores
 panel — untidy, and not worth a kind of its own. And nothing branches on a table
