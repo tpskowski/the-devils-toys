@@ -7,7 +7,9 @@
 export class ApiError extends Error {
   constructor(
     message: string,
-    readonly status: number
+    readonly status: number,
+    /** The server response, for callers whose recovery depends on its code. */
+    readonly payload: unknown
   ) {
     super(message);
     this.name = "ApiError";
@@ -22,7 +24,11 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
   });
   if (!response.ok) {
     const payload = await response.json().catch(() => ({ error: "Request failed." }));
-    throw new ApiError(payload.error ?? "Request failed.", response.status);
+    throw new ApiError(
+      typeof payload?.error === "string" ? payload.error : "Request failed.",
+      response.status,
+      payload
+    );
   }
   if (response.status === 204) return undefined as T;
   const type = response.headers.get("content-type") ?? "";

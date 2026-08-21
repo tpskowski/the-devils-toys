@@ -26,7 +26,8 @@ Damage comes off Hit Protection first. At 0, the remainder comes off Muscle.
 
 ### Inventory
 
-Six slots. A bulky item takes two.
+Six slots. A bulky item takes two. Coin is counted rather than carried and takes
+no slot at all.
 
 ## Character Creation
 
@@ -55,6 +56,138 @@ Roll each ability on 3d6 and Hit Protection on 1d6. Take a trade and a vice.
 | 4 | Grudges | Being corrected | An apology, or worse |
 | 5 | Gambling | A wager offered | Winning, then leaving |
 | 6 | Sleep | Warmth | Eight hours nobody interrupts |
+
+### Names (d6)
+
+Two given names and a family name. Take either given name — the application is
+asked to pick one of the two columns rather than one of two tables, which is a
+thing a book does and a thing worth having a fixture for.
+
+| d6 | Given Name | Chosen Name | Family Name |
+| --- | --- | --- | --- |
+| 1 | Ames | Salt | Underhill |
+| 2 | Byrd | Ember | Marchbank |
+| 3 | Crane | Quill | Ashdown |
+| 4 | Dell | Tally | Fenwick |
+| 5 | Ewe | Nine | Rookwood |
+| 6 | Frost | Bell | Stollen |
+
+### Odds and Ends (d6)
+
+One thing you have carried since before any of this. It is offered into a slot
+rather than put in one: the catalogue knows some of these and not others, and a
+slot holds a plain string either way.
+
+| d6 | Item |
+| --- | --- |
+| 1 | Lantern |
+| 2 | Crowbar |
+| 3 | Chalk and twine |
+| 4 | Hand Axe |
+| 5 | Rope, 50 feet |
+| 6 | A brick, in a sock |
+
+## Trades
+
+What a character did before the delving. The trades are headings rather than a
+table, so the application enumerates them out of the book and the system package
+restates none of them. Roll d4 or take the one you want.
+
+Each trade owns one table, and that table is read at the Hit Protection already
+rolled rather than rolled again. One roll, two tables — which is what a creation
+step means when it takes its total from an earlier one.
+
+### Cooper
+
+#### About
+
+Barrels, casks, and anything that has to hold water. A cooper counts a thing
+twice and is usually right about it.
+
+#### Kit
+
+- Crowbar
+- Chalk and twine
+
+#### Cooper's Keepsake (d6)
+
+| d6 | Keepsake |
+| --- | --- |
+| 1 | A hoop that fits nothing you own |
+| 2 | The first stave you ever shaped |
+| 3 | A mallet with somebody else's name on it |
+| 4 | A cellar key, and no cellar |
+| 5 | A ledger of casks unaccounted for |
+| 6 | Sand from a barrel that held no sand |
+
+### Drayman
+
+#### About
+
+Loads, roads, and the animals that mind neither. A drayman knows what a thing
+weighs before it is lifted.
+
+#### Kit
+
+- Rope, 50 feet
+- Lantern
+
+#### Drayman's Keepsake (d6)
+
+| d6 | Keepsake |
+| --- | --- |
+| 1 | A harness bell that stopped ringing |
+| 2 | A toll receipt for a bridge that fell |
+| 3 | Half a map, folded to the half you need |
+| 4 | A whip you have never used |
+| 5 | The last consignment note, unsigned |
+| 6 | A stone the horse would not walk past |
+
+### Fletcher
+
+#### About
+
+Shafts, flights, and the patience for both. A fletcher will tell you the wind is
+wrong and be right about that too.
+
+#### Kit
+
+- Hand Axe
+- Chalk and twine
+
+#### Fletcher's Keepsake (d6)
+
+| d6 | Keepsake |
+| --- | --- |
+| 1 | A shaft that came back on its own |
+| 2 | Feathers from a bird nobody can name |
+| 3 | A bowstring gone slack, kept anyway |
+| 4 | A target board with one hole in it |
+| 5 | A splinter, still in the thumb |
+| 6 | A quiver counted short every morning |
+
+### Glazier
+
+#### About
+
+Glass, lead, and light let in on purpose. A glazier is the only one who looks up
+in a room worth robbing.
+
+#### Kit
+
+- Lantern
+- Crowbar
+
+#### Glazier's Keepsake (d6)
+
+| d6 | Keepsake |
+| --- | --- |
+| 1 | A pane you have never dared cut |
+| 2 | Lead came, coiled like rope |
+| 3 | A window's worth of somebody's face |
+| 4 | Grozing pliers, worn smooth |
+| 5 | A colour you have not been able to mix since |
+| 6 | The offcut that drew blood |
 
 ## Oracles
 

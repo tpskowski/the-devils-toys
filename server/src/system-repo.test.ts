@@ -9,9 +9,11 @@ import {
   buildSystemRepoMarker,
   readSystemRepoDirectory,
   readSystemRepoFiles,
+  recordedSystemVersion,
   writeSystemRepoDirectory
 } from "./system-repo.js";
-import { installToybox } from "./test-fixture.js";
+import { installToybox, toyboxRepo } from "./test-fixture.js";
+import { projectFile } from "./paths.js";
 
 /** The fixture, read off disk exactly as an export would read it. */
 const content = () => {
@@ -78,8 +80,48 @@ describe("a system repository", () => {
     writeSystemRepoDirectory(directory, content());
     const marker = JSON.parse(readFileSync(join(directory, SYSTEM_REPO_MARKER), "utf8"));
 
-    expect(marker).toMatchObject({ app: "devils-toys-system", formatVersion: 1, systemId: "toybox" });
+    expect(marker).toMatchObject({ app: "devils-toys-system", formatVersion: 2, systemId: "toybox" });
     expect(marker.licenses).toEqual(["CC0 1.0"]);
+  });
+
+  /**
+   * A version is the repository's release rather than anything `system.json`
+   * says, so it is written through rather than derived. An export that dropped
+   * it would turn every re-export into an unversioned system.
+   */
+  it("carries release metadata back out to the marker", () => {
+    const directory = scratch();
+    const release = {
+      version: "1.2.0",
+      breaking: true,
+      releaseNotes: ["Choose a new background before play."]
+    };
+    writeSystemRepoDirectory(directory, content(), release);
+
+    expect(JSON.parse(readFileSync(join(directory, SYSTEM_REPO_MARKER), "utf8"))).toMatchObject(release);
+    expect(readSystemRepoDirectory(directory).marker).toMatchObject(release);
+  });
+
+  /** Decision 2: an unversioned system stays unversioned rather than gaining "". */
+  it("writes no version at all for a system that declares none", () => {
+    const directory = scratch();
+    writeSystemRepoDirectory(directory, content());
+
+    const marker = JSON.parse(readFileSync(join(directory, SYSTEM_REPO_MARKER), "utf8"));
+    expect("version" in marker).toBe(false);
+    expect(readSystemRepoDirectory(directory).marker.version).toBeUndefined();
+    expect(readSystemRepoDirectory(directory).marker).toMatchObject({ breaking: false, releaseNotes: [] });
+    expect(buildSystemRepoMarker(content().system)).not.toHaveProperty("version");
+  });
+
+  /**
+   * The fixtures go on telling "declared" from "left out" apart, which is what
+   * the pair is for. Toybox names a version; Plainbox deliberately does not.
+   */
+  it("reads the version each fixture declares, and the one that declares none", () => {
+    installToybox();
+    expect(readSystemRepoDirectory(toyboxRepo()).marker.version).toBe("1.0.0");
+    expect(readSystemRepoDirectory(projectFile("fixtures", "plainbox")).marker.version).toBeUndefined();
   });
 
   it("leaves the author's own files alone, which is the whole difference from a bundle", () => {
@@ -107,6 +149,31 @@ describe("a system repository", () => {
   });
 });
 
+describe("the version an install records", () => {
+  const marker = (version?: string) => ({
+    ...buildSystemRepoMarker(content().system),
+    ...(version ? { version } : {})
+  });
+
+  it("is the marker's, not the catalogue entry's", () => {
+    expect(recordedSystemVersion(marker("1.2.0"), "1.1")).toBe("1.2.0");
+  });
+
+  /** A repository named by hand has no catalogue entry, and used to record "". */
+  it("is the marker's even where nothing else offered one", () => {
+    expect(recordedSystemVersion(marker("1.2.0"))).toBe("1.2.0");
+  });
+
+  it("falls back to the catalogue only for a marker that declares none", () => {
+    expect(recordedSystemVersion(marker(), "1.1")).toBe("1.1");
+    expect(recordedSystemVersion(marker(""), "1.1")).toBe("1.1");
+  });
+
+  it("is empty where neither says anything, which is unversioned rather than wrong", () => {
+    expect(recordedSystemVersion(marker())).toBe("");
+  });
+});
+
 describe("refusing a directory that is not a system", () => {
   it("refuses one with no marker", () => {
     const files = filesFor();
@@ -125,6 +192,47 @@ describe("refusing a directory that is not a system", () => {
     const files = filesFor(source);
     files[SYSTEM_REPO_MARKER] = strToU8(JSON.stringify({ ...buildSystemRepoMarker(source.system), formatVersion: 99 }));
     expect(() => readSystemRepoFiles(files)).toThrow(/newer format \(99\)/);
+  });
+
+  it("reads v1 markers with absent release metadata as a non-breaking release", () => {
+    const source = content();
+    const files = filesFor(source);
+    files[SYSTEM_REPO_MARKER] = strToU8(
+      JSON.stringify({
+        ...buildSystemRepoMarker(source.system),
+        formatVersion: 1,
+        breaking: undefined,
+        releaseNotes: undefined
+      })
+    );
+
+    expect(readSystemRepoFiles(files).marker).toMatchObject({ formatVersion: 1, breaking: false, releaseNotes: [] });
+  });
+
+  it("refuses release metadata smuggled into a v1 marker", () => {
+    const source = content();
+    const files = filesFor(source);
+    files[SYSTEM_REPO_MARKER] = strToU8(
+      JSON.stringify({
+        ...buildSystemRepoMarker(source.system),
+        formatVersion: 1,
+        breaking: true,
+        releaseNotes: ["This must not be ignored."]
+      })
+    );
+
+    expect(() => readSystemRepoFiles(files)).toThrow(/not a valid system marker/);
+  });
+
+  it("refuses a breaking marker without a plain-text, bounded release note", () => {
+    for (const releaseNotes of [[], ["   "], ["first\nsecond"], ["x".repeat(501)]]) {
+      const source = content();
+      const files = filesFor(source);
+      files[SYSTEM_REPO_MARKER] = strToU8(
+        JSON.stringify({ ...buildSystemRepoMarker(source.system), breaking: true, releaseNotes })
+      );
+      expect(() => readSystemRepoFiles(files)).toThrow(/not a valid system marker/);
+    }
   });
 
   it("refuses a marker naming a different system than system.json does", () => {

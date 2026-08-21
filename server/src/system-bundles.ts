@@ -28,8 +28,54 @@ import { config } from "./config.js";
  *     tables/<file>.json its extracted tables
  */
 
-export const SYSTEM_BUNDLE_VERSION = 1;
+/** Every newly written bundle uses this format; readers still accept v1. */
+export const SYSTEM_BUNDLE_VERSION = 2;
 export const SYSTEM_BUNDLE_APP = "devils-toys-system";
+
+/** Release notes are shown at an install/update boundary, not a document store. */
+export const MAX_SYSTEM_RELEASE_NOTES = 12;
+export const MAX_SYSTEM_RELEASE_NOTE_LENGTH = 500;
+
+/**
+ * The release information the application works with after reading a marker or
+ * manifest. `breaking` and `releaseNotes` are always present so every caller
+ * gets one unambiguous answer from an older, unannotated release too.
+ */
+export interface SystemRelease {
+  /** Optional because unversioned systems remain valid. */
+  version?: string;
+  breaking: boolean;
+  releaseNotes: string[];
+}
+
+/** The author-facing form in devilsystem.json and manifest.json. */
+export interface SystemReleaseInput {
+  version?: string;
+  breaking?: boolean;
+  releaseNotes?: string[];
+}
+
+/**
+ * Turns the sparse author form (and manifests written before release metadata
+ * existed) into the complete form routes and storage helpers use.
+ */
+export function normalizeSystemRelease(release: SystemReleaseInput = {}): SystemRelease {
+  return {
+    ...(release.version === undefined ? {} : { version: release.version }),
+    breaking: release.breaking ?? false,
+    releaseNotes: [...(release.releaseNotes ?? [])]
+  };
+}
+
+/** Writes the optional author form, avoiding noisy false/empty fields. */
+export function systemReleaseFields(release: SystemReleaseInput = {}): SystemReleaseInput {
+  const normalized = normalizeSystemRelease(release);
+  return {
+    ...(normalized.version === undefined ? {} : { version: normalized.version }),
+    ...(normalized.breaking ? { breaking: true } : {}),
+    ...(normalized.releaseNotes.length ? { releaseNotes: normalized.releaseNotes } : {})
+  };
+}
 
 export interface SystemBundleManifest {
   bundleVersion: number;
@@ -39,6 +85,10 @@ export interface SystemBundleManifest {
   exportedAt: string;
   /** What the source documents say they are covered by, for the credits page. */
   licenses: string[];
+  /** The system repository's release metadata, normalized after reading. */
+  version?: string;
+  breaking: boolean;
+  releaseNotes: string[];
 }
 
 export interface SystemBundle {
@@ -60,14 +110,45 @@ export interface SystemBundleContent {
   tables: Record<string, string>;
 }
 
-const manifestSchema = z.object({
+const releaseNoteSchema = z
+  .string()
+  .max(MAX_SYSTEM_RELEASE_NOTE_LENGTH)
+  .refine((note) => note.trim().length > 0, "Release notes cannot be blank.")
+  .refine((note) => !/[\u0000-\u001f\u007f]/.test(note), "Release notes must be plain text.");
+
+const releaseFieldsSchema = {
+  breaking: z.boolean().optional(),
+  releaseNotes: z.array(releaseNoteSchema).max(MAX_SYSTEM_RELEASE_NOTES).optional()
+};
+
+const manifestBaseSchema = z.object({
   bundleVersion: z.number().int().positive(),
   app: z.literal(SYSTEM_BUNDLE_APP),
   systemId: z.string(),
   systemName: z.string(),
   exportedAt: z.string(),
-  licenses: z.array(z.string())
+  licenses: z.array(z.string()),
+  version: z.string().optional()
 });
+
+/** v1 had no release metadata, so it must not be silently ignored. */
+const manifestV1Schema = manifestBaseSchema.extend({ bundleVersion: z.literal(1) }).strict();
+const manifestV2Schema = manifestBaseSchema
+  .extend({ bundleVersion: z.literal(2), ...releaseFieldsSchema })
+  .strict()
+  .superRefine((manifest, context) => {
+    if (manifest.breaking && !manifest.releaseNotes?.length)
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["releaseNotes"],
+        message: "A breaking release needs at least one release note."
+      });
+  });
+
+const manifestSchema = z.union([manifestV1Schema, manifestV2Schema]).transform((manifest) => ({
+  ...manifest,
+  ...normalizeSystemRelease(manifest)
+}));
 
 const MAX_SYSTEM_BUNDLE_ENTRIES = 100;
 const MAX_SYSTEM_BUNDLE_BYTES = config.systemUploadLimitMb * 1024 * 1024;
@@ -134,15 +215,16 @@ export function renameSystem(content: SystemBundleContent, nextId: string, nextN
   };
 }
 
-export function buildSystemBundle(content: SystemBundleContent): Uint8Array {
+export function buildSystemBundle(content: SystemBundleContent, release: SystemReleaseInput = {}): Uint8Array {
   const { system, items, traits, rules, tables } = content;
-  const manifest: SystemBundleManifest = {
+  const manifest = {
     bundleVersion: SYSTEM_BUNDLE_VERSION,
     app: SYSTEM_BUNDLE_APP,
     systemId: system.id,
     systemName: system.name,
     exportedAt: new Date().toISOString(),
-    licenses: [...new Set(system.sourceDocuments.map((source) => source.license))]
+    licenses: [...new Set(system.sourceDocuments.map((source) => source.license))],
+    ...systemReleaseFields(release)
   };
 
   const files: Record<string, Uint8Array> = {
@@ -252,13 +334,12 @@ export function readSystemBundle(archive: Uint8Array): SystemBundle {
   const rawManifest = readJson<unknown>(files, "manifest.json", "the bundle");
   if (!rawManifest || typeof rawManifest !== "object" || (rawManifest as { app?: unknown }).app !== SYSTEM_BUNDLE_APP)
     throw new Error("That archive was not written as a system bundle by this application.");
+  const bundleVersion = (rawManifest as { bundleVersion?: unknown }).bundleVersion;
+  if (typeof bundleVersion === "number" && bundleVersion > SYSTEM_BUNDLE_VERSION)
+    throw new Error(`That bundle was written by a newer version (${bundleVersion}). Update this application first.`);
   const manifestResult = manifestSchema.safeParse(rawManifest);
   if (!manifestResult.success) throw new Error("The bundle's manifest.json is not a valid system bundle manifest.");
   const manifest = manifestResult.data;
-  if (!(manifest.bundleVersion <= SYSTEM_BUNDLE_VERSION))
-    throw new Error(
-      `That bundle was written by a newer version (${manifest.bundleVersion}). Update this application first.`
-    );
 
   const content = systemContentFromFiles(files, "bundle");
   if (manifest.systemId !== content.system.id)

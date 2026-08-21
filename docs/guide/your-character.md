@@ -13,6 +13,10 @@ Open the sheet with the document button at the top right of the room, or
 table: the one you make here is yours to edit, and it stays yours between
 sessions.
 
+Where your game's book has a creation chapter, a second button beside it offers
+to walk you through it — see [Building a character](building-a-character.md).
+Either way you end up with the same sheet.
+
 You can have more than one at a table. The one marked **ACTIVE** is the one the
 room shows to everyone else — the name beside your messages, the portrait in
 combat, the row in the party list. Choosing a different one from the left column
@@ -90,4 +94,4 @@ in the room with you.
 
 ## Next
 
-[Rolling dice →](rolling-dice.md)
+[Building a character →](building-a-character.md)

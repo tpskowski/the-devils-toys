@@ -54,9 +54,10 @@ await runSmoke("Installable system smoke test", async ({ request, json, bytes, s
   );
   assert.ok(exported.bytes.length > 2_000, "A whole rulebook should not compress to nothing.");
 
-  const install = async (buffer, expected, filename = "toybox-2.devilsystem.zip") => {
+  const install = async (buffer, expected, filename = "toybox-2.devilsystem.zip", acknowledgeBreaking = "") => {
     const form = new FormData();
     form.append("bundle", new Blob([buffer], { type: "application/zip" }), filename);
+    if (acknowledgeBreaking) form.append("acknowledgeBreaking", acknowledgeBreaking);
     return json("/api/admin/systems", { method: "POST", headers: { cookie: admin.cookie }, body: form }, expected);
   };
 
@@ -205,6 +206,24 @@ await runSmoke("Installable system smoke test", async ({ request, json, bytes, s
   for (const heading of ["## Bestiary", "Chalk Golem", "Tin Rat"])
     assert.ok(!playerRules.includes(heading), `A player must not be served the ${heading} chapter.`);
 
+  // --- Updating ---
+
+  // toybox-2 arrived as an uploaded bundle, so it has no source to update from.
+  // That is a 409 rather than a 404: the system is real, the request is not.
+  await json("/api/admin/systems/toybox-2/update", { method: "POST", headers: gm.headers }, 403);
+  await json("/api/admin/systems/no-such-system/update", { method: "POST", headers: admin.headers }, 404);
+  const unsourced = await json("/api/admin/systems/toybox-2/update", { method: "POST", headers: admin.headers }, 409);
+  assert.match(
+    unsourced.body.error,
+    /installed from a file/,
+    "An update names why a file-installed system has no source."
+  );
+
+  const updates = await request("/api/admin/systems/updates", { headers: admin.headers });
+  const toyboxUpdate = updates.systems.find((system) => system.id === "toybox-2");
+  assert.equal(toyboxUpdate.state, "unsourced", "A system installed from a file has no upstream to check.");
+  await json("/api/admin/systems/updates", { headers: gm.headers }, 403);
+
   // --- Retiring, restoring, deleting ---
 
   await json("/api/admin/systems/toybox-2/retire", { method: "POST", headers: gm.headers }, 403);
@@ -238,11 +257,33 @@ await runSmoke("Installable system smoke test", async ({ request, json, bytes, s
   // --- Replacing an installed system, and deleting one nothing uses ---
 
   const replacementFiles = unzipSync(exported.bytes);
+  const replacementManifest = JSON.parse(strFromU8(replacementFiles["manifest.json"]));
+  replacementManifest.bundleVersion = 2;
+  replacementManifest.version = "2.0.0";
+  replacementManifest.breaking = true;
+  replacementManifest.releaseNotes = [
+    "Existing rooms must review their character sheets.",
+    "The replacement changes the installed rules text."
+  ];
+  replacementFiles["manifest.json"] = strToU8(`${JSON.stringify(replacementManifest, null, 2)}\n`);
   replacementFiles["rules/Toybox.md"] = strToU8(
     `${strFromU8(replacementFiles["rules/Toybox.md"])}\n\nReplacement bundle marker.\n`
   );
-  const replaced = await install(zipSync(replacementFiles), 200);
+  const replacementBundle = zipSync(replacementFiles);
+  const review = await install(replacementBundle, 409);
+  assert.equal(review.body.code, "breaking_system_change");
+  assert.equal(review.body.change.fromVersion, "1.0.0");
+  assert.equal(review.body.change.toVersion, "2.0.0");
+  assert.deepEqual(review.body.change.notes, replacementManifest.releaseNotes);
+  assert.ok(review.body.change.fingerprint, "The acknowledgement is bound to the release that was reviewed.");
+  assert.ok(
+    !(await rulesOf(room.id, gm.cookie)).includes("Replacement bundle marker."),
+    "Refusing a breaking replacement leaves the installed content untouched."
+  );
+
+  const replaced = await install(replacementBundle, 200, "toybox-2.devilsystem.zip", review.body.change.fingerprint);
   assert.equal(replaced.body.replaced, true, "Installing over an existing system reports that it replaced one.");
+  assert.equal(replaced.body.breakingAcknowledged, true);
   assert.ok(
     (await rulesOf(room.id, gm.cookie)).includes("Replacement bundle marker."),
     "The running server reads replacement content without a restart."

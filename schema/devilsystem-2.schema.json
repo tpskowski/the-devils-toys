@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://raw.githubusercontent.com/tpskowski/the-devils-toys/main/schema/devilsystem-1.schema.json",
+  "$id": "https://raw.githubusercontent.com/tpskowski/the-devils-toys/main/schema/devilsystem-2.schema.json",
   "title": "The Devil's Toys game system",
   "description": "The contents of a system repository's system.json. Generated from the Zod schema the server validates an install with; do not edit by hand.",
   "type": "object",

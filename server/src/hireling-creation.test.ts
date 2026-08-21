@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { GameSystem } from "@devils-toys/shared";
-import { rollHirelingCreation } from "./hireling-creation.js";
+import { rollHirelingCreation } from "./character-creation.js";
 import { parseCompactRollTables } from "./roll-tables.js";
 
 /**

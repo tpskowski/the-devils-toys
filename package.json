@@ -28,6 +28,7 @@
     "dev:tables": "concurrently -n tables-client,tables-server -c cyan,magenta \"npm:dev:tables-client\" \"npm:dev:tables-server\"",
     "start:tables": "npm run start:tables --workspace @devils-toys/server",
     "systems:export": "npm run systems:export --workspace @devils-toys/server --",
+    "systems:bundle": "npm run systems:bundle --workspace @devils-toys/server --",
     "systems:validate": "npm run systems:validate --workspace @devils-toys/server --",
     "systems:catalog": "npm run systems:catalog --workspace @devils-toys/server --",
     "fixture:build": "npm run tables:build -- fixtures/toybox && npm run systems:catalog -- fixtures/toybox",

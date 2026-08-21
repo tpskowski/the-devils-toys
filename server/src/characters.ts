@@ -3,7 +3,15 @@ import path from "node:path";
 import express from "express";
 import multer from "multer";
 import { z } from "zod";
-import type { SystemId } from "@devils-toys/shared";
+import {
+  CREATION_NAME_KEY,
+  type CharacterCreationDefinition,
+  type CreationDraft,
+  type CreationStep,
+  type CreationStepRecord,
+  type CreationWrite,
+  type SystemId
+} from "@devils-toys/shared";
 import type { AuthedRequest } from "./auth.js";
 import { requireAuth, roomRole } from "./auth.js";
 import { config } from "./config.js";
@@ -19,8 +27,20 @@ import {
   validPortraitFile
 } from "./portrait-files.js";
 import { broadcastRoom, refreshRoomPresence } from "./realtime.js";
-import { characterWarningsFor, systemMarkdown, systemOrThrow } from "./systems.js";
+import { characterWarningsFor, systemOrThrow } from "./systems.js";
 import { characterVicesFor } from "./character-vices.js";
+import {
+  applyCreationWrite,
+  availableCreationSteps,
+  creationTotals,
+  matchCatalogueItem,
+  performCreationStep,
+  readCreationDraft,
+  refuseScoreAssignment,
+  resolveCreationDefinition,
+  revertCreationWrite,
+  scoreAssignment
+} from "./character-creation.js";
 
 export const characterRouter = express.Router();
 
@@ -36,6 +56,8 @@ export interface CharacterRow {
   portrait_stored_name: string | null;
   portrait_mime_type: string | null;
   portrait_size: number | null;
+  /** The creation draft, or NULL for a character that was never built or has finished being built. */
+  creation_json: string | null;
   updated_at: string;
 }
 
@@ -100,6 +122,10 @@ export function publicCharacter(row: CharacterRow, roomId: number) {
       : null,
     portraitFilename: row.portrait_filename,
     warnings: characterWarningsFor(row.system, sheet),
+    // What the builder has done so far, so a half-built character resumes where
+    // it was left rather than starting again on a new phone. A draft naming
+    // steps the system no longer declares comes back as a plain sheet.
+    creation: readCreationDraft(row.system, row.creation_json) ?? null,
     activeBy,
     updatedAt: row.updated_at
   };
@@ -194,7 +220,10 @@ characterRouter.get("/rooms/:roomId/characters", requireAuth, (req: AuthedReques
     partyLabel: systemOrThrow(context.system).partyLabel,
     sheetDefinition: systemOrThrow(context.system).characterSheet,
     itemCatalogue: characterItemsFor(context.system, roomId),
-    viceCatalogue: systemOrThrow(context.system).viceCatalog ? characterVicesFor(context.system) : []
+    viceCatalogue: systemOrThrow(context.system).viceCatalog ? characterVicesFor(context.system) : [],
+    // Null for a system that declares no creation, which is a system whose New
+    // character button is the only door there has ever been and still works.
+    creationDefinition: resolveCreationDefinition(context.system)
   });
 });
 
@@ -292,6 +321,417 @@ export function updateCharacter(
   broadcastCharacterChange(row);
   return { character: publicCharacter(row, roomId) };
 }
+
+/* -------------------------------------------------------------------------- */
+/* The character builder                                                        */
+/* -------------------------------------------------------------------------- */
+
+type CreationResult = { character: ReturnType<typeof publicCharacter> } | { error: string; status: number };
+
+type CreationAccess =
+  | { row: CharacterRow; definition: CharacterCreationDefinition; draft: CreationDraft }
+  | { error: string; status: number };
+
+/**
+ * All three creation routes go through `findAccessibleCharacter`, which is the
+ * owner check the sheet's own PATCH already uses: a player may build their own
+ * character, and a GM may build one in their room's pool. A builder is a second
+ * door onto the same room and not a new permission surface, so it gets no check
+ * of its own to keep in step with that one.
+ */
+function creationAccess(accountId: number, roomId: number, characterId: number): CreationAccess {
+  const accessible = findAccessibleCharacter(accountId, roomId, characterId);
+  if (!accessible) return { error: "Character not found.", status: 404 };
+  const definition = systemOrThrow(accessible.row.system).characterCreation;
+  if (!definition) return { error: "This system has no character creation.", status: 404 };
+  const first = definition.steps.find((step) => !("automatic" in step && step.automatic)) ?? definition.steps[0];
+  const draft = readCreationDraft(accessible.row.system, accessible.row.creation_json) ?? {
+    system: accessible.row.system,
+    stepId: first.id,
+    steps: {}
+  };
+  return { row: accessible.row, definition, draft };
+}
+
+/** The sheet plus the character's own name, which is the one target a step may write that the sheet has not got. */
+function creationTarget(row: CharacterRow): Record<string, unknown> {
+  return { ...parseSheet(row.sheet_json), [CREATION_NAME_KEY]: row.name };
+}
+
+/**
+ * Writes the sheet, the name, and the ledger in one statement, so a step that
+ * rolled cannot land half-recorded. A character built by the wizard is
+ * indistinguishable from one built by hand — decision 4 — so this writes the
+ * ordinary columns and nothing else.
+ */
+function commitCreation(
+  row: CharacterRow,
+  roomId: number,
+  target: Record<string, unknown>,
+  draft: CreationDraft
+): CreationResult {
+  const { [CREATION_NAME_KEY]: name, ...sheet } = target;
+  if (!sheetSchema.safeParse(sheet).success) return { error: "Invalid character data.", status: 400 };
+  const named = typeof name === "string" ? name.trim().slice(0, 80) : "";
+  db.prepare(
+    `UPDATE characters SET name = COALESCE(?, name), sheet_json = ?, creation_json = ?,
+       updated_at = CURRENT_TIMESTAMP WHERE id = ?`
+  ).run(named || null, JSON.stringify(sheet), JSON.stringify(draft), row.id);
+  const updated = one<CharacterRow>(
+    `SELECT c.*, a.username AS owner_username FROM characters c
+     LEFT JOIN accounts a ON a.id = c.owner_account_id WHERE c.id = ?`,
+    row.id
+  )!;
+  broadcastCharacterChange(updated);
+  return { character: publicCharacter(updated, roomId) };
+}
+
+/**
+ * Rolls one step.
+ *
+ * Rerolling a step that already has a result is allowed — decision 7 warns
+ * rather than bars, because tables house-rule this constantly — and the ledger
+ * records that it happened in `runs`. The step's previous contribution is taken
+ * back out as the new one goes in, so a second roll replaces the first rather
+ * than appending beside it.
+ */
+export function rollCreationStep(
+  accountId: number,
+  roomId: number,
+  characterId: number,
+  request: { stepId?: string; choice?: string } = {}
+): CreationResult {
+  const access = creationAccess(accountId, roomId, characterId);
+  if ("error" in access) return access;
+  const { row, definition, draft } = access;
+
+  const available = availableCreationSteps(definition, draft);
+  const stepId = request.stepId ?? draft.stepId;
+  const step = available.find((candidate) => candidate.id === stepId);
+  if (!step) return { error: "That is not a step this character can be on.", status: 400 };
+
+  const target = creationTarget(row);
+  const previous = draft.steps[step.id]?.applied;
+  let outcome;
+  try {
+    outcome = performCreationStep(step, {
+      system: row.system,
+      roomId,
+      sheet: target,
+      totals: creationTotals(draft),
+      records: draft.steps,
+      ...(request.choice !== undefined ? { choice: request.choice } : {})
+    });
+  } catch (cause) {
+    return { error: cause instanceof Error ? cause.message : "That step could not be rolled.", status: 400 };
+  }
+
+  const record: CreationStepRecord = {
+    ...(outcome.total !== undefined ? { total: outcome.total } : {}),
+    rolled: outcome.rolled,
+    ...(outcome.scores ? { scores: outcome.scores } : {}),
+    ...(outcome.source ? { source: outcome.source } : {}),
+    ...(outcome.chosen !== undefined ? { chosen: outcome.chosen } : {}),
+    ...(outcome.candidates?.length ? { candidates: outcome.candidates } : {}),
+    ...(outcome.save ? { save: outcome.save } : {}),
+    ...(outcome.skipped ? { skipped: true } : { applied: outcome.applied }),
+    runs: (draft.steps[step.id]?.runs ?? 0) + 1
+  };
+  draft.steps[step.id] = record;
+  draft.stepId = step.id;
+
+  let next = outcome.skipped
+    ? previous
+      ? revertCreationWrite(target, previous)
+      : target
+    : applyCreationWrite(target, outcome.applied, previous);
+
+  // A rerolled save that lands the other way takes its branch back with it.
+  // Leaving the vice a failure wrote on the sheet after a success would make
+  // the sheet disagree with the ledger that produced it.
+  if (step.kind === "save" && !outcome.save?.matched) {
+    for (const nested of step.then) {
+      const wrote = draft.steps[nested.id];
+      if (!wrote?.applied) continue;
+      next = revertCreationWrite(next, wrote.applied);
+      draft.steps[nested.id] = { ...wrote, applied: undefined, skipped: true };
+    }
+  }
+
+  return commitCreation(row, roomId, next, draft);
+}
+
+export interface CreationChange {
+  stepId: string;
+  /** Where the rolled numbers go, for a `roll-scores` that lets the player rearrange them. */
+  assign?: number[];
+  /** Where the declared array's numbers go, for a `roll-scores` that offers one instead of rolling. */
+  array?: number[];
+  /** What the player typed, for a `text` step. */
+  text?: string;
+  /** The gear candidates the player kept, by the book's own wording. */
+  take?: string[];
+  /** The reviewed candidates the player filed as character description instead. */
+  describe?: string[];
+  /** Passing on a step, or taking that back. A skipped step writes nothing. */
+  skip?: boolean;
+}
+
+/** Records a choice, a score assignment, a skip, or a move between steps. */
+export function updateCreationDraft(
+  accountId: number,
+  roomId: number,
+  characterId: number,
+  change: CreationChange
+): CreationResult {
+  const access = creationAccess(accountId, roomId, characterId);
+  if ("error" in access) return access;
+  const { row, definition, draft } = access;
+
+  const step = availableCreationSteps(definition, draft).find((candidate) => candidate.id === change.stepId);
+  if (!step) return { error: "That is not a step this character can be on.", status: 400 };
+
+  const target = creationTarget(row);
+  const record: CreationStepRecord = { ...draft.steps[step.id] };
+  const previous = record.applied;
+  let next = target;
+  draft.stepId = step.id;
+
+  if (change.skip !== undefined) {
+    // A skipped step writes nothing, which for one that has already written
+    // means taking what it wrote back out again — and taking the skip back puts
+    // it in again. The ledger keeps the write through both, because it is the
+    // record of what the step decided rather than a copy of the sheet: a
+    // `roll-scores` step that came back without one would have its numbers
+    // sitting on the sheet and nothing anywhere saying it put them there.
+    if (change.skip && previous) next = revertCreationWrite(target, previous);
+    if (!change.skip && record.skipped && previous) next = applyCreationWrite(target, previous);
+    record.skipped = change.skip;
+  }
+
+  // The two ways a `roll-scores` step may be filled in. Placing the dice needs
+  // dice to have been thrown; taking the array needs no roll at all, which is
+  // the whole of what makes it the other way rather than a third rearrangement.
+  const placed = change.assign ? ("rolled" as const) : change.array ? ("array" as const) : undefined;
+  const values = change.assign ?? change.array;
+  if (placed && values) {
+    if (step.kind !== "roll-scores") return { error: "Only a step that rolls scores assigns them.", status: 400 };
+    const rolled = (record.scores ?? []).map((score) => score.total);
+    if (placed === "rolled" && !rolled.length)
+      return { error: "Roll this step's scores before placing them.", status: 400 };
+    const refusal = refuseScoreAssignment(step, placed, rolled, values);
+    if (refusal) return { error: refusal, status: 400 };
+    const write = { set: scoreAssignment(step, values) };
+    next = applyCreationWrite(next, write, previous);
+    record.applied = write;
+    record.source = placed;
+    // Taking the array puts the dice away: the numbers on the sheet are the
+    // book's, and a `substitute` offered on the rolled path is not on this one.
+    if (placed === "array") record.scores = undefined;
+    record.skipped = false;
+  }
+
+  if (change.text !== undefined) {
+    if (step.kind !== "text" && !(step.kind === "roll-table" && step.editable && step.joinInto))
+      return { error: "This step does not accept a custom value.", status: 400 };
+    const write: CreationWrite =
+      step.kind === "text"
+        ? { set: { [step.field]: change.text } }
+        : {
+            ...record.applied,
+            join: [
+              ...(record.applied?.join ?? []).filter((entry) => entry.field !== step.joinInto!.field),
+              {
+                field: step.joinInto!.field,
+                separator: step.joinInto!.separator,
+                lines: step.editable!.multiline
+                  ? change.text
+                      .split(/\r?\n/)
+                      .map((line) => line.trim())
+                      .filter(Boolean)
+                  : [change.text.trim()]
+              }
+            ]
+          };
+    next = applyCreationWrite(next, write, previous);
+    record.applied = write;
+    record.chosen = change.text;
+    record.skipped = false;
+  }
+
+  if (change.take !== undefined || change.describe !== undefined) {
+    if (change.take && change.describe) {
+      const described = new Set(change.describe);
+      const overlap = change.take.find((text) => described.has(text));
+      if (overlap) return { error: `"${overlap}" cannot be added to both description and inventory.`, status: 400 };
+    }
+
+    const stowed = change.take === undefined ? undefined : takeCandidates(record, change.take);
+    if (stowed && "error" in stowed) return { error: stowed.error, status: 400 };
+    const described = change.describe === undefined ? undefined : describeCandidates(step, record, change.describe);
+    if (described && "error" in described) return { error: described.error, status: 400 };
+
+    const candidateItems = new Set((record.candidates ?? []).map((candidate) => candidate.label ?? candidate.text));
+    const fixedItems = new Set(
+      step.kind === "grant"
+        ? (step.items ?? []).map(
+            (item) => matchCatalogueItem(characterItemsFor(row.system, roomId), item, step.listKey)?.item.label ?? item
+          )
+        : []
+    );
+    const byList = new Map<string, unknown[]>();
+    for (const entry of record.applied?.stow ?? [])
+      byList.set(
+        entry.key,
+        entry.items.filter((item) => fixedItems.has(String(item)) || !candidateItems.has(String(item)))
+      );
+    for (const entry of stowed?.stow ?? []) byList.set(entry.key, [...(byList.get(entry.key) ?? []), ...entry.items]);
+
+    const joins = [...(record.applied?.join ?? [])];
+    if (described) {
+      const retained = joins.filter((entry) => entry.field !== described.join.field);
+      joins.splice(0, joins.length, ...retained, described.join);
+    }
+    const write: CreationWrite = {
+      ...record.applied,
+      ...(change.take !== undefined ? { stow: [...byList].map(([key, items]) => ({ key, items })) } : {}),
+      ...(described ? { join: joins } : {})
+    };
+    next = applyCreationWrite(next, write, previous);
+    record.applied = write;
+    record.skipped = false;
+  }
+
+  draft.steps[step.id] = record;
+  return commitCreation(row, roomId, next, draft);
+}
+
+/**
+ * The gear a player kept out of what the book's prose offered.
+ *
+ * Each candidate already knows where it would go: the step's own `listKey`, or
+ * the list the catalogue entry it matched belongs to. One that knows neither is
+ * refused rather than filed somewhere plausible — the sheet's first list is a
+ * guess, and a guess is wrong on any sheet with two, which Monolith's equipment
+ * and augmentations already are.
+ */
+function takeCandidates(
+  record: CreationStepRecord,
+  taken: readonly string[]
+): { stow: { key: string; items: string[] }[] } | { error: string } {
+  const byList = new Map<string, string[]>();
+  for (const text of taken) {
+    const candidate = (record.candidates ?? []).find((entry) => entry.text === text);
+    if (!candidate) return { error: `"${text}" is not one of the things this step offered.` };
+    if (!candidate.listKey)
+      return { error: `"${text}" matches nothing in the catalogue, so put it in a slot in your own words.` };
+    byList.set(candidate.listKey, [...(byList.get(candidate.listKey) ?? []), candidate.label ?? candidate.text]);
+  }
+  return { stow: [...byList].map(([key, items]) => ({ key, items })) };
+}
+
+/** Files reviewed results as prose, using the same authored text the player saw. */
+function describeCandidates(
+  step: CreationStep,
+  record: CreationStepRecord,
+  selected: readonly string[]
+): { join: { field: string; separator: string; lines: string[] } } | { error: string } {
+  const target = step.kind === "grant" ? step.describeInto : step.kind === "roll-table" ? step.joinInto : undefined;
+  if (!target) return { error: "This step does not offer a description destination." };
+  const lines: string[] = [];
+  for (const text of selected) {
+    const candidate = (record.candidates ?? []).find((entry) => entry.text === text);
+    if (!candidate) return { error: `"${text}" is not one of the things this step offered.` };
+    lines.push(candidate.description ?? candidate.text);
+  }
+  return { join: { field: target.field, separator: target.separator, lines } };
+}
+
+/** Drops the draft. What remains is a sheet, which is decision 4 in one statement. */
+export function finishCreation(accountId: number, roomId: number, characterId: number): CreationResult {
+  const accessible = findAccessibleCharacter(accountId, roomId, characterId);
+  if (!accessible) return { error: "Character not found.", status: 404 };
+  const definition = systemOrThrow(accessible.row.system).characterCreation;
+  const draft = readCreationDraft(accessible.row.system, accessible.row.creation_json);
+  let target = creationTarget(accessible.row);
+  for (const step of definition?.steps ?? []) {
+    if (!("automatic" in step && step.automatic)) continue;
+    const outcome = performCreationStep(step, {
+      system: accessible.row.system,
+      roomId,
+      sheet: target,
+      totals: creationTotals(draft),
+      records: draft?.steps
+    });
+    target = applyCreationWrite(target, outcome.applied);
+  }
+  const { [CREATION_NAME_KEY]: name, ...sheet } = target;
+  if (!sheetSchema.safeParse(sheet).success) return { error: "Invalid character data.", status: 400 };
+  const named = typeof name === "string" ? name.trim().slice(0, 80) : "";
+  db.prepare(
+    `UPDATE characters SET name = COALESCE(?, name), sheet_json = ?, creation_json = NULL,
+       updated_at = CURRENT_TIMESTAMP WHERE id = ?`
+  ).run(named || null, JSON.stringify(sheet), accessible.row.id);
+  const row = one<CharacterRow>(
+    `SELECT c.*, a.username AS owner_username FROM characters c
+     LEFT JOIN accounts a ON a.id = c.owner_account_id WHERE c.id = ?`,
+    accessible.row.id
+  )!;
+  broadcastCharacterChange(row);
+  return { character: publicCharacter(row, roomId) };
+}
+
+const creationRollSchema = z
+  .object({ stepId: z.string().max(80).optional(), choice: z.string().max(200).optional() })
+  .default({});
+
+const creationChangeSchema = z
+  .object({
+    stepId: z.string().max(80),
+    assign: z.array(z.number().int().min(-100).max(1000)).max(20).optional(),
+    array: z.array(z.number().int().min(-100).max(1000)).max(20).optional(),
+    text: z.string().max(2000).optional(),
+    take: z.array(z.string().max(400)).max(50).optional(),
+    describe: z.array(z.string().max(400)).max(50).optional(),
+    skip: z.boolean().optional()
+  })
+  .strict();
+
+characterRouter.post("/rooms/:roomId/characters/:characterId/creation/roll", requireAuth, (req: AuthedRequest, res) => {
+  const parsed = creationRollSchema.safeParse(req.body ?? {});
+  if (!parsed.success) return res.status(400).json({ error: "Invalid creation step." });
+  const result = rollCreationStep(
+    req.account!.id,
+    Number(req.params.roomId),
+    Number(req.params.characterId),
+    parsed.data
+  );
+  if ("error" in result) return res.status(result.status).json({ error: result.error });
+  res.json(result);
+});
+
+characterRouter.patch("/rooms/:roomId/characters/:characterId/creation", requireAuth, (req: AuthedRequest, res) => {
+  const parsed = creationChangeSchema.safeParse(req.body ?? {});
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Invalid change." });
+  const result = updateCreationDraft(
+    req.account!.id,
+    Number(req.params.roomId),
+    Number(req.params.characterId),
+    parsed.data
+  );
+  if ("error" in result) return res.status(result.status).json({ error: result.error });
+  res.json(result);
+});
+
+characterRouter.post(
+  "/rooms/:roomId/characters/:characterId/creation/finish",
+  requireAuth,
+  (req: AuthedRequest, res) => {
+    const result = finishCreation(req.account!.id, Number(req.params.roomId), Number(req.params.characterId));
+    if ("error" in result) return res.status(result.status).json({ error: result.error });
+    res.json(result);
+  }
+);
 
 characterRouter.get("/rooms/:roomId/characters/:characterId/portrait", requireAuth, (req: AuthedRequest, res) => {
   const roomId = Number(req.params.roomId);

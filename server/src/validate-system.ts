@@ -3,7 +3,7 @@
  *
  * Every refusal an install can produce is produced here instead, against a
  * working copy, so an author finds out about a bad field while they are looking
- * at it rather than after pushing. It is the same three checks the install route
+ * at it rather than after pushing. It is the same four checks the install route
  * runs, in the same order, on the same validated shape.
  *
  *   npm run systems:validate -- ../devils-toys-cairn
@@ -31,7 +31,8 @@ process.env.DEVILS_TOYS_DATA_DIR = scratch;
 // Imported after the data directory is redirected, because `config.ts` reads it
 // once and the database is opened as a side effect of loading these.
 const { readSystemBundle } = await import("./system-bundles.js");
-const { refuseUninstallableBundle, verifySystemTables } = await import("./system-install.js");
+const { refuseUninstallableBundle, refuseUninstallableCreation, verifySystemTables } =
+  await import("./system-install.js");
 const { readSystemRepoDirectory } = await import("./system-repo.js");
 const { projectFile } = await import("./paths.js");
 
@@ -47,6 +48,7 @@ try {
     : readSystemBundle(fs.readFileSync(resolved));
 
   refuseUninstallableBundle(content);
+  refuseUninstallableCreation(content);
   verifySystemTables(content.system.id, content.system, content.tables);
 
   const { system, items, traits, rules, tables } = content;

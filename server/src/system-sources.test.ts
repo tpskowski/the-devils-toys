@@ -1,8 +1,16 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { readFileSync, readdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { gzipSync, strToU8 } from "fflate";
-import { catalogSchema, isAllowedSource, readSystemRepoArchive, sourceArchiveUrl } from "./system-sources.js";
+import {
+  catalogSchema,
+  fetchSystemMarker,
+  forgetSystemMarkers,
+  isAllowedSource,
+  markerUrl,
+  readSystemRepoArchive,
+  sourceArchiveUrl
+} from "./system-sources.js";
 import { readTar, stripArchivePrefix } from "./system-tar.js";
 import { SYSTEM_REPO_MARKER, buildSystemRepoMarker } from "./system-repo.js";
 import { renameSystem } from "./system-bundles.js";
@@ -229,6 +237,126 @@ describe("where a system may be fetched from", () => {
       expect(() => sourceArchiveUrl(repository, "main")).toThrow(/not an owner\/repository name/);
     for (const ref of ["../../../etc/passwd", "main?x=1", "a b", "#fragment"])
       expect(() => sourceArchiveUrl("owner/repo", ref)).toThrow(/not a usable branch, tag, or commit/);
+  });
+
+  it("builds a marker URL on the host the catalogue already comes from", () => {
+    expect(markerUrl("tpskowski/devils-toys-cairn", "main")).toBe(
+      "https://raw.githubusercontent.com/tpskowski/devils-toys-cairn/main/devilsystem.json"
+    );
+    expect(markerUrl("owner/repo", "refs/tags/v1.2.0")).toBe(
+      "https://raw.githubusercontent.com/owner/repo/refs/tags/v1.2.0/devilsystem.json"
+    );
+    expect(isAllowedSource(new URL(markerUrl("owner/repo", "main")))).toBe(true);
+  });
+
+  /**
+   * The same refusals `sourceArchiveUrl` makes, for the same reason: a ref that
+   * can spell `..` is a ref that can name a file somewhere else on the host, and
+   * this one builds a path out of a ref rather than handing it to an endpoint.
+   */
+  it("refuses a repository or ref a marker URL could be built out of", () => {
+    for (const repository of ["not-a-repo", "owner/repo/extra", "../../etc", "owner/repo?x=1", "owner/repo#frag"])
+      expect(() => markerUrl(repository, "main")).toThrow(/not an owner\/repository name/);
+    for (const ref of ["../../../etc/passwd", "main/../../..", "main?x=1", "a b", "#fragment", ".."])
+      expect(() => markerUrl("owner/repo", ref)).toThrow(/not a usable branch, tag, or commit/);
+  });
+});
+
+describe("reading one repository's marker", () => {
+  const marker = (extra: Record<string, unknown> = {}) => ({
+    app: "devils-toys-system",
+    formatVersion: 1,
+    systemId: "toybox",
+    systemName: "Toybox",
+    licenses: ["CC0 1.0"],
+    ...extra
+  });
+
+  /**
+   * Stubs the one outbound call, and reports what it was asked for. Each answer
+   * is built fresh on the call it serves, because a `Response` body may only be
+   * read once; the last one stands for every call after it.
+   */
+  function serve(...answers: Array<() => Response>) {
+    const calls: string[] = [];
+    const remaining = [...answers];
+    const stub = vi.fn(async (input: URL | string) => {
+      calls.push(String(input));
+      return (remaining.length > 1 ? remaining.shift()! : remaining[0])();
+    });
+    vi.stubGlobal("fetch", stub);
+    return calls;
+  }
+
+  const json =
+    (body: unknown, status = 200) =>
+    () =>
+      new Response(typeof body === "string" ? body : JSON.stringify(body), { status });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    forgetSystemMarkers();
+  });
+
+  it("asks the marker URL and reads the version out of it", async () => {
+    const calls = serve(json(marker({ version: "1.2.0" })));
+    await expect(fetchSystemMarker("owner/repo", "main")).resolves.toMatchObject({
+      systemId: "toybox",
+      version: "1.2.0"
+    });
+    expect(calls).toEqual(["https://raw.githubusercontent.com/owner/repo/main/devilsystem.json"]);
+  });
+
+  /** Optional is the whole of decision 2: no version is unversioned, not invalid. */
+  it("reads a marker that declares no version at all", async () => {
+    serve(json(marker()));
+    const read = await fetchSystemMarker("owner/repo", "main");
+    expect(read.systemId).toBe("toybox");
+    expect(read.version).toBeUndefined();
+  });
+
+  it("refuses a body that is not a marker", async () => {
+    serve(json("<!doctype html>"));
+    await expect(fetchSystemMarker("owner/repo", "main")).rejects.toThrow(/readable devilsystem\.json/);
+
+    forgetSystemMarkers();
+    serve(json({ app: "devils-toys-system", formatVersion: 1 }));
+    await expect(fetchSystemMarker("owner/repo", "main")).rejects.toThrow(/not a valid system marker/);
+  });
+
+  it("says so when the repository has no marker to serve", async () => {
+    serve(json("Not Found", 404));
+    await expect(fetchSystemMarker("owner/repo", "main")).rejects.toThrow(/answered 404/);
+  });
+
+  it("refuses to build the request at all from a ref that could climb", async () => {
+    const calls = serve(json(marker()));
+    await expect(fetchSystemMarker("owner/repo", "../../secrets")).rejects.toThrow(/not a usable branch/);
+    expect(calls).toEqual([]);
+  });
+
+  it("reuses what it read until it is told to forget it", async () => {
+    const calls = serve(json(marker({ version: "1.0.0" })), json(marker({ version: "9.9.9" })));
+
+    expect((await fetchSystemMarker("owner/repo", "main")).version).toBe("1.0.0");
+    expect((await fetchSystemMarker("owner/repo", "main")).version).toBe("1.0.0");
+    expect(calls).toHaveLength(1);
+
+    // A different ref of the same repository is a different question.
+    expect((await fetchSystemMarker("owner/repo", "next")).version).toBe("9.9.9");
+    expect(calls).toHaveLength(2);
+
+    forgetSystemMarkers();
+    expect((await fetchSystemMarker("owner/repo", "main")).version).toBe("9.9.9");
+    expect(calls).toHaveLength(3);
+  });
+
+  /** A failure is not cached, so a repository that was briefly down is asked again. */
+  it("asks again after a failure rather than reporting it for the whole TTL", async () => {
+    const calls = serve(json("Not Found", 404), json(marker({ version: "1.0.0" })));
+    await expect(fetchSystemMarker("owner/repo", "main")).rejects.toThrow(/answered 404/);
+    await expect(fetchSystemMarker("owner/repo", "main")).resolves.toMatchObject({ version: "1.0.0" });
+    expect(calls).toHaveLength(2);
   });
 });
 

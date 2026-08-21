@@ -3249,11 +3249,15 @@ button:disabled {
 @media (max-width: 1100px) {
   .workspace {
     --rail-width: 192px;
-    --context-width: 320px;
+    /* A tablet in portrait is 768px across. A fixed 320px panel beside a scene
+       column that refuses to go under 400px is 912px of layout before the rail,
+       and the page scrolls sideways for the difference — under every modal
+       opened on top of it. Both columns give ground instead. */
+    --context-width: clamp(264px, 34vw, 320px);
     grid-template-columns: 192px minmax(0, 1fr);
   }
   .table-grid {
-    grid-template-columns: minmax(400px, 1fr) 320px;
+    grid-template-columns: minmax(0, 1fr) var(--context-width);
   }
   .rail {
     padding-inline: 12px;
@@ -3300,7 +3304,7 @@ button:disabled {
     --context-width: clamp(340px, 36vw, 400px);
   }
   .workspace.rail-collapsed .table-grid {
-    grid-template-columns: minmax(400px, 1fr) clamp(340px, 36vw, 400px);
+    grid-template-columns: minmax(0, 1fr) clamp(340px, 36vw, 400px);
   }
 }
 

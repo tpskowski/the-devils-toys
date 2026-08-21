@@ -32,8 +32,11 @@
   text-transform: none;
 }
 
+/* A whole number of lines tall, so the box never shows half a line of writing
+   and leaves the reader wondering whether that is all of it. */
 .character-sheet textarea {
-  min-height: 74px;
+  min-height: 84px;
+  line-height: 22px;
   resize: vertical;
   border: 1px solid var(--line);
   padding: 8px 10px;
@@ -553,8 +556,11 @@
   gap: 22px;
 }
 
+/* Three columns only where all three have room to be read. The minimums are
+   what a rail needs before its contents start ellipsing, not what it can be
+   squeezed to; the bands below hand a column back rather than go under them. */
 .character-layout-monolith {
-  grid-template-columns: minmax(180px, 0.8fr) minmax(220px, 1.05fr) minmax(210px, 0.9fr);
+  grid-template-columns: minmax(215px, 0.78fr) minmax(300px, 1.12fr) minmax(250px, 0.92fr);
   grid-template-areas:
     "left main right"
     "talents talents right";
@@ -601,9 +607,12 @@
   grid-template-columns: 1fr;
 }
 
-/* Level, XP, and Corruption stay on one line however narrow the rail gets.
-   Columns never shrink below their label, and the subgrid rows keep the inputs level. */
-/* Two per line, so the third field starts a new line with room for its caption. */
+/* The rail is a column of short facts, so it sorts its fields by what they hold
+   rather than dealing them out two at a time: a number takes half a line and
+   pairs up with the next one, and anything wordier — a background, a paragraph
+   of detail — takes the rail's whole width. Half of an already narrow column is
+   not a field, it is a keyhole. The subgrid rows keep each pair's inputs level
+   however tall their captions turn out to be. */
 .character-layout-left .character-sheet-fields {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -611,8 +620,26 @@
 }
 
 .character-layout-left .character-sheet-fields > .character-sheet-field {
+  grid-column: 1 / -1;
   grid-row: span 2;
   grid-template-rows: subgrid;
+}
+
+.character-layout-left .character-sheet-fields > .narrow-field {
+  grid-column: span 1;
+}
+
+/* Captions wrap here rather than ellipsing. Nobody finishes "Corruption" from
+   "CORRUPT…", and the subgrid absorbs the second line without breaking the row. */
+.character-sheet .character-layout-left .character-field-label > label {
+  overflow: visible;
+  white-space: normal;
+}
+
+/* Prose gets the room the short facts leave behind, instead of three lines with
+   the rest of the rail empty below it. */
+.character-layout-left .character-sheet-field.wide-field textarea {
+  min-height: 194px;
 }
 
 .character-layout-right .character-list label {
@@ -685,6 +712,11 @@
 /* Numbers and toggles never need a text field's width. */
 .character-sheet-fields > .narrow-field {
   flex: 0 1 102px;
+}
+
+/* A tick box takes the width of its own caption instead of ellipsing it. */
+.character-sheet-fields > .toggle-field {
+  flex: 0 1 auto;
 }
 
 .character-sheet-fields > .wide-field {
@@ -1341,6 +1373,29 @@
   }
 }
 
+/* Two columns, and the equipment rack drops beneath them. A rack reads better
+   across the full width — the slots run in columns of their own — than as a
+   third rail thin enough to cut every item name short. */
+@media (max-width: 1259px) and (min-width: 941px) {
+  .character-layout-monolith {
+    grid-template-columns: minmax(210px, 0.85fr) minmax(300px, 1.3fr);
+    grid-template-areas:
+      "left main"
+      "talents talents"
+      "right right";
+  }
+
+  .character-layout-right {
+    padding-left: 0;
+    padding-top: 4px;
+    border-left: 0;
+  }
+
+  .character-layout-right .character-list {
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  }
+}
+
 @media (max-width: 940px) {
   .character-layout-monolith {
     grid-template-columns: 1fr;
@@ -1355,6 +1410,56 @@
   .character-layout-right {
     padding-inline: 0;
     border-inline: 0;
+  }
+
+  /* Nothing is a rail here, so the lists spread across the width they now have.
+     Wide columns rather than many: a slot holds an item's whole name. */
+  .character-layout-rail .character-list {
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  }
+
+  /* Identity goes back to the sheet's ordinary flow. Out of the rail there is no
+     pair of columns to keep to, and a level box half a page wide reads as a
+     mistake rather than as a number. */
+  .character-layout-left .character-sheet-fields {
+    display: flex;
+    flex-wrap: wrap;
+  }
+
+  .character-layout-left .character-sheet-fields > .character-sheet-field {
+    grid-column: auto;
+    grid-row: auto;
+    grid-template-rows: none;
+  }
+
+  .character-layout .character-sheet-fields > .character-sheet-field {
+    max-width: 340px;
+  }
+
+  .character-layout .character-sheet-fields > .wide-field {
+    max-width: none;
+  }
+
+  /* Wide rather than tall now that the field has the sheet's whole width. */
+  .character-layout-left .character-sheet-field.wide-field textarea {
+    min-height: 106px;
+  }
+
+  /* Five short rows: stretched across the sheet, the numbers end up a hand's
+     width away from the labels they belong to. */
+  .character-layout-main .character-stat-table {
+    width: auto;
+    max-width: 430px;
+  }
+
+  /* The byline no longer fits beside a name set in 23px Unbounded. */
+  .character-sheet-heading {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 4px;
+  }
+
+  .character-sheet-heading p {
+    margin-bottom: 0;
   }
 }
 

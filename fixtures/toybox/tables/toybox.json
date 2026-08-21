@@ -75,7 +75,7 @@
       "classification": "player",
       "origin": {
         "heading": {
-          "line": 34,
+          "line": 35,
           "level": 3,
           "text": "Name & Trade (d6)"
         },
@@ -84,9 +84,9 @@
           "Character Creation",
           "Name & Trade (d6)"
         ],
-        "tagsLine": 36,
-        "tableStart": 38,
-        "tableEnd": 45,
+        "tagsLine": 37,
+        "tableStart": 39,
+        "tableEnd": 46,
         "dieColumn": "d6",
         "dice": "d6",
         "soleTable": true,
@@ -170,7 +170,7 @@
       "classification": "player",
       "origin": {
         "heading": {
-          "line": 47,
+          "line": 48,
           "level": 3,
           "text": "Vices (d6)"
         },
@@ -180,8 +180,512 @@
           "Vices (d6)"
         ],
         "tagsLine": null,
-        "tableStart": 49,
-        "tableEnd": 56,
+        "tableStart": 50,
+        "tableEnd": 57,
+        "dieColumn": "d6",
+        "dice": "d6",
+        "soleTable": true,
+        "markdownFile": "Toybox.md"
+      }
+    },
+    {
+      "id": "toybox-character-creation-names-d6",
+      "name": "Names (d6)",
+      "section": "Character Creation",
+      "category": "Character Creation",
+      "dice": "d6",
+      "columns": [
+        "Given Name",
+        "Chosen Name",
+        "Family Name"
+      ],
+      "tags": [],
+      "rows": [
+        {
+          "label": "1",
+          "min": 1,
+          "max": 1,
+          "cells": [
+            "Ames",
+            "Salt",
+            "Underhill"
+          ]
+        },
+        {
+          "label": "2",
+          "min": 2,
+          "max": 2,
+          "cells": [
+            "Byrd",
+            "Ember",
+            "Marchbank"
+          ]
+        },
+        {
+          "label": "3",
+          "min": 3,
+          "max": 3,
+          "cells": [
+            "Crane",
+            "Quill",
+            "Ashdown"
+          ]
+        },
+        {
+          "label": "4",
+          "min": 4,
+          "max": 4,
+          "cells": [
+            "Dell",
+            "Tally",
+            "Fenwick"
+          ]
+        },
+        {
+          "label": "5",
+          "min": 5,
+          "max": 5,
+          "cells": [
+            "Ewe",
+            "Nine",
+            "Rookwood"
+          ]
+        },
+        {
+          "label": "6",
+          "min": 6,
+          "max": 6,
+          "cells": [
+            "Frost",
+            "Bell",
+            "Stollen"
+          ]
+        }
+      ],
+      "classification": "player",
+      "origin": {
+        "heading": {
+          "line": 59,
+          "level": 3,
+          "text": "Names (d6)"
+        },
+        "headingPath": [
+          "Toybox",
+          "Character Creation",
+          "Names (d6)"
+        ],
+        "tagsLine": null,
+        "tableStart": 65,
+        "tableEnd": 72,
+        "dieColumn": "d6",
+        "dice": "d6",
+        "soleTable": true,
+        "markdownFile": "Toybox.md"
+      }
+    },
+    {
+      "id": "toybox-character-creation-odds-and-ends-d6",
+      "name": "Odds and Ends (d6)",
+      "section": "Character Creation",
+      "category": "Character Creation",
+      "dice": "d6",
+      "columns": [
+        "Item"
+      ],
+      "tags": [],
+      "rows": [
+        {
+          "label": "1",
+          "min": 1,
+          "max": 1,
+          "cells": [
+            "Lantern"
+          ]
+        },
+        {
+          "label": "2",
+          "min": 2,
+          "max": 2,
+          "cells": [
+            "Crowbar"
+          ]
+        },
+        {
+          "label": "3",
+          "min": 3,
+          "max": 3,
+          "cells": [
+            "Chalk and twine"
+          ]
+        },
+        {
+          "label": "4",
+          "min": 4,
+          "max": 4,
+          "cells": [
+            "Hand Axe"
+          ]
+        },
+        {
+          "label": "5",
+          "min": 5,
+          "max": 5,
+          "cells": [
+            "Rope, 50 feet"
+          ]
+        },
+        {
+          "label": "6",
+          "min": 6,
+          "max": 6,
+          "cells": [
+            "A brick, in a sock"
+          ]
+        }
+      ],
+      "classification": "player",
+      "origin": {
+        "heading": {
+          "line": 74,
+          "level": 3,
+          "text": "Odds and Ends (d6)"
+        },
+        "headingPath": [
+          "Toybox",
+          "Character Creation",
+          "Odds and Ends (d6)"
+        ],
+        "tagsLine": null,
+        "tableStart": 80,
+        "tableEnd": 87,
+        "dieColumn": "d6",
+        "dice": "d6",
+        "soleTable": true,
+        "markdownFile": "Toybox.md"
+      }
+    },
+    {
+      "id": "toybox-trades-cooper-cooper-s-keepsake-d6",
+      "name": "Cooper's Keepsake (d6)",
+      "section": "Trades · Cooper",
+      "category": "Trades",
+      "dice": "d6",
+      "columns": [
+        "Keepsake"
+      ],
+      "tags": [],
+      "rows": [
+        {
+          "label": "1",
+          "min": 1,
+          "max": 1,
+          "cells": [
+            "A hoop that fits nothing you own"
+          ]
+        },
+        {
+          "label": "2",
+          "min": 2,
+          "max": 2,
+          "cells": [
+            "The first stave you ever shaped"
+          ]
+        },
+        {
+          "label": "3",
+          "min": 3,
+          "max": 3,
+          "cells": [
+            "A mallet with somebody else's name on it"
+          ]
+        },
+        {
+          "label": "4",
+          "min": 4,
+          "max": 4,
+          "cells": [
+            "A cellar key, and no cellar"
+          ]
+        },
+        {
+          "label": "5",
+          "min": 5,
+          "max": 5,
+          "cells": [
+            "A ledger of casks unaccounted for"
+          ]
+        },
+        {
+          "label": "6",
+          "min": 6,
+          "max": 6,
+          "cells": [
+            "Sand from a barrel that held no sand"
+          ]
+        }
+      ],
+      "classification": "player",
+      "origin": {
+        "heading": {
+          "line": 111,
+          "level": 4,
+          "text": "Cooper's Keepsake (d6)"
+        },
+        "headingPath": [
+          "Toybox",
+          "Trades",
+          "Cooper",
+          "Cooper's Keepsake (d6)"
+        ],
+        "tagsLine": null,
+        "tableStart": 113,
+        "tableEnd": 120,
+        "dieColumn": "d6",
+        "dice": "d6",
+        "soleTable": true,
+        "markdownFile": "Toybox.md"
+      }
+    },
+    {
+      "id": "toybox-trades-drayman-drayman-s-keepsake-d6",
+      "name": "Drayman's Keepsake (d6)",
+      "section": "Trades · Drayman",
+      "category": "Trades",
+      "dice": "d6",
+      "columns": [
+        "Keepsake"
+      ],
+      "tags": [],
+      "rows": [
+        {
+          "label": "1",
+          "min": 1,
+          "max": 1,
+          "cells": [
+            "A harness bell that stopped ringing"
+          ]
+        },
+        {
+          "label": "2",
+          "min": 2,
+          "max": 2,
+          "cells": [
+            "A toll receipt for a bridge that fell"
+          ]
+        },
+        {
+          "label": "3",
+          "min": 3,
+          "max": 3,
+          "cells": [
+            "Half a map, folded to the half you need"
+          ]
+        },
+        {
+          "label": "4",
+          "min": 4,
+          "max": 4,
+          "cells": [
+            "A whip you have never used"
+          ]
+        },
+        {
+          "label": "5",
+          "min": 5,
+          "max": 5,
+          "cells": [
+            "The last consignment note, unsigned"
+          ]
+        },
+        {
+          "label": "6",
+          "min": 6,
+          "max": 6,
+          "cells": [
+            "A stone the horse would not walk past"
+          ]
+        }
+      ],
+      "classification": "player",
+      "origin": {
+        "heading": {
+          "line": 134,
+          "level": 4,
+          "text": "Drayman's Keepsake (d6)"
+        },
+        "headingPath": [
+          "Toybox",
+          "Trades",
+          "Drayman",
+          "Drayman's Keepsake (d6)"
+        ],
+        "tagsLine": null,
+        "tableStart": 136,
+        "tableEnd": 143,
+        "dieColumn": "d6",
+        "dice": "d6",
+        "soleTable": true,
+        "markdownFile": "Toybox.md"
+      }
+    },
+    {
+      "id": "toybox-trades-fletcher-fletcher-s-keepsake-d6",
+      "name": "Fletcher's Keepsake (d6)",
+      "section": "Trades · Fletcher",
+      "category": "Trades",
+      "dice": "d6",
+      "columns": [
+        "Keepsake"
+      ],
+      "tags": [],
+      "rows": [
+        {
+          "label": "1",
+          "min": 1,
+          "max": 1,
+          "cells": [
+            "A shaft that came back on its own"
+          ]
+        },
+        {
+          "label": "2",
+          "min": 2,
+          "max": 2,
+          "cells": [
+            "Feathers from a bird nobody can name"
+          ]
+        },
+        {
+          "label": "3",
+          "min": 3,
+          "max": 3,
+          "cells": [
+            "A bowstring gone slack, kept anyway"
+          ]
+        },
+        {
+          "label": "4",
+          "min": 4,
+          "max": 4,
+          "cells": [
+            "A target board with one hole in it"
+          ]
+        },
+        {
+          "label": "5",
+          "min": 5,
+          "max": 5,
+          "cells": [
+            "A splinter, still in the thumb"
+          ]
+        },
+        {
+          "label": "6",
+          "min": 6,
+          "max": 6,
+          "cells": [
+            "A quiver counted short every morning"
+          ]
+        }
+      ],
+      "classification": "player",
+      "origin": {
+        "heading": {
+          "line": 157,
+          "level": 4,
+          "text": "Fletcher's Keepsake (d6)"
+        },
+        "headingPath": [
+          "Toybox",
+          "Trades",
+          "Fletcher",
+          "Fletcher's Keepsake (d6)"
+        ],
+        "tagsLine": null,
+        "tableStart": 159,
+        "tableEnd": 166,
+        "dieColumn": "d6",
+        "dice": "d6",
+        "soleTable": true,
+        "markdownFile": "Toybox.md"
+      }
+    },
+    {
+      "id": "toybox-trades-glazier-glazier-s-keepsake-d6",
+      "name": "Glazier's Keepsake (d6)",
+      "section": "Trades · Glazier",
+      "category": "Trades",
+      "dice": "d6",
+      "columns": [
+        "Keepsake"
+      ],
+      "tags": [],
+      "rows": [
+        {
+          "label": "1",
+          "min": 1,
+          "max": 1,
+          "cells": [
+            "A pane you have never dared cut"
+          ]
+        },
+        {
+          "label": "2",
+          "min": 2,
+          "max": 2,
+          "cells": [
+            "Lead came, coiled like rope"
+          ]
+        },
+        {
+          "label": "3",
+          "min": 3,
+          "max": 3,
+          "cells": [
+            "A window's worth of somebody's face"
+          ]
+        },
+        {
+          "label": "4",
+          "min": 4,
+          "max": 4,
+          "cells": [
+            "Grozing pliers, worn smooth"
+          ]
+        },
+        {
+          "label": "5",
+          "min": 5,
+          "max": 5,
+          "cells": [
+            "A colour you have not been able to mix since"
+          ]
+        },
+        {
+          "label": "6",
+          "min": 6,
+          "max": 6,
+          "cells": [
+            "The offcut that drew blood"
+          ]
+        }
+      ],
+      "classification": "player",
+      "origin": {
+        "heading": {
+          "line": 180,
+          "level": 4,
+          "text": "Glazier's Keepsake (d6)"
+        },
+        "headingPath": [
+          "Toybox",
+          "Trades",
+          "Glazier",
+          "Glazier's Keepsake (d6)"
+        ],
+        "tagsLine": null,
+        "tableStart": 182,
+        "tableEnd": 189,
         "dieColumn": "d6",
         "dice": "d6",
         "soleTable": true,
@@ -243,7 +747,7 @@
       "classification": "player",
       "origin": {
         "heading": {
-          "line": 64,
+          "line": 197,
           "level": 3,
           "text": "What the Door Is (d20)"
         },
@@ -253,8 +757,8 @@
           "What the Door Is (d20)"
         ],
         "tagsLine": null,
-        "tableStart": 66,
-        "tableEnd": 72,
+        "tableStart": 199,
+        "tableEnd": 205,
         "dieColumn": "d20",
         "dice": "d20",
         "soleTable": true,
@@ -338,7 +842,7 @@
       "classification": "player",
       "origin": {
         "heading": {
-          "line": 74,
+          "line": 207,
           "level": 3,
           "text": "Weather (d6)"
         },
@@ -348,8 +852,8 @@
           "Weather (d6)"
         ],
         "tagsLine": null,
-        "tableStart": 76,
-        "tableEnd": 83,
+        "tableStart": 209,
+        "tableEnd": 216,
         "dieColumn": "d6",
         "dice": "d6",
         "soleTable": true,
@@ -451,7 +955,7 @@
       "classification": "player",
       "origin": {
         "heading": {
-          "line": 85,
+          "line": 218,
           "level": 3,
           "text": "Complications (d10)"
         },
@@ -461,8 +965,8 @@
           "Complications (d10)"
         ],
         "tagsLine": null,
-        "tableStart": 87,
-        "tableEnd": 98,
+        "tableStart": 220,
+        "tableEnd": 231,
         "dieColumn": "d10",
         "dice": "d10",
         "soleTable": true,
@@ -532,7 +1036,7 @@
       "classification": "player",
       "origin": {
         "heading": {
-          "line": 100,
+          "line": 233,
           "level": 3,
           "text": "What Went Wrong (d66)"
         },
@@ -542,8 +1046,8 @@
           "What Went Wrong (d66)"
         ],
         "tagsLine": null,
-        "tableStart": 104,
-        "tableEnd": 111,
+        "tableStart": 237,
+        "tableEnd": 244,
         "dieColumn": "d66",
         "dice": "d66",
         "soleTable": true,

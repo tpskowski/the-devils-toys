@@ -1,7 +1,14 @@
 import { z } from "zod";
 import { config } from "./config.js";
 import { refuseUnsafePaths } from "./system-bundles.js";
-import { isSystemRepoEntry, readSystemRepoFiles, type SystemRepo } from "./system-repo.js";
+import {
+  SYSTEM_REPO_MARKER,
+  isSystemRepoEntry,
+  markerSchema,
+  readSystemRepoFiles,
+  type SystemRepo,
+  type SystemRepoMarker
+} from "./system-repo.js";
 import { gunzip, readTar, stripArchivePrefix } from "./system-tar.js";
 
 /**
@@ -104,10 +111,32 @@ export const REPOSITORY_PATTERN = /^[A-Za-z0-9._-]{1,100}\/[A-Za-z0-9._-]{1,100}
 /** A branch, tag, or commit. Refused rather than escaped, so a ref cannot build a path. */
 export const REF_PATTERN = /^[A-Za-z0-9._\-/]{1,200}$/;
 
-export function sourceArchiveUrl(repository: string, ref: string) {
+/**
+ * The one gate every URL built from a typed-in repository goes through. A ref is
+ * refused rather than escaped, because a ref that can spell `..` is a ref that
+ * can name a file somewhere else on the host.
+ */
+function refuseUnusableSource(repository: string, ref: string) {
   if (!REPOSITORY_PATTERN.test(repository)) throw new Error(`"${repository}" is not an owner/repository name.`);
   if (!REF_PATTERN.test(ref) || ref.includes("..")) throw new Error(`"${ref}" is not a usable branch, tag, or commit.`);
+}
+
+export function sourceArchiveUrl(repository: string, ref: string) {
+  refuseUnusableSource(repository, ref);
   return `https://codeload.github.com/${repository}/tar.gz/${ref}`;
+}
+
+/**
+ * The marker on its own, without the archive around it.
+ *
+ * Asking what version a repository is offering costs one small JSON file on a
+ * host the allowlist already carries, because the catalogue is fetched from it.
+ * The alternative — pulling the tarball to read six lines out of it — is the
+ * whole system, per system, every time an admin opens a page.
+ */
+export function markerUrl(repository: string, ref: string) {
+  refuseUnusableSource(repository, ref);
+  return `https://raw.githubusercontent.com/${repository}/${ref}/${SYSTEM_REPO_MARKER}`;
 }
 
 export interface FetchedSystem extends SystemRepo {
@@ -158,6 +187,42 @@ export function readSystemRepoArchive(archive: Uint8Array, source: { repository:
 export async function fetchSystemRepo(repository: string, ref: string): Promise<FetchedSystem> {
   const response = await fetchAllowed(sourceArchiveUrl(repository, ref), "application/x-gzip");
   return readSystemRepoArchive(await readCapped(response), { repository, ref });
+}
+
+/**
+ * A repository's marker, cached by repository and ref.
+ *
+ * The same TTL as the catalogue, deliberately: both are remote answers about
+ * what systems are on offer, both are read when an admin opens one page, and a
+ * second dial would only be a second thing to set wrong. A failure is thrown
+ * rather than cached, for the reason the catalogue's is — a repository that was
+ * briefly unreachable is asked again on the next look rather than reported down
+ * for the rest of the TTL.
+ */
+const markers = new Map<string, { at: number; marker: SystemRepoMarker }>();
+
+export function forgetSystemMarkers() {
+  markers.clear();
+}
+
+export async function fetchSystemMarker(repository: string, ref: string): Promise<SystemRepoMarker> {
+  const url = markerUrl(repository, ref);
+  const held = markers.get(url);
+  if (held && Date.now() - held.at < config.systemCatalogTtlSeconds * 1000) return held.marker;
+
+  const response = await fetchAllowed(url, "application/json");
+  const bytes = await readCapped(response);
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(new TextDecoder().decode(bytes)) as unknown;
+  } catch {
+    throw new Error(`${repository} did not answer with a readable ${SYSTEM_REPO_MARKER}.`);
+  }
+  const result = markerSchema.safeParse(parsed);
+  if (!result.success) throw new Error(`${repository}'s ${SYSTEM_REPO_MARKER} at ${ref} is not a valid system marker.`);
+
+  markers.set(url, { at: Date.now(), marker: result.data });
+  return result.data;
 }
 
 /**

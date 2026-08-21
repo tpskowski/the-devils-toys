@@ -30,6 +30,31 @@ describe("a system bundle", () => {
     expect(manifest.licenses).toEqual(["CC0 1.0"]);
   });
 
+  it("carries declared release metadata in its manifest", () => {
+    const release = {
+      version: "1.2.0",
+      breaking: true,
+      releaseNotes: ["Characters need a fresh background choice."]
+    };
+    const archive = unzipSync(buildSystemBundle(fixtureContent(), release));
+    const manifest = JSON.parse(strFromU8(archive["manifest.json"]));
+    expect(manifest).toMatchObject({ bundleVersion: 2, ...release });
+    expect(readSystemBundle(buildSystemBundle(fixtureContent(), release)).manifest).toMatchObject(release);
+  });
+
+  it("normalizes a legacy v1 bundle's absent release metadata", () => {
+    const files = unzipSync(buildSystemBundle(fixtureContent()));
+    const manifest = JSON.parse(strFromU8(files["manifest.json"]));
+    manifest.bundleVersion = 1;
+    files["manifest.json"] = strToU8(JSON.stringify(manifest));
+
+    expect(readSystemBundle(zipSync(files)).manifest).toMatchObject({
+      bundleVersion: 1,
+      breaking: false,
+      releaseNotes: []
+    });
+  });
+
   it("puts the rules and tables where the layout says", () => {
     const names = Object.keys(unzipSync(buildSystemBundle(fixtureContent()))).sort();
     expect(names).toEqual([
@@ -163,6 +188,50 @@ describe("reading a bundle that is not one", () => {
         rebuilt((files) => {
           const manifest = JSON.parse(strFromU8(files["manifest.json"]));
           delete manifest.bundleVersion;
+          files["manifest.json"] = strToU8(JSON.stringify(manifest));
+        })
+      )
+    ).toThrow(/manifest\.json is not a valid system bundle manifest/);
+  });
+
+  it("refuses v2 release metadata that cannot describe a release", () => {
+    expect(() =>
+      readSystemBundle(
+        rebuilt((files) => {
+          const manifest = JSON.parse(strFromU8(files["manifest.json"]));
+          manifest.breaking = true;
+          files["manifest.json"] = strToU8(JSON.stringify(manifest));
+        })
+      )
+    ).toThrow(/manifest\.json is not a valid system bundle manifest/);
+  });
+
+  it("refuses blank, control-character, overlong, and excessive v2 release notes", () => {
+    for (const releaseNotes of [
+      ["   "],
+      ["first\nsecond"],
+      ["x".repeat(501)],
+      Array.from({ length: 13 }, (_, index) => `note ${index + 1}`)
+    ])
+      expect(() =>
+        readSystemBundle(
+          rebuilt((files) => {
+            const manifest = JSON.parse(strFromU8(files["manifest.json"]));
+            manifest.releaseNotes = releaseNotes;
+            files["manifest.json"] = strToU8(JSON.stringify(manifest));
+          })
+        )
+      ).toThrow(/manifest\.json is not a valid system bundle manifest/);
+  });
+
+  it("refuses v2 release metadata smuggled into a v1 payload", () => {
+    expect(() =>
+      readSystemBundle(
+        rebuilt((files) => {
+          const manifest = JSON.parse(strFromU8(files["manifest.json"]));
+          manifest.bundleVersion = 1;
+          manifest.breaking = true;
+          manifest.releaseNotes = ["This must not be ignored."];
           files["manifest.json"] = strToU8(JSON.stringify(manifest));
         })
       )

@@ -19,13 +19,16 @@ import type {
   CharacterSheetDefinition,
   CharacterVice,
   ChatMessage,
+  CreationDraft,
   ItemClassification,
   ItemTrait,
+  ResolvedCreationDefinition,
   SystemId
 } from "@devils-toys/shared";
 import type { SlotWeaponDetail } from "@devils-toys/shared";
 import { setSlotWeapon, slotWeapon, splitItemLabel, weaponOverrideKey } from "@devils-toys/shared";
 import { api } from "./api";
+import { CharacterBuilder } from "./CharacterBuilder";
 import { CharacterItemEditor } from "./CharacterItemEditor";
 import { RulesMarkdown } from "./RulesMarkdown";
 import { WeaponMark } from "./WeaponMark";
@@ -52,6 +55,8 @@ interface Character {
   portraitUrl: string | null;
   portraitFilename: string | null;
   warnings: string[];
+  /** How far the builder has got, or null for a character that was typed or is finished. */
+  creation: CreationDraft | null;
   activeBy: { accountId: number; username: string; displayName: string }[];
   updatedAt: string;
 }
@@ -63,6 +68,8 @@ interface CharacterResponse {
   sheetDefinition: CharacterSheetDefinition;
   itemCatalogue: Record<string, CharacterItem[]>;
   viceCatalogue: CharacterVice[];
+  /** Null where the system declares no creation, which leaves New character the only door. */
+  creationDefinition: ResolvedCreationDefinition | null;
 }
 
 interface ActiveRule {
@@ -122,7 +129,10 @@ function isWideSection(section: CharacterSheetDefinition["sections"][number]) {
 
 function fieldWidthClass(kind: CharacterSheetDefinition["sections"][number]["fields"][number]["kind"]) {
   if (kind === "textarea") return "wide-field";
-  if (kind === "number" || kind === "checkbox") return "narrow-field";
+  // A tick box is narrower than any caption it could carry, so it is sized by
+  // its caption rather than cutting one short: "Critical …" names nothing.
+  if (kind === "checkbox") return "narrow-field toggle-field";
+  if (kind === "number") return "narrow-field";
   return "";
 }
 
@@ -182,6 +192,9 @@ export function CharacterModal({
   const [slotDialogKey, setSlotDialogKey] = useState<string>();
   const [itemCatalogue, setItemCatalogue] = useState<Record<string, CharacterItem[]>>({});
   const [viceCatalogue, setViceCatalogue] = useState<CharacterVice[]>([]);
+  const [creationDefinition, setCreationDefinition] = useState<ResolvedCreationDefinition | null>(null);
+  /** The character the builder is open on, which is never the one the sheet is editing. */
+  const [buildingId, setBuildingId] = useState<number>();
   const [editingSlot, setEditingSlot] = useState<{ listKey: string; index: number }>();
   /**
    * The room pane's entrance animation forms a stacking context for its duration,
@@ -211,6 +224,7 @@ export function CharacterModal({
   const selectedIdRef = useRef<number | undefined>(undefined);
 
   const selected = characters.find((character) => character.id === selectedId);
+  const building = characters.find((character) => character.id === buildingId);
   const canEdit = selected ? canEditCharacter({ accountId, role }, selected) : false;
   // Off in every room whose system does not offer tags, which is most of them.
   const roomTags = useRoomTags(roomId, revision);
@@ -234,6 +248,7 @@ export function CharacterModal({
     setPartyLabel(result.partyLabel);
     setItemCatalogue(result.itemCatalogue);
     setViceCatalogue(result.viceCatalogue);
+    setCreationDefinition(result.creationDefinition);
     setSelectedId((current) => {
       const desired = preferredId ?? current ?? result.activeCharacterId ?? undefined;
       return result.characters.some((character) => character.id === desired) ? desired : result.characters[0]?.id;
@@ -344,6 +359,36 @@ export function CharacterModal({
     } finally {
       setBusy(false);
     }
+  }
+
+  /**
+   * The builder's own door. It is a second way into the same room rather than a
+   * replacement for the first, so it starts exactly where New character does —
+   * one POST, one placeholder name — and then opens the wizard on what came
+   * back. A system that declares no creation never shows this at all.
+   */
+  async function buildCharacter() {
+    if (busy || !creationDefinition || !(await persistCurrent())) return;
+    setBusy(true);
+    setError("");
+    try {
+      const result = await api<{ character: Character }>(`/api/rooms/${roomId}/characters`, {
+        method: "POST",
+        body: JSON.stringify({ name: newCharacterName })
+      });
+      setDraftCharacterIds((current) => [...current, result.character.id]);
+      await load(result.character.id);
+      setBuildingId(result.character.id);
+    } catch (cause) {
+      setError((cause as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function resumeBuild(characterId: number) {
+    if (busy || !(await persistCurrent())) return;
+    setBuildingId(characterId);
   }
 
   async function perform(path: string, method: "POST" | "PATCH" | "DELETE", body?: unknown) {
@@ -1114,6 +1159,7 @@ export function CharacterModal({
           {character.name} <em>({character.ownerUsername ?? "unclaimed"})</em>
         </span>
         {character.id === activeId && <small>Active</small>}
+        {character.creation && <small>Being built</small>}
       </button>
     );
   }
@@ -1346,6 +1392,17 @@ export function CharacterModal({
               <Plus size={15} aria-hidden="true" />
               <span>New character</span>
             </button>
+            {creationDefinition && (
+              <button
+                type="button"
+                className="character-index-create"
+                onClick={() => void buildCharacter()}
+                disabled={busy}
+              >
+                <Dices size={15} aria-hidden="true" />
+                <span>{creationDefinition.label}</span>
+              </button>
+            )}
           </aside>
           {selected && definition ? (
             <form className="character-sheet" onSubmit={(event) => event.preventDefault()}>
@@ -1414,8 +1471,13 @@ export function CharacterModal({
                   )}
                 </div>
               </div>
-              {(canMakeActive || canClaim) && (
+              {(canMakeActive || canClaim || (canEdit && selected.creation && creationDefinition)) && (
                 <div className="character-actions">
+                  {canEdit && selected.creation && creationDefinition && (
+                    <button type="button" onClick={() => void resumeBuild(selected.id)} disabled={busy}>
+                      <Dices size={16} /> Carry on with {creationDefinition.label.toLocaleLowerCase()}
+                    </button>
+                  )}
                   {canMakeActive && (
                     <button
                       type="button"
@@ -1514,6 +1576,27 @@ export function CharacterModal({
         </div>
       </section>
       {renderSlotDialog()}
+      {building && definition && creationDefinition && (
+        <CharacterBuilder
+          roomId={roomId}
+          system={system}
+          character={building}
+          definition={creationDefinition}
+          sheetDefinition={definition}
+          itemCatalogue={itemCatalogue}
+          rulesMarkdown={rulesMarkdown}
+          onCharacter={(character) => {
+            setCharacters((current) => current.map((item) => (item.id === character.id ? character : item)));
+            // A build that has begun is no longer a blank draft to offer to
+            // discard when the modal closes.
+            setDraftCharacterIds((current) => current.filter((id) => id !== character.id));
+          }}
+          onClose={() => {
+            setBuildingId(undefined);
+            void load(building.id);
+          }}
+        />
+      )}
     </div>,
     portalHost ?? document.body
   );
