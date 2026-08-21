@@ -2,6 +2,7 @@ import { UserRound } from "lucide-react";
 import type { CharacterSheetDefinition, CharacterVice, SystemId } from "@devils-toys/shared";
 import { slotIsWeapon, slotWeapon } from "@devils-toys/shared";
 import { entryName, readEntries, singularLabel } from "./character-entries";
+import { InlineMarkdown } from "./InlineMarkdown";
 import { WeaponMark } from "./WeaponMark";
 import "./ReadOnlyCharacterSheet.css";
 
@@ -120,7 +121,11 @@ export function ReadOnlyCharacterSheet({
                 <div className={field.kind === "textarea" ? "wide" : ""} key={field.key}>
                   <dt>{field.label}</dt>
                   <dd className={field.kind === "textarea" ? "multiline" : ""}>
-                    {fixedValue(character.sheet[field.key])}
+                    {field.kind === "text" || field.kind === "textarea" ? (
+                      <InlineMarkdown>{fixedValue(character.sheet[field.key])}</InlineMarkdown>
+                    ) : (
+                      fixedValue(character.sheet[field.key])
+                    )}
                   </dd>
                 </div>
               );

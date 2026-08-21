@@ -36,7 +36,7 @@ const character: ReadOnlyCharacter = {
     strCurrent: 8,
     strMax: 10,
     deprived: false,
-    notes: "Keeps watch.",
+    notes: "**Pilot:** Keeps watch.",
     talents: [{ title: "Patchwork", text: "Can repair field equipment." }],
     inventory: ["Medkit", ""]
   },
@@ -52,7 +52,7 @@ describe("read-only character sheet", () => {
     );
 
     expect(html).toContain("Orchid");
-    expect(html).toContain("Keeps watch.");
+    expect(html).toContain("<strong>Pilot:</strong> Keeps watch.");
     expect(html).toContain("Patchwork");
     expect(html).toContain("Medkit");
     expect(html).not.toMatch(/<(button|input|textarea|select)\b/);

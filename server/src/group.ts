@@ -35,7 +35,7 @@ import {
 import { broadcastRoom } from "./realtime.js";
 import { roomAccessRole } from "./room-config-permissions.js";
 import { starshipPartsFor } from "./starship-parts.js";
-import { rollHirelingCreation } from "./hireling-creation.js";
+import { rollHirelingCreation } from "./character-creation.js";
 import { hasSystem, systemOrThrow } from "./systems.js";
 import { storedUploadBytes } from "./upload-usage.js";
 

@@ -1,5 +1,17 @@
 import { describe, expect, it } from "vitest";
-import { parseRollTables, rowForRoll, rowText, tableSummary, unreachableRows } from "./roll-tables.js";
+import {
+  compactEntry,
+  compactTables,
+  parseCompactRollTables,
+  parseRollTables,
+  rowForRoll,
+  rowText,
+  tableSummary,
+  unreachableRows
+} from "./roll-tables.js";
+import { installToybox } from "./test-fixture.js";
+
+installToybox();
 
 const source = `# **Rules**
 
@@ -322,5 +334,66 @@ describe("resolving a roll against a table", () => {
 | 1 | Crows | — |
 `);
     expect(rowText(table, rowForRoll(table, 1))).toBe("Crows");
+  });
+});
+
+/**
+ * A book's columns are rolled on one at a time — Cairn's `Name & Background`
+ * has four and each is its own roll — so the compact adapter has to keep every
+ * column rather than the first. The fixture's tables are the real thing: three
+ * of them are genuinely multi-column.
+ */
+describe("reading a compact table by column", () => {
+  const named = (section: string, name: string) => {
+    const table = compactTables("toybox", section).find((candidate) => candidate.name === name);
+    if (!table) throw new Error(`The fixture has no "${name}" table.`);
+    return table;
+  };
+
+  it("keeps every column the book wrote", () => {
+    expect(named("Oracles", "Weather (d6)").columns).toEqual(["Sky", "Wind", "Underfoot"]);
+  });
+
+  it("reads the column a caller names", () => {
+    const weather = named("Oracles", "Weather (d6)");
+    expect(compactEntry(weather, 6, "Wind")).toBe("Howling");
+    expect(compactEntry(weather, 6, "Underfoot")).toBe("Flooded");
+    expect(compactEntry(named("Character Creation", "Vices (d6)"), 5, "Satisfied by")).toBe("Winning, then leaving");
+  });
+
+  it("falls back to the first column when none is named", () => {
+    const trades = named("Character Creation", "Name & Trade (d6)");
+    expect(compactEntry(trades, 2)).toBe("Byrd");
+    expect(compactEntry(trades, 2, "Trade")).toBe("Drayman");
+  });
+
+  it("matches a column name however it was cased or spaced", () => {
+    expect(compactEntry(named("Character Creation", "Vices (d6)"), 3, "  triggered BY ")).toBe("Anything unattended");
+  });
+
+  it("reports a column the table has not got", () => {
+    expect(() => compactEntry(named("Character Creation", "Name & Trade (d6)"), 1, "Surname")).toThrow(
+      'The "Name & Trade (d6)" table has no "Surname" column.'
+    );
+  });
+
+  it("leaves a row reachable in the columns a blank cell did not empty", () => {
+    const [omens] = parseCompactRollTables(
+      `# A Book
+
+## Oracles
+
+### Omens (d6)
+
+| d6 | Sign | Note |
+| --- | --- | --- |
+| 1 |  | A rumour |
+| 2 | Crows | Ill fortune |
+`,
+      "Oracles"
+    );
+    expect(compactEntry(omens, 1, "Sign")).toBeUndefined();
+    expect(compactEntry(omens, 1, "Note")).toBe("A rumour");
+    expect(compactEntry(omens, 2, "Sign")).toBe("Crows");
   });
 });

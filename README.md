@@ -78,11 +78,21 @@ Start from the `devils-toys-example` scaffold — a complete, deliberately tiny 
 
 ```
 npm run systems:validate -- ../devils-toys-yours    # exactly the checks an install runs
+npm run systems:bundle   -- ../devils-toys-yours    # make an installable .devilsystem.zip locally
 npm run systems:catalog  -- ../devils-toys-yours    # rebuild items.json and traits.json from the book
 npx tsx scripts/tables-md-to-json.ts --repo ../devils-toys-yours   # rebuild the extracted tables
 ```
 
 `npm run systems:export -- <id> --out <dir>` writes any installed system out as a repository, which is also how the systems that used to live here were split out.
+
+`systems:bundle` reads a system repository, runs the complete install validation,
+and writes `<id>.devilsystem.zip` into that repository by default. Use `--out
+<file>` to put it elsewhere. The bundle carries the release declared in
+`devilsystem.json` and is ready for **Management → Systems → From a file**;
+unlike `systems:export`, it does not require the system to be installed first.
+Format-2 markers may also set `breaking: true` with plain-text `releaseNotes`.
+Replacing an installed release then requires an administrator to review and
+explicitly acknowledge those notes before any system content is changed.
 
 ## Run with WSLC on Windows
 

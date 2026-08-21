@@ -148,6 +148,7 @@ const charactersColumns = `
     pool_room_id INTEGER REFERENCES rooms(id) ON DELETE SET NULL,
     name TEXT NOT NULL,
     sheet_json TEXT NOT NULL DEFAULT '{}',${portraitColumns},
+    creation_json TEXT,
     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP`;
 
 db.exec(`
@@ -556,6 +557,7 @@ if (charactersSchema && !/system\s+TEXT[^,]*REFERENCES\s+systems/i.test(characte
     "portrait_stored_name",
     "portrait_mime_type",
     "portrait_size",
+    "creation_json",
     "updated_at"
   ].filter((column) => hasColumn("characters", column));
   db.exec("PRAGMA foreign_keys = OFF");
@@ -609,6 +611,12 @@ if (!hasColumn("characters", "portrait_stored_name"))
 if (!hasColumn("characters", "portrait_mime_type"))
   db.exec("ALTER TABLE characters ADD COLUMN portrait_mime_type TEXT");
 if (!hasColumn("characters", "portrait_size")) db.exec("ALTER TABLE characters ADD COLUMN portrait_size INTEGER");
+// A half-built character, and nothing else. One nullable column rather than a
+// table: there is exactly one draft per character, it has no rows of its own,
+// and it goes with the character it belongs to by being part of it. NULL is
+// both "never started" and "finished", which is the point — a finished
+// character is a sheet and carries no record of having been built.
+if (!hasColumn("characters", "creation_json")) db.exec("ALTER TABLE characters ADD COLUMN creation_json TEXT");
 if (!hasColumn("custom_npcs", "statblock_json"))
   db.exec("ALTER TABLE custom_npcs ADD COLUMN statblock_json TEXT NOT NULL DEFAULT '{}'");
 // A record cloned out of the bestiary to put something into a fight is a spawn,

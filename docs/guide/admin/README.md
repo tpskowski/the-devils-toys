@@ -31,7 +31,7 @@ a room at all.
 - Open **Room Config** for every room on the server, without being a member
   ([Rooms](rooms.md)).
 - Delete a room, and everything it owns ([Rooms](rooms.md)).
-- Install, export, retire, restore, and remove game systems
+- Install, update, export, retire, restore, and remove game systems
   ([Game systems](systems.md)).
 - In The Devil's Tables: merge, retire, and re-slug tags, and produce a
   repository bundle ([Operating the server](operating.md)).
@@ -47,8 +47,8 @@ one with the shell.
 2. **[Accounts](accounts.md)** — roles, invitations, passwords, and handing a
    room over.
 3. **[Rooms](rooms.md)** — reaching every room, and deleting one.
-4. **[Game systems](systems.md)** — installing, exporting, retiring, and
-   removing runtime system bundles.
+4. **[Game systems](systems.md)** — installing, updating, exporting, retiring,
+   and removing runtime system bundles.
 5. **[Operating the server](operating.md)** — configuration, storage, backups,
    logs, and the table editor.
 

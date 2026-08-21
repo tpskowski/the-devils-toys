@@ -1,5 +1,6 @@
 import type { RangedWeaponIcon, WeaponRangeRules } from "./character-items.js";
 import type { CharacterWarningRule } from "./character-warnings.js";
+import type { CharacterCreationDefinition } from "./system-creation.js";
 import type { RoomRuleSettings, SystemOptionalRule } from "./system-rules.js";
 
 export * from "./character-items.js";
@@ -11,6 +12,8 @@ export * from "./table-markdown.js";
 export * from "./table-tags.js";
 export * from "./room-tags.js";
 export * from "./system-rules.js";
+export * from "./system-creation.js";
+export * from "./system-versions.js";
 export * from "./calendar.js";
 
 /**
@@ -1040,5 +1043,11 @@ export interface GameSystem {
    * Omit the field for a system that offers none.
    */
   optionalRules?: readonly SystemOptionalRule[];
+  /**
+   * The book's creation chapter as steps the application walks a player through.
+   * Omit it and New character stays what it has always been: a blank sheet with
+   * a placeholder name, which is still a perfectly good way to make one.
+   */
+  characterCreation?: CharacterCreationDefinition;
   dice: DiceRules;
 }

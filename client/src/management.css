@@ -696,6 +696,34 @@
   letter-spacing: 0.04em;
 }
 
+/* A system that declares no version says so, and says it more quietly than one
+   that does: the words are longer and they are not a version. */
+.systems-version.none {
+  font-style: italic;
+  opacity: 0.8;
+}
+
+/* What a row has to say about its update state, where it has anything to say.
+   Most rows do not — `current` is deliberately silent — so this is a line that
+   appears rather than a slot every row fills. */
+.systems-installed .systems-note {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.systems-installed .systems-note.warn {
+  color: var(--accent);
+}
+
+.systems-installed .systems-note svg {
+  flex: none;
+}
+
 .systems-flag {
   padding: 2px 7px;
   border: 1px solid var(--line);
@@ -731,6 +759,37 @@
   align-items: center;
   gap: 8px;
   color: var(--accent) !important;
+}
+
+/* The acknowledgement is a real dialog rather than a browser confirmation, so
+   its release notes remain readable on a narrow admin screen. */
+.systems-breaking-dialog {
+  padding: 24px 27px 27px;
+}
+
+.systems-breaking-dialog .modal-intro {
+  margin: 0;
+}
+
+.systems-breaking-dialog ul {
+  margin: 18px 0;
+  padding-left: 20px;
+  line-height: 1.55;
+}
+
+.systems-breaking-dialog li + li {
+  margin-top: 7px;
+}
+
+.systems-breaking-dialog .systems-note {
+  margin: 18px 0;
+}
+
+.systems-breaking-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
 }
 
 @media (max-width: 720px) {

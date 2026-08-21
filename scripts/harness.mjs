@@ -40,12 +40,15 @@ export async function bundleSystemRepo(directory) {
     "manifest.json": Buffer.from(
       `${JSON.stringify(
         {
-          bundleVersion: 1,
+          bundleVersion: 2,
           app: "devils-toys-system",
           systemId: marker.systemId,
           systemName: marker.systemName,
           exportedAt: new Date().toISOString(),
-          licenses: marker.licenses
+          licenses: marker.licenses,
+          ...(marker.version ? { version: marker.version } : {}),
+          ...(marker.breaking === undefined ? {} : { breaking: marker.breaking }),
+          ...(marker.releaseNotes === undefined ? {} : { releaseNotes: marker.releaseNotes })
         },
         null,
         2

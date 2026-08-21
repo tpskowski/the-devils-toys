@@ -145,6 +145,11 @@
             "kind": "vices"
           },
           {
+            "key": "coin",
+            "label": "Coin",
+            "kind": "number"
+          },
+          {
             "key": "notes",
             "label": "Notes",
             "kind": "textarea"
@@ -493,6 +498,217 @@
       "default": false
     }
   ],
+  "characterCreation": {
+    "label": "Make one",
+    "rulesQuery": "Character Creation",
+    "steps": [
+      {
+        "id": "how-it-works",
+        "kind": "rules",
+        "label": "How this goes",
+        "hint": "Every step can be skipped, and you can stop at any of them.",
+        "rulesQuery": "Character Creation"
+      },
+      {
+        "id": "abilities",
+        "kind": "roll-scores",
+        "label": "Abilities",
+        "hint": "3d6 each, in order. Swap any two.",
+        "rulesQuery": "Saves",
+        "scores": [
+          {
+            "label": "Muscle",
+            "dice": "3d6",
+            "currentKey": "muscleCurrent",
+            "maximumKey": "muscleMax"
+          },
+          {
+            "label": "Nerve",
+            "dice": "3d6",
+            "currentKey": "nerveCurrent",
+            "maximumKey": "nerveMax"
+          },
+          {
+            "label": "Knack",
+            "dice": "3d6",
+            "currentKey": "knackCurrent",
+            "maximumKey": "knackMax"
+          }
+        ],
+        "rearrange": {
+          "kind": "swap",
+          "count": 2
+        },
+        "array": {
+          "values": [14, 11, 8],
+          "label": "The steady three"
+        }
+      },
+      {
+        "id": "hit-protection",
+        "kind": "roll-scores",
+        "label": "Hit Protection",
+        "rulesQuery": "Hit Protection",
+        "scores": [
+          {
+            "label": "Hit Protection",
+            "dice": "1d6",
+            "currentKey": "hpCurrent",
+            "maximumKey": "hpMax"
+          }
+        ]
+      },
+      {
+        "id": "trade",
+        "kind": "packet",
+        "label": "Trade",
+        "hint": "Roll d4 or take the one you want. Its keepsake is read at the Hit Protection you already rolled.",
+        "rulesQuery": "Trades",
+        "under": "Trades",
+        "dice": "d4",
+        "prose": "About",
+        "grantFrom": "Kit",
+        "rollTablesUnder": true,
+        "offerTableResults": true,
+        "reuse": [
+          {
+            "position": 1,
+            "fromStep": "hit-protection"
+          }
+        ],
+        "listKey": "inventory",
+        "into": {
+          "field": "trade",
+          "joinInto": {
+            "field": "notes",
+            "separator": "\n",
+            "prefixWith": "table"
+          }
+        }
+      },
+      {
+        "id": "name",
+        "kind": "roll-table",
+        "label": "Name",
+        "hint": "A given name — either column — and a family name, joined into one.",
+        "rulesQuery": "Character Creation",
+        "section": "Character Creation",
+        "tables": [
+          {
+            "table": "Names (d6)",
+            "columnFirstOf": ["Given Name", "Chosen Name"]
+          },
+          {
+            "table": "Names (d6)",
+            "column": "Family Name"
+          }
+        ],
+        "joinInto": {
+          "field": "$name",
+          "separator": " "
+        },
+        "editable": {
+          "placeholder": "Choose your own name"
+        }
+      },
+      {
+        "id": "odds-and-ends",
+        "kind": "roll-table",
+        "label": "Something you kept",
+        "hint": "Rolled, then offered into a slot. It is yours when you say so and not before.",
+        "rulesQuery": "Character Creation",
+        "section": "Character Creation",
+        "tables": [
+          {
+            "table": "Odds and Ends (d6)",
+            "column": "Item",
+            "stowInto": "inventory"
+          }
+        ],
+        "joinInto": {
+          "field": "notes",
+          "separator": "\n",
+          "prefixWith": "column"
+        }
+      },
+      {
+        "id": "kit",
+        "kind": "grant",
+        "label": "What you start with",
+        "listKey": "inventory",
+        "items": ["Cudgel", "Lantern", "Chalk and twine"],
+        "reviewFrom": ["trade"],
+        "describeInto": { "field": "notes", "separator": "\n" },
+        "roll": [
+          {
+            "dice": "3d6",
+            "field": "coin",
+            "label": "Coin"
+          }
+        ]
+      },
+      {
+        "id": "vice",
+        "kind": "save",
+        "label": "A vice, if you have one",
+        "hint": "Save against Nerve. On a failure, roll one.",
+        "rulesQuery": "Saves",
+        "optional": true,
+        "key": "nerveCurrent",
+        "type": "nerve",
+        "on": "failure",
+        "then": [
+          {
+            "id": "vice-roll",
+            "kind": "roll-table",
+            "label": "Your vice",
+            "section": "Character Creation",
+            "tables": [
+              {
+                "table": "Vices (d6)",
+                "column": "Vice",
+                "field": "vices"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "starting-state",
+        "kind": "set",
+        "label": "Where everyone starts",
+        "automatic": true,
+        "defaults": true,
+        "values": {
+          "armor": 0,
+          "criticalDamage": false,
+          "deprived": false
+        }
+      },
+      {
+        "id": "currents",
+        "kind": "derive",
+        "label": "Match the currents to the maximums",
+        "automatic": true,
+        "derive": [
+          {
+            "key": "hpCurrent",
+            "op": "copy",
+            "from": ["hpMax"]
+          }
+        ]
+      },
+      {
+        "id": "anything-else",
+        "kind": "text",
+        "label": "Anything else",
+        "optional": true,
+        "field": "notes",
+        "placeholder": "What the others should know.",
+        "multiline": true
+      }
+    ]
+  },
   "dice": {
     "save": {
       "sides": 20,

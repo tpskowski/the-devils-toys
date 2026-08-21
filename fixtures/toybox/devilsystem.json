@@ -3,5 +3,6 @@
   "formatVersion": 1,
   "systemId": "toybox",
   "systemName": "Toybox",
-  "licenses": ["CC0 1.0"]
+  "licenses": ["CC0 1.0"],
+  "version": "1.0.0"
 }

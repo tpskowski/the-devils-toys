@@ -1,0 +1,726 @@
+/*
+ * The character builder. One step per screen, the sheet beside it on a wide
+ * screen and behind a toggle on a narrow one — which is the phone-ready
+ * constraint doing the arranging rather than a preference for wizards.
+ */
+
+.modal.modal-wide.character-builder {
+  width: min(1180px, 100%);
+  height: min(880px, calc(100svh - 44px));
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.cb-error {
+  margin: 12px 26px 0;
+}
+
+.cb-workspace {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 360px;
+}
+
+/* The step scrolls; the progress line above it and the navigation below it do
+   not, so Skip and Finish are reachable from anywhere in a long step. */
+.cb-main {
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+}
+
+.cb-aside {
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 16px 18px 26px;
+  border-left: 1px solid var(--line);
+  background: color-mix(in srgb, var(--bg), transparent 45%);
+}
+
+/* Buttons take the register the room-config panels use: quiet outlines, one
+   accent for the action a step is really asking for. */
+.character-builder button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.character-builder button:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.character-builder button.cb-primary,
+.character-builder button.cb-roll {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--button-text);
+  font-weight: 600;
+}
+
+.character-builder button.cb-primary:hover:not(:disabled),
+.character-builder button.cb-roll:hover:not(:disabled) {
+  color: var(--button-text);
+  filter: brightness(1.08);
+}
+
+.character-builder > header button {
+  min-height: 38px;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+}
+
+.cb-progress {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 24px 10px;
+}
+
+.cb-progress p {
+  margin: 0;
+  color: var(--muted);
+  font:
+    500 10px "DM Mono",
+    monospace;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.cb-progress-bar {
+  flex: 1 1 auto;
+  height: 3px;
+  background: color-mix(in srgb, var(--line), transparent 30%);
+}
+
+.cb-progress-bar span {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.25s var(--ease);
+}
+
+/* The two panes are one pane on a phone, so this only exists below the break. */
+.cb-pane-toggle {
+  display: none;
+}
+
+.cb-step {
+  min-height: 0;
+  overflow-y: auto;
+  padding: 6px 24px 22px;
+}
+
+.cb-step h3 {
+  margin: 0 0 4px;
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 10px;
+  font:
+    600 20px Unbounded,
+    sans-serif;
+  letter-spacing: -0.03em;
+}
+
+.cb-step h3 em {
+  color: var(--muted);
+  font:
+    400 10px "DM Mono",
+    monospace;
+  font-style: normal;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.cb-step-hint {
+  margin: 0 0 14px;
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.cb-note,
+.cb-hint {
+  margin: 0 0 12px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.cb-warning {
+  margin: 0 0 12px;
+  padding: 9px 13px;
+  border-left: 3px solid var(--accent);
+  background: color-mix(in srgb, var(--accent), transparent 90%);
+  font-size: 13px;
+}
+
+.cb-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 0 0 16px;
+}
+
+/* The step's own passage of the book, folded away until it is wanted. */
+.cb-rules {
+  margin: 0 0 16px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.cb-rules > summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 13px;
+  cursor: pointer;
+  color: var(--muted);
+  font:
+    500 10px "DM Mono",
+    monospace;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  list-style: none;
+}
+
+.cb-rules > summary::-webkit-details-marker {
+  display: none;
+}
+
+.cb-rules[open] > summary,
+.cb-rules > summary:hover {
+  color: var(--accent);
+}
+
+.cb-rules-body {
+  max-height: 340px;
+  overflow-y: auto;
+  padding: 0 15px 12px;
+  border-top: 1px solid var(--line);
+  font-size: 13px;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Scores                                                                      */
+/* -------------------------------------------------------------------------- */
+
+.cb-source-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0;
+  margin: 0 0 14px;
+}
+
+.cb-source-picker button.is-current {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent), transparent 88%);
+}
+
+.cb-source-picker button + button {
+  margin-left: -1px;
+}
+
+.cb-scores {
+  margin: 0 0 14px;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 8px;
+}
+
+.cb-scores li {
+  display: flex;
+  gap: 8px;
+}
+
+/* Big, obvious targets: tapping two of them is the whole rearrange interaction. */
+.character-builder button.cb-score {
+  flex: 1 1 auto;
+  justify-content: space-between;
+  min-height: 52px;
+  padding: 0 16px;
+}
+
+.character-builder button.cb-score.is-picked {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent), transparent 86%);
+  box-shadow: inset 3px 0 var(--accent);
+}
+
+.cb-score-label {
+  font:
+    500 11px "DM Mono",
+    monospace;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.cb-score-value {
+  font:
+    600 21px Unbounded,
+    sans-serif;
+  letter-spacing: -0.04em;
+}
+
+.character-builder button.cb-score-substitute {
+  flex: 0 0 auto;
+}
+
+.character-builder button.cb-score-substitute[aria-pressed="true"] {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* What the sheet holds for these keys now, which is the answer to "did that
+   take?" without opening the other pane. */
+.cb-written {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  margin: 4px 0 0;
+}
+
+.cb-written div {
+  display: grid;
+  gap: 2px;
+}
+
+.cb-written dt {
+  color: var(--muted);
+  font:
+    400 9px "DM Mono",
+    monospace;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.cb-written dd {
+  margin: 0;
+  font-weight: 600;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Rolled results, options, and gear                                           */
+/* -------------------------------------------------------------------------- */
+
+.cb-results,
+.cb-options,
+.cb-plain,
+.cb-stowed {
+  margin: 0 0 16px;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 8px;
+}
+
+.cb-results li,
+.cb-options li,
+.cb-plain li,
+.cb-stowed li {
+  padding: 10px 13px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.cb-result-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px 12px;
+  margin: 0;
+}
+
+.cb-result-head span {
+  color: var(--muted);
+  font:
+    400 10px "DM Mono",
+    monospace;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.cb-result-value {
+  margin: 5px 0 0;
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.cb-plain li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px 14px;
+}
+
+.cb-plain span {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.cb-options li.is-current {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent), transparent 90%);
+}
+
+.cb-option-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.cb-option-prose {
+  margin: 8px 0 0;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.cb-option-tables,
+.cb-option-gear {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font:
+    400 10px "DM Mono",
+    monospace;
+  letter-spacing: 0.05em;
+}
+
+.cb-gear {
+  margin: 0 0 16px;
+  padding: 13px 15px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.cb-gear h4 {
+  margin: 0 0 10px;
+  font:
+    600 12px Unbounded,
+    sans-serif;
+  letter-spacing: -0.01em;
+}
+
+.cb-gear-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 7px 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--line), transparent 55%);
+  cursor: pointer;
+}
+
+.cb-gear-choice {
+  display: grid;
+  gap: 8px;
+  padding: 10px 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--line), transparent 55%);
+}
+
+.cb-gear-destinations {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.cb-gear-destinations button {
+  padding: 6px 9px;
+  border: 1px solid var(--line);
+  background: var(--surface-raised);
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.cb-gear-destinations button.is-current {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent), transparent 86%);
+  color: var(--text);
+}
+
+.cb-gear-row input {
+  margin-top: 3px;
+  accent-color: var(--accent);
+}
+
+.cb-gear-copy,
+.cb-gear-loose {
+  display: grid;
+  gap: 2px;
+}
+
+.cb-gear-name {
+  font-weight: 600;
+}
+
+.cb-gear-loose {
+  margin: 0;
+  padding: 7px 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--line), transparent 55%);
+  color: var(--muted);
+}
+
+.cb-gear small {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.cb-save {
+  padding: 12px 15px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.cb-save-outcome {
+  margin: 0 0 6px;
+  font:
+    600 17px Unbounded,
+    sans-serif;
+  letter-spacing: -0.03em;
+}
+
+.cb-save .cb-note:last-child {
+  margin-bottom: 0;
+}
+
+.cb-save-followup {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.cb-save-followup h4 {
+  margin: 0 0 8px;
+  font:
+    600 13px Unbounded,
+    sans-serif;
+}
+
+.cb-text {
+  display: grid;
+  gap: 6px;
+  margin: 0 0 14px;
+}
+
+.cb-text > span {
+  color: var(--muted);
+  font:
+    500 10px "DM Mono",
+    monospace;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.cb-text input,
+.cb-text textarea {
+  width: 100%;
+  padding: 9px 11px;
+  border: 1px solid var(--line);
+  border-radius: 0;
+  background: var(--surface);
+  color: var(--text);
+  font:
+    400 14px Inter,
+    sans-serif;
+}
+
+.cb-text textarea {
+  min-height: 110px;
+  resize: vertical;
+}
+
+.cb-text small {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Navigation                                                                  */
+/* -------------------------------------------------------------------------- */
+
+.cb-nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 9px;
+  padding: 13px 24px;
+  border-top: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.character-builder button.cb-finish {
+  margin-left: auto;
+}
+
+.cb-nav-note {
+  flex: 1 0 100%;
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+/* -------------------------------------------------------------------------- */
+/* The running summary and the sheet                                           */
+/* -------------------------------------------------------------------------- */
+
+.cb-summary {
+  margin: 0 0 20px;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--line);
+}
+
+.character-builder .cb-summary-row {
+  width: 100%;
+  min-height: 0;
+  display: grid;
+  gap: 2px;
+  padding: 8px 10px;
+  border: 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--line), transparent 55%);
+  border-left: 3px solid transparent;
+  background: transparent;
+  text-align: left;
+  white-space: normal;
+}
+
+.character-builder .cb-summary-row:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--accent), transparent 93%);
+}
+
+.character-builder .cb-summary-row.is-current {
+  border-left-color: var(--accent);
+  background: color-mix(in srgb, var(--accent), transparent 88%);
+}
+
+.cb-summary-label {
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.cb-summary-value {
+  color: var(--muted);
+  font:
+    400 11px "DM Mono",
+    monospace;
+  line-height: 1.45;
+}
+
+.cb-summary-row.is-skipped .cb-summary-label {
+  color: var(--muted);
+  text-decoration: line-through;
+}
+
+.cb-summary-row.is-done .cb-summary-value {
+  color: var(--text);
+}
+
+/* The read-only sheet arrives with the party-page grid, which is two columns
+   wider than this rail has. */
+.cb-sheet .party-sheet-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.cb-sheet .party-character-sheet {
+  padding: 0;
+}
+
+/* -------------------------------------------------------------------------- */
+
+@media (max-width: 940px) {
+  .cb-workspace {
+    grid-template-columns: minmax(0, 1fr) 300px;
+  }
+}
+
+@media (max-width: 700px) {
+  .modal.modal-wide.character-builder {
+    width: 100%;
+    height: 96svh;
+    max-height: 96svh;
+  }
+
+  /* One pane at a time, and the other one a tap away. */
+  .cb-workspace {
+    display: block;
+    min-height: 0;
+    height: 100%;
+  }
+
+  .cb-main,
+  .cb-aside {
+    height: 100%;
+  }
+
+  .cb-aside {
+    border-left: 0;
+    padding-inline: 16px;
+  }
+
+  .cb-workspace .cb-aside {
+    display: none;
+  }
+
+  .cb-workspace.showing-sheet .cb-main {
+    display: none;
+  }
+
+  .cb-workspace.showing-sheet .cb-aside {
+    display: block;
+  }
+
+  .character-builder .cb-pane-toggle {
+    display: inline-flex;
+    flex: 0 0 auto;
+  }
+
+  .character-builder .cb-pane-back {
+    margin-bottom: 14px;
+  }
+
+  .cb-progress {
+    flex-wrap: wrap;
+    padding: 12px 16px 8px;
+  }
+
+  .cb-progress-bar {
+    order: 3;
+    flex-basis: 100%;
+  }
+
+  .cb-step {
+    padding: 6px 16px 20px;
+  }
+
+  .cb-nav {
+    padding: 11px 16px calc(11px + env(safe-area-inset-bottom));
+  }
+
+  .character-builder button.cb-finish {
+    margin-left: 0;
+  }
+
+  .cb-step h3 {
+    font-size: 18px;
+  }
+}

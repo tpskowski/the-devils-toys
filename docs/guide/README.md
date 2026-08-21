@@ -22,10 +22,12 @@ sessions.
    chat rail, and the phone.
 3. **[Your character](your-character.md)** — the sheet, your inventory, and what
    you are holding.
-4. **[Rolling dice](rolling-dice.md)** — the dice box, private rolls, and
+4. **[Building a character](building-a-character.md)** — the book's own creation
+   chapter, where your game has one.
+5. **[Rolling dice](rolling-dice.md)** — the dice box, private rolls, and
    rolling from the sheet.
-5. **[Combat](combat.md)** — the tracker, the board, and your turn.
-6. **[The party](the-party.md)** — the Group tab and what the party owns
+6. **[Combat](combat.md)** — the tracker, the board, and your turn.
+7. **[The party](the-party.md)** — the Group tab and what the party owns
    together.
 
 ## Two things worth knowing early
@@ -48,6 +50,9 @@ All three guides — [player](README.md), [GM](gm/README.md), and
   [devils-tables.md](../../devils-tables.md) covers this for now.
 - Music, the calendar, and map drawing get a paragraph each in
   [The table](the-table.md) and could each carry a page of their own.
+- [Building a character](building-a-character.md) is the one page with no
+  picture: the screenshot script has no shot of the wizard yet, and a page here
+  only carries pictures it can regenerate.
 
 ## About the screenshots
 

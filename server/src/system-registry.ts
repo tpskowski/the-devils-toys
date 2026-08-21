@@ -8,6 +8,7 @@ import { forgetStarshipParts } from "./starship-parts.js";
 import { forgetLinkedRules, hasSystem, registerSystem, unregisterSystem } from "./systems.js";
 import { forgetSystemTables } from "./table-sets.js";
 import { installedSystemIds, readInstalledSystem, verifySystemTables } from "./system-install.js";
+import { normalizeSystemRelease, type SystemRelease, type SystemReleaseInput } from "./system-repo.js";
 
 /**
  * The database's account of what this server has, and the bridge between it and
@@ -36,6 +37,68 @@ export function systemRows(): SystemRow[] {
 
 export function systemRow(system: SystemId) {
   return one<SystemRow>("SELECT * FROM systems WHERE id = ?", system);
+}
+
+/** The stored manifest, or nothing at all if it will not parse. */
+function storedManifest(row: SystemRow): (SystemReleaseInput & { source?: Record<string, unknown> }) | undefined {
+  try {
+    return JSON.parse(row.manifest_json) as SystemReleaseInput & { source?: Record<string, unknown> };
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * The version a system was installed as.
+ *
+ * Read from the manifest rather than from the definition, because a version is
+ * the repository's release rather than anything `system.json` says about itself.
+ * Empty for every system installed before the marker carried one, which is not
+ * an error — an unversioned system is simply one nothing can report an update
+ * for.
+ */
+export function storedSystemVersion(row: SystemRow): string {
+  return storedSystemRelease(row).version ?? "";
+}
+
+/**
+ * Release metadata as it was installed, normalized for both old manifests and
+ * sparse v2 author metadata. This is the storage-side counterpart to
+ * `normalizeSystemRelease`, so routes never need to parse manifest_json.
+ */
+export function storedSystemRelease(row: SystemRow): SystemRelease {
+  const manifest = storedManifest(row);
+  return normalizeSystemRelease({
+    ...(typeof manifest?.version === "string" ? { version: manifest.version } : {}),
+    ...(typeof manifest?.breaking === "boolean" ? { breaking: manifest.breaking } : {}),
+    ...(Array.isArray(manifest?.releaseNotes) && manifest.releaseNotes.every((note) => typeof note === "string")
+      ? { releaseNotes: manifest.releaseNotes }
+      : {})
+  });
+}
+
+export interface StoredSystemSource extends Omit<SystemRelease, "version"> {
+  repository: string;
+  ref: string;
+  revision: string;
+  version: string;
+  fetchedAt: string;
+}
+
+/** Where an installed system came from, when it came from a repository. */
+export function storedSystemSource(row: SystemRow): StoredSystemSource | undefined {
+  const source = storedManifest(row)?.source;
+  if (!source || typeof source.repository !== "string") return undefined;
+  const release = storedSystemRelease(row);
+  return {
+    repository: source.repository,
+    ref: typeof source.ref === "string" ? source.ref : "",
+    revision: typeof source.revision === "string" ? source.revision : "",
+    version: release.version ?? "",
+    breaking: release.breaking,
+    releaseNotes: release.releaseNotes,
+    fetchedAt: typeof source.fetchedAt === "string" ? source.fetchedAt : ""
+  };
 }
 
 /** How many rooms and characters would be orphaned by removing a system. */

@@ -593,6 +593,32 @@ describe("database migrations", () => {
     ).toEqual([{ calendar_enabled: 0, calendar_json: null }]);
   });
 
+  // Seeded with a character in it, because a column added to an empty table
+  // proves nothing about the rows already there. `seedLegacyDatabase` writes
+  // `characters` as every earlier build declared it, with no draft column of any
+  // kind, so this fails outright if the migration goes.
+  it("gives an existing character somewhere to keep a half-built one", async () => {
+    const directory = dataDir();
+    seedLegacyDatabase(directory, THEME_IDS, legacySystemColumns.unconstrained);
+    const legacy = new DatabaseSync(path.join(directory, "devils-toys.sqlite"));
+    legacy.exec("INSERT INTO characters (id, system, name, sheet_json) VALUES (1, 'cairn', 'Ivo', '{\"hp\":3}')");
+    legacy.close();
+    const loaded = await openDatabase(directory);
+
+    expect(
+      loaded.all<{ name: string; sheet_json: string; creation_json: string | null }>(
+        "SELECT name, sheet_json, creation_json FROM characters"
+      )
+    ).toEqual([{ name: "Ivo", sheet_json: '{"hp":3}', creation_json: null }]);
+
+    // Nullable, and NULL is both "never started" and "finished": a character
+    // that has been built carries no record of having been.
+    loaded.db.prepare("UPDATE characters SET creation_json = ? WHERE id = 1").run('{"system":"cairn","steps":{}}');
+    expect(loaded.all<{ creation_json: string }>("SELECT creation_json FROM characters")[0].creation_json).toBe(
+      '{"system":"cairn","steps":{}}'
+    );
+  });
+
   it("adds the room easter-egg ledger to older databases", async () => {
     const directory = dataDir();
     seedLegacyDatabase(directory);

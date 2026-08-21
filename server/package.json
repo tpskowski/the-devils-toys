@@ -13,6 +13,7 @@
     "start:tables": "node dist/tables-server.js",
     "systems:catalog": "tsx src/build-catalogs.ts",
     "systems:export": "tsx src/export-system.ts",
+    "systems:bundle": "tsx src/bundle-system.ts",
     "systems:validate": "tsx src/validate-system.ts",
     "systems:schema": "tsx src/build-schema.ts",
     "accounts": "tsx src/accounts-cli.ts"
