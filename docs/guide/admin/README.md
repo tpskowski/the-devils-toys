@@ -30,6 +30,8 @@ a room at all.
 - Reset any password, including another admin's ([Accounts](accounts.md)).
 - Open **Room Config** for every room on the server, without being a member
   ([Rooms](rooms.md)).
+- Open a room for another GM to run, and hand a room from one GM to another
+  ([Rooms](rooms.md)).
 - Delete a room, and everything it owns ([Rooms](rooms.md)).
 - Install, update, export, retire, restore, and remove game systems
   ([Game systems](systems.md)).

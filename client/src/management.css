@@ -428,6 +428,30 @@
   grid-template-columns: minmax(200px, 1.2fr) minmax(140px, 0.9fr) minmax(140px, 0.9fr) minmax(120px, 0.7fr) auto;
 }
 
+/* A GM makes a room for themselves and an admin chooses who will run it, so the
+   form is a field wider for one of them than for the other. */
+.room-create {
+  grid-template-columns: minmax(200px, 1.3fr) minmax(150px, 1fr) auto;
+}
+
+.room-create.with-gm {
+  grid-template-columns: minmax(200px, 1.2fr) minmax(140px, 0.9fr) minmax(140px, 0.9fr) auto;
+}
+
+/* The rooms section names the accounts it assigns, where the accounts section
+   names the rooms; the monogram takes the glyph's place at the same size. */
+.assignment-list .ledger-monogram {
+  width: 25px;
+  height: 25px;
+  font-size: 9px;
+}
+
+.assignment-list > .ledger-empty {
+  grid-column: 1 / -1;
+  padding: 20px 14px;
+  background: var(--surface);
+}
+
 .role-setting > div,
 .password-reset > div {
   display: flex;

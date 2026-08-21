@@ -143,6 +143,85 @@ await runSmoke("Management planning smoke test", async ({ request, setup, login 
   const adminLedger = await request("/api/management", { headers: adminHeaders });
   assert.ok(adminLedger.rooms.some((room) => room.id === gmRoom.room.id));
   assert.ok(adminLedger.characters.some((item) => item.id === character.character.id));
+  const gmRoomRecord = adminLedger.rooms.find((room) => room.id === gmRoom.room.id);
+  assert.equal(gmRoomRecord.gm.username, "PlanningGM", "A room's record must name whoever runs it.");
+  assert.deepEqual(
+    gmRoomRecord.players.map((item) => item.username),
+    ["PreparedPlayer"],
+    "A room's record must name whoever plays in it."
+  );
+  assert.ok(
+    !adminLedger.gmCandidates.some((candidate) => candidate.username === "PreparedPlayer"),
+    "A player account must never be offered the GM chair."
+  );
+
+  // The Rooms section: made, handed over, and deleted.
+  const gmMadeRoom = await request(
+    "/api/management/rooms",
+    {
+      method: "POST",
+      headers: gmHeaders,
+      body: JSON.stringify({ name: "The Kept Room", system: "toybox" })
+    },
+    201
+  );
+  assert.equal(gmMadeRoom.room.gm.username, "PlanningGM", "A GM making a room is its GM.");
+  await request(
+    "/api/management/rooms",
+    {
+      method: "POST",
+      headers: gmHeaders,
+      body: JSON.stringify({ name: "Somebody Else's Room", system: "toybox", gmAccountId: admin.account.id })
+    },
+    403
+  );
+  await request(
+    "/api/management/rooms",
+    {
+      method: "POST",
+      headers: adminHeaders,
+      body: JSON.stringify({ name: "A Player's Room", system: "toybox", gmAccountId: player.player.id })
+    },
+    409
+  );
+  const adminMadeRoom = await request(
+    "/api/management/rooms",
+    {
+      method: "POST",
+      headers: adminHeaders,
+      body: JSON.stringify({ name: "The Handed Room", system: "toybox", gmAccountId: gmAccount.account.id })
+    },
+    201
+  );
+  assert.equal(adminMadeRoom.room.gm.username, "PlanningGM", "An admin may make a room for another GM to run.");
+  const runsIt = await request("/api/rooms", { headers: gmHeaders });
+  assert.equal(runsIt.rooms.find((room) => room.id === adminMadeRoom.room.id).role, "gm");
+
+  // A GM reaches neither half of handing a room over, including their own.
+  await request(
+    `/api/management/rooms/${gmMadeRoom.room.id}`,
+    { method: "PATCH", headers: gmHeaders, body: JSON.stringify({ gmAccountId: admin.account.id }) },
+    403
+  );
+  await request(`/api/management/rooms/${gmMadeRoom.room.id}`, { method: "DELETE", headers: gmHeaders }, 403);
+
+  const handed = await request(`/api/management/rooms/${adminMadeRoom.room.id}`, {
+    method: "PATCH",
+    headers: adminHeaders,
+    body: JSON.stringify({ gmAccountId: admin.account.id })
+  });
+  assert.equal(handed.room.gm.username, "ManagementAdmin");
+  assert.deepEqual(
+    handed.room.players.map((item) => item.username),
+    ["PlanningGM"],
+    "The outgoing GM stays at the table as a player."
+  );
+  const nowAPlayer = await request("/api/rooms", { headers: gmHeaders });
+  assert.equal(nowAPlayer.rooms.find((room) => room.id === adminMadeRoom.room.id).role, "player");
+
+  await request(`/api/management/rooms/${adminMadeRoom.room.id}`, { method: "DELETE", headers: adminHeaders }, 204);
+  const afterDeletion = await request("/api/management", { headers: adminHeaders });
+  assert.ok(!afterDeletion.rooms.some((room) => room.id === adminMadeRoom.room.id), "A deleted room is gone.");
 
   await request(`/api/management/characters/${character.character.id}`, { method: "DELETE", headers: gmHeaders }, 204);
   const finalLedger = await request("/api/management", { headers: gmHeaders });

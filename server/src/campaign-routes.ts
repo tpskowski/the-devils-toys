@@ -25,6 +25,7 @@ import {
 } from "./campaign-staging.js";
 import { broadcastRoom } from "./realtime.js";
 import { configurableRoom, requireRoomConfig } from "./room-config-permissions.js";
+import { createRoom } from "./rooms.js";
 import { storedUploadBytes } from "./upload-usage.js";
 
 /**
@@ -249,24 +250,7 @@ campaignRouter.post(
       const themeAsked = campaign.room.theme ?? systemOrThrow(system).defaultTheme;
       const theme = ((THEME_IDS as readonly string[]).includes(themeAsked) ? themeAsked : "grim") as ThemeId;
 
-      let roomId = 0;
-      db.exec("BEGIN");
-      try {
-        roomId = Number(
-          db
-            .prepare("INSERT INTO rooms (name, system, theme, created_by) VALUES (?, ?, ?, ?)")
-            .run(name, system, theme, req.account.id).lastInsertRowid
-        );
-        db.prepare("INSERT INTO memberships (room_id, account_id, role) VALUES (?, ?, 'gm')").run(
-          roomId,
-          req.account.id
-        );
-        db.prepare("INSERT INTO room_state (room_id) VALUES (?)").run(roomId);
-        db.exec("COMMIT");
-      } catch (cause) {
-        db.exec("ROLLBACK");
-        throw cause;
-      }
+      const roomId = createRoom({ name, system, theme, gmAccountId: req.account.id });
 
       let result;
       try {
