@@ -2918,43 +2918,72 @@ button:disabled {
 }
 .calendar-scrim {
   z-index: 70;
+  padding: 12px;
 }
 .calendar-modal {
-  width: min(960px, calc(100vw - 2rem));
-  max-height: calc(100vh - 2rem);
+  width: min(1240px, calc(100vw - 24px));
+  max-height: calc(100dvh - 24px);
   overflow: auto;
 }
-.calendar-header,
+.modal > .calendar-header {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  display: grid;
+  grid-template-columns: minmax(240px, 1fr) minmax(250px, auto) auto;
+  align-items: center;
+  gap: clamp(1rem, 3vw, 2.5rem);
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+}
 .calendar-actions,
-.calendar-events-title {
+.calendar-events-title,
+.calendar-dialog-header,
+.calendar-dialog-actions {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
 }
+.calendar-period {
+  min-width: 0;
+}
+.calendar-period .eyebrow {
+  margin-bottom: 5px;
+}
 .calendar-header h2 {
   margin: 0;
 }
-/* The month picker is the heading, so it takes the heading's own type rather
-   than sitting beside it as a control in a different voice. */
 .calendar-heading {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   flex-wrap: wrap;
-  gap: 0.4rem;
+  gap: 0.5rem;
 }
 .calendar-month-select,
 .calendar-year-select {
-  font: inherit;
-  color: inherit;
-  letter-spacing: inherit;
-  text-transform: inherit;
-  background: none;
-  border: 0;
-  border-bottom: 2px solid color-mix(in srgb, var(--accent), transparent 55%);
+  min-width: 0;
+  height: 38px;
+  padding: 0 32px 0 10px;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--line);
   border-radius: 0;
-  padding: 0 0.1rem;
   cursor: pointer;
+}
+.calendar-month-select {
+  width: min(260px, 50vw);
+  font:
+    650 22px Unbounded,
+    sans-serif;
+  letter-spacing: -0.04em;
+}
+.calendar-year-select {
+  width: 104px;
+  font:
+    600 12px "DM Mono",
+    monospace;
 }
 .calendar-month-select option,
 .calendar-year-select option {
@@ -2969,26 +2998,36 @@ button:disabled {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
-.calendar-year-select {
-  margin-left: 0.4rem;
-  border-bottom-width: 1px;
+.calendar-now {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
 }
-.calendar-heading-mark {
+.calendar-now > span {
+  font:
+    500 9px/1.2 "DM Mono",
+    monospace;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
   color: var(--muted);
 }
-.calendar-segment {
-  margin: 0;
+.calendar-now strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+}
+.calendar-now small {
   color: var(--accent);
-  font-weight: 700;
+  font-size: 12px;
 }
 .calendar-week {
   display: grid;
-  gap: 0.35rem;
-  margin-top: 1.1rem;
-  min-width: 520px;
+  gap: 0.45rem;
+  padding: 18px 22px 22px;
 }
 .calendar-week > strong {
-  padding: 0.35rem;
+  padding: 0.35rem 0.4rem;
   overflow: hidden;
   text-overflow: ellipsis;
   text-align: center;
@@ -2996,8 +3035,7 @@ button:disabled {
 }
 .calendar-day,
 .calendar-blank {
-  min-height: 90px;
-  border-radius: 8px;
+  min-height: 116px;
 }
 .calendar-day {
   position: relative;
@@ -3005,8 +3043,8 @@ button:disabled {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 0.3rem;
-  padding: 0.55rem;
+  gap: 0.4rem;
+  padding: 0.55rem 0.6rem 0.65rem;
   border: 1px solid var(--line);
   background: var(--surface);
   color: var(--text);
@@ -3037,6 +3075,38 @@ button:disabled {
   background: color-mix(in srgb, var(--accent), transparent 72%);
   transition: width 0.22s var(--ease);
 }
+.calendar-day-heading {
+  width: 100%;
+  min-height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.calendar-day-heading b {
+  font-variant-numeric: tabular-nums;
+}
+.calendar-day-add {
+  width: 25px;
+  height: 25px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--muted);
+  transition:
+    color 0.16s ease,
+    border-color 0.16s ease,
+    background 0.16s ease;
+}
+.calendar-day-add:hover,
+.calendar-day-add:focus-visible {
+  border-color: var(--accent);
+  background: var(--surface-raised);
+  color: var(--accent);
+}
 .calendar-day small {
   width: 100%;
   display: flex;
@@ -3054,8 +3124,10 @@ button:disabled {
   flex: 1;
   min-width: 0;
   overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-height: 1.25;
 }
 /* A day partway through a run is quieter than the day the run started on. */
 .calendar-event.running {
@@ -3072,15 +3144,30 @@ button:disabled {
   font-variant-numeric: tabular-nums;
   opacity: 0.65;
 }
-.calendar-advance {
-  position: absolute;
-  right: 0.35rem;
-  top: 0.45rem;
-  color: var(--accent);
+.calendar-footer {
+  min-height: 72px;
+  padding: 12px 22px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  border-top: 1px solid var(--line);
+  background: color-mix(in srgb, var(--surface), var(--bg) 8%);
 }
-.calendar-hint {
+.calendar-footer p {
+  margin: 0;
   color: var(--muted);
-  text-align: center;
+  font-size: 12px;
+}
+.calendar-time-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+.calendar-time-actions .primary-button,
+.calendar-time-actions .secondary-button {
+  min-height: 42px;
+  padding: 0 16px;
 }
 .calendar-config-grid {
   display: grid;
@@ -3141,23 +3228,160 @@ button:disabled {
   color: var(--muted);
   font-size: 12px;
 }
+.calendar-dialog-scrim {
+  z-index: 80;
+}
+.calendar-dialog {
+  width: min(460px, calc(100vw - 32px));
+  padding: 24px;
+  display: grid;
+  gap: 20px;
+  overflow: visible;
+}
+.calendar-dialog-header h3 {
+  margin: 0;
+  font:
+    650 22px Unbounded,
+    sans-serif;
+  letter-spacing: -0.04em;
+}
+.calendar-dialog-header .eyebrow {
+  margin-bottom: 5px;
+}
+.calendar-dialog label {
+  display: grid;
+  gap: 7px;
+  color: var(--muted);
+  font:
+    600 10px "DM Mono",
+    monospace;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.calendar-dialog input:not([type="checkbox"]),
+.calendar-dialog select {
+  width: 100%;
+  min-width: 0;
+  height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 0;
+  background: var(--surface);
+  color: var(--text);
+  font:
+    500 14px Inter,
+    sans-serif;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.calendar-dialog select option {
+  background: var(--surface);
+  color: var(--text);
+}
+.calendar-dialog-check {
+  grid-template-columns: auto 1fr;
+  align-items: start;
+  padding: 12px 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  cursor: pointer;
+}
+.calendar-dialog-check input {
+  width: 18px;
+  height: 18px;
+  margin: 1px 0 0;
+  accent-color: var(--accent);
+}
+.calendar-dialog-check span {
+  display: grid;
+  gap: 3px;
+  color: var(--text);
+  font:
+    600 13px Inter,
+    sans-serif;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.calendar-dialog-check small,
+.calendar-dialog-intro {
+  color: var(--muted);
+  font-weight: 400;
+}
+.calendar-dialog-intro {
+  margin: -8px 0 0;
+  font-size: 13px;
+  line-height: 1.45;
+}
+.calendar-time-grid {
+  display: grid;
+  grid-template-columns: 0.8fr 1.35fr 0.7fr;
+  gap: 0.7rem;
+}
+.calendar-time-grid label:last-child:nth-child(4) {
+  grid-column: 1 / -1;
+}
+.calendar-dialog-actions {
+  justify-content: flex-end;
+}
+.calendar-dialog-actions .primary-button,
+.calendar-dialog-actions .secondary-button {
+  min-height: 42px;
+  padding: 0 16px;
+}
 @media (max-width: 700px) {
+  .calendar-scrim {
+    padding: 0;
+  }
   .calendar-modal {
     width: 100vw;
+    height: 100dvh;
     max-height: 100dvh;
     border-radius: 0;
   }
-  .calendar-week {
-    min-width: 460px;
-  }
   .calendar-modal {
     overflow-x: auto;
+  }
+  .modal > .calendar-header {
+    position: static;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0.8rem;
+    padding: 16px;
+  }
+  .calendar-now {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+  .calendar-actions {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  .calendar-week {
+    padding: 14px 16px 18px;
+  }
+  .calendar-footer {
+    min-width: 100vw;
+    align-items: stretch;
+    flex-direction: column;
+    padding: 14px 16px;
+  }
+  .calendar-time-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
   }
   .calendar-config-grid {
     grid-template-columns: 1fr 1fr;
   }
   .calendar-event-editor {
     grid-template-columns: 1fr 1fr;
+  }
+  .calendar-dialog-scrim {
+    padding: 12px;
+  }
+  .calendar-time-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .calendar-time-grid label:last-child:nth-child(4) {
+    grid-column: auto;
   }
 }
 .appearance-settings {

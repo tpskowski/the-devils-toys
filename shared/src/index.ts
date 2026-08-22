@@ -223,7 +223,7 @@ export type MapNotationEvent =
   | { type: "map-notation-removed"; mediaId: number; notationId: number }
   | { type: "map-notations-cleared"; mediaId: number };
 
-export type CalendarEventCadence = "holiday" | "weekly" | "biweekly" | "monthly" | "interval";
+export type CalendarEventCadence = "once" | "holiday" | "weekly" | "biweekly" | "monthly" | "interval";
 
 export interface CalendarEvent {
   id: string;
@@ -231,17 +231,17 @@ export interface CalendarEvent {
   cadence: CalendarEventCadence;
   /**
    * One-based day of the week for a weekly event. For every other kind it is
-   * the day of the month: a holiday's or a monthly event's day, and the day of
-   * the date a biweekly or interval event counts its cycle from.
+   * the day of the month: a one-time event's, holiday's, or monthly event's
+   * day, and the day of the date a biweekly or interval event counts its cycle
+   * from.
    */
   day: number;
-  /** Month of a holiday, and of the date a biweekly or interval event is anchored to. */
+  /** Month of a one-time event or holiday, and of a counted event's anchor. */
   month?: number;
   /**
-   * Year of the date a biweekly or interval event is anchored to; nothing else
-   * reads it. Together with `month` and `day` it fixes one real day the cycle
-   * passes through, which is what lets a GM choose which week it lands on
-   * rather than inheriting whatever phase counting from year one produces.
+   * Year of a one-time event or of the date a biweekly or interval event is
+   * anchored to. For a counted event it fixes one real day the cycle passes
+   * through, which lets a GM choose which week it lands on.
    */
   startYear?: number;
   /** How many days apart an interval event's occurrences are. Only an interval event reads it. */

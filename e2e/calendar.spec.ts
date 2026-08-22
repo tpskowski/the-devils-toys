@@ -91,11 +91,11 @@ test("GM configures shared calendar and persistent map notation", async ({ page 
   await expect(page.getByRole("heading", { name: "The Long Campaign" })).toBeVisible();
   await page.getByTitle("Calendar").click();
 
-  // The header is the whole of it now: the month and year are the pickers that
-  // move the page, and the clock reads out beside them.
+  // The month and year are the page controls; the current clock stays separate
+  // so browsing another month never makes that month look like today.
   await expect(page.getByLabel("Displayed month")).toHaveValue("1");
   await expect(page.getByLabel("Displayed year")).toHaveValue("803");
-  await expect(page.locator(".calendar-heading")).toContainText("Day 14");
+  await expect(page.locator(".calendar-now")).toContainText("Thawrise 14, 803");
   await expect(page.locator(".calendar-view-controls")).toHaveCount(0);
   // The segment carries its position as well as its name, so this is the whole
   // label rather than just "Dawn".
@@ -117,22 +117,22 @@ test("GM configures shared calendar and persistent map notation", async ({ page 
 
   await Promise.all([
     page.waitForResponse((response) => response.url().endsWith(`/api/rooms/${roomId}/calendar/advance`)),
-    page.locator(".calendar-day.current").click()
+    page.getByRole("button", { name: "1 segment", exact: true }).click()
   ]);
   const advancedDetail = await page.request.get(`/api/rooms/${roomId}`);
   expect((await advancedDetail.json()).room.calendar.segment).toBe(1);
   await expect(page.getByText("Noon · 2 of 3", { exact: true })).toBeVisible();
 
-  // Reading another month drops the clock out of the heading rather than
-  // letting it claim a date it is not on, and says where time actually is.
+  // Reading another month leaves the separate current-time readout alone.
   await page.getByLabel("Displayed month").selectOption("2");
-  await expect(page.locator(".calendar-heading")).not.toContainText("Day 14");
-  await expect(page.getByText("Time is at Thawrise 14, 803 — return there to advance it.")).toBeVisible();
+  await expect(page.locator(".calendar-heading")).toContainText("Highsun");
+  await expect(page.locator(".calendar-now")).toContainText("Thawrise 14, 803");
   await page.getByLabel("Displayed month").selectOption("1");
-  await expect(page.locator(".calendar-heading")).toContainText("Day 14");
+  await expect(page.locator(".calendar-heading")).toContainText("Thawrise");
+  await expect(page.locator(".calendar-now")).toContainText("Thawrise 14, 803");
 
   await page.getByTitle("Configure calendar").click();
-  await expect(page.getByRole("heading", { name: "Holidays & recurring events" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Calendar entries" })).toBeVisible();
   await expect(page.getByLabel("Names of days")).toHaveValue("Ember, Stone, River, Gale, Star");
   // Both new controls sit on the event itself, and the hide switch says which
   // way pressing it goes rather than which state the event is in.

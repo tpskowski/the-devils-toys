@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState, type CSSProperties } from "react";
-import { ChevronRight, Eye, EyeOff, Plus, Settings2, Trash2, TriangleAlert, X } from "lucide-react";
+import { useEffect, useMemo, useState, type CSSProperties, type FormEvent } from "react";
+import { Clock3, Eye, EyeOff, Plus, Settings2, Trash2, TriangleAlert, X } from "lucide-react";
 import {
   advanceCalendar,
   CALENDAR_CADENCES,
@@ -37,6 +37,8 @@ export function CalendarModal({
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const [advancing, setAdvancing] = useState(false);
+  const [addingTo, setAddingTo] = useState<{ year: number; month: number; day: number }>();
+  const [settingTime, setSettingTime] = useState(false);
   const [viewMonth, setViewMonth] = useState(serverCalendar.month);
   const [viewYear, setViewYear] = useState(serverCalendar.year);
   const firstWeekday = calendarFirstWeekday(calendar, viewYear, viewMonth);
@@ -60,6 +62,12 @@ export function CalendarModal({
     setViewYear(calendar.year);
   }, [calendar.month, calendar.year]);
 
+  function acceptCalendar(next: RoomCalendar) {
+    setCalendar(next);
+    setDraft(next);
+    onChanged(next);
+  }
+
   async function advance() {
     if (advancing) return;
     setError("");
@@ -71,14 +79,29 @@ export function CalendarModal({
       const result = await api<{ calendar: RoomCalendar }>(`/api/rooms/${roomId}/calendar/advance`, {
         method: "POST"
       });
-      setCalendar(result.calendar);
-      onChanged(result.calendar);
+      acceptCalendar(result.calendar);
     } catch (cause) {
       setCalendar((current) => (current === optimistic ? previous : current));
       setError((cause as Error).message);
     } finally {
       setAdvancing(false);
     }
+  }
+
+  async function addEntry(input: { name: string; year: number; month: number; day: number; hidden: boolean }) {
+    const result = await api<{ calendar: RoomCalendar }>(`/api/rooms/${roomId}/calendar/events`, {
+      method: "POST",
+      body: JSON.stringify(input)
+    });
+    acceptCalendar(result.calendar);
+  }
+
+  async function setTime(input: { year: number; month: number; day: number; segment: number }) {
+    const result = await api<{ calendar: RoomCalendar }>(`/api/rooms/${roomId}/calendar/set-time`, {
+      method: "POST",
+      body: JSON.stringify(input)
+    });
+    acceptCalendar(result.calendar);
   }
 
   async function save() {
@@ -101,28 +124,17 @@ export function CalendarModal({
   }
 
   return (
-    <div className="modal-scrim calendar-scrim" role="presentation">
+    <div
+      className="modal-scrim calendar-scrim"
+      role="presentation"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) onClose();
+      }}
+    >
       <section className="modal calendar-modal" role="dialog" aria-modal="true" aria-label="Calendar">
         <header className="calendar-header">
-          <div>
-            <p className="eyebrow">
-              Year
-              <select
-                className="calendar-year-select"
-                aria-label="Displayed year"
-                value={viewYear}
-                onChange={(event) => setViewYear(Number(event.target.value))}
-              >
-                {yearOptions.map((year) => (
-                  <option value={year} key={year}>
-                    {year}
-                  </option>
-                ))}
-              </select>
-            </p>
-            {/* The month is the page being read rather than the month it is
-                now, so the day and the part of the day join it only where the
-                two are the same. Browsing elsewhere says so beneath the grid. */}
+          <div className="calendar-period">
+            <p className="eyebrow">Calendar</p>
             <h2 className="calendar-heading">
               <select
                 className="calendar-month-select"
@@ -136,19 +148,26 @@ export function CalendarModal({
                   </option>
                 ))}
               </select>
-              {currentPage && (
-                <>
-                  <span className="calendar-heading-mark">·</span>
-                  <span>Day {calendar.day}</span>
-                  {calendar.segmentsPerDay > 1 && (
-                    <>
-                      <span className="calendar-heading-mark">·</span>
-                      <span className="calendar-segment">{calendarSegmentLabel(calendar)}</span>
-                    </>
-                  )}
-                </>
-              )}
+              <select
+                className="calendar-year-select"
+                aria-label="Displayed year"
+                value={viewYear}
+                onChange={(event) => setViewYear(Number(event.target.value))}
+              >
+                {yearOptions.map((year) => (
+                  <option value={year} key={year}>
+                    {year}
+                  </option>
+                ))}
+              </select>
             </h2>
+          </div>
+          <div className="calendar-now" aria-label="Current calendar time">
+            <span>Current time</span>
+            <strong>
+              {calendar.monthNames[calendar.month]} {calendar.day}, {calendar.year}
+            </strong>
+            {calendar.segmentsPerDay > 1 && <small>{calendarSegmentLabel(calendar)}</small>}
           </div>
           <div className="calendar-actions">
             {isGm && (
@@ -167,7 +186,10 @@ export function CalendarModal({
           <>
             <div
               className="calendar-week"
-              style={{ gridTemplateColumns: `repeat(${calendar.daysPerWeek}, minmax(0, 1fr))` }}
+              style={{
+                gridTemplateColumns: `repeat(${calendar.daysPerWeek}, minmax(0, 1fr))`,
+                minWidth: `${calendar.daysPerWeek * 118}px`
+              }}
             >
               {Array.from({ length: calendar.daysPerWeek }, (_, i) => (
                 <strong key={i}>{calendar.dayNames[i] ?? `Day ${i + 1}`}</strong>
@@ -182,19 +204,23 @@ export function CalendarModal({
                     } as CSSProperties)
                   : undefined;
                 return (
-                  <button
+                  <article
                     key={day}
                     className={`calendar-day${current ? " current" : ""}${past ? " past" : ""}`}
                     style={style}
                     aria-current={current ? "date" : undefined}
-                    aria-busy={current && advancing ? true : undefined}
-                    disabled={current && isGm && advancing}
-                    onClick={current && isGm ? advance : undefined}
-                    title={
-                      current && isGm ? (advancing ? "Advancing time…" : "Advance time") : past ? "Past day" : undefined
-                    }
                   >
-                    <b>{day}</b>
+                    <div className="calendar-day-heading">
+                      <b>{day}</b>
+                      <button
+                        className="calendar-day-add"
+                        aria-label={`Add an event or note to ${calendar.monthNames[viewMonth]} ${day}, ${viewYear}`}
+                        title="Add event or note"
+                        onClick={() => setAddingTo({ year: viewYear, month: viewMonth, day })}
+                      >
+                        <Plus size={15} />
+                      </button>
+                    </div>
                     {calendarEventsOn(calendar, viewYear, viewMonth, day).map(({ event, dayOfRun }) => {
                       const days = calendarEventDays(event);
                       return (
@@ -215,30 +241,240 @@ export function CalendarModal({
                         </small>
                       );
                     })}
-                    {current && isGm && <ChevronRight className="calendar-advance" size={15} />}
-                  </button>
+                  </article>
                 );
               })}
             </div>
-            {currentPage ? (
-              isGm && (
-                <p className="calendar-hint">
-                  Click the current day to advance to the next{" "}
-                  {calendar.segmentsPerDay > 1 ? "segment of the day" : "day"}.
-                </p>
-              )
-            ) : (
-              // Said to everyone rather than the GM alone: the header gave up
-              // showing the current date to make room for the month picker.
-              <p className="calendar-hint">
-                Time is at {calendar.monthNames[calendar.month]} {calendar.day}, {calendar.year}
-                {isGm ? " — return there to advance it." : "."}
+            <footer className="calendar-footer">
+              <p>
+                {currentPage ? "Viewing the current month." : `Viewing ${calendar.monthNames[viewMonth]} ${viewYear}.`}
               </p>
-            )}
+              {isGm && (
+                <div className="calendar-time-actions">
+                  <button className="secondary-button" onClick={() => setSettingTime(true)}>
+                    <Clock3 size={16} /> Set time
+                  </button>
+                  <button className="primary-button" disabled={advancing} aria-busy={advancing} onClick={advance}>
+                    <Plus size={16} />{" "}
+                    {advancing ? "Advancing…" : `1 ${calendar.segmentsPerDay > 1 ? "segment" : "day"}`}
+                  </button>
+                </div>
+              )}
+            </footer>
           </>
         )}
         {error && <p className="form-error">{error}</p>}
       </section>
+      {addingTo && (
+        <CalendarEntryDialog
+          calendar={calendar}
+          date={addingTo}
+          isGm={isGm}
+          onAdd={addEntry}
+          onClose={() => setAddingTo(undefined)}
+        />
+      )}
+      {settingTime && <CalendarTimeDialog calendar={calendar} onSet={setTime} onClose={() => setSettingTime(false)} />}
+    </div>
+  );
+}
+
+function CalendarEntryDialog({
+  calendar,
+  date,
+  isGm,
+  onAdd,
+  onClose
+}: {
+  calendar: RoomCalendar;
+  date: { year: number; month: number; day: number };
+  isGm: boolean;
+  onAdd: (input: { name: string; year: number; month: number; day: number; hidden: boolean }) => Promise<void>;
+  onClose: () => void;
+}) {
+  const [name, setName] = useState("");
+  const [hidden, setHidden] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  async function submit(event: FormEvent) {
+    event.preventDefault();
+    if (!name.trim() || saving) return;
+    setSaving(true);
+    setError("");
+    try {
+      await onAdd({ name: name.trim(), ...date, hidden });
+      onClose();
+    } catch (cause) {
+      setError((cause as Error).message);
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div
+      className="modal-scrim calendar-dialog-scrim"
+      role="presentation"
+      onMouseDown={(event) => event.target === event.currentTarget && onClose()}
+    >
+      <form
+        className="modal calendar-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="calendar-entry-title"
+        onSubmit={submit}
+      >
+        <div className="calendar-dialog-header">
+          <div>
+            <p className="eyebrow">
+              {calendar.monthNames[date.month]} {date.day}, {date.year}
+            </p>
+            <h3 id="calendar-entry-title">Add event or note</h3>
+          </div>
+          <button className="icon-button" type="button" aria-label="Close event form" onClick={onClose}>
+            <X />
+          </button>
+        </div>
+        <label>
+          Event or note
+          <input
+            autoFocus
+            maxLength={100}
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            placeholder="What happens?"
+          />
+        </label>
+        {isGm && (
+          <label className="calendar-dialog-check">
+            <input type="checkbox" checked={hidden} onChange={(event) => setHidden(event.target.checked)} />
+            <span>
+              <strong>GM only</strong>
+              <small>Keep this entry hidden from players.</small>
+            </span>
+          </label>
+        )}
+        {error && <p className="form-error">{error}</p>}
+        <div className="calendar-dialog-actions">
+          <button className="secondary-button" type="button" onClick={onClose}>
+            Cancel
+          </button>
+          <button className="primary-button" disabled={!name.trim() || saving}>
+            <Plus size={16} /> {saving ? "Adding…" : "Add to day"}
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+function CalendarTimeDialog({
+  calendar,
+  onSet,
+  onClose
+}: {
+  calendar: RoomCalendar;
+  onSet: (input: { year: number; month: number; day: number; segment: number }) => Promise<void>;
+  onClose: () => void;
+}) {
+  const [year, setYear] = useState(calendar.year);
+  const [month, setMonth] = useState(calendar.month);
+  const [day, setDay] = useState(calendar.day);
+  const [segment, setSegment] = useState(calendar.segment);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  async function submit(event: FormEvent) {
+    event.preventDefault();
+    if (saving) return;
+    setSaving(true);
+    setError("");
+    try {
+      await onSet({ year, month, day, segment });
+      onClose();
+    } catch (cause) {
+      setError((cause as Error).message);
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div
+      className="modal-scrim calendar-dialog-scrim"
+      role="presentation"
+      onMouseDown={(event) => event.target === event.currentTarget && onClose()}
+    >
+      <form
+        className="modal calendar-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="calendar-time-title"
+        onSubmit={submit}
+      >
+        <div className="calendar-dialog-header">
+          <div>
+            <p className="eyebrow">Calendar controls</p>
+            <h3 id="calendar-time-title">Set time</h3>
+          </div>
+          <button className="icon-button" type="button" aria-label="Close set time form" onClick={onClose}>
+            <X />
+          </button>
+        </div>
+        <p className="calendar-dialog-intro">Move the calendar to an exact date in the past or future.</p>
+        <div className="calendar-time-grid">
+          <label>
+            Year
+            <input
+              type="number"
+              min={-99999}
+              max={99999}
+              value={year}
+              onChange={(event) => setYear(Number(event.target.value))}
+            />
+          </label>
+          <label>
+            Month
+            <select value={month} onChange={(event) => setMonth(Number(event.target.value))}>
+              {calendar.monthNames.map((name, index) => (
+                <option value={index} key={index}>
+                  {name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Day
+            <input
+              type="number"
+              min={1}
+              max={calendar.daysPerMonth}
+              value={day}
+              onChange={(event) => setDay(Number(event.target.value))}
+            />
+          </label>
+          {calendar.segmentsPerDay > 1 && (
+            <label>
+              Segment
+              <select value={segment} onChange={(event) => setSegment(Number(event.target.value))}>
+                {Array.from({ length: calendar.segmentsPerDay }, (_, index) => (
+                  <option value={index} key={index}>
+                    {calendarSegmentLabel(calendar, index)}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+        </div>
+        {error && <p className="form-error">{error}</p>}
+        <div className="calendar-dialog-actions">
+          <button className="secondary-button" type="button" onClick={onClose}>
+            Cancel
+          </button>
+          <button className="primary-button" disabled={saving}>
+            {saving ? "Setting…" : "Set time"}
+          </button>
+        </div>
+      </form>
     </div>
   );
 }
@@ -397,13 +633,15 @@ function CalendarEditor({
         />
       </label>
       <div className="calendar-events-title">
-        <h3>Holidays & recurring events</h3>
+        <h3>Calendar entries</h3>
         <button onClick={addEvent}>
           <Plus size={16} /> Add event
         </button>
       </div>
       {value.events.map((event) => {
         const counted = calendarEventIsCounted(event);
+        const oneTime = event.cadence === "once";
+        const dated = oneTime || event.cadence === "holiday" || counted;
         const never = calendarEventNever(value, event);
         return (
           <div className="calendar-event-row" key={event.id}>
@@ -417,7 +655,16 @@ function CalendarEditor({
                 <select
                   aria-label="Recurrence"
                   value={event.cadence}
-                  onChange={(e) => eventChange(event.id, { cadence: e.target.value as CalendarEventCadence })}
+                  onChange={(e) => {
+                    const cadence = e.target.value as CalendarEventCadence;
+                    const needsExactDate = cadence === "once" || cadence === "biweekly" || cadence === "interval";
+                    eventChange(event.id, {
+                      cadence,
+                      ...(needsExactDate
+                        ? { month: event.month ?? value.month, startYear: event.startYear ?? value.year }
+                        : {})
+                    });
+                  }}
                 >
                   {CALENDAR_CADENCES.map((cadence) => (
                     <option value={cadence.value} key={cadence.value}>
@@ -436,14 +683,14 @@ function CalendarEditor({
                   />
                 )}
               </span>
-              {/* One cell for when it happens: a holiday names its month, and a
-                  counted cadence names the month and year it counts from. */}
-              {event.cadence === "holiday" || counted ? (
+              {/* One cell for when it happens: a holiday names its month, while
+                  a one-time or counted event names an exact date. */}
+              {dated ? (
                 <label>
-                  {counted ? "Starts" : "Month"}
+                  {oneTime ? "Date" : counted ? "Starts" : "Month"}
                   <span className="calendar-event-anchor">
                     <select
-                      aria-label={counted ? `Month ${event.name} starts in` : "Event month"}
+                      aria-label={oneTime || counted ? `Month ${event.name} starts in` : "Event month"}
                       value={event.month ?? 0}
                       onChange={(e) => eventChange(event.id, { month: Number(e.target.value) })}
                     >
@@ -453,7 +700,7 @@ function CalendarEditor({
                         </option>
                       ))}
                     </select>
-                    {counted && (
+                    {(oneTime || counted) && (
                       <input
                         type="number"
                         aria-label={`Year ${event.name} starts in`}
