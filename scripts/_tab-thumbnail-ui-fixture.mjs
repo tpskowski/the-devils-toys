@@ -22,7 +22,9 @@ await runSmoke("Tab thumbnail visual fixture", async ({ base, setup, request, up
     201
   );
   for (const [name, background] of assets) {
-    const image = await sharp({ create: { width: 160, height: 96, channels: 3, background } }).png().toBuffer();
+    const image = await sharp({ create: { width: 160, height: 96, channels: 3, background } })
+      .png()
+      .toBuffer();
     await upload(`/api/rooms/${created.room.id}/media`, gm.cookie, {
       kind: "scene",
       file: new File([image], `${name}.png`, { type: "image/png" })
