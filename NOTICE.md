@@ -44,6 +44,6 @@ None of those authors endorses this project or has reviewed it.
 
 - **No rules text.** No rulebook, no extracted tables, no gear catalogue derived from anyone's book. What a server serves is what its operator installed, and that operator is responsible for having the right to.
 - **No original PDFs.** They never were published here, and the repositories that carry the converted text do not publish them either.
-- Fonts are not vendored. Inter, DM Mono, and Unbounded are installed from Fontsource under the [SIL Open Font License 1.1](https://openfontlicense.org/); their licence files ship inside those packages.
+- Fonts are not vendored. Inter, DM Mono, Unbounded, and Bricolage Grotesque are installed from Fontsource under the [SIL Open Font License 1.1](https://openfontlicense.org/); their licence files ship inside those packages.
 - Third-party JavaScript dependencies keep their own licences, available in `node_modules` after `npm install`.
 - Anything a table uploads at runtime — audio, images, Markdown references — stays in the server's data directory, which is ignored by Git. Nothing a group adds to a room is part of this repository.
