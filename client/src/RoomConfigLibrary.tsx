@@ -1,7 +1,20 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
-import { Eye, EyeOff, FileText, FileUp, Image as ImageIcon, Map as MapIcon, Radio, Trash2 } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode } from "react";
+import {
+  AlertTriangle,
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
+  Eye,
+  EyeOff,
+  FileText,
+  FileUp,
+  Map as MapIcon,
+  Radio,
+  Trash2,
+  X
+} from "lucide-react";
 import { tagsMatch, type MediaAsset } from "@devils-toys/shared";
-import { api } from "./api";
+import { api, ApiError } from "./api";
 import { useRoomTags } from "./room-tags";
 import { TagField } from "./TagField";
 import { isMarkdownAsset } from "./MediaContent";
@@ -9,14 +22,26 @@ import { mediaKindLabel, mediaLabel } from "./media-label";
 
 type LibraryCategory = "map" | "scene" | "reference";
 type Filter = "all" | LibraryCategory | "orphans";
+type SortKey = "name" | "kind" | "tags" | "size" | "visible" | "inUse";
+type SortDirection = "ascending" | "descending";
 
 interface LibraryPayload {
   map: MediaAsset | null;
   scene: MediaAsset | null;
-  library: MediaAsset[];
+  library: LibraryAsset[];
+}
+
+type LibraryAsset = MediaAsset & { notationCount: number };
+
+interface PendingRefile {
+  ids: number[];
+  category: LibraryCategory;
+  notationCount: number;
+  names: string[];
 }
 
 const categories: LibraryCategory[] = ["map", "scene", "reference"];
+const libraryCollator = new Intl.Collator(undefined, { numeric: true, sensitivity: "base" });
 
 function formatSize(bytes: number) {
   if (bytes < 1024) return `${bytes} B`;
@@ -36,15 +61,26 @@ function isOrphan(asset: MediaAsset, payload: LibraryPayload) {
   return payload.scene?.id !== asset.id;
 }
 
+function activeLabel(asset: MediaAsset, payload: LibraryPayload) {
+  if (payload.map?.id === asset.id) return "Active map";
+  if (payload.scene?.id === asset.id) return "Active scene";
+  return "Unused";
+}
+
 export function RoomConfigLibrary({ roomId, revision }: { roomId: number; revision: number }) {
   const [payload, setPayload] = useState<LibraryPayload>();
   const [filter, setFilter] = useState<Filter>("all");
   const [query, setQuery] = useState("");
+  const [sort, setSort] = useState<{ key: SortKey; direction: SortDirection }>({
+    key: "name",
+    direction: "ascending"
+  });
   const [selection, setSelection] = useState<number[]>([]);
   const [renaming, setRenaming] = useState<number>();
   const [renameValue, setRenameValue] = useState("");
   const [uploadAs, setUploadAs] = useState<LibraryCategory>("scene");
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [pendingRefile, setPendingRefile] = useState<PendingRefile>();
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
   const fileInput = useRef<HTMLInputElement>(null);
@@ -63,7 +99,7 @@ export function RoomConfigLibrary({ roomId, revision }: { roomId: number; revisi
   const shown = useMemo(() => {
     if (!payload) return [];
     const needle = query.trim().toLocaleLowerCase();
-    return payload.library.filter((asset) => {
+    const filtered = payload.library.filter((asset) => {
       if (filter === "orphans" ? !isOrphan(asset, payload) : filter !== "all" && asset.kind !== filter) return false;
       if (!needle) return true;
       // The search box the panel already has finds by tag too, rather than the
@@ -71,7 +107,63 @@ export function RoomConfigLibrary({ roomId, revision }: { roomId: number; revisi
       if (tagsMatch(roomTags.tagsOn("scene", asset.id), needle)) return true;
       return `${mediaLabel(asset)} ${asset.filename} ${asset.kind}`.toLocaleLowerCase().includes(needle);
     });
-  }, [payload, filter, query, roomTags]);
+
+    const value = (asset: LibraryAsset): string | number => {
+      switch (sort.key) {
+        case "name":
+          return `${mediaLabel(asset)} ${asset.filename}`;
+        case "kind":
+          return mediaKindLabel(asset.kind);
+        case "tags":
+          return roomTags.tagsOn("scene", asset.id).join(" ");
+        case "size":
+          return asset.size;
+        case "visible":
+          return Number(asset.visible);
+        case "inUse":
+          return activeLabel(asset, payload);
+      }
+    };
+
+    return filtered.sort((left, right) => {
+      const leftValue = value(left);
+      const rightValue = value(right);
+      const compared =
+        typeof leftValue === "number" && typeof rightValue === "number"
+          ? leftValue - rightValue
+          : libraryCollator.compare(String(leftValue), String(rightValue));
+      if (compared !== 0) return sort.direction === "ascending" ? compared : -compared;
+      const byName = libraryCollator.compare(mediaLabel(left), mediaLabel(right));
+      return byName || left.id - right.id;
+    });
+  }, [payload, filter, query, roomTags, sort]);
+
+  function sortBy(key: SortKey) {
+    setSort((current) => ({
+      key,
+      direction: current.key === key && current.direction === "ascending" ? "descending" : "ascending"
+    }));
+  }
+
+  function sortHeader(key: SortKey, label: string, content?: ReactNode) {
+    const active = sort.key === key;
+    return (
+      <th scope="col" aria-sort={active ? sort.direction : "none"}>
+        <button type="button" className="rc-sort" onClick={() => sortBy(key)} aria-label={`Sort by ${label}`}>
+          {content ?? label}
+          {active ? (
+            sort.direction === "ascending" ? (
+              <ArrowUp size={12} aria-hidden="true" />
+            ) : (
+              <ArrowDown size={12} aria-hidden="true" />
+            )
+          ) : (
+            <ArrowUpDown size={12} aria-hidden="true" />
+          )}
+        </button>
+      </th>
+    );
+  }
 
   // A selection survives a refresh only where the asset did, so acting on it
   // can never reach something that has since been deleted elsewhere.
@@ -99,6 +191,57 @@ export function RoomConfigLibrary({ roomId, revision }: { roomId: number; revisi
 
   const bulk = (body: Record<string, unknown>) =>
     api(`/api/rooms/${roomId}/media/bulk`, { method: "PATCH", body: JSON.stringify({ ids: selected, ...body }) });
+
+  async function refile(ids: number[], category: LibraryCategory, discardMapNotations = false) {
+    if (!payload) return;
+    const assets = payload.library.filter((asset) => ids.includes(asset.id) && asset.kind !== category);
+    if (!assets.length) return;
+    const mapsWithNotation = assets.filter((asset) => asset.kind === "map" && asset.notationCount > 0);
+    const knownNotationCount = mapsWithNotation.reduce((total, asset) => total + asset.notationCount, 0);
+    if (!discardMapNotations && knownNotationCount) {
+      setPendingRefile({
+        ids,
+        category,
+        notationCount: knownNotationCount,
+        names: mapsWithNotation.map(mediaLabel)
+      });
+      return;
+    }
+
+    setBusy("Refiling…");
+    setError("");
+    try {
+      await api(`/api/rooms/${roomId}/media/bulk`, {
+        method: "PATCH",
+        body: JSON.stringify({ ids, category, discardMapNotations })
+      });
+      setPendingRefile(undefined);
+      await load();
+    } catch (cause) {
+      const conflict =
+        cause instanceof ApiError && cause.payload && typeof cause.payload === "object" ? cause.payload : {};
+      if (
+        cause instanceof ApiError &&
+        cause.status === 409 &&
+        "code" in conflict &&
+        conflict.code === "MAP_NOTATIONS_EXIST"
+      ) {
+        const mediaIds = "mediaIds" in conflict && Array.isArray(conflict.mediaIds) ? conflict.mediaIds : ids;
+        const notationCount =
+          "notationCount" in conflict && typeof conflict.notationCount === "number" ? conflict.notationCount : 1;
+        setPendingRefile({
+          ids,
+          category,
+          notationCount,
+          names: payload.library.filter((asset) => mediaIds.includes(asset.id)).map(mediaLabel)
+        });
+      } else {
+        setError((cause as Error).message);
+      }
+    } finally {
+      setBusy("");
+    }
+  }
 
   async function upload(event: ChangeEvent<HTMLInputElement>) {
     const files = [...(event.target.files ?? [])];
@@ -216,7 +359,7 @@ export function RoomConfigLibrary({ roomId, revision }: { roomId: number; revisi
                 <button
                   key={category}
                   type="button"
-                  onClick={() => act("Refiling…", () => bulk({ category }))}
+                  onClick={() => refile(selected, category)}
                   disabled={Boolean(busy)}
                 >
                   File as {mediaKindLabel(category)}
@@ -248,12 +391,12 @@ export function RoomConfigLibrary({ roomId, revision }: { roomId: number; revisi
                   onChange={() => setSelection(allShownSelected ? [] : shown.map((asset) => asset.id))}
                 />
               </th>
-              <th scope="col">Name</th>
-              <th scope="col">Filed as</th>
-              {roomTags.enabled && <th scope="col">Tags</th>}
-              <th scope="col">Size</th>
-              <th scope="col">Visible</th>
-              <th scope="col">In use</th>
+              {sortHeader("name", "name")}
+              {sortHeader("kind", "filed as", "Filed as")}
+              {roomTags.enabled && sortHeader("tags", "tags")}
+              {sortHeader("size", "size")}
+              {sortHeader("visible", "visibility", "Visible")}
+              {sortHeader("inUse", "use status", "In use")}
               <th scope="col" className="rc-actions-column">
                 Actions
               </th>
@@ -261,8 +404,8 @@ export function RoomConfigLibrary({ roomId, revision }: { roomId: number; revisi
           </thead>
           <tbody>
             {shown.map((asset) => {
-              const active =
-                payload.map?.id === asset.id ? "Active map" : payload.scene?.id === asset.id ? "Active scene" : "";
+              const useStatus = activeLabel(asset, payload);
+              const active = useStatus !== "Unused";
               return (
                 <tr key={asset.id} className={selection.includes(asset.id) ? "is-selected" : ""}>
                   <td className="rc-check">
@@ -278,35 +421,77 @@ export function RoomConfigLibrary({ roomId, revision }: { roomId: number; revisi
                     />
                   </td>
                   <td>
-                    {renaming === asset.id ? (
-                      <input
-                        autoFocus
-                        className="rc-rename"
-                        value={renameValue}
-                        onChange={(event) => setRenameValue(event.target.value)}
-                        onBlur={() => saveName(asset)}
-                        onKeyDown={(event) => {
-                          if (event.key === "Enter") saveName(asset);
-                          if (event.key === "Escape") setRenaming(undefined);
-                        }}
-                      />
-                    ) : (
-                      <button
-                        type="button"
-                        className="rc-name"
-                        title="Rename"
-                        onClick={() => {
-                          setRenaming(asset.id);
-                          setRenameValue(asset.displayName ?? "");
-                        }}
-                      >
-                        {isMarkdownAsset(asset) ? <FileText size={14} /> : <ImageIcon size={14} />}
-                        <span>{mediaLabel(asset)}</span>
-                      </button>
-                    )}
-                    <small>{asset.filename}</small>
+                    <div className="rc-media-name-cell">
+                      {isMarkdownAsset(asset) ? (
+                        <span className="rc-library-thumbnail is-document" aria-hidden="true">
+                          <FileText size={20} />
+                        </span>
+                      ) : (
+                        <a
+                          className="rc-library-thumbnail"
+                          href={asset.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          aria-label={`Open ${mediaLabel(asset)}`}
+                          title={`Open ${mediaLabel(asset)}`}
+                        >
+                          <img src={asset.thumbnailUrl ?? asset.url} alt="" loading="lazy" decoding="async" />
+                        </a>
+                      )}
+                      <div className="rc-media-name-copy">
+                        {renaming === asset.id ? (
+                          <input
+                            autoFocus
+                            className="rc-rename"
+                            value={renameValue}
+                            onChange={(event) => setRenameValue(event.target.value)}
+                            onBlur={() => saveName(asset)}
+                            onKeyDown={(event) => {
+                              if (event.key === "Enter") saveName(asset);
+                              if (event.key === "Escape") setRenaming(undefined);
+                            }}
+                          />
+                        ) : (
+                          <button
+                            type="button"
+                            className="rc-name"
+                            title="Rename"
+                            onClick={() => {
+                              setRenaming(asset.id);
+                              setRenameValue(asset.displayName ?? "");
+                            }}
+                          >
+                            <span>{mediaLabel(asset)}</span>
+                          </button>
+                        )}
+                        <small>{asset.filename}</small>
+                      </div>
+                    </div>
                   </td>
-                  <td>{mediaKindLabel(asset.kind)}</td>
+                  <td>
+                    <select
+                      className="rc-kind-select"
+                      value={asset.kind}
+                      aria-label={`File ${mediaLabel(asset)} as`}
+                      disabled={Boolean(busy)}
+                      onChange={(event) => refile([asset.id], event.target.value as LibraryCategory)}
+                    >
+                      {categories.map((category) => (
+                        <option
+                          key={category}
+                          value={category}
+                          disabled={isMarkdownAsset(asset) && category !== "reference"}
+                        >
+                          {mediaKindLabel(category)}
+                        </option>
+                      ))}
+                    </select>
+                    {asset.notationCount > 0 && (
+                      <small className="rc-notation-count">
+                        {asset.notationCount} notation{asset.notationCount === 1 ? "" : "s"}
+                      </small>
+                    )}
+                  </td>
                   {roomTags.enabled && (
                     <td>
                       <TagField
@@ -347,7 +532,7 @@ export function RoomConfigLibrary({ roomId, revision }: { roomId: number; revisi
                       {asset.visible ? <Eye size={15} /> : <EyeOff size={15} />}
                     </button>
                   </td>
-                  <td className={active ? "" : "room-config-muted"}>{active || "Unused"}</td>
+                  <td className={active ? "" : "room-config-muted"}>{useStatus}</td>
                   <td className="rc-actions-column">
                     {asset.kind !== "reference" ? (
                       <button
@@ -391,6 +576,53 @@ export function RoomConfigLibrary({ roomId, revision }: { roomId: number; revisi
           </p>
         )}
       </div>
+
+      {pendingRefile && (
+        <div
+          className="modal-scrim"
+          role="presentation"
+          onMouseDown={(event) => event.target === event.currentTarget && setPendingRefile(undefined)}
+        >
+          <section
+            className="modal rc-notation-warning"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="notation-warning-title"
+          >
+            <header>
+              <p className="eyebrow">Change media type</p>
+              <h2 id="notation-warning-title">Delete map notation?</h2>
+              <button type="button" onClick={() => setPendingRefile(undefined)} aria-label="Cancel type change">
+                <X />
+              </button>
+            </header>
+            <div className="rc-notation-warning-body">
+              <AlertTriangle aria-hidden="true" />
+              <div>
+                <p>
+                  Changing {pendingRefile.names.length === 1 ? "this map" : "these maps"} to a{" "}
+                  {mediaKindLabel(pendingRefile.category)} will permanently delete {pendingRefile.notationCount}{" "}
+                  notation{pendingRefile.notationCount === 1 ? "" : "s"}.
+                </p>
+                {pendingRefile.names.length > 0 && <small>{pendingRefile.names.join(", ")}</small>}
+              </div>
+            </div>
+            <footer className="rc-notation-warning-actions">
+              <button type="button" onClick={() => setPendingRefile(undefined)}>
+                Keep as {pendingRefile.names.length === 1 ? "Map" : "Maps"}
+              </button>
+              <button
+                type="button"
+                className="rc-confirm-destructive"
+                disabled={Boolean(busy)}
+                onClick={() => refile(pendingRefile.ids, pendingRefile.category, true)}
+              >
+                <Trash2 size={14} /> Delete notation and change type
+              </button>
+            </footer>
+          </section>
+        </div>
+      )}
     </div>
   );
 }

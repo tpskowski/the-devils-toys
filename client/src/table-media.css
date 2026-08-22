@@ -215,6 +215,13 @@
   border: 0;
 }
 
+/* A short desktop window can put the fixed dock over this lower-left copy even
+   though there is plenty of horizontal room. Reserve the dock's height whenever
+   it exists; the mobile rules below account for their different panel bottoms. */
+.table-shell.has-audio-dock .table-media-panel .scene-copy {
+  bottom: max(clamp(28px, 5vw, 68px), 112px);
+}
+
 .media-content-status {
   padding: 28px;
   color: var(--muted);
@@ -273,5 +280,15 @@
 
   .table-reference-view .media-markdown {
     padding: 20px;
+  }
+
+  /* The mobile dock sits above the bottom navigation and crosses the media
+     stage. Lift only its empty-state notice, and only while that dock exists. */
+  .table-shell.has-audio-dock .table-media-panel .scene-copy {
+    bottom: 52px;
+  }
+
+  .table-shell.has-audio-dock .table-reference-empty .scene-copy {
+    bottom: 90px;
   }
 }

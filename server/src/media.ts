@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import express from "express";
 import multer from "multer";
+import sharp from "sharp";
 import { z } from "zod";
 import type { MediaAsset } from "@devils-toys/shared";
 import type { AuthedRequest } from "./auth.js";
@@ -35,6 +36,8 @@ const imageTypes = new Map([
 ]);
 const markdownTypes = new Set(["text/markdown", "text/plain", "application/octet-stream"]);
 const uploadsDir = path.join(config.dataDir, "uploads");
+const thumbnailsDir = path.join(config.dataDir, "thumbnails");
+const thumbnailJobs = new Map<string, Promise<void>>();
 function isMarkdownUpload(file: Express.Multer.File) {
   return path.extname(file.originalname).toLowerCase() === ".md" && markdownTypes.has(file.mimetype);
 }
@@ -55,6 +58,7 @@ const upload = multer({
 });
 
 function publicMedia(row: MediaRow): MediaAsset {
+  const thumbnailVersion = crypto.createHash("sha256").update(row.stored_name).digest("hex").slice(0, 12);
   return {
     id: row.id,
     roomId: row.room_id,
@@ -65,8 +69,52 @@ function publicMedia(row: MediaRow): MediaAsset {
     size: row.size,
     visible: Boolean(row.visible),
     createdAt: row.created_at,
-    url: `/api/media/${row.id}/file`
+    url: `/api/media/${row.id}/file`,
+    ...(imageTypes.has(row.mime_type) ? { thumbnailUrl: `/api/media/${row.id}/thumbnail?v=${thumbnailVersion}` } : {})
   };
+}
+
+function thumbnailPath(row: MediaRow) {
+  if (path.basename(row.stored_name) !== row.stored_name) return;
+  const version = crypto.createHash("sha256").update(row.stored_name).digest("hex").slice(0, 12);
+  return path.join(thumbnailsDir, `${row.id}-${version}.webp`);
+}
+
+async function ensureThumbnail(row: MediaRow) {
+  const cached = thumbnailPath(row);
+  if (!cached) throw new Error("Media file not found.");
+  if (fs.existsSync(cached)) return cached;
+  const existing = thumbnailJobs.get(cached);
+  if (existing) {
+    await existing;
+    return cached;
+  }
+  const source = path.join(uploadsDir, row.stored_name);
+  const temporary = `${cached}.${process.pid}.tmp`;
+  const job = (async () => {
+    fs.mkdirSync(thumbnailsDir, { recursive: true });
+    try {
+      await sharp(source)
+        .rotate()
+        .resize({ width: 240, height: 150, fit: "cover", position: "attention", withoutEnlargement: true })
+        .webp({ quality: 78 })
+        .toFile(temporary);
+      fs.renameSync(temporary, cached);
+    } finally {
+      fs.rmSync(temporary, { force: true });
+    }
+  })().finally(() => thumbnailJobs.delete(cached));
+  thumbnailJobs.set(cached, job);
+  await job;
+  return cached;
+}
+
+export function removeCachedThumbnails(mediaId: number) {
+  if (!fs.existsSync(thumbnailsDir)) return;
+  for (const name of fs.readdirSync(thumbnailsDir)) {
+    if (!name.startsWith(`${mediaId}-`)) continue;
+    fs.rmSync(path.join(thumbnailsDir, name), { force: true });
+  }
 }
 
 function removeUploaded(file?: Express.Multer.File) {
@@ -172,12 +220,13 @@ mediaRouter.get("/rooms/:roomId/media", requireAuth, (req: AuthedRequest, res) =
   const scene = activeScene && (role === "gm" || Boolean(activeScene.visible)) ? publicMedia(activeScene) : null;
 
   if (role === "gm") {
-    const library = all<MediaRow>(
-      `SELECT id, room_id, COALESCE(category, kind) AS kind, filename, display_name, stored_name, visible, mime_type, size, created_at
+    const library = all<MediaRow & { notation_count: number }>(
+      `SELECT id, room_id, COALESCE(category, kind) AS kind, filename, display_name, stored_name, visible, mime_type, size, created_at,
+              (SELECT COUNT(*) FROM map_notations WHERE map_notations.media_id = media.id) AS notation_count
        FROM media WHERE room_id = ? AND COALESCE(category, kind) IN ('map', 'scene', 'reference')
        ORDER BY id DESC`,
       roomId
-    ).map(publicMedia);
+    ).map((row) => ({ ...publicMedia(row), notationCount: row.notation_count }));
     const revealedReferenceIds = library
       .filter((item) => item.kind === "reference" && item.visible)
       .map((item) => item.id);
@@ -344,7 +393,8 @@ mediaRouter.patch("/rooms/:roomId/media/bulk", requireAuth, (req: AuthedRequest,
   const parsed = bulkSelectionSchema
     .extend({
       category: z.enum(["map", "scene", "reference"]).optional(),
-      visible: z.boolean().optional()
+      visible: z.boolean().optional(),
+      discardMapNotations: z.boolean().optional()
     })
     .refine((value) => value.category !== undefined || value.visible !== undefined)
     .safeParse(req.body);
@@ -356,20 +406,46 @@ mediaRouter.patch("/rooms/:roomId/media/bulk", requireAuth, (req: AuthedRequest,
   // same rule the upload applies when it refuses to file one anywhere else.
   if (category && category !== "reference" && rows.some((row) => row.mime_type === "text/markdown"))
     return res.status(400).json({ error: "Markdown files can only be References." });
+  const refiled = category ? rows.filter((row) => row.kind !== category) : [];
+  const mapsLosingNotations = category && category !== "map" ? refiled.filter((row) => row.kind === "map") : [];
+  const notationRows = mapsLosingNotations.length
+    ? all<{ media_id: number; count: number }>(
+        `SELECT media_id, COUNT(*) AS count FROM map_notations
+         WHERE room_id = ? AND media_id IN (${mapsLosingNotations.map(() => "?").join(",")})
+         GROUP BY media_id`,
+        roomId,
+        ...mapsLosingNotations.map((row) => row.id)
+      )
+    : [];
+  const notationCount = notationRows.reduce((total, row) => total + row.count, 0);
+  if (notationCount && !parsed.data.discardMapNotations)
+    return res.status(409).json({
+      error: `${notationCount} map notation${notationCount === 1 ? "" : "s"} would be permanently deleted.`,
+      code: "MAP_NOTATIONS_EXIST",
+      notationCount,
+      mediaIds: notationRows.map((row) => row.media_id)
+    });
+
   db.exec("BEGIN IMMEDIATE");
   try {
     const ids = rows.map((row) => row.id);
     const placeholders = ids.map(() => "?").join(",");
-    if (category) {
+    if (category && refiled.length) {
+      const refiledIds = refiled.map((row) => row.id);
+      const refiledPlaceholders = refiledIds.map(() => "?").join(",");
+      if (notationCount)
+        db.prepare(
+          `DELETE FROM map_notations WHERE room_id = ? AND media_id IN (${notationRows.map(() => "?").join(",")})`
+        ).run(roomId, ...notationRows.map((row) => row.media_id));
       // `kind` predates `category` and a map is stored as a scene under it; the
       // upload writes the pair this way and so must anything that changes it.
-      db.prepare(`UPDATE media SET kind = ?, category = ? WHERE room_id = ? AND id IN (${placeholders})`).run(
+      db.prepare(`UPDATE media SET kind = ?, category = ? WHERE room_id = ? AND id IN (${refiledPlaceholders})`).run(
         category === "map" ? "scene" : category,
         category,
         roomId,
-        ...ids
+        ...refiledIds
       );
-      clearActiveMedia(roomId, ids);
+      clearActiveMedia(roomId, refiledIds);
     }
     if (visible !== undefined)
       db.prepare(`UPDATE media SET visible = ? WHERE room_id = ? AND id IN (${placeholders})`).run(
@@ -403,8 +479,10 @@ mediaRouter.post("/rooms/:roomId/media/bulk-delete", requireAuth, (req: AuthedRe
   const ids = rows.map((row) => row.id);
   db.prepare(`DELETE FROM media WHERE room_id = ? AND id IN (${ids.map(() => "?").join(",")})`).run(roomId, ...ids);
   for (const row of rows)
-    if (path.basename(row.stored_name) === row.stored_name)
+    if (path.basename(row.stored_name) === row.stored_name) {
       fs.rmSync(path.join(uploadsDir, row.stored_name), { force: true });
+      removeCachedThumbnails(row.id);
+    }
   broadcastRoom(roomId, { type: "media-updated" });
   res.json({ deleted: ids.length });
 });
@@ -473,10 +551,35 @@ mediaRouter.delete("/rooms/:roomId/media/:mediaId", requireAuth, (req: AuthedReq
   );
   if (!row) return res.status(404).json({ error: "Media not found." });
   db.prepare("DELETE FROM media WHERE id = ?").run(row.id);
-  if (path.basename(row.stored_name) === row.stored_name)
+  if (path.basename(row.stored_name) === row.stored_name) {
     fs.rmSync(path.join(uploadsDir, row.stored_name), { force: true });
+    removeCachedThumbnails(row.id);
+  }
   broadcastRoom(roomId, { type: "media-updated" });
   res.status(204).end();
+});
+
+mediaRouter.get("/media/:mediaId/thumbnail", requireAuth, async (req: AuthedRequest, res, next) => {
+  try {
+    const row = one<MediaRow & { music_enabled: number }>(
+      `SELECT media.id, media.room_id, COALESCE(media.category, media.kind) AS kind, media.filename,
+              media.display_name, media.stored_name, media.visible, media.mime_type, media.size, media.created_at,
+              rooms.music_enabled
+       FROM media JOIN rooms ON rooms.id = media.room_id WHERE media.id = ?`,
+      Number(req.params.mediaId)
+    );
+    if (!row || !imageTypes.has(row.mime_type)) return res.status(404).json({ error: "Thumbnail not found." });
+    const role = roomAccessRole(req.account!, row.room_id);
+    const allowed = role === "gm" || (role === "player" && Boolean(row.visible));
+    if (!allowed) return res.status(404).json({ error: "Thumbnail not found." });
+    const cached = await ensureThumbnail(row);
+    res.type("image/webp");
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    res.setHeader("Cache-Control", "private, max-age=31536000, immutable");
+    res.sendFile(path.basename(cached), { root: thumbnailsDir });
+  } catch (error) {
+    next(error);
+  }
 });
 
 mediaRouter.get("/media/:mediaId/file", requireAuth, (req: AuthedRequest, res) => {

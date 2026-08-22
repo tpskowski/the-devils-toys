@@ -479,6 +479,31 @@
   white-space: nowrap;
 }
 
+.rc-table button.rc-sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  margin: -7px -8px;
+  padding: 7px 8px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+}
+
+.rc-table th[aria-sort="ascending"] button.rc-sort,
+.rc-table th[aria-sort="descending"] button.rc-sort,
+.rc-table button.rc-sort:hover {
+  color: var(--text);
+}
+
+.rc-table button.rc-sort svg {
+  color: var(--accent);
+}
+
 .rc-table td {
   padding: 9px 12px;
   border-bottom: 1px solid color-mix(in srgb, var(--line), transparent 45%);
@@ -517,6 +542,53 @@
   font:
     400 10px "DM Mono",
     monospace;
+}
+
+.rc-media-name-cell {
+  display: grid;
+  grid-template-columns: 76px minmax(140px, 1fr);
+  align-items: center;
+  gap: 12px;
+  min-width: 250px;
+}
+
+.rc-media-name-copy {
+  min-width: 0;
+}
+
+.rc-library-thumbnail {
+  display: grid;
+  place-items: center;
+  width: 76px;
+  height: 48px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--text), transparent 94%);
+  color: var(--muted);
+}
+
+.rc-library-thumbnail img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 160ms ease;
+}
+
+.rc-library-thumbnail:hover img {
+  transform: scale(1.045);
+}
+
+.rc-library-thumbnail.is-document {
+  border-style: dashed;
+}
+
+.rc-kind-select {
+  width: 120px;
+}
+
+.rc-table small.rc-notation-count {
+  margin-top: 5px;
+  color: var(--hostile, var(--accent));
 }
 
 /* The visibility column: an open eye is shown to the room, a closed one is not,
@@ -558,6 +630,51 @@ button.rc-name {
 .rc-empty {
   margin: 0;
   padding: 22px 14px;
+}
+
+.modal.rc-notation-warning {
+  width: min(100%, 560px);
+}
+
+.rc-notation-warning-body {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 14px;
+  padding: 24px 27px;
+}
+
+.rc-notation-warning-body > svg {
+  width: 24px;
+  height: 24px;
+  color: var(--hostile, var(--accent));
+}
+
+.rc-notation-warning-body p {
+  margin: 0;
+  line-height: 1.55;
+}
+
+.rc-notation-warning-body small {
+  display: block;
+  margin-top: 8px;
+  color: var(--muted);
+  font:
+    400 10px "DM Mono",
+    monospace;
+}
+
+.rc-notation-warning-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 0 27px 24px;
+}
+
+.room-config-section button.rc-confirm-destructive {
+  border-color: var(--hostile, var(--accent));
+  background: var(--hostile, var(--accent));
+  color: var(--button-text);
+  font-weight: 600;
 }
 
 /* NPCs: two lists beside one editor. */

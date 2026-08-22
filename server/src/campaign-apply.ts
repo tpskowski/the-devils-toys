@@ -5,7 +5,7 @@ import { groupAssetDefinitions } from "@devils-toys/shared";
 import { config } from "./config.js";
 import { db, all, one } from "./db.js";
 import { isMp3File } from "./audio.js";
-import { imageSignatureMatches, isUtf8Markdown } from "./media.js";
+import { imageSignatureMatches, isUtf8Markdown, removeCachedThumbnails } from "./media.js";
 import { validateStatblock } from "./npcs.js";
 import { nextSortOrder } from "./group-rows.js";
 import { readRoomItem, writeRoomItem, retireForRoom } from "./room-items.js";
@@ -235,6 +235,7 @@ export function applyCampaign(
   const moved: { from: string; to: string }[] = [];
   /** Files a replacement orphans. Removed after the commit, since a rollback needs them. */
   const superseded: string[] = [];
+  const supersededMediaIds: number[] = [];
   const mediaIds = new Map<string, number>();
   const media = tally();
   const playlists = tally();
@@ -294,6 +295,7 @@ export function applyCampaign(
 
         if (item.action === "replace") {
           superseded.push(item.match!.stored_name);
+          supersededMediaIds.push(item.match!.id);
           db.prepare(
             `UPDATE media SET stored_name = ?, mime_type = ?, size = ?, display_name = ?, metadata_loaded = 0
              WHERE id = ?`
@@ -388,6 +390,7 @@ export function applyCampaign(
       // The row already points at the new file; an undeletable old one is litter.
     }
   }
+  for (const mediaId of supersededMediaIds) removeCachedThumbnails(mediaId);
 
   return { media, playlists, npcs, encounters, tables, items, group, room, bytes: incoming, skipped };
 }

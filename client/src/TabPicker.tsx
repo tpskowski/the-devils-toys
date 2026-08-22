@@ -8,11 +8,15 @@ import {
   type MouseEvent
 } from "react";
 import { createPortal } from "react-dom";
-import { Check } from "lucide-react";
+import { Check, EyeOff } from "lucide-react";
 
 export interface TabPickerOption {
   id: string;
   label: string;
+  /** A decorative micro-preview shown at the trailing edge of media options. */
+  thumbnailUrl?: string;
+  /** Marks media that the GM has kept from players. */
+  hiddenFromPlayers?: boolean;
 }
 
 /**
@@ -26,6 +30,7 @@ export function useTabPicker({
   selected,
   label,
   anchorSelector,
+  menuWidth = 240,
   onSelect
 }: {
   options: readonly TabPickerOption[];
@@ -34,6 +39,8 @@ export function useTabPicker({
   label: string;
   /** The element the menu aligns under, where the button itself is not it. */
   anchorSelector?: string;
+  /** Preferred menu width before the viewport constrains it. */
+  menuWidth?: number;
   onSelect: (id: string) => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -99,7 +106,7 @@ export function useTabPicker({
     const anchor = anchorSelector ? event.currentTarget.closest(anchorSelector) : event.currentTarget;
     const bounds = anchor?.getBoundingClientRect();
     if (!bounds) return;
-    const width = Math.min(240, window.innerWidth - 16);
+    const width = Math.min(menuWidth, window.innerWidth - 16);
     setPosition({
       top: bounds.bottom + 4,
       left: Math.min(Math.max(8, bounds.left), window.innerWidth - width - 8),
@@ -132,8 +139,16 @@ export function useTabPicker({
                   setOpen(false);
                 }}
               >
-                <span>{item.label}</span>
-                {item.id === selected && <Check />}
+                <span className="tab-picker-option-label">
+                  <span className="tab-picker-option-name">{item.label}</span>
+                  {item.hiddenFromPlayers && (
+                    <EyeOff className="tab-picker-option-visibility" aria-label="Hidden from players" />
+                  )}
+                </span>
+                <span className="tab-picker-option-tail" aria-hidden="true">
+                  {item.id === selected && <Check />}
+                  {item.thumbnailUrl && <img src={item.thumbnailUrl} alt="" loading="lazy" decoding="async" />}
+                </span>
               </button>
             ))}
           </div>,
