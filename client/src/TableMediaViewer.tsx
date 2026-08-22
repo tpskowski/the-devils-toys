@@ -94,11 +94,26 @@ export function TableMediaViewer({
 
   const pickerOptions =
     tab === "map"
-      ? maps.map((item) => ({ id: String(item.id), label: mediaLabel(item) }))
+      ? maps.map((item) => ({
+          id: String(item.id),
+          label: mediaLabel(item),
+          hiddenFromPlayers: isGm && !item.visible,
+          thumbnailUrl: item.thumbnailUrl ?? item.url
+        }))
       : tab === "scene"
-        ? scenes.map((item) => ({ id: String(item.id), label: mediaLabel(item) }))
+        ? scenes.map((item) => ({
+            id: String(item.id),
+            label: mediaLabel(item),
+            hiddenFromPlayers: isGm && !item.visible,
+            thumbnailUrl: item.thumbnailUrl ?? item.url
+          }))
         : tab === "reference"
-          ? media.references.map((item) => ({ id: String(item.id), label: mediaLabel(item) }))
+          ? media.references.map((item) => ({
+              id: String(item.id),
+              label: mediaLabel(item),
+              hiddenFromPlayers: isGm && !item.visible,
+              thumbnailUrl: isMarkdownAsset(item) ? undefined : (item.thumbnailUrl ?? item.url)
+            }))
           : tab === "group"
             ? (groupPicker?.options ?? [])
             : tab === "encounter"
@@ -134,6 +149,7 @@ export function TableMediaViewer({
     selected: selectedPickerId,
     label: tabLabel,
     anchorSelector: ".table-media-tab",
+    menuWidth: tab === "map" || tab === "scene" || tab === "reference" ? 280 : undefined,
     onSelect: (value) => {
       if (tab === "group") groupPicker?.onSelect(value);
       if (tab === "encounter") encounterPicker?.onSelect(value);

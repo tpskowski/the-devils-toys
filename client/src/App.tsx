@@ -1002,8 +1002,9 @@ function TableRoom({
   const railEncounter = selectedEncounter?.active
     ? selectedEncounter
     : encounters.find((encounter) => encounter.active);
+  const hasAudioDock = detail.room.musicEnabled && audio.tracks.length > 0;
   return (
-    <section className="table-shell">
+    <section className={`table-shell${hasAudioDock ? " has-audio-dock" : ""}`}>
       <header className="table-header">
         <div>
           <p className="eyebrow">
@@ -1361,7 +1362,7 @@ function TableRoom({
           }}
         />
       )}
-      {detail.room.musicEnabled && audio.tracks.length > 0 && (
+      {hasAudioDock && (
         <AudioDock
           audio={audio}
           isGm={detail.room.role === "gm"}

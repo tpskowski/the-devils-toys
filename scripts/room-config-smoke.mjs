@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { runSmoke } from "./harness.mjs";
 
-await runSmoke("Room Config smoke test", async ({ request, json, setup, login, redeem, connect, waitFor }) => {
+await runSmoke("Room Config smoke test", async ({ request, json, bytes, setup, login, redeem, connect, waitFor }) => {
   const admin = await setup("ConfigAdmin", "config-admin-password");
 
   const makeAccount = (username, password, role) =>
@@ -82,7 +82,11 @@ await runSmoke("Room Config smoke test", async ({ request, json, setup, login, r
   // Turning a section on is setup, and belongs to the panel.
   await json(
     `/api/rooms/${gmRoom.id}`,
-    { method: "PATCH", headers: gm.headers, body: JSON.stringify({ calendarEnabled: true }) },
+    {
+      method: "PATCH",
+      headers: gm.headers,
+      body: JSON.stringify({ calendarEnabled: true, mapNotationEnabled: true })
+    },
     204
   );
   const withCalendar = await request(`/api/room-config/${gmRoom.id}`, { headers: gm.headers });
@@ -143,6 +147,11 @@ await runSmoke("Room Config smoke test", async ({ request, json, setup, login, r
   // Uploaded by the admin, in a room they do not belong to.
   const oneReference = await addAsset(admin.headers, "reference", "letter.png");
 
+  const thumbnail = await bytes(oneMap.thumbnailUrl, { headers: admin.headers });
+  assert.equal(thumbnail.response.headers.get("content-type"), "image/webp");
+  assert.ok(thumbnail.bytes.length > 0, "The cached Library thumbnail should contain image bytes.");
+  await bytes(oneMap.thumbnailUrl, { headers: player.headers }, 404);
+
   const asAdmin = await request(`/api/rooms/${gmRoom.id}/media`, { headers: admin.headers });
   assert.equal(asAdmin.library.length, 3, "An admin who is not a member still sees the whole library.");
   assert.ok("revealedReferenceIds" in asAdmin, "An admin sees the GM's view of the library, not a player's.");
@@ -189,9 +198,34 @@ await runSmoke("Room Config smoke test", async ({ request, json, setup, login, r
     204
   );
   assert.equal((await request(`/api/rooms/${gmRoom.id}/media`, { headers: gm.headers })).map.id, oneMap.id);
-  await json(
+  await request(
+    `/api/rooms/${gmRoom.id}/maps/${oneMap.id}/notations`,
+    {
+      method: "POST",
+      headers: gm.headers,
+      body: JSON.stringify({ kind: "label", color: "#ffb300", x: 0.2, y: 0.3, text: "Gate", fontSize: 16 })
+    },
+    201
+  );
+  const blockedRefile = await json(
     `/api/rooms/${gmRoom.id}/media/bulk`,
     { method: "PATCH", headers: gm.headers, body: JSON.stringify({ ids: [oneMap.id], category: "reference" }) },
+    409
+  );
+  assert.equal(blockedRefile.body.code, "MAP_NOTATIONS_EXIST");
+  assert.equal(blockedRefile.body.notationCount, 1);
+  assert.equal(
+    (await request(`/api/rooms/${gmRoom.id}/media`, { headers: gm.headers })).map.id,
+    oneMap.id,
+    "Refusing a destructive refile must leave the active map untouched."
+  );
+  await json(
+    `/api/rooms/${gmRoom.id}/media/bulk`,
+    {
+      method: "PATCH",
+      headers: gm.headers,
+      body: JSON.stringify({ ids: [oneMap.id], category: "reference", discardMapNotations: true })
+    },
     204
   );
   assert.equal(
@@ -199,6 +233,13 @@ await runSmoke("Room Config smoke test", async ({ request, json, setup, login, r
     null,
     "An asset that stops being a map cannot stay the room's active one."
   );
+  await json(
+    `/api/rooms/${gmRoom.id}/media/bulk`,
+    { method: "PATCH", headers: gm.headers, body: JSON.stringify({ ids: [oneMap.id], category: "map" }) },
+    204
+  );
+  const restoredMap = await request(`/api/rooms/${gmRoom.id}/maps/${oneMap.id}/notations`, { headers: gm.headers });
+  assert.deepEqual(restoredMap.notations, [], "Confirmed refiling permanently removes the map's notation.");
 
   const removed = await request(
     `/api/rooms/${gmRoom.id}/media/bulk-delete`,
@@ -322,9 +363,8 @@ await runSmoke("Room Config smoke test", async ({ request, json, setup, login, r
 /** The smallest valid PNG, so uploads are exercised without a fixture file. */
 function pngBytes() {
   return Buffer.from(
-    "89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000a49444154789c6360000002000100" +
-      "05fe02fea7e1b2000000000049454e44ae426082",
-    "hex"
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
+    "base64"
   );
 }
 

@@ -288,6 +288,8 @@ export interface MediaAsset {
   visible: boolean;
   createdAt: string;
   url: string;
+  /** A small cached image for lists and pickers. Absent for non-image media. */
+  thumbnailUrl?: string;
 }
 
 export type AudioRepeatMode = "off" | "all" | "one";

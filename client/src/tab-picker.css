@@ -30,6 +30,7 @@
 
 .tab-picker-menu button {
   width: 100%;
+  height: 36px;
   min-height: 36px;
   padding: 0 9px 0 11px;
   display: flex;
@@ -51,16 +52,43 @@
   color: var(--accent);
 }
 
-.tab-picker-menu button span {
+.tab-picker-option-label {
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tab-picker-option-name {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.tab-picker-menu button svg {
+.tab-picker-option-label .tab-picker-option-visibility {
+  width: 13px;
+  flex: 0 0 auto;
+}
+
+.tab-picker-option-tail {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tab-picker-option-tail svg {
   flex: 0 0 auto;
   width: 13px;
+}
+
+.tab-picker-option-tail img {
+  width: 28px;
+  height: 28px;
+  flex: 0 0 auto;
+  border: 1px solid color-mix(in srgb, var(--line), transparent 18%);
+  object-fit: cover;
 }
 
 @keyframes tab-picker-menu-in {
