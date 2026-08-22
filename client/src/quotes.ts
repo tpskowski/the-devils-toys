@@ -40,8 +40,11 @@ export function parseQuotes(markdown: string): Quote[] {
     )
     .filter((lines) => lines.length >= 2)
     .map((lines) => {
-      // The last line names who said it, sometimes behind a dash.
-      const attribution = lines.pop()!.replace(/^[-–—]\s*/, "");
+      // The last line names who said it, sometimes behind a dash — of which
+      // there are several, and a file typed in more than one editor has met
+      // most of them. The page draws its own, so any of them here would come
+      // out doubled.
+      const attribution = lines.pop()!.replace(/^[-‒–—―−]\s*/, "");
       // Three shapes are written in the file, and they differ in exactly the
       // way that matters to a page adding marks of its own: a quote with no
       // marks at all, one the author wrapped from its first line to its last,
@@ -68,8 +71,14 @@ export function randomQuote(random: () => number = Math.random): Quote {
  * How large the landing page may set a quote. The hero size is built for a line
  * or two; the long ones in the file run to a paragraph, and at 72px a paragraph
  * is a wall that pushes the room list off the bottom of the screen.
+ *
+ * Length is counted in characters, except that a quote written over many lines
+ * is tall however few characters it holds — a distress call of a dozen short
+ * lines fills the screen at a size the same words in one paragraph would not.
+ * Six is where a quote stops being a couple of lines and becomes a column.
  */
-export function quoteScale(quote: Quote): "short" | "medium" | "long" {
+export function quoteScale(quote: Quote): "short" | "medium" | "long" | "tall" {
+  if (quote.lines.length >= 6) return "tall";
   const length = quote.lines.join(" ").length;
   if (length <= 90) return "short";
   return length <= 200 ? "medium" : "long";

@@ -625,6 +625,14 @@ button:disabled {
   letter-spacing: -0.02em;
   max-width: 22em;
 }
+/* Written over many lines, so it is a column rather than a paragraph and the
+   character count says nothing about how tall it is. */
+.lobby-quote.is-tall {
+  font-size: clamp(17px, 1.7vw, 24px);
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+  max-width: 26em;
+}
 .lobby-copy > p:not(.eyebrow) {
   color: var(--muted);
   font-size: 17px;

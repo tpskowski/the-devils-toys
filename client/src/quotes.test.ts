@@ -26,6 +26,14 @@ describe("parseQuotes", () => {
     expect(exchange.selfQuoted).toBe(true);
   });
 
+  it("drops a dash of any kind in front of a name", () => {
+    for (const dash of ["-", "‒", "–", "—", "―", "−"])
+      expect(
+        parseQuotes(`“So long.”
+${dash} Douglas Adams`)[0].attribution
+      ).toBe("Douglas Adams");
+  });
+
   it("drops a dash in front of a name, and trailing spaces", () => {
     expect(parseQuotes('"We\'ve had one, yes." \n-Pippin Took')[0]).toMatchObject({
       lines: ["We've had one, yes."],
@@ -77,6 +85,12 @@ describe("quoteScale", () => {
     expect(quoteScale(of(91))).toBe("medium");
     expect(quoteScale(of(200))).toBe("medium");
     expect(quoteScale(of(201))).toBe("long");
+  });
+
+  it("sets a quote written over many lines smaller still, however short its lines", () => {
+    const column = { lines: Array.from({ length: 6 }, () => "Mayday …"), attribution: "Traveller", selfQuoted: false };
+    expect(quoteScale(column)).toBe("tall");
+    expect(quoteScale({ ...column, lines: column.lines.slice(0, 5) })).toBe("short");
   });
 
   it("measures the whole of a verse rather than its first line", () => {
