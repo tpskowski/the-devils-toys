@@ -13,6 +13,10 @@ import "@fontsource/dm-mono/400.css";
 import "@fontsource/dm-mono/500.css";
 import "@fontsource/unbounded/500.css";
 import "@fontsource/unbounded/600.css";
+// The landing page's epigraph, and nothing else. Variable on the weight axis,
+// because a quote is set anywhere from 72px to 17px depending on its length and
+// a grotesque that is right at the top of that range is heavy at the bottom.
+import "@fontsource-variable/bricolage-grotesque";
 import "@devils-toys/shared/theme.css";
 import "./styles.css";
 import "./media.css";

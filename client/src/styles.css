@@ -597,13 +597,50 @@ button:disabled {
     opacity: 0;
   }
 }
+/* The epigraph is the one place in the application that is not set in Unbounded.
+   That face is built for three or four words and the quotes here run to a
+   paragraph; Bricolage Grotesque keeps the display character the page wants and
+   stays readable at the length these actually reach. */
 .lobby h2 {
   margin: 0;
   font:
-    650 clamp(40px, 5vw, 72px)/1 Unbounded,
+    600 clamp(40px, 5vw, 72px)/1.02 "Bricolage Grotesque Variable",
+    Unbounded,
     sans-serif;
-  letter-spacing: -0.065em;
+  letter-spacing: -0.035em;
   text-wrap: balance;
+}
+/* The quote is drawn from a file of them and they are not one length: the short
+   ones are a line, the long ones a paragraph. Set at the hero size a paragraph
+   is a wall that pushes the room list off the bottom of the screen, so the size
+   comes down as the quote gets longer, and the tracking opens back up with it —
+   what reads as a mark at 72px reads as a cramp at 26px. Verse and dialogue keep
+   the line breaks they were written with. */
+.lobby-quote {
+  white-space: pre-line;
+}
+/* Weight comes off as the size does: 600 is right for a line at 72px and heavy
+   for a paragraph at 24. */
+.lobby-quote.is-medium {
+  font-size: clamp(30px, 3.4vw, 48px);
+  line-height: 1.08;
+  letter-spacing: -0.03em;
+}
+.lobby-quote.is-long {
+  font-size: clamp(22px, 2.2vw, 32px);
+  font-weight: 550;
+  line-height: 1.28;
+  letter-spacing: -0.018em;
+  max-width: 24em;
+}
+/* Written over many lines, so it is a column rather than a paragraph and the
+   character count says nothing about how tall it is. */
+.lobby-quote.is-tall {
+  font-size: clamp(17px, 1.7vw, 24px);
+  font-weight: 500;
+  line-height: 1.32;
+  letter-spacing: -0.008em;
+  max-width: 28em;
 }
 .lobby-copy > p:not(.eyebrow) {
   color: var(--muted);
