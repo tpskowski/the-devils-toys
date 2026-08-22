@@ -362,3 +362,54 @@ Douglas Adams, Hitchhiker's Guide the Galaxy
 In the beginning the Universe was created.
 This has made a lot of people very angry and been widely regarded as a bad move.”
 Douglas Adams
+
+“I am descended from those who wrestle angels and kill giants. We were chosen by God.”
+Elsa Korr, Jojo Rabbit
+
+“Do the interns get Glocks?”
+“No, they all share one.”
+The Life Aquatic with Steve Zissou
+
+“Bond, James Bond.”
+James Bond, Dr. No, 1962
+
+“You only live twice:
+Once when you are born
+And once when you look death in the face”
+Ian Fleming, You Only Live Twice, 1964
+
+“Once is happenstance. Twice is coincidence. Three times is enemy action”
+Ian Fleming, Goldfinger, 1959
+
+“No wonder my back hurts; there's a damn novel written on it.”
+The Nameless One, Planescape Torment, 1999
+
+“Fear names. Names have power in identity. Others can use names as weapons. Names are a hook that can be used to track you across the planes. Remain nameless, and you shall be safe”
+The Nameless One, Planescape Torment, 1999
+
+“I wonder what it was I said that made Death reject me.”
+The Nameless One, Planescape Torment, 1999
+
+“One foot in the grave, the other in Hell.”
+The Nameless One, Planescape Torment, 1999
+
+“Know that when death comes for you, know that I shall meet its blade with mine. ”
+Dak'kon, Planescape Torment, 1999
+
+“I believe there is a truth to the multiverse... even if that truth is that there is no truth at all. I believe that the Planes are meant to be experienced, and the more one experiences, in traveling, in joy, in pain, in merriment or in suffering, the more the multiverse reveals itself to you... And the more you are revealed to yourself.”
+Fall-From-Grace, Planescape Torment, 1999
+
+“How many times must this fool die?”
+Morte, Planescape Torment, 1999
+
+“You truly know very little, about very little.”
+Lothar, Master of the Bones, Planescape Torment, 1999
+
+“You mortals are like wasps. You build your lives/nests from the slimmest of branches, and when the wind shakes your home/life free, you seek to sting the wind to death.”
+O, Master of the Bones, Planescape Torment, 1999
+
+“Where I am bound, time is not measured in years, and the crimes I committed are stronger than any cage.”
+The Nameless One, Planescape Torment, 1999
+
+“Today you boys will be involved in such activities as marching, bayonet drills, grenade throwing, trench digging, map reading, gas defense, camouflage, ambush techniques, war games, firing guns and blowing stuff up.”
+Captain Klenzendorf, Jojo Rabbit
