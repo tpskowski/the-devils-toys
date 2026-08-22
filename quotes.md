@@ -268,7 +268,7 @@ Balalaika, Black Lagoon
 “If you cling to life, you live in fear of death. And that fear will cloud your judgment.”
 Revy, Black Lagoon
 
-“People are like dice, a certain Frenchman said that. You throw yourself in the direction of your own choosing. People are free because they can do that. Everyone's circumstances are different, but no matter how small the choice, at the very least, you can throw yourself. It's not chance or fate. It's the choice you made.”
+“People are like dice, a certain Frenchman said that. You throw yourself in the direction of your own choosing. People are free because they can do that.”
 Rokuro Okajima, Black Lagoon
 
 “There's a noose that hangs at the entrance to the city. It's a message to be read by all who encounter it. For the cautious, the sane - it's a warning. For the reckless, the wild at heart - an invitation they cannot refuse.”
@@ -347,12 +347,10 @@ Wolverine
 “Don't Panic.”
 Douglas Adams, Hitchhiker's Guide the Galaxy
 
-“Space is big. You just won't believe how vastly, hugely, mind-bogglingly big it is. I mean, you may think it's a long way down the road to the chemist's, but that's just peanuts to space.”
-Douglas Adams, Hitchhiker's Guide the Galaxy
+“YOU CAN NOT HAVE A MEANINGFUL CAMPAIGN IF STRICT TIME RECORDS ARE NOT KEPT.”
+Gary Gygax
 
-“You know,” said Arthur, “it's at times like this, when I'm trapped in a Vogon airlock with a man from Betelgeuse, and about to die of asphyxiation in deep space that I really wish I'd listened to what my mother told me when I was young.”
-“Why, what did she tell you?”
-“I don't know, I didn't listen.”
+“Space is big. You just won't believe how vastly, hugely, mind-bogglingly big it is. I mean, you may think it's a long way down the road to the chemist's, but that's just peanuts to space.”
 Douglas Adams, Hitchhiker's Guide the Galaxy
 
 “Meanwhile, the poor Babel fish, by effectively removing all barriers to communication between different races and cultures, has caused more and bloodier wars than anything else in the history of creation.”
