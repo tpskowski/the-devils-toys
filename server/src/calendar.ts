@@ -5,7 +5,7 @@ export { advanceCalendar } from "@devils-toys/shared";
 const calendarEventSchema = z.object({
   id: z.string().min(1).max(80),
   name: z.string().trim().min(1).max(100),
-  cadence: z.enum(["holiday", "weekly", "biweekly", "monthly", "interval"]),
+  cadence: z.enum(["once", "holiday", "weekly", "biweekly", "monthly", "interval"]),
   day: z.number().int().min(1).max(400),
   month: z.number().int().min(0).max(99).optional(),
   startYear: z.number().int().min(-99999).max(99999).optional(),

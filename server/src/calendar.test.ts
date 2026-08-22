@@ -138,6 +138,18 @@ describe("calendar events over days", () => {
     expect(running(calendar, 0, 10)).toEqual([]);
   });
 
+  it("puts a one-time note on only its exact year, month, and day", () => {
+    const calendar = {
+      ...defaultCalendar(),
+      year: 3,
+      events: [event({ id: "appointment", cadence: "once", startYear: 3, month: 1, day: 9 })]
+    };
+    expect(running(calendar, 1, 8)).toEqual([]);
+    expect(running(calendar, 1, 9)).toEqual(["appointment:1"]);
+    expect(calendarEventsOn(calendar, 2, 1, 9)).toEqual([]);
+    expect(calendarEventsOn(calendar, 4, 1, 9)).toEqual([]);
+  });
+
   it("runs a multi-day event across every day of its length", () => {
     const calendar = {
       ...defaultCalendar(),
@@ -329,7 +341,7 @@ describe("an event that can never happen", () => {
   });
 
   it("stays quiet about every event that does happen", () => {
-    for (const cadence of ["holiday", "weekly", "biweekly", "monthly", "interval"] as const) {
+    for (const cadence of ["once", "holiday", "weekly", "biweekly", "monthly", "interval"] as const) {
       const day = cadence === "weekly" ? 7 : 30;
       expect(calendarEventNever(calendar, event({ id: cadence, cadence, day }))).toBeUndefined();
     }

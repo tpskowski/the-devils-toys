@@ -1,5 +1,6 @@
 import http from "node:http";
 import fs from "node:fs";
+import { randomUUID } from "node:crypto";
 import express from "express";
 import cookieParser from "cookie-parser";
 import bcrypt from "bcryptjs";
@@ -47,6 +48,8 @@ import {
   damageExpression,
   THEME_IDS,
   type AccountRole,
+  type CalendarEvent,
+  type RoomCalendar,
   type SystemId,
   type ThemeId
 } from "@devils-toys/shared";
@@ -546,6 +549,66 @@ app.put("/api/rooms/:roomId/calendar", requireAuth, (req: AuthedRequest, res) =>
   res.json({ calendar });
 });
 
+const calendarEntrySchema = z.object({
+  name: z.string().trim().min(1).max(100),
+  year: z.number().int().min(-99999).max(99999),
+  month: z.number().int().min(0).max(99),
+  day: z.number().int().min(1).max(400),
+  hidden: z.boolean().optional()
+});
+
+app.post("/api/rooms/:roomId/calendar/events", requireAuth, (req: AuthedRequest, res) => {
+  const roomId = Number(req.params.roomId);
+  const role = roomRole(req.account!.id, roomId);
+  if (!role) return res.status(404).json({ error: "Room not found." });
+  const body = parse(calendarEntrySchema, req.body, res);
+  if (!body) return;
+  if (body.hidden && role !== "gm")
+    return res.status(403).json({ error: "Only the room GM can add a hidden calendar entry." });
+
+  let calendar: RoomCalendar;
+  let entry: CalendarEvent;
+  db.exec("BEGIN IMMEDIATE");
+  try {
+    const row = one<{ calendar_json: string | null }>("SELECT calendar_json FROM rooms WHERE id = ?", roomId);
+    if (!row) {
+      db.exec("ROLLBACK");
+      return res.status(404).json({ error: "Room not found." });
+    }
+    const current = readCalendar(row.calendar_json);
+    if (body.month >= current.monthNames.length || body.day > current.daysPerMonth) {
+      db.exec("ROLLBACK");
+      return res.status(400).json({ error: "That date does not exist on this calendar." });
+    }
+    if (current.events.length >= 500) {
+      db.exec("ROLLBACK");
+      return res.status(409).json({ error: "This calendar already has the maximum number of entries." });
+    }
+    entry = {
+      id: randomUUID(),
+      name: body.name,
+      cadence: "once",
+      startYear: body.year,
+      month: body.month,
+      day: body.day,
+      intervalDays: current.daysPerWeek,
+      durationDays: 1,
+      hidden: role === "gm" && Boolean(body.hidden)
+    };
+    calendar = { ...current, revision: current.revision + 1, events: [...current.events, entry] };
+    db.prepare("UPDATE rooms SET calendar_json = ? WHERE id = ?").run(JSON.stringify(calendar), roomId);
+    db.exec("COMMIT");
+  } catch (error) {
+    db.exec("ROLLBACK");
+    throw error;
+  }
+  broadcastRoomByRole(roomId, (readerRole) => ({
+    type: "calendar-updated",
+    calendar: calendarForRole(calendar, readerRole)
+  }));
+  res.status(201).json({ calendar: calendarForRole(calendar, role), entry });
+});
+
 app.post("/api/rooms/:roomId/calendar/advance", requireAuth, (req: AuthedRequest, res) => {
   const roomId = Number(req.params.roomId);
   if (roomRole(req.account!.id, roomId) !== "gm")
@@ -561,6 +624,51 @@ app.post("/api/rooms/:roomId/calendar/advance", requireAuth, (req: AuthedRequest
     }
     const current = readCalendar(row.calendar_json);
     calendar = { ...advanceCalendar(current), revision: current.revision + 1 };
+    db.prepare("UPDATE rooms SET calendar_json = ? WHERE id = ?").run(JSON.stringify(calendar), roomId);
+    message = recordSystemMessage(roomId, req.account!.id, calendarNowMessage(calendar));
+    db.exec("COMMIT");
+  } catch (error) {
+    db.exec("ROLLBACK");
+    throw error;
+  }
+  broadcastRoomByRole(roomId, (role) => ({ type: "calendar-updated", calendar: calendarForRole(calendar, role) }));
+  broadcastRoom(roomId, { type: "message", message });
+  res.json({ calendar, message });
+});
+
+const calendarTimeSchema = z.object({
+  year: z.number().int().min(-99999).max(99999),
+  month: z.number().int().min(0).max(99),
+  day: z.number().int().min(1).max(400),
+  segment: z.number().int().min(0).max(99)
+});
+
+app.post("/api/rooms/:roomId/calendar/set-time", requireAuth, (req: AuthedRequest, res) => {
+  const roomId = Number(req.params.roomId);
+  if (roomRole(req.account!.id, roomId) !== "gm")
+    return res.status(403).json({ error: "Only the room GM can set time." });
+  const body = parse(calendarTimeSchema, req.body, res);
+  if (!body) return;
+
+  let calendar: RoomCalendar;
+  let message: ReturnType<typeof recordSystemMessage>;
+  db.exec("BEGIN IMMEDIATE");
+  try {
+    const row = one<{ calendar_json: string | null }>("SELECT calendar_json FROM rooms WHERE id = ?", roomId);
+    if (!row) {
+      db.exec("ROLLBACK");
+      return res.status(404).json({ error: "Room not found." });
+    }
+    const current = readCalendar(row.calendar_json);
+    if (
+      body.month >= current.monthNames.length ||
+      body.day > current.daysPerMonth ||
+      body.segment >= current.segmentsPerDay
+    ) {
+      db.exec("ROLLBACK");
+      return res.status(400).json({ error: "That time does not exist on this calendar." });
+    }
+    calendar = { ...current, ...body, revision: current.revision + 1 };
     db.prepare("UPDATE rooms SET calendar_json = ? WHERE id = ?").run(JSON.stringify(calendar), roomId);
     message = recordSystemMessage(roomId, req.account!.id, calendarNowMessage(calendar));
     db.exec("COMMIT");

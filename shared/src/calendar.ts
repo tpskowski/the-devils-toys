@@ -25,6 +25,7 @@ export function calendarDateAt(calendar: RoomCalendar, index: number) {
 
 /** The cadences a GM chooses between, in the order they are offered. */
 export const CALENDAR_CADENCES: { value: CalendarEventCadence; label: string }[] = [
+  { value: "once", label: "One-time" },
   { value: "holiday", label: "Holiday (yearly)" },
   { value: "weekly", label: "Weekly" },
   { value: "biweekly", label: "Every other week" },
@@ -56,6 +57,10 @@ export function calendarEventAnchor(calendar: RoomCalendar, event: CalendarEvent
 
 /** Whether an event's run begins on the day at this offset, before its length is considered. */
 function eventBeginsAt(calendar: RoomCalendar, event: CalendarEvent, index: number) {
+  if (event.cadence === "once") {
+    const date = calendarDateAt(calendar, index);
+    return event.day === date.day && (event.month ?? 0) === date.month && (event.startYear ?? 1) === date.year;
+  }
   if (calendarEventIsCounted(event)) {
     // Counted in both directions from the anchor, so a cycle anchored to next
     // year is already running this one rather than starting out of nothing.
