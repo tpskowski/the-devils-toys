@@ -1,10 +1,15 @@
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
-import { ChevronRight, Plus, Settings2, Trash2, X } from "lucide-react";
+import { ChevronRight, Eye, EyeOff, Plus, Settings2, Trash2, TriangleAlert, X } from "lucide-react";
 import {
   advanceCalendar,
-  calendarDayIndex,
+  CALENDAR_CADENCES,
   calendarDayIsPast,
   calendarDayProgress,
+  calendarEventDays,
+  calendarEventIsCounted,
+  calendarEventNever,
+  calendarEventPeriod,
+  calendarEventsOn,
   calendarFirstWeekday,
   calendarSegmentLabel,
   type CalendarEvent,
@@ -55,17 +60,6 @@ export function CalendarModal({
     setViewYear(calendar.year);
   }, [calendar.month, calendar.year]);
 
-  function eventsFor(day: number) {
-    const weekday = ((firstWeekday + day - 1) % calendar.daysPerWeek) + 1;
-    const absoluteWeek = Math.floor(calendarDayIndex(calendar, viewYear, viewMonth, day) / calendar.daysPerWeek);
-    return calendar.events.filter((event) => {
-      if (event.cadence === "holiday") return event.day === day && event.month === viewMonth;
-      if (event.cadence === "monthly") return event.day === day;
-      if (event.cadence === "biweekly") return event.day === weekday && absoluteWeek % 2 === 0;
-      return event.day === weekday;
-    });
-  }
-
   async function advance() {
     if (advancing) return;
     setError("");
@@ -111,11 +105,50 @@ export function CalendarModal({
       <section className="modal calendar-modal" role="dialog" aria-modal="true" aria-label="Calendar">
         <header className="calendar-header">
           <div>
-            <p className="eyebrow">Year {calendar.year}</p>
-            <h2>
-              {calendar.monthNames[calendar.month]} · Day {calendar.day}
+            <p className="eyebrow">
+              Year
+              <select
+                className="calendar-year-select"
+                aria-label="Displayed year"
+                value={viewYear}
+                onChange={(event) => setViewYear(Number(event.target.value))}
+              >
+                {yearOptions.map((year) => (
+                  <option value={year} key={year}>
+                    {year}
+                  </option>
+                ))}
+              </select>
+            </p>
+            {/* The month is the page being read rather than the month it is
+                now, so the day and the part of the day join it only where the
+                two are the same. Browsing elsewhere says so beneath the grid. */}
+            <h2 className="calendar-heading">
+              <select
+                className="calendar-month-select"
+                aria-label="Displayed month"
+                value={viewMonth}
+                onChange={(event) => setViewMonth(Number(event.target.value))}
+              >
+                {calendar.monthNames.map((name, index) => (
+                  <option value={index} key={index}>
+                    {name}
+                  </option>
+                ))}
+              </select>
+              {currentPage && (
+                <>
+                  <span className="calendar-heading-mark">·</span>
+                  <span>Day {calendar.day}</span>
+                  {calendar.segmentsPerDay > 1 && (
+                    <>
+                      <span className="calendar-heading-mark">·</span>
+                      <span className="calendar-segment">{calendarSegmentLabel(calendar)}</span>
+                    </>
+                  )}
+                </>
+              )}
             </h2>
-            {calendar.segmentsPerDay > 1 && <p className="calendar-segment">{calendarSegmentLabel(calendar)}</p>}
           </div>
           <div className="calendar-actions">
             {isGm && (
@@ -132,28 +165,6 @@ export function CalendarModal({
           <CalendarEditor value={draft} onChange={setDraft} onSave={save} saving={saving} />
         ) : (
           <>
-            <div className="calendar-view-controls" aria-label="Displayed month and year">
-              <label>
-                Month
-                <select value={viewMonth} onChange={(event) => setViewMonth(Number(event.target.value))}>
-                  {calendar.monthNames.map((name, index) => (
-                    <option value={index} key={index}>
-                      {name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                Year
-                <select value={viewYear} onChange={(event) => setViewYear(Number(event.target.value))}>
-                  {yearOptions.map((year) => (
-                    <option value={year} key={year}>
-                      {year}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
             <div
               className="calendar-week"
               style={{ gridTemplateColumns: `repeat(${calendar.daysPerWeek}, minmax(0, 1fr))` }}
@@ -184,21 +195,44 @@ export function CalendarModal({
                     }
                   >
                     <b>{day}</b>
-                    {eventsFor(day).map((event) => (
-                      <small key={event.id}>{event.name}</small>
-                    ))}
+                    {calendarEventsOn(calendar, viewYear, viewMonth, day).map(({ event, dayOfRun }) => {
+                      const days = calendarEventDays(event);
+                      return (
+                        <small
+                          key={event.id}
+                          className={`calendar-event${dayOfRun > 1 ? " running" : ""}${
+                            event.hidden ? " hidden-event" : ""
+                          }`}
+                          title={days > 1 ? `${event.name} · day ${dayOfRun} of ${days}` : event.name}
+                        >
+                          {event.hidden && <EyeOff size={11} aria-label="Hidden from players" />}
+                          <span className="calendar-event-name">{event.name}</span>
+                          {days > 1 && (
+                            <span className="calendar-event-run">
+                              {dayOfRun}/{days}
+                            </span>
+                          )}
+                        </small>
+                      );
+                    })}
                     {current && isGm && <ChevronRight className="calendar-advance" size={15} />}
                   </button>
                 );
               })}
             </div>
-            {isGm && (
+            {currentPage ? (
+              isGm && (
+                <p className="calendar-hint">
+                  Click the current day to advance to the next{" "}
+                  {calendar.segmentsPerDay > 1 ? "segment of the day" : "day"}.
+                </p>
+              )
+            ) : (
+              // Said to everyone rather than the GM alone: the header gave up
+              // showing the current date to make room for the month picker.
               <p className="calendar-hint">
-                {currentPage
-                  ? `Click the current day to advance to the next ${
-                      calendar.segmentsPerDay > 1 ? "segment of the day" : "day"
-                    }.`
-                  : "Return to the current month and year to advance time."}
+                Time is at {calendar.monthNames[calendar.month]} {calendar.day}, {calendar.year}
+                {isGm ? " — return there to advance it." : "."}
               </p>
             )}
           </>
@@ -239,7 +273,22 @@ function CalendarEditor({
     set(key, splitCalendarNames(text));
   }
   function addEvent() {
-    set("events", [...value.events, { id: crypto.randomUUID(), name: "New event", cadence: "monthly", day: 1 }]);
+    set("events", [
+      ...value.events,
+      {
+        id: crypto.randomUUID(),
+        name: "New event",
+        cadence: "monthly",
+        day: 1,
+        // The anchor a counted cadence needs, taken from where the room
+        // actually is, so switching to one lands on the game and not year one.
+        month: value.month,
+        startYear: value.year,
+        intervalDays: value.daysPerWeek,
+        durationDays: 1,
+        hidden: false
+      }
+    ]);
   }
   function eventChange(id: string, patch: Partial<CalendarEvent>) {
     set(
@@ -353,59 +402,124 @@ function CalendarEditor({
           <Plus size={16} /> Add event
         </button>
       </div>
-      {value.events.map((event) => (
-        <div className="calendar-event-editor" key={event.id}>
-          <input
-            aria-label="Event name"
-            value={event.name}
-            onChange={(e) => eventChange(event.id, { name: e.target.value })}
-          />
-          <select
-            aria-label="Recurrence"
-            value={event.cadence}
-            onChange={(e) => eventChange(event.id, { cadence: e.target.value as CalendarEventCadence })}
-          >
-            <option value="holiday">Holiday (yearly)</option>
-            <option value="weekly">Weekly</option>
-            <option value="biweekly">Biweekly</option>
-            <option value="monthly">Monthly</option>
-          </select>
-          {event.cadence === "holiday" && (
-            <select
-              aria-label="Event month"
-              value={event.month ?? 0}
-              onChange={(e) => eventChange(event.id, { month: Number(e.target.value) })}
-            >
-              {value.monthNames.map((name, i) => (
-                <option value={i} key={i}>
-                  {name}
-                </option>
-              ))}
-            </select>
-          )}
-          <label>
-            {event.cadence === "weekly" || event.cadence === "biweekly" ? "Weekday" : "Day"}
-            <input
-              type="number"
-              min="1"
-              value={event.day}
-              onChange={(e) => eventChange(event.id, { day: Number(e.target.value) })}
-            />
-          </label>
-          <button
-            className="icon-button"
-            title="Remove event"
-            onClick={() =>
-              set(
-                "events",
-                value.events.filter((item) => item.id !== event.id)
-              )
-            }
-          >
-            <Trash2 size={16} />
-          </button>
-        </div>
-      ))}
+      {value.events.map((event) => {
+        const counted = calendarEventIsCounted(event);
+        const never = calendarEventNever(value, event);
+        return (
+          <div className="calendar-event-row" key={event.id}>
+            <div className="calendar-event-editor">
+              <input
+                aria-label="Event name"
+                value={event.name}
+                onChange={(e) => eventChange(event.id, { name: e.target.value })}
+              />
+              <span className="calendar-event-repeats">
+                <select
+                  aria-label="Recurrence"
+                  value={event.cadence}
+                  onChange={(e) => eventChange(event.id, { cadence: e.target.value as CalendarEventCadence })}
+                >
+                  {CALENDAR_CADENCES.map((cadence) => (
+                    <option value={cadence.value} key={cadence.value}>
+                      {cadence.label}
+                    </option>
+                  ))}
+                </select>
+                {event.cadence === "interval" && (
+                  <input
+                    type="number"
+                    min="1"
+                    max="400"
+                    aria-label={`Days between each ${event.name}`}
+                    value={calendarEventPeriod(value, event)}
+                    onChange={(e) => eventChange(event.id, { intervalDays: Math.max(1, Number(e.target.value) || 1) })}
+                  />
+                )}
+              </span>
+              {/* One cell for when it happens: a holiday names its month, and a
+                  counted cadence names the month and year it counts from. */}
+              {event.cadence === "holiday" || counted ? (
+                <label>
+                  {counted ? "Starts" : "Month"}
+                  <span className="calendar-event-anchor">
+                    <select
+                      aria-label={counted ? `Month ${event.name} starts in` : "Event month"}
+                      value={event.month ?? 0}
+                      onChange={(e) => eventChange(event.id, { month: Number(e.target.value) })}
+                    >
+                      {value.monthNames.map((name, i) => (
+                        <option value={i} key={i}>
+                          {name}
+                        </option>
+                      ))}
+                    </select>
+                    {counted && (
+                      <input
+                        type="number"
+                        aria-label={`Year ${event.name} starts in`}
+                        value={event.startYear ?? value.year}
+                        onChange={(e) => eventChange(event.id, { startYear: Number(e.target.value) || 1 })}
+                      />
+                    )}
+                  </span>
+                </label>
+              ) : (
+                // An occupied cell rather than a missing one, so the row's columns
+                // line up with a holiday's above it instead of sliding one left.
+                <span className="calendar-event-every-month">
+                  {event.cadence === "weekly" ? "Every week" : "Every month"}
+                </span>
+              )}
+              <label>
+                {event.cadence === "weekly" ? "Weekday" : "Day"}
+                <input
+                  type="number"
+                  min="1"
+                  max={event.cadence === "weekly" ? value.daysPerWeek : value.daysPerMonth}
+                  value={event.day}
+                  onChange={(e) => eventChange(event.id, { day: Number(e.target.value) })}
+                />
+              </label>
+              <label>
+                Days long
+                <input
+                  type="number"
+                  min="1"
+                  max="400"
+                  aria-label={`Days ${event.name} lasts`}
+                  value={calendarEventDays(event)}
+                  onChange={(e) => eventChange(event.id, { durationDays: Math.max(1, Number(e.target.value) || 1) })}
+                />
+              </label>
+              <button
+                className="icon-button"
+                aria-pressed={!event.hidden}
+                title={event.hidden ? `Show ${event.name} to players` : `Hide ${event.name} from players`}
+                onClick={() => eventChange(event.id, { hidden: !event.hidden })}
+              >
+                {event.hidden ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+              <button
+                className="icon-button"
+                title="Remove event"
+                onClick={() =>
+                  set(
+                    "events",
+                    value.events.filter((item) => item.id !== event.id)
+                  )
+                }
+              >
+                <Trash2 size={16} />
+              </button>
+            </div>
+            {never && (
+              <p className="calendar-event-never">
+                <TriangleAlert size={13} /> {never}
+              </p>
+            )}
+          </div>
+        );
+      })}
       <button
         className="primary-button"
         disabled={saving || !value.dayNames.length || !value.monthNames.length}

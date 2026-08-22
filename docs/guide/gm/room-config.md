@@ -107,6 +107,38 @@ Months, weekdays, and parts of a day are named rows you can rename, reorder, add
 to, and remove — not one comma-separated line. Holidays and recurring events are
 a table below, each either weekly or a yearly holiday on a given month and day.
 
+**Lasts** is how many days the event runs from the day it starts on. Give a feast
+three and it sits on all three of its days, numbered `1/3`, `2/3`, `3/3`; a run
+beginning near the end of a month finishes in the next one rather than stopping
+at the month's edge.
+
+There are five ways an event can repeat. A **holiday** is a day of a named
+month, every year. A **monthly** event is a day of every month. A **weekly**
+event is a day of the week. **Every other week** and **every X days** are
+counted instead: they name a date they pass through — month, year, and day —
+and then repeat every other week, or every however many days you set, counting
+forward and back from it. Counting from a date you choose is what lets you say
+_which_ of the alternating weeks the event lands on; before, that was decided by
+counting weeks from the calendar's own year one, which you could not see or move.
+
+"Every other week" is two of **your** weeks, not fourteen days. On a five-day
+week it repeats every ten.
+
+**Day** means different things down the column, and this is the one place the
+table can mislead you: for a **weekly** event it is the day of the **week**, and
+for everything else it is the day of the **month**. Give a weekly event day 15 in
+a seven-day week and there is no such weekday for it to fall on, so it never
+happens — the row says so beneath the field rather than leaving you to wonder why
+nothing appears on the calendar.
+
+**Players** is the show/hide switch, and it is a real one. An event set to
+Hidden is taken out of the calendar before it is sent to a player, rather than
+sent to them and covered up — so it is not in their room, not in what their
+browser is told when you advance the clock, and not in the calendar they would
+get by asking the server for it. On your own page it is drawn dashed with a
+struck-through eye, so you can see what the table cannot. Set it back to Shown
+on the day the town finds out.
+
 **Parts per day** is what decides how far one click of the clock moves: set it
 to one and advancing moves a whole day; set it to three and each click moves
 dawn to noon to dusk.

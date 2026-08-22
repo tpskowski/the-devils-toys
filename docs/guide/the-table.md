@@ -8,6 +8,11 @@ between them.
 
 ![The table, as a player sees it](images/the-table.png)
 
+Opening a table folds the navigation rail — your list of tables, down the left
+of every other screen — away, so the room gets the width. The chevron in the
+bottom-left corner brings it back, and each table remembers where you last left
+it.
+
 ## The tab strip
 
 ![The tab strip](images/tab-strip.png)

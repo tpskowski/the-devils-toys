@@ -1,19 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
-import { ArrowDown, ArrowUp, Plus, RotateCcw, Save, Trash2, TriangleAlert } from "lucide-react";
+import { ArrowDown, ArrowUp, Eye, EyeOff, Plus, RotateCcw, Save, Trash2, TriangleAlert } from "lucide-react";
 import {
+  CALENDAR_CADENCES,
+  calendarEventDays,
+  calendarEventIsCounted,
+  calendarEventNever,
+  calendarEventPeriod,
   calendarSegmentLabel,
   type CalendarEvent,
   type CalendarEventCadence,
   type RoomCalendar
 } from "@devils-toys/shared";
 import { ApiError, api } from "./api";
-
-const cadences: { value: CalendarEventCadence; label: string }[] = [
-  { value: "holiday", label: "Holiday (yearly)" },
-  { value: "weekly", label: "Weekly" },
-  { value: "biweekly", label: "Biweekly" },
-  { value: "monthly", label: "Monthly" }
-];
 
 type NameList = "monthNames" | "dayNames" | "segmentNames";
 
@@ -320,7 +318,19 @@ export function RoomConfigCalendar({
             onClick={() =>
               set("events", [
                 ...draft.events,
-                { id: crypto.randomUUID(), name: "New event", cadence: "monthly", day: 1 }
+                {
+                  id: crypto.randomUUID(),
+                  name: "New event",
+                  cadence: "monthly",
+                  day: 1,
+                  // The anchor a counted cadence needs, taken from where the
+                  // room is, so switching to one lands on the game not year one.
+                  month: draft.month,
+                  startYear: draft.year,
+                  intervalDays: draft.daysPerWeek,
+                  durationDays: 1,
+                  hidden: false
+                }
               ])
             }
           >
@@ -336,14 +346,18 @@ export function RoomConfigCalendar({
                 <tr>
                   <th scope="col">Name</th>
                   <th scope="col">Repeats</th>
-                  <th scope="col">Month</th>
+                  <th scope="col">Starts</th>
                   <th scope="col">Day</th>
+                  <th scope="col">Lasts</th>
+                  <th scope="col">Players</th>
                   <th scope="col" className="rc-actions-column" />
                 </tr>
               </thead>
               <tbody>
                 {draft.events.map((event) => {
-                  const weekly = event.cadence === "weekly" || event.cadence === "biweekly";
+                  const weekly = event.cadence === "weekly";
+                  const counted = calendarEventIsCounted(event);
+                  const never = calendarEventNever(draft, event);
                   const change = (patch: Partial<CalendarEvent>) =>
                     set(
                       "events",
@@ -364,28 +378,58 @@ export function RoomConfigCalendar({
                           value={event.cadence}
                           onChange={(changed) => change({ cadence: changed.target.value as CalendarEventCadence })}
                         >
-                          {cadences.map((cadence) => (
+                          {CALENDAR_CADENCES.map((cadence) => (
                             <option key={cadence.value} value={cadence.value}>
                               {cadence.label}
                             </option>
                           ))}
                         </select>
+                        {event.cadence === "interval" && (
+                          <label className="rc-duration">
+                            <span className="room-config-muted">every</span>
+                            <input
+                              type="number"
+                              min={1}
+                              max={400}
+                              aria-label={`Days between each ${event.name}`}
+                              value={calendarEventPeriod(draft, event)}
+                              onChange={(changed) =>
+                                change({ intervalDays: Math.max(1, Number(changed.target.value) || 1) })
+                              }
+                            />
+                            <span className="room-config-muted">days</span>
+                          </label>
+                        )}
                       </td>
                       <td>
-                        {event.cadence === "holiday" ? (
-                          <select
-                            aria-label="Month"
-                            value={event.month ?? 0}
-                            onChange={(changed) => change({ month: Number(changed.target.value) })}
-                          >
-                            {draft.monthNames.map((name, index) => (
-                              <option key={index} value={index}>
-                                {name}
-                              </option>
-                            ))}
-                          </select>
+                        {/* A holiday names its month; a counted cadence names
+                            the month and year its cycle is measured from. */}
+                        {event.cadence === "holiday" || counted ? (
+                          <div className="rc-event-anchor">
+                            <select
+                              aria-label={counted ? `Month ${event.name} starts in` : "Month"}
+                              value={event.month ?? 0}
+                              onChange={(changed) => change({ month: Number(changed.target.value) })}
+                            >
+                              {draft.monthNames.map((name, index) => (
+                                <option key={index} value={index}>
+                                  {name}
+                                </option>
+                              ))}
+                            </select>
+                            {counted && (
+                              <input
+                                type="number"
+                                aria-label={`Year ${event.name} starts in`}
+                                value={event.startYear ?? draft.year}
+                                onChange={(changed) => change({ startYear: Number(changed.target.value) || 1 })}
+                              />
+                            )}
+                          </div>
                         ) : (
-                          <span className="room-config-muted">Every month</span>
+                          <span className="room-config-muted">
+                            {event.cadence === "weekly" ? "Every week" : "Every month"}
+                          </span>
                         )}
                       </td>
                       <td>
@@ -397,6 +441,40 @@ export function RoomConfigCalendar({
                           value={event.day}
                           onChange={(changed) => change({ day: Number(changed.target.value) || 1 })}
                         />
+                        {/* An event with nowhere to fall is drawn nowhere, and
+                            nothing else on this page would ever say so. */}
+                        {never && (
+                          <small className="rc-event-never">
+                            <TriangleAlert size={12} /> {never}
+                          </small>
+                        )}
+                      </td>
+                      <td>
+                        <label className="rc-duration">
+                          <input
+                            type="number"
+                            min={1}
+                            max={400}
+                            aria-label={`Days ${event.name} lasts`}
+                            value={calendarEventDays(event)}
+                            onChange={(changed) =>
+                              change({ durationDays: Math.max(1, Number(changed.target.value) || 1) })
+                            }
+                          />
+                          <span className="room-config-muted">{calendarEventDays(event) === 1 ? "day" : "days"}</span>
+                        </label>
+                      </td>
+                      <td>
+                        <button
+                          type="button"
+                          className={`rc-visibility${event.hidden ? " hidden" : ""}`}
+                          aria-pressed={!event.hidden}
+                          title={event.hidden ? `Show ${event.name} to players` : `Hide ${event.name} from players`}
+                          onClick={() => change({ hidden: !event.hidden })}
+                        >
+                          {event.hidden ? <EyeOff size={14} /> : <Eye size={14} />}
+                          {event.hidden ? "Hidden" : "Shown"}
+                        </button>
                       </td>
                       <td className="rc-actions-column">
                         <button

@@ -40,7 +40,8 @@ whoever runs the server; an admin can sort you out.
 
 After signing in you land on your list of tables. A table you belong to appears
 in the left rail and as a card in the middle of the page. Either way in works —
-on a phone the rail is folded away, so use the card.
+on a phone the rail is folded away, so use the card. Opening a table folds it
+away on a computer too; the chevron in the bottom-left corner brings it back.
 
 Your role at each table is shown next to your name at the bottom of the rail:
 **player** at a table you were invited to, **game master** at one you run.

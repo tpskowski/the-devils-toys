@@ -223,15 +223,33 @@ export type MapNotationEvent =
   | { type: "map-notation-removed"; mediaId: number; notationId: number }
   | { type: "map-notations-cleared"; mediaId: number };
 
-export type CalendarEventCadence = "holiday" | "weekly" | "biweekly" | "monthly";
+export type CalendarEventCadence = "holiday" | "weekly" | "biweekly" | "monthly" | "interval";
 
 export interface CalendarEvent {
   id: string;
   name: string;
   cadence: CalendarEventCadence;
-  /** One-based day of the month for holidays/monthly events, or day of the week for weekly events. */
+  /**
+   * One-based day of the week for a weekly event. For every other kind it is
+   * the day of the month: a holiday's or a monthly event's day, and the day of
+   * the date a biweekly or interval event counts its cycle from.
+   */
   day: number;
+  /** Month of a holiday, and of the date a biweekly or interval event is anchored to. */
   month?: number;
+  /**
+   * Year of the date a biweekly or interval event is anchored to; nothing else
+   * reads it. Together with `month` and `day` it fixes one real day the cycle
+   * passes through, which is what lets a GM choose which week it lands on
+   * rather than inheriting whatever phase counting from year one produces.
+   */
+  startYear?: number;
+  /** How many days apart an interval event's occurrences are. Only an interval event reads it. */
+  intervalDays: number;
+  /** How many days the event runs from the day it starts on. One is a single day. */
+  durationDays: number;
+  /** Kept from the players. A hidden event is taken out of the calendar before it leaves the server. */
+  hidden: boolean;
 }
 
 export interface RoomCalendar {

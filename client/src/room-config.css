@@ -1228,6 +1228,58 @@ button.rc-name {
   min-width: 90px;
 }
 
+.rc-calendar .rc-table .rc-event-never {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+  color: var(--hostile, var(--accent));
+}
+
+.rc-event-never svg {
+  flex: none;
+}
+
+.rc-event-anchor {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.rc-calendar .rc-table .rc-event-anchor input {
+  min-width: 68px;
+  max-width: 90px;
+}
+
+.rc-duration {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.rc-duration input {
+  min-width: 62px;
+}
+
+.rc-duration span {
+  font:
+    400 11px "DM Mono",
+    monospace;
+}
+
+/* Says which of the two states the event is in, not which button to press. */
+.room-config-section button.rc-visibility {
+  gap: 6px;
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent), transparent 55%);
+}
+
+.room-config-section button.rc-visibility.hidden {
+  color: var(--muted);
+  border-style: dashed;
+  border-color: var(--line);
+}
+
 @media (max-width: 1100px) {
   .rc-calendar-columns,
   .rc-roster {

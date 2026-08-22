@@ -493,7 +493,8 @@ async function main() {
         segmentNames: ["Dawn", "Noon", "Dusk"],
         events: [
           { id: "market", name: "Market Day", cadence: "weekly", day: 4 },
-          { id: "founding", name: "Founding Feast", cadence: "holiday", month: 2, day: 18 }
+          { id: "founding", name: "Founding Feast", cadence: "holiday", month: 2, day: 18, durationDays: 3 },
+          { id: "reckoning", name: "The Toll Comes Due", cadence: "holiday", month: 2, day: 22, hidden: true }
         ]
       })
     });

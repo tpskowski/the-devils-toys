@@ -649,6 +649,15 @@ button:disabled {
   max-width: 460px;
   margin: 22px 0 28px;
 }
+/* The attribution is set over two lines — the name, then the work and the year
+   — so it stays narrower than the quote instead of trailing off past it. The
+   lines sit closer together than the leading the paragraph rule above gives
+   them, which is set for prose rather than for two halves of one credit. */
+.lobby-copy > p.lobby-attribution {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.35;
+}
 .lobby-rooms {
   position: relative;
   z-index: 2;
@@ -2926,48 +2935,56 @@ button:disabled {
 .calendar-header h2 {
   margin: 0;
 }
-.calendar-segment {
-  margin: 0.25rem 0 0;
-  color: var(--accent);
-  font-weight: 700;
-}
-.calendar-view-controls {
-  margin-top: 1.1rem;
+/* The month picker is the heading, so it takes the heading's own type rather
+   than sitting beside it as a control in a different voice. */
+.calendar-heading {
   display: flex;
+  align-items: baseline;
   flex-wrap: wrap;
-  gap: 0.75rem;
+  gap: 0.4rem;
 }
-.calendar-view-controls label {
-  min-width: 150px;
-  display: grid;
-  gap: 6px;
-  color: var(--muted);
-  font:
-    600 10px "DM Mono",
-    monospace;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+.calendar-month-select,
+.calendar-year-select {
+  font: inherit;
+  color: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  background: none;
+  border: 0;
+  border-bottom: 2px solid color-mix(in srgb, var(--accent), transparent 55%);
+  border-radius: 0;
+  padding: 0 0.1rem;
+  cursor: pointer;
 }
-.calendar-view-controls select,
-.calendar-view-controls select option {
+.calendar-month-select option,
+.calendar-year-select option {
   background: var(--surface);
   color: var(--text);
-}
-.calendar-view-controls select {
-  height: 42px;
-  padding: 0 10px;
-  border: 1px solid var(--line);
-  border-radius: 0;
-  font:
-    500 14px Inter,
-    sans-serif;
+  font: inherit;
   letter-spacing: 0;
   text-transform: none;
+}
+.calendar-month-select:focus-visible,
+.calendar-year-select:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.calendar-year-select {
+  margin-left: 0.4rem;
+  border-bottom-width: 1px;
+}
+.calendar-heading-mark {
+  color: var(--muted);
+}
+.calendar-segment {
+  margin: 0;
+  color: var(--accent);
+  font-weight: 700;
 }
 .calendar-week {
   display: grid;
   gap: 0.35rem;
-  margin-top: 0.9rem;
+  margin-top: 1.1rem;
   min-width: 520px;
 }
 .calendar-week > strong {
@@ -3022,11 +3039,38 @@ button:disabled {
 }
 .calendar-day small {
   width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
   padding: 0.15rem 0.3rem;
   border-radius: 4px;
   background: var(--accent-soft);
   overflow: hidden;
+}
+.calendar-day small svg {
+  flex: none;
+}
+.calendar-event-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
   text-overflow: ellipsis;
+}
+/* A day partway through a run is quieter than the day the run started on. */
+.calendar-event.running {
+  background: color-mix(in srgb, var(--accent-soft), transparent 28%);
+}
+/* Only a GM is ever sent one, so this says "yours alone" rather than "off". */
+.calendar-event.hidden-event {
+  background: none;
+  border: 1px dashed var(--line);
+  color: var(--muted);
+}
+.calendar-event-run {
+  flex: none;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.65;
 }
 .calendar-advance {
   position: absolute;
@@ -3048,7 +3092,7 @@ button:disabled {
 }
 .calendar-event-editor {
   display: grid;
-  grid-template-columns: minmax(130px, 2fr) 1.2fr 1fr 90px auto;
+  grid-template-columns: minmax(110px, 1.4fr) 1.6fr 1.4fr 68px 88px auto auto;
   align-items: end;
   gap: 0.5rem;
   padding: 0.65rem;
@@ -3057,6 +3101,45 @@ button:disabled {
 }
 .calendar-event-editor > label {
   gap: 0.2rem;
+}
+/* The kind of repeat and the number that qualifies it share one cell, as do
+   the month and year a counted cadence is measured from. */
+.calendar-event-repeats,
+.calendar-event-anchor {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  min-width: 0;
+}
+.calendar-event-repeats > select,
+.calendar-event-anchor > select {
+  min-width: 0;
+  flex: 1;
+}
+.calendar-event-repeats > input,
+.calendar-event-anchor > input {
+  flex: none;
+  width: 56px;
+}
+.calendar-event-row {
+  display: grid;
+  gap: 0.4rem;
+}
+.calendar-event-never {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0;
+  color: var(--hostile, var(--accent));
+  font-size: 12px;
+}
+.calendar-event-never svg {
+  flex: none;
+}
+.calendar-event-every-month {
+  align-self: center;
+  color: var(--muted);
+  font-size: 12px;
 }
 @media (max-width: 700px) {
   .calendar-modal {
