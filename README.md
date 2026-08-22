@@ -175,6 +175,43 @@ A password is asked for rather than passed as an argument, since an argument is 
 
 Stop the server, copy the complete configured data directory, then restart. Restore by stopping the server and replacing that directory with a backup made while the server was stopped. Database, installed systems, uploads, and logs are kept together so a single filesystem copy is sufficient.
 
+## The landing page's quotes
+
+The page you land on after signing in opens with a quote, drawn at random each
+time it loads. They live in [quotes.md](quotes.md) at the root of the repository,
+and that file is the whole of the feature: the quote, whoever said it on the last
+line, a blank line, then the next one.
+
+```text
+It's time we find out if this ship is capable of deicide.
+Misato Katsuragi
+
+"The world is indeed full of peril and in it there are many dark places."
+J.R.R. Tolkien
+```
+
+Add one by typing it there. Nothing is generated from the file and there is no
+second list to keep level with it — the client reads it as it is built, so a new
+quote appears on the next reload under `npm run dev`, and on the next
+`npm run build` for a deployed server.
+
+Four things the reader does with what it finds:
+
+- **Quotation marks are optional.** A quote wrapped in `"straight"` or `“curly”`
+  marks has them taken off, and the page puts its own pair back. One written
+  bare gets the same pair.
+- **Line breaks are kept**, so a verse stays a verse.
+- **An exchange keeps its own marks.** Where every line carries its own pair, the
+  page adds none — one pair around two speakers puts both halves in one mouth.
+- **A dash in front of a name is dropped**, so `-Pippin Took` and `Pippin Took`
+  read the same.
+
+Long quotes are set smaller than short ones so that the room list stays on
+screen. There is no heading in the file and no front matter: a block of lines is
+a quote, and a block that is only one line is ignored rather than shown without
+anyone behind it. `client/src/quotes.test.ts` reads the real file and fails if a
+block in it stops parsing.
+
 ## Content and licensing
 
 The application code is released under the [MIT License](LICENSE).

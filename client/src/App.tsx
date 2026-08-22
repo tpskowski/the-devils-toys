@@ -60,6 +60,7 @@ import type {
   ThemeId
 } from "@devils-toys/shared";
 import { api } from "./api";
+import { quoteScale, randomQuote } from "./quotes";
 import { tablesAppUrl, type TablesApp } from "./tables-app";
 import { TablesAppDialog } from "./TablesAppDialog";
 import { shouldSubmitChatOnEnter } from "./chat";
@@ -631,11 +632,19 @@ function Lobby({
 }) {
   const joined = rooms.filter((room) => !room.archived);
   const archived = rooms.filter((room) => room.archived);
+  // Drawn once when the page is opened rather than on render, so it does not
+  // change under the reader as the room list arrives.
+  const [quote] = useState(randomQuote);
   return (
     <section className="lobby">
       <div className="lobby-copy">
-        <h2>“Those who play with the devil’s toys will be brought by degrees to wield his sword.”</h2>
-        <p>— Thomas Fuller</p>
+        {/* A verse's line breaks are its own, and the heading is set to keep
+            them. The pair of marks is the page's, except around an exchange,
+            which carries a pair per speaker already. */}
+        <h2 className={`lobby-quote is-${quoteScale(quote)}`}>
+          {quote.selfQuoted ? quote.lines.join("\n") : `“${quote.lines.join("\n")}”`}
+        </h2>
+        <p>— {quote.attribution}</p>
         {canCreate && (
           <button className="primary-button" onClick={onCreate}>
             <Plus size={18} /> Create a room
