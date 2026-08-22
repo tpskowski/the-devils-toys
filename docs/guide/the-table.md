@@ -94,7 +94,9 @@ Top right, next to the room's name:
 - **Manage characters** — your sheet. See [Your character](your-character.md).
 - **Shared audio** — appears when your GM has music on and has uploaded
   something. Playback is theirs to drive; your control is the volume in your own
-  ears. The dock says "Shared by the GM" so it is clear which is which.
+  ears. The dock names the track and moves with it, so there is nothing to work
+  but the volume — except where your browser has refused to start the sound on
+  its own, when it offers **Tap to listen**.
 - **Calendar** — appears when the table keeps one. It shows the date, and the
   GM moving time forward is announced in chat.
 - **Your view** — the settings below.

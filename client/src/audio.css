@@ -1,10 +1,14 @@
 .audio-dock {
   position: fixed;
   z-index: 20;
-  left: calc(var(--rail-width) + 18px);
+  /* How far in from the left edge the dock starts, named because the collapsed
+     rail moves it: the button that brings the rail back stands in the corner the
+     dock otherwise fills, and the two were sharing it. */
+  --audio-dock-inset: calc(var(--rail-width) + 18px);
+  left: var(--audio-dock-inset);
   right: auto;
   bottom: 12px;
-  width: min(520px, calc(100vw - var(--rail-width) - var(--context-width) - 36px));
+  width: min(520px, calc(100vw - var(--audio-dock-inset) - var(--context-width) - 18px));
   min-width: 0;
   height: 74px;
   padding: 25px 9px 0;
@@ -103,8 +107,13 @@
   place-items: center;
 }
 
+/* Clear of the rail-restore button, which is only on screen while collapsed. */
+.rail-collapsed .audio-dock {
+  --audio-dock-inset: 40px;
+}
+
 .audio-dock-minimized {
-  width: min(300px, calc(100vw - var(--rail-width) - var(--context-width) - 36px));
+  width: min(300px, calc(100vw - var(--audio-dock-inset) - var(--context-width) - 18px));
   height: 42px;
   padding: 0 4px;
 }
@@ -212,6 +221,136 @@
   font:
     400 8px "DM Mono",
     monospace;
+}
+
+/* The player's half of the dock: what the room is playing, without a transport
+   they cannot work or a second copy of the title already above it. */
+.audio-visualizer {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 32px;
+  padding-left: 5px;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.audio-visualizer span {
+  --level: 0.14;
+  flex: 0 0 3px;
+  height: 19px;
+  background: var(--muted);
+  transform: scaleY(var(--level));
+  transition: background 0.3s;
+}
+
+/* Reading the sound: the height is written per frame, so nothing here animates
+   it. The floor keeps a quiet passage looking like a quiet passage rather than
+   like a stopped one. */
+.audio-visualizer.is-reading span {
+  background: var(--accent);
+}
+
+/* No analyser to be had. The bars keep their own time instead.
+
+   The periods below are written out rather than worked out from the bar's
+   position, because a formula makes them share a rhythm: bars whose durations
+   run in step meet at the bottom every few seconds, and nine bars flat at once
+   reads as the sound having stopped. These do not divide into one another. */
+.audio-visualizer.is-guessing span {
+  background: var(--accent);
+  animation: audio-visualizer-bounce 0.8s ease-in-out infinite alternate;
+}
+
+.audio-visualizer.is-guessing span:nth-child(1) {
+  animation-duration: 0.58s;
+  animation-delay: -0.31s;
+}
+
+.audio-visualizer.is-guessing span:nth-child(2) {
+  animation-duration: 0.93s;
+  animation-delay: -0.72s;
+}
+
+.audio-visualizer.is-guessing span:nth-child(3) {
+  animation-duration: 0.71s;
+  animation-delay: -0.08s;
+}
+
+.audio-visualizer.is-guessing span:nth-child(4) {
+  animation-duration: 1.14s;
+  animation-delay: -0.55s;
+}
+
+.audio-visualizer.is-guessing span:nth-child(5) {
+  animation-duration: 0.66s;
+  animation-delay: -0.94s;
+}
+
+.audio-visualizer.is-guessing span:nth-child(6) {
+  animation-duration: 0.85s;
+  animation-delay: -0.17s;
+}
+
+.audio-visualizer.is-guessing span:nth-child(7) {
+  animation-duration: 1.28s;
+  animation-delay: -0.63s;
+}
+
+.audio-visualizer.is-guessing span:nth-child(8) {
+  animation-duration: 0.74s;
+  animation-delay: -0.41s;
+}
+
+.audio-visualizer.is-guessing span:nth-child(9) {
+  animation-duration: 1.02s;
+  animation-delay: -0.86s;
+}
+
+@keyframes audio-visualizer-bounce {
+  from {
+    transform: scaleY(0.16);
+  }
+  to {
+    transform: scaleY(0.95);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* Still bars, but not a flat line: the room is playing and the dock should
+     look different from one that is not. */
+  .audio-visualizer.is-guessing span {
+    animation: none;
+    transform: scaleY(0.45);
+  }
+
+  .audio-visualizer.is-guessing span:nth-child(3n) {
+    transform: scaleY(0.78);
+  }
+
+  .audio-visualizer.is-guessing span:nth-child(4n) {
+    transform: scaleY(0.3);
+  }
+}
+
+/* Sound this browser has not been allowed to start yet. */
+.audio-start {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 32px;
+  padding: 0 9px 0 5px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--accent) !important;
+  text-align: left;
+}
+
+.audio-start span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
 }
 
 .audio-volume {

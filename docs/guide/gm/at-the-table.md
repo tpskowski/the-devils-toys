@@ -87,9 +87,9 @@ Building the calendar itself is in [Room Config](room-config.md).
 With music switched on, the note icon opens the shared player.
 
 **Playback is yours.** You choose the track, play, pause, skip, and set repeat
-and shuffle; players get a dock that says "Shared by the GM" and follows along,
-with only their own volume under their control. The dock says
-"GM-controlled playback" on your side so it is clear which is which.
+and shuffle; the dock says "GM-controlled playback" on your side. Players get no
+transport at all — theirs shows what is playing, a visualiser moving with it,
+and their own volume.
 
 If the room has playlists, you also choose which running order it plays through;
 it then advances within that order rather than through everything the room owns.
