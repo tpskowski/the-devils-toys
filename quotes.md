@@ -286,13 +286,13 @@ Hattori Hanzo, Kill Bill: Vol. 1
 “Now, if any of you sons of bitches got anything else to say, now's the fucking time!”
 O-Ren Ishii, Kill Bill: Vol. 1
 
-“Dying In Our Sleep Is A Luxury Our Kind Is Rarely Afforded. My Gift To You.”
+“Dying in our sleep is a luxury our kind is rarely afforded. My gift to you.”
 Elle Driver, Kill Bill: Vol. 1
 
-“It's Mercy, Compassion, And Forgiveness I Lack. Not Rationality!”
+“It's mercy, compassion, and forgiveness I lack. Not rationality!”
 The Bride, Kill Bill: Vol. 1
 
-“Those Of You Lucky Enough To Still Have Their Lives, Take Them With You!”
+“Those of you lucky enough to still have their lives, take them with you!”
 The Bride, Kill Bill: Vol. 1
 
 “Hate is a place, someone who can't take sadness goes”
@@ -343,6 +343,9 @@ Magneto
 
 “Life is the ultimate adventure, and Death, the prize that awaits us all.”
 Wolverine
+
+“It's a dangerous business, Frodo, going out your door. You step onto the road, and if you don't keep your feet, there's no knowing where you might be swept off to.”
+J.R.R. Tolkien
 
 “Don't Panic.”
 Douglas Adams, Hitchhiker's Guide the Galaxy
