@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import source from "../../quotes.md?raw";
-import { parseQuotes, quoteScale, quotes, randomQuote } from "./quotes";
+import { attributionLines, parseQuotes, quoteScale, quotes, randomQuote } from "./quotes";
 
 describe("parseQuotes", () => {
   it("reads a quote and the name on its last line", () => {
@@ -64,6 +64,30 @@ describe("the quotes file", () => {
 
   it("holds the one the page opened with before it had a file to read", () => {
     expect(quotes.map((quote) => quote.attribution)).toContain("Thomas Fuller");
+  });
+});
+
+describe("attributionLines", () => {
+  it("breaks at the first comma and drops it, keeping the rest together", () => {
+    expect(attributionLines("H.G. Wells, Little Wars, 1913")).toEqual(["H.G. Wells", "Little Wars, 1913"]);
+    expect(attributionLines("Ian Fleming, Goldfinger, 1959")).toEqual(["Ian Fleming", "Goldfinger, 1959"]);
+    expect(attributionLines("The Legend of Zelda, 1986")).toEqual(["The Legend of Zelda", "1986"]);
+  });
+
+  it("leaves a name with nowhere to break on one line", () => {
+    expect(attributionLines("Shinji Ikari")).toEqual(["Shinji Ikari"]);
+  });
+
+  it("gives no empty line to a comma with nothing behind it", () => {
+    expect(attributionLines("Shinji Ikari,")).toEqual(["Shinji Ikari"]);
+  });
+
+  it("leaves every attribution in the file with a name on its first line", () => {
+    for (const quote of quotes) {
+      const [name, ...rest] = attributionLines(quote.attribution);
+      expect(name.trim()).not.toBe("");
+      expect(rest.length).toBeLessThanOrEqual(1);
+    }
   });
 });
 

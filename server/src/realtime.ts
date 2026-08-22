@@ -109,6 +109,23 @@ export function broadcastRoom(roomId: number, event: unknown) {
 }
 
 /**
+ * One event, built per reader, because what it may carry depends on who is
+ * reading it. The calendar is why this exists: a hidden event is on the GM's
+ * calendar and not on a player's, and both have to be told when time moves.
+ * A Room Config watcher is a GM or an admin, so it is built for them as one.
+ */
+export function broadcastRoomByRole(roomId: number, build: (role: "gm" | "player") => unknown) {
+  for (const client of clients) {
+    if (client.roomId === roomId) {
+      send(client, build(roomRole(client.accountId, roomId) === "gm" ? "gm" : "player"));
+    } else if (client.watchingRoomId === roomId) {
+      const event = build("gm");
+      if (watcherMayReceive(event)) send(client, event);
+    }
+  }
+}
+
+/**
  * Sends an event to the room's GMs alone. A player's private roll is between
  * them and the GM, so it reaches nobody else at the table.
  */

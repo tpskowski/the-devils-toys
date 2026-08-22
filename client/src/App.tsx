@@ -60,7 +60,7 @@ import type {
   ThemeId
 } from "@devils-toys/shared";
 import { api } from "./api";
-import { quoteScale, randomQuote } from "./quotes";
+import { attributionLines, quoteScale, randomQuote } from "./quotes";
 import { tablesAppUrl, type TablesApp } from "./tables-app";
 import { TablesAppDialog } from "./TablesAppDialog";
 import { shouldSubmitChatOnEnter } from "./chat";
@@ -83,6 +83,7 @@ import { movedRules, PARTY_VIEW, type GroupViewOption } from "@devils-toys/share
 
 import { AppearanceModal } from "./AppearanceModal";
 import { effectiveTheme, readPersonalTheme, writePersonalTheme } from "./personal-theme";
+import { readRailCollapsed, writeRailCollapsed } from "./rail-collapsed";
 import { NpcModal } from "./NpcModal";
 import { SpawnedNpcModal } from "./SpawnedNpcModal";
 import { TablesModal } from "./TablesModal";
@@ -376,6 +377,18 @@ function Workspace({
     [active?.id, themeChoiceRevision]
   );
   const displayedTheme = roomThemePreview ?? effectiveTheme(active?.theme, personalTheme);
+  // A player opens a room to play at it rather than to move between rooms, so
+  // their rail starts out of the way and the scene gets the width. The chevron
+  // brings it back and each room remembers where they last left it; whoever
+  // runs the server or the table keeps the rail wherever they put it.
+  useEffect(() => {
+    if (account.role !== "player") return;
+    setRailCollapsed(active ? (readRailCollapsed(browserStorage, active.id) ?? true) : false);
+  }, [account.role, active?.id]);
+  function moveRail(collapsed: boolean) {
+    setRailCollapsed(collapsed);
+    if (account.role === "player" && active) writeRailCollapsed(browserStorage, active.id, collapsed);
+  }
   return (
     <main className={`workspace theme-${displayedTheme}${railCollapsed ? " rail-collapsed" : ""}`}>
       <aside className={`rail ${menuOpen ? "rail-open" : ""}`}>
@@ -536,7 +549,7 @@ function Workspace({
             <button
               className="rail-collapse"
               type="button"
-              onClick={() => setRailCollapsed(true)}
+              onClick={() => moveRail(true)}
               aria-label="Collapse left navigation"
               title="Collapse navigation"
             >
@@ -549,7 +562,7 @@ function Workspace({
         <button
           className="rail-expand"
           type="button"
-          onClick={() => setRailCollapsed(false)}
+          onClick={() => moveRail(false)}
           aria-label="Expand left navigation"
           title="Expand navigation"
         >
@@ -644,7 +657,13 @@ function Lobby({
         <h2 className={`lobby-quote is-${quoteScale(quote)}`}>
           {quote.selfQuoted ? quote.lines.join("\n") : `“${quote.lines.join("\n")}”`}
         </h2>
-        <p>— {quote.attribution}</p>
+        {/* A name on the first line, the work and the year on the second, so
+            the attribution does not run wider than the quote it sits under. */}
+        <p className="lobby-attribution">
+          {attributionLines(quote.attribution).map((line, index) => (
+            <span key={index}>{index === 0 ? `— ${line}` : line}</span>
+          ))}
+        </p>
         {canCreate && (
           <button className="primary-button" onClick={onCreate}>
             <Plus size={18} /> Create a room

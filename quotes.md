@@ -344,6 +344,48 @@ Magneto
 “Life is the ultimate adventure, and Death, the prize that awaits us all.”
 Wolverine
 
+“If I destroy you, what business is it of yours?”
+Liu Cixin, The Dark Forest, 2008
+
+“When the last vampire is extinct, who will mourn our passing? Will she? Will anyone? Can anyone understand this pain, this loneliness?”
+Meier Link, Vampire Hunter D: Bloodlust, 2000
+
+“I have lived in this world for ten thousand years, and yet you lack the capacity to understand what that truly means. When years cease to have meaning, boredom is a mortal foe.”
+Count Magnus Lee, Vampire Hunter D, 1985
+
+“I am Rei Ginsei, vampire hunter and killing men like you is my greatest pleasure. Prepare to die!”
+Rei Ginsei, , Vampire Hunter D, 1985
+
+“Maps. I love maps. I love to write the stories. The other paperwork is essential, but a drag. I usually start with the maps and then do the story.”
+Dave Arneson, 2009
+
+“Dungeon crawls were, I think, the easiest things to set up because all you had to do was draw a grid map and didn't have to worry about the great outdoors and setting up trees and stuff. People also couldn't go wandering off where you didn't have a map because it was solid rock.”
+Dave Arneson, 2004
+
+“Some other people in my group set up rules for modern games, or even back in the age of Napoleon. We would get in these arguments, though, about historical accuracy, the latest translation of the latest book, and what was "real." Going into a fantasy world was actually again kind of a copout from my point of view.”
+Dave Arneson, 2004
+
+“I'm not going there to die, I'm going there to find out if I'm really alive.”
+Spike Spiegel, Cowboy Bebop, 1998
+
+“Nothing amazing ever happens here.”
+Naota, FLCL, 2000
+
+“It takes an idiot to do cool things. That's why it's cool.”
+Haruko, FLCL, 2000
+
+“I came here to laugh at you.”
+Char Aznable, Mobile Suit Zeta Gundam, 1985
+
+“This must be how the world moves forward a little bit at a time. If you hold on tight to your dreams, if you never give up, if you never become closed-minded... I know your chance will come. When it does, don't hesitate.”
+Marida Cruz, Mobile Suit Gundam: Unicorn, 2010
+
+“No war is ever truly justified. However, to save human lives, we can't always be righteous.”
+Marida Cruz, Mobile Suit Gundam: Unicorn, 2010
+
+“I can see things the rest of you can't see now. Here, even time seems to glow.”
+Marida Cruz, Mobile Suit Gundam: Unicorn, 2010
+
 “It's a dangerous business, Frodo, going out your door. You step onto the road, and if you don't keep your feet, there's no knowing where you might be swept off to.”
 J.R.R. Tolkien
 

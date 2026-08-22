@@ -78,7 +78,16 @@ you narrating the bookkeeping. How far one click moves depends on the
 segments-per-day you set: one advances whole days, and more than one advances a
 part of a day at a time.
 
-Browsing months and years is safe — looking does not move the clock.
+The month and the year in the calendar's own header are the pickers that move
+the page. Browsing is safe — looking does not move the clock — and while you are
+reading another month the header shows only that month, with the date time is
+actually at printed beneath the grid, so a page you are only visiting never
+claims to be today.
+
+An event that runs for several days is on each of them, numbered as it goes. An
+event you have hidden is on your calendar and on nobody else's, drawn dashed
+with a struck-through eye; the switch is on the event itself, here and in Room
+Config, and showing one puts it on the players' calendars as soon as you save.
 
 Building the calendar itself is in [Room Config](room-config.md).
 

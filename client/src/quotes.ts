@@ -62,6 +62,23 @@ export function parseQuotes(markdown: string): Quote[] {
 
 export const quotes = parseQuotes(source);
 
+/**
+ * An attribution split onto the lines the page sets it in: whoever said it on
+ * the first, where they said it on the second.
+ *
+ * The file writes an attribution as one line — a name, then the work, then the
+ * year, each behind a comma — which at the page's size runs wider than the
+ * quote above it. Only the first comma is a break; the rest belong to the
+ * second line ("Goldfinger, 1959" is one thing, not two), and the comma itself
+ * goes, its work now done by the break. A name on its own has nothing to split
+ * and comes back as it went in.
+ */
+export function attributionLines(attribution: string): string[] {
+  const comma = attribution.indexOf(",");
+  if (comma < 0) return [attribution];
+  return [attribution.slice(0, comma), attribution.slice(comma + 1).trim()].filter(Boolean);
+}
+
 /** One of them, at random. Takes its randomness so a test can pin it. */
 export function randomQuote(random: () => number = Math.random): Quote {
   return quotes[Math.min(quotes.length - 1, Math.floor(random() * quotes.length))];

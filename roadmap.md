@@ -5,6 +5,8 @@
 1. When making changes browser sessions often get sent to a 'setting the table' screen and stay there, can that have some kind of retry so the page re-opens?
 2. Add links to a room, e.g. /room/xyz would take someone to room xyz after logging in, if their account doesn't have access dump them to main screen.
 3. Also support invite links taking someone to a table
+4. Add "player preview" view for GMs to open in new tab showing what players see
+5. Rename tabs based on game room
 
 ## Game UI
 

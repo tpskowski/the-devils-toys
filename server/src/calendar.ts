@@ -5,12 +5,50 @@ export { advanceCalendar } from "@devils-toys/shared";
 const calendarEventSchema = z.object({
   id: z.string().min(1).max(80),
   name: z.string().trim().min(1).max(100),
-  cadence: z.enum(["holiday", "weekly", "biweekly", "monthly"]),
+  cadence: z.enum(["holiday", "weekly", "biweekly", "monthly", "interval"]),
   day: z.number().int().min(1).max(400),
-  month: z.number().int().min(0).max(99).optional()
+  month: z.number().int().min(0).max(99).optional(),
+  startYear: z.number().int().min(-99999).max(99999).optional(),
+  intervalDays: z.number().int().min(1).max(400),
+  durationDays: z.number().int().min(1).max(400),
+  hidden: z.boolean()
 });
 
 /**
+ * An event as it was written before one could run for days, be kept from the
+ * players, or count its cycle from a date.
+ *
+ * A biweekly event used to fall on a weekday, on whichever alternating weeks
+ * counting from year one happened to produce. It now counts from a date, so one
+ * written the old way is given the anchor that reproduces exactly the series it
+ * already had: the first day of the calendar that its old rule fired on, which
+ * is day `weekday` of the opening month. Both readings then agree on every day
+ * for ever, and the GM can move the anchor to choose a different phase — the
+ * thing the old rule gave them no way to say.
+ */
+function calendarEventInput(value: unknown, daysPerWeek: number) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return value;
+  const event = value as Record<string, unknown>;
+  const legacyBiweekly = event.cadence === "biweekly" && !("startYear" in event);
+  return {
+    ...event,
+    // Day is left exactly as it was: read as a day of the opening month it
+    // lands on the same offset the weekday rule fired on first, so the series
+    // is unchanged. A weekday that was past the end of the week — and so never
+    // happened at all — becomes an ordinary day of the month, and starts.
+    ...(legacyBiweekly ? { startYear: 1, month: 0 } : {}),
+    ...("intervalDays" in event ? {} : { intervalDays: daysPerWeek }),
+    ...("durationDays" in event ? {} : { durationDays: 1 }),
+    ...("hidden" in event ? {} : { hidden: false })
+  };
+}
+
+/**
+ * A calendar written by an older build read as one this build understands. It
+ * matters more here than elsewhere: a calendar that fails to parse is replaced
+ * by the default, so a field a room never had would cost it every month it
+ * named and every holiday on it.
+ *
  * Older calendars used the number of segment names as the number of parts in a
  * day. Preserve that intent while moving the count into its own setting.
  */
@@ -18,10 +56,14 @@ export function calendarInput(value: unknown) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return value;
   const record = value as Record<string, unknown>;
   const segmentNames = Array.isArray(record.segmentNames) ? record.segmentNames : [];
+  const daysPerWeek = typeof record.daysPerWeek === "number" && record.daysPerWeek >= 1 ? record.daysPerWeek : 7;
   return {
     ...record,
     ...("segmentsPerDay" in record ? {} : { segmentsPerDay: Math.max(1, segmentNames.length) }),
-    ...("revision" in record ? {} : { revision: 0 })
+    ...("revision" in record ? {} : { revision: 0 }),
+    ...(Array.isArray(record.events)
+      ? { events: record.events.map((event) => calendarEventInput(event, daysPerWeek)) }
+      : {})
   };
 }
 

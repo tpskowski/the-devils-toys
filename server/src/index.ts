@@ -19,7 +19,7 @@ import { canResetAccountPassword } from "./account-permissions.js";
 import { managementRouter } from "./management.js";
 import { mediaRouter } from "./media.js";
 import { audioRouter, pauseRoomAudio } from "./audio.js";
-import { attachRealtime, broadcastRoom, disconnectAccount, sendToRoomGms } from "./realtime.js";
+import { attachRealtime, broadcastRoom, broadcastRoomByRole, disconnectAccount, sendToRoomGms } from "./realtime.js";
 import { npcRouter } from "./npcs.js";
 import { DEFAULT_TABLE_ROLL_NOTICE, tableRouter } from "./tables.js";
 import { tagRouter } from "./table-tags.js";
@@ -42,6 +42,7 @@ import { projectFile } from "./paths.js";
 import { rulesMarkdown, systemIdSchema, systemOrThrow } from "./systems.js";
 import { roomRules, setRoomRules, systemRules } from "./system-rules.js";
 import {
+  calendarForRole,
   calendarNowMessage,
   damageExpression,
   THEME_IDS,
@@ -434,7 +435,7 @@ app.get("/api/rooms/:roomId", requireAuth, (req: AuthedRequest, res) => {
       archived: Boolean(room.archived),
       role,
       calendarEnabled: Boolean(calendar_enabled),
-      calendar: readCalendar(calendar_json),
+      calendar: calendarForRole(readCalendar(calendar_json), role),
       mapNotationEnabled: Boolean(map_notation_enabled),
       musicEnabled: Boolean(music_enabled),
       rules: roomRules(roomId, room.system)
@@ -541,7 +542,7 @@ app.put("/api/rooms/:roomId/calendar", requireAuth, (req: AuthedRequest, res) =>
     db.exec("ROLLBACK");
     throw error;
   }
-  broadcastRoom(roomId, { type: "calendar-updated", calendar });
+  broadcastRoomByRole(roomId, (role) => ({ type: "calendar-updated", calendar: calendarForRole(calendar, role) }));
   res.json({ calendar });
 });
 
@@ -567,7 +568,7 @@ app.post("/api/rooms/:roomId/calendar/advance", requireAuth, (req: AuthedRequest
     db.exec("ROLLBACK");
     throw error;
   }
-  broadcastRoom(roomId, { type: "calendar-updated", calendar });
+  broadcastRoomByRole(roomId, (role) => ({ type: "calendar-updated", calendar: calendarForRole(calendar, role) }));
   broadcastRoom(roomId, { type: "message", message });
   res.json({ calendar, message });
 });
