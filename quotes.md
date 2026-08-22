@@ -50,7 +50,7 @@ Oshino Ōgi
 “He who fights with monsters should look to it that he himself does not become a monster.”
 Friedrich Nietzsche
 
-“A game for boys from twelve years of age to one hundred and fifty and for that more intelligent sort of firl who likes boys' games and books.”
+“A game for boys from twelve years of age to one hundred and fifty and for that more intelligent sort of girl who likes boys' games and books.”
 H.G. Wells, Little Wars, 1913
 
 “If you gaze long into an abyss, the abyss also gazes into you.”
@@ -171,7 +171,7 @@ J.R.R. Tolkien
 Gandalf the Grey
 
 “We've had one, yes. But what about second breakfast?”
--Pippin Took
+Pippin Took
 
 “As long the Earth, Sun, and Moon exist, everything will be alright.”
 Yui Ikari
@@ -223,6 +223,106 @@ Eliza Cassan
 “The need to be observed and understood was once satisfied by God. Now we can implement same functionality with data-mining algorithms.”
 Morpheus
 
+“See battle Boo? Run, Boo, run!”
+Minsc
+
+“No, you'll warrant no villain's exposition from me.”
+Jon Irenicus
+
+“I live, I die. I LIVE AGAIN!”
+Nux
+
+“You dare to refuse my batchall? ”
+Nikolai Malthus
+
+“It's been a long time...far too long. They've brought the war to me because they've forgotten. They've forgotten that before I became Prince of the Federated Suns, a command couch was my throne, a neurohelmet was my crown, and the battlefield was my domain. After tonight, no one will ever forget that again.”
+Hanse Davion
+
+“My dear, I give you the Cappellen Confederation.”
+Hanse Davion
+
+“To hell with information, sir, ammunition is ammunition!”
+Patch McQuire, 1st Somerset Strikers
+
+“Reactor online,
+sensors online,
+weapons online,
+all systems nominal”
+Mechwarrior 2
+
+“It's dangerous to go alone! Take this.”
+The Legend of Zelda, 1986
+
+“If you’ve got a problem with the world, change yourself. If that’s a problem, close your eyes, shut your mouth, and live like a hermit.”
+Motoko Kusanagi, Ghost in the Shell: Stand Alone Complex
+
+“Just a whisper. I hear it in my ghost.”
+Motoko Kusanagi, Ghost in the Shell: Stand Alone Complex
+
+“If you let AIs handle everything; then even the mice will outsmart you.”
+Motoko Kusanagi, Ghost in the Shell: Stand Alone Complex
+
+“Justice. I can't think of another word more loved by the people. It does have a nice ring to it. However, without ever exercising your own strength, you seek the death of others at the hands of someone else. Well, the justice you refer to smells pretty rotten to me.”
+Balalaika, Black Lagoon
+
+“If you cling to life, you live in fear of death. And that fear will cloud your judgment.”
+Revy, Black Lagoon
+
+“People are like dice, a certain Frenchman said that. You throw yourself in the direction of your own choosing. People are free because they can do that. Everyone's circumstances are different, but no matter how small the choice, at the very least, you can throw yourself. It's not chance or fate. It's the choice you made.”
+Rokuro Okajima, Black Lagoon
+
+“There's a noose that hangs at the entrance to the city. It's a message to be read by all who encounter it. For the cautious, the sane - it's a warning. For the reckless, the wild at heart - an invitation they cannot refuse.”
+Okajima Rokuro, Black Lagoon
+
+“This women deserves revenge, and we all deserve to die”
+Bud, Kill Bill: Vol. 2
+
+“I can tell you with no ego, this is my finest sword. If on your journey, you should encounter God, God will be cut.”
+Hattori Hanzo, Kill Bill: Vol. 1
+
+“You must have big rats if you need Hattori Hanzo's steel.”
+Hattori Hanzo, Kill Bill: Vol. 1
+
+“Now, if any of you sons of bitches got anything else to say, now's the fucking time!”
+O-Ren Ishii, Kill Bill: Vol. 1
+
+“Dying In Our Sleep Is A Luxury Our Kind Is Rarely Afforded. My Gift To You.”
+Elle Driver, Kill Bill: Vol. 1
+
+“It's Mercy, Compassion, And Forgiveness I Lack. Not Rationality!”
+The Bride, Kill Bill: Vol. 1
+
+“Those Of You Lucky Enough To Still Have Their Lives, Take Them With You!”
+The Bride, Kill Bill: Vol. 1
+
+“Hate is a place, someone who can't take sadness goes”
+Godo, Berserk
+
+“You're right, we are mortal and fragile. But even if we are tortured or wounded, we'll fight to survive. You should feel the pain we feel and understand. I am the messenger that will deliver you to that pain and understanding.”
+Guts, Berserk
+
+“I've got until dawn to kill all of you.”
+Guts, Berserk
+
+“Are you Thor, the god of hammers?”
+Odin, Thor: Ragnarok
+
+“We take Pete's car, we drive over to Mum's, we go in, take care of Philip, then we grab Mum, we go over to Liz's place, hole up, have a cup of tea and wait for this whole thing to blow over.”
+Shaun, Shaun of the Dead
+
+“'Tis but a scratch!”
+The Black Knight, Monty Python and the Holy Grail
+
+“Listen, strange women lyin' in ponds distributin' swords is no basis for a system of government. Supreme executive power derives from a mandate from the masses, not from some farcical aquatic ceremony.”
+Dennis, Monty Python and the Holy Grail
+
+“By what name are you known?”
+“There are some who call me... Tim?”
+Monty Python and the Quest for the Holy Grail
+
+“We shall see how brave you are when nailed to the walls of Hoover Dam, your body facing west so you may watch your world die.”
+Legate Lanius
+
 “I'm a person who believes in karma. Better retaliation from authorities than punishment from the gods, no?”
 Anita Mui
 
@@ -243,3 +343,22 @@ Magneto
 
 “Life is the ultimate adventure, and Death, the prize that awaits us all.”
 Wolverine
+
+“Don't Panic.”
+Douglas Adams, Hitchhiker's Guide the Galaxy
+
+“Space is big. You just won't believe how vastly, hugely, mind-bogglingly big it is. I mean, you may think it's a long way down the road to the chemist's, but that's just peanuts to space.”
+Douglas Adams, Hitchhiker's Guide the Galaxy
+
+“You know,” said Arthur, “it's at times like this, when I'm trapped in a Vogon airlock with a man from Betelgeuse, and about to die of asphyxiation in deep space that I really wish I'd listened to what my mother told me when I was young.”
+“Why, what did she tell you?”
+“I don't know, I didn't listen.”
+Douglas Adams, Hitchhiker's Guide the Galaxy
+
+“Meanwhile, the poor Babel fish, by effectively removing all barriers to communication between different races and cultures, has caused more and bloodier wars than anything else in the history of creation.”
+Douglas Adams, Hitchhiker's Guide the Galaxy
+
+“The story so far:
+In the beginning the Universe was created.
+This has made a lot of people very angry and been widely regarded as a bad move.”
+Douglas Adams
