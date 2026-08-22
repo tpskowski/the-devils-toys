@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { ArrowDown, ArrowUp, Check, GripVertical, ListMusic, Pencil, Plus, Trash2, X } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
+import { ArrowDown, ArrowUp, Check, FileUp, GripVertical, ListMusic, Pencil, Plus, Trash2, X } from "lucide-react";
 import type { MediaAsset, RoomAudioState, RoomPlaylist } from "@devils-toys/shared";
 import { api } from "./api";
 
@@ -81,6 +81,7 @@ export function RoomConfigPlaylists({ roomId, revision }: { roomId: number; revi
   const [over, setOver] = useState<number>();
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
+  const fileInput = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async () => {
     setAudio(await api<RoomAudioState>(`/api/rooms/${roomId}/audio`));
@@ -113,6 +114,41 @@ export function RoomConfigPlaylists({ roomId, revision }: { roomId: number; revi
       setError((cause as Error).message);
     } finally {
       setBusy("");
+    }
+  }
+
+  /**
+   * Music arrives here as well as from the room, because this is the screen a GM
+   * is on when they are putting a soundtrack together and going back into the
+   * room to add the file they forgot is not part of that job.
+   *
+   * A file at a time, so one the server refuses — not really an MP3, past the
+   * size limit, past the server's storage allowance — costs itself and not the
+   * rest of the selection. What failed is named beside what went in.
+   */
+  async function upload(event: ChangeEvent<HTMLInputElement>) {
+    const files = [...(event.target.files ?? [])];
+    event.target.value = "";
+    if (!files.length) return;
+    setError("");
+    const failures: string[] = [];
+    try {
+      for (const [index, file] of files.entries()) {
+        setBusy(`Uploading ${index + 1} of ${files.length}…`);
+        const form = new FormData();
+        form.append("file", file);
+        try {
+          await api(`/api/rooms/${roomId}/audio`, { method: "POST", body: form });
+        } catch (cause) {
+          failures.push(`${file.name}: ${(cause as Error).message}`);
+        }
+      }
+      await load();
+    } catch (cause) {
+      failures.push((cause as Error).message);
+    } finally {
+      setBusy("");
+      setError(failures.join(" "));
     }
   }
 
@@ -369,15 +405,21 @@ export function RoomConfigPlaylists({ roomId, revision }: { roomId: number; revi
           <small className="room-config-muted">
             {audio.tracks.length} track{audio.tracks.length === 1 ? "" : "s"} ·{" "}
             {library.filter((album) => album.name).length} album
-            {library.filter((album) => album.name).length === 1 ? "" : "s"} · uploaded in the room
+            {library.filter((album) => album.name).length === 1 ? "" : "s"}
           </small>
+          <div className="rc-upload">
+            <button type="button" onClick={() => fileInput.current?.click()} disabled={Boolean(busy)}>
+              <FileUp size={15} /> Add MP3s
+            </button>
+            <input ref={fileInput} type="file" multiple hidden accept="audio/mpeg,.mp3" onChange={upload} />
+          </div>
           <label className="rc-checkbox">
             <input type="checkbox" checked={grouped} onChange={(event) => setGrouped(event.target.checked)} />
             Group by album
           </label>
         </header>
         {audio.tracks.length === 0 ? (
-          <p className="room-config-muted">No music uploaded yet.</p>
+          <p className="room-config-muted">No music yet. Add MP3s above and their tags are read as they arrive.</p>
         ) : (
           <div className="rc-table-wrap">
             <table className="rc-table rc-music-table">

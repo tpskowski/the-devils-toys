@@ -123,6 +123,10 @@ Named, ordered lists of the room's music, beside the room's music itself.
 
 ![The Playlists section](../images/gm-config-playlists.png)
 
+**Add MP3s** puts music in the room without leaving the panel — one file or a
+selection — and the tags are read as each one arrives. A file the server refuses
+is named and the rest of the selection still lands.
+
 A playlist is a view over the library rather than a gate on it: a track in no
 playlist is still in the room and still playable. The room's music is grouped by
 album in track order, and this is also where you fix what the tag reader got
