@@ -82,7 +82,7 @@ import { defaultGroupView, GroupPage, type GroupView } from "./GroupPage";
 import { movedRules, PARTY_VIEW, type GroupViewOption } from "@devils-toys/shared";
 
 import { AppearanceModal } from "./AppearanceModal";
-import { effectiveTheme, readPersonalTheme, writePersonalTheme } from "./personal-theme";
+import { effectiveTheme, readPersonalThemeForRole, writePersonalTheme } from "./personal-theme";
 import { readRailCollapsed, writeRailCollapsed } from "./rail-collapsed";
 import { NpcModal } from "./NpcModal";
 import { SpawnedNpcModal } from "./SpawnedNpcModal";
@@ -373,8 +373,8 @@ function Workspace({
   // Read on render rather than in an effect so opening a room never shows one
   // theme before settling on another.
   const personalTheme = useMemo(
-    () => (active ? readPersonalTheme(browserStorage, active.id) : undefined),
-    [active?.id, themeChoiceRevision]
+    () => readPersonalThemeForRole(active?.role, browserStorage, active?.id),
+    [active?.id, active?.role, themeChoiceRevision]
   );
   const displayedTheme = roomThemePreview ?? effectiveTheme(active?.theme, personalTheme);
   // A player opens a room to play at it rather than to move between rooms, so
