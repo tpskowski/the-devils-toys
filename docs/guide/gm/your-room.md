@@ -26,13 +26,14 @@ The sliders icon at the top right of the room.
 override the theme for themselves without affecting anybody else, so you are
 setting the default rather than dictating.
 
-Three features are off until you turn them on:
+Four features are off until you turn them on:
 
 |                    | What turning it on does                                               |
 | ------------------ | --------------------------------------------------------------------- |
 | **Calendar**       | Gives the room a shared in-game date, and you the ability to move it. |
 | **Map notation**   | Lets everyone draw, label, and mark up maps together.                 |
 | **Music playback** | Shows shared music controls to the room.                              |
+| **Wiki**           | Adds the room notebook to Refs and Room Config.                       |
 
 Each one also adds its section to Room Config, so a feature you have switched
 off is still listed there with the switch that turns it on — that is where
@@ -40,6 +41,11 @@ people go looking for it.
 
 Turning music off pauses whatever is playing rather than leaving it running
 silently.
+
+Turning the Wiki off removes it from the room entirely: pages, folders, search,
+and mentions stop being available to every role. It does not delete the
+notebook. Turn it on again and the pages return with their ownership and sharing
+as they were.
 
 ## What your system offers
 

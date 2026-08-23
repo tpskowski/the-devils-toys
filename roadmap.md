@@ -7,6 +7,7 @@
 3. Also support invite links taking someone to a table
 4. Add "player preview" view for GMs to open in new tab showing what players see
 5. Rename tabs based on game room
+6. on mobile can't create new PC
 
 ## Game UI
 
@@ -54,7 +55,7 @@
 
 ## Data Stuff
 
-1. Set up export/import of single tables (include characters and players who are in that table)
+1. Set up export/import of single tables (include characters and players who are in that table). Campaign bundles already move prepared material — including Wiki pages — but deliberately do not move accounts, memberships, or characters.
 2. Set up export/import of all data
 
 ## Gamne Config

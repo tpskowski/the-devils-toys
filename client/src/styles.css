@@ -2537,6 +2537,109 @@ button:disabled {
 .markdown code {
   font-family: "DM Mono", monospace;
 }
+.map-legend-panel {
+  position: absolute;
+  z-index: 5;
+  top: 58px;
+  right: 12px;
+  bottom: 12px;
+  width: min(420px, calc(100% - 24px));
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--surface), var(--bg) 12%);
+  box-shadow: 0 14px 35px color-mix(in srgb, #000, transparent 68%);
+}
+.map-legend-panel > header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 13px;
+  border-bottom: 1px solid var(--line);
+}
+.map-legend-panel .eyebrow {
+  margin: 0 0 3px;
+}
+.map-legend-panel h2 {
+  margin: 0;
+  font:
+    600 15px/1.2 Unbounded,
+    sans-serif;
+  letter-spacing: -0.04em;
+}
+.map-legend-panel header > button {
+  display: grid;
+  place-items: center;
+  padding: 3px;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+.map-legend-panel header > button:hover {
+  color: var(--accent);
+}
+.map-legend-body {
+  min-height: 0;
+  overflow-y: auto;
+  padding: 15px;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.map-legend-body > p {
+  margin: 0;
+  color: var(--muted);
+}
+.map-legend-mention {
+  margin-bottom: 12px !important;
+  padding: 7px 9px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+}
+@media (max-width: 640px) {
+  .map-legend-panel {
+    top: 50px;
+    right: 6px;
+    bottom: 6px;
+    width: calc(100% - 12px);
+  }
+}
+.wiki-mention {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.7em;
+  margin: 0 0.08em;
+  padding: 0 0.42em;
+  border: 1px solid color-mix(in srgb, var(--accent), transparent 55%);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent), transparent 91%);
+  color: var(--text);
+  font:
+    600 0.82em/1.35 Inter,
+    sans-serif;
+  vertical-align: baseline;
+}
+button.wiki-mention {
+  cursor: pointer;
+}
+button.wiki-mention:hover,
+button.wiki-mention:focus-visible {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.wiki-mention-npc {
+  border-color: color-mix(in srgb, #b87a4a, var(--line) 35%);
+}
+.wiki-mention-follower {
+  border-color: color-mix(in srgb, #6b9e86, var(--line) 35%);
+}
+.wiki-mention-asset {
+  border-color: color-mix(in srgb, #708cb5, var(--line) 35%);
+}
+.wiki-mention-item {
+  border-color: color-mix(in srgb, #a17fba, var(--line) 35%);
+}
 .member-admin {
   gap: 22px;
 }

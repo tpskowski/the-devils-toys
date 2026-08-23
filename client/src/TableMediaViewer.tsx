@@ -16,6 +16,7 @@ import { isMarkdownAsset, MediaContent } from "./MediaContent";
 import { mediaLabel } from "./media-label";
 import { SceneViewer, type ScenePing } from "./SceneViewer";
 import { useTabPicker } from "./TabPicker";
+import type { WikiMentionTarget } from "./RulesMarkdown";
 
 type MediaTab = "map" | "scene" | "reference" | "group" | "encounter" | "rules";
 
@@ -39,8 +40,10 @@ export function TableMediaViewer({
   mapNotationEnabled,
   mapNotationSyncRevision,
   mapNotationChange,
+  wikiRevision,
   rulesPage,
-  requestedTab
+  requestedTab,
+  onOpenWikiMention
 }: {
   roomId: number;
   media: RoomMediaState;
@@ -60,8 +63,11 @@ export function TableMediaViewer({
   mapNotationEnabled: boolean;
   mapNotationSyncRevision: number;
   mapNotationChange?: MapNotationEvent;
+  /** Refreshes an already-open map legend after a coarse wiki update. */
+  wikiRevision: number;
   rulesPage: ReactNode;
-  requestedTab?: { tab: "rules"; revision: number };
+  requestedTab?: { tab: "rules" | "group"; revision: number };
+  onOpenWikiMention?: (mention: WikiMentionTarget) => void;
 }) {
   const [tab, setTab] = useState<MediaTab>("scene");
   const [mapId, setMapId] = useState<number>();
@@ -250,11 +256,14 @@ export function TableMediaViewer({
             <BookOpen /> Rules
           </button>
         </div>
-        {isGm && (
-          <button className="table-media-manage" onClick={onManage} title="Manage Library" aria-label="Manage Library">
-            <Settings2 />
-          </button>
-        )}
+        <button
+          className="table-media-manage"
+          onClick={onManage}
+          title={isGm ? "Manage Library" : "Open References and Wiki"}
+          aria-label={isGm ? "Manage Library" : "Open References and Wiki"}
+        >
+          {isGm ? <Settings2 /> : <BookOpen />}
+        </button>
       </nav>
       {picker.menu}
 
@@ -262,6 +271,7 @@ export function TableMediaViewer({
         {tab === "map" && (
           <SceneViewer
             scene={selectedMap ?? null}
+            roomId={roomId}
             label="Map"
             isGm={isGm}
             pings={pings}
@@ -272,11 +282,15 @@ export function TableMediaViewer({
                 ? { roomId, syncRevision: mapNotationSyncRevision, change: mapNotationChange }
                 : undefined
             }
+            legend={media.map?.id === selectedMap?.id ? media.map.legend : null}
+            legendRevision={wikiRevision}
+            onOpenWikiMention={onOpenWikiMention}
           />
         )}
         {tab === "scene" && (
           <SceneViewer
             scene={selectedScene ?? null}
+            roomId={roomId}
             label="Scene"
             isGm={isGm}
             pings={pings}

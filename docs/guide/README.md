@@ -20,14 +20,16 @@ sessions.
    getting into the room.
 2. **[The table](the-table.md)** — the layout: the tab strip, the scene, the
    chat rail, and the phone.
-3. **[Your character](your-character.md)** — the sheet, your inventory, and what
+3. **[The wiki](wiki.md)** — your private notebook, shared pages, and map
+   legends.
+4. **[Your character](your-character.md)** — the sheet, your inventory, and what
    you are holding.
-4. **[Building a character](building-a-character.md)** — the book's own creation
+5. **[Building a character](building-a-character.md)** — the book's own creation
    chapter, where your game has one.
-5. **[Rolling dice](rolling-dice.md)** — the dice box, private rolls, and
+6. **[Rolling dice](rolling-dice.md)** — the dice box, private rolls, and
    rolling from the sheet.
-6. **[Combat](combat.md)** — the tracker, the board, and your turn.
-7. **[The party](the-party.md)** — the Group tab and what the party owns
+7. **[Combat](combat.md)** — the tracker, the board, and your turn.
+8. **[The party](the-party.md)** — the Group tab and what the party owns
    together.
 
 ## Two things worth knowing early
@@ -38,8 +40,8 @@ Clicking the active tab a second time opens that list. Nothing else hints at it.
 
 **Almost everything is shared.** What you type in chat, the dice you roll, the
 notes you draw on a map — the whole table sees them as they happen. The
-exceptions are called out where they come up: private rolls, and your own
-character sheet before you make a character active.
+exceptions are called out where they come up: private rolls, your own character
+sheet before you make a character active, and your private Wiki pages.
 
 ## What is not here yet
 

@@ -78,6 +78,16 @@ test that needs a system also exercises the installer.
 - What a reader is sent is decided by role, in `readRoomTags`: a GM sees the room, and a player sees their own characters, the party's hirelings, and the Library entries revealed to them. The vocabulary is read from what that reader was sent, so it cannot leak the words on the cast they have not met.
 - A subject's tags are written whole rather than a tag at a time. The editor sends the list it is showing, so a tag someone else removed while this one was typing loses to whoever saved last rather than coming back on its own.
 
+## The wiki
+
+- The Wiki is a room notebook, not system content and not a second Library. `wiki_enabled` is a room feature gate: when it is off, no Wiki route is available; switching it back on returns the pages and folders it hid.
+- Every page and folder has an owner. A player may read and change their own pages and manage their own folders; a GM may do both across the room. A page begins private. Only the GM may change its `visible` flag, which is the whole server-side sharing decision rather than a client-side display preference.
+- Reader filtering is a privacy boundary: a private page cannot be read, listed, searched, or mentioned by another player. Folder listings retain only the ancestors needed to reach pages that reader may read; seeing such a path grants no right to manage someone else's folder.
+- Page saves are optimistic and revision-bound. A stale save returns the current page for an explicit choice between it and the author's draft; do not replace this with last-write-wins or an automatic merge.
+- Markdown is safe text. The rich editor is optional and falls back to a plain textarea. A valid `@` chip is one of the bounded Wiki mention kinds and resolves on the server when the page is saved; a reader whose access later changes gets the written label rather than a live target. A shared page must never make an unrevealed NPC, hidden asset, private page, or inaccessible character discoverable.
+- A map has at most one legend page and a page belongs to at most one map. Binding and unbinding are GM actions. The map's visibility and its legend page's visibility are independent: a private legend is absent from a player's otherwise visible map.
+- Campaign bundles carry portable Wiki Markdown and `wiki/index.json`, not database ids or ownership. Export rewrites resolvable room targets to bundle paths, turns characters and unresolved targets into plain labels with warnings, and import resolves those paths only inside the new room. Imported pages and folders belong to the importing GM; page sharing, hierarchy, order, and map bindings travel.
+
 ## Character creation
 
 - A system's creation chapter is data like everything else it declares. `SYSTEM_CREATION_STEPS` in `shared/src/system-creation.ts` is the list of behaviours this build can perform, beside `SYSTEM_RULE_FEATURES`, and a step naming a kind this build has not got is refused at install rather than ignored — for the reason a rule naming an unknown feature is, since a wizard whose third screen silently never appears is worse than one that will not install. The whole of it is optional: a system that declares none keeps the blank sheet and the placeholder name, and that is still a perfectly good way to make a character.
@@ -159,6 +169,7 @@ _Cairn, Monolith, and Cities Without Number are named below as worked examples. 
 ## Server tests that touch the database
 
 - Importing most server modules reaches `db.ts`, which opens a database as a side effect. `server/src/test-setup.ts` redirects every test file to a throwaway data directory so no test can read or migrate the configured one.
+- Run a targeted server test as `npm run test:server -- <test-file>`. Never invoke Vitest against a `server/src` path from the repository root without the root config: `db.ts` deliberately refuses a Vitest process that did not pass through the isolation setup.
 - A test that needs a specific starting schema writes its own database with `node:sqlite`, sets `DEVILS_TOYS_DATA_DIR`, then calls `vi.resetModules()` and imports `./db.js` to apply the real schema and migrations. Close each database and remove the directory afterwards; Windows keeps files locked while a handle is open.
 - Confirm a migration test fails when the migration is removed. A test that passes against an unmigrated database is not testing the migration.
 

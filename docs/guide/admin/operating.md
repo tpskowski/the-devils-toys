@@ -16,7 +16,9 @@ Everything mutable sits under one directory — `.data/` by default, moved with
 ```
 
 They are kept together deliberately, so one filesystem copy is a complete
-backup. Nothing the application writes lives anywhere else.
+backup. Nothing the application writes lives anywhere else. Wiki pages, folders,
+their private/shared state, and map-legend bindings are rows in that database;
+they travel with the same stopped-server backup as every other room record.
 
 ## Configuration
 

@@ -35,6 +35,7 @@ export interface ConfigurableRoom {
   calendarEnabled: boolean;
   mapNotationEnabled: boolean;
   musicEnabled: boolean;
+  wikiEnabled: boolean;
   /** Where the room stands on its system's optional rules, already resolved. */
   rules: RoomRuleSettings;
   access: RoomConfigAccess;
@@ -49,9 +50,11 @@ interface RoomRow {
   calendar_enabled: number;
   map_notation_enabled: number;
   music_enabled: number;
+  wiki_enabled: number;
 }
 
-const roomColumns = "id, name, system, theme, archived, calendar_enabled, map_notation_enabled, music_enabled";
+const roomColumns =
+  "id, name, system, theme, archived, calendar_enabled, map_notation_enabled, music_enabled, wiki_enabled";
 const prefixedRoomColumns = roomColumns
   .split(", ")
   .map((column) => `r.${column}`)
@@ -67,6 +70,7 @@ function publicRoom(row: RoomRow, access: RoomConfigAccess): ConfigurableRoom {
     calendarEnabled: Boolean(row.calendar_enabled),
     mapNotationEnabled: Boolean(row.map_notation_enabled),
     musicEnabled: Boolean(row.music_enabled),
+    wikiEnabled: Boolean(row.wiki_enabled),
     rules: roomRules(row.id, row.system),
     access
   };

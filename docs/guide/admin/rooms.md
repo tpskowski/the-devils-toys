@@ -83,6 +83,7 @@ you must type the room's name to arm the button.
 That is accurate, and broader than it sounds. Deleting a room removes its
 uploaded files from disk as well as its rows: every map, scene, reference, and
 audio track, plus the portraits belonging to its hirelings and shared assets.
+It also removes its Wiki pages, folders, links, and map legends.
 
 What is _not_ deleted:
 

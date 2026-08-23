@@ -29,6 +29,7 @@ tomb-of-the-serpent-kings/
 ├── assets/          the ship, the stronghold — whatever your system has
 ├── obligations/     what the party owes, and to whom
 ├── tables/          random tables, in the shape The Devil's Tables exports
+├── wiki/            Markdown pages and an index of their folders, sharing, and legends
 ├── manifest.json    what this campaign is called, and which system it is for
 ├── room.json        a name, a theme, and which room features to switch on
 ├── calendar.json    months, days, and the year it starts in
@@ -53,6 +54,37 @@ display names and the order things appear in:
 ```
 
 Without it, a file is named after itself — `the-keep.png` becomes "the keep".
+
+### Wiki pages
+
+`wiki/` holds Markdown pages, with `wiki/index.json` describing their folder,
+title, order, whether they are shared with players, and (where applicable) the
+map that carries each page as its legend. A small example:
+
+```json
+{
+  "folders": [{ "path": "places", "sortOrder": 0 }],
+  "files": [
+    {
+      "file": "places/the-keep.md",
+      "title": "The Keep",
+      "visible": true,
+      "map": "maps/the-keep.png"
+    }
+  ]
+}
+```
+
+An export writes this for you. It carries pages and folders as prepared room
+material, not the account that wrote them: importing makes the receiving GM the
+owner. The page's shared/private setting travels, so review private notes before
+giving a campaign zip to someone else.
+
+Wiki chips travel where they can. Links to maps, NPCs, followers, room items,
+and other wiki pages are rewritten from portable paths to their new room's
+entries. A link to a player character cannot travel — characters are not part of
+a campaign — and an unresolved link becomes its visible label, with the import
+preview saying so.
 
 ### The one rule to remember
 
@@ -152,6 +184,10 @@ A campaign is prepared material, not a save file. It carries none of this:
 - characters, or anything on a character sheet;
 - the chat log, dice rolls, or what is currently on screen;
 - which encounter is running.
+
+The Wiki's pages and folders do travel, but not their player ownership. They are
+prepared material, like an NPC or a handout; a player notebook you mean to keep
+private is best kept out of a campaign export.
 
 An imported encounter always arrives **prepared, not running**.
 

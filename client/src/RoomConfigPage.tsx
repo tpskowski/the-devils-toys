@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   CalendarDays,
+  BookOpen,
   ExternalLink,
   Images,
   ListMusic,
@@ -28,9 +29,11 @@ import { RoomConfigLibrary } from "./RoomConfigLibrary";
 import { RoomConfigNpcs } from "./RoomConfigNpcs";
 import { RoomConfigPlaylists } from "./RoomConfigPlaylists";
 import { RoomConfigRoster } from "./RoomConfigRoster";
+import { RoomConfigWiki } from "./RoomConfigWiki";
 import "./room-config.css";
 
 const sectionIcons: Record<RoomConfigSectionId, typeof Images> = {
+  wiki: BookOpen,
   library: Images,
   npcs: UserRound,
   items: Swords,
@@ -43,7 +46,8 @@ const sectionIcons: Record<RoomConfigSectionId, typeof Images> = {
 
 const toggleLabels: Record<RoomConfigToggle, string> = {
   calendarEnabled: "Enable the calendar for this room",
-  musicEnabled: "Enable music for this room"
+  musicEnabled: "Enable music for this room",
+  wikiEnabled: "Enable the wiki for this room"
 };
 
 export function RoomConfigPage() {
@@ -304,6 +308,10 @@ export function RoomConfigPage() {
         ) : current?.id === "library" ? (
           <div className="room-config-section">
             <RoomConfigLibrary roomId={config.room.id} revision={revision} />
+          </div>
+        ) : current?.id === "wiki" ? (
+          <div className="room-config-section">
+            <RoomConfigWiki roomId={config.room.id} revision={revision} />
           </div>
         ) : current?.id === "npcs" ? (
           <div className="room-config-section">

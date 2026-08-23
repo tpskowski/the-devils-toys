@@ -13,6 +13,7 @@ import { storedUploadBytes } from "./upload-usage.js";
 import { all, db, one } from "./db.js";
 import { broadcastRoom } from "./realtime.js";
 import { roomAccessRole } from "./room-config-permissions.js";
+import { mayReadWikiFile } from "./wiki-permissions.js";
 
 export const mediaRouter = express.Router();
 
@@ -117,6 +118,25 @@ export function removeCachedThumbnails(mediaId: number) {
   }
 }
 
+/** A map tells a reader about its legend only after the ordinary wiki page
+ * access gate permits that same reader to fetch it. */
+function readableMapLegend(account: AuthedRequest["account"], roomId: number, mediaId: number) {
+  const page = one<{
+    room_id: number;
+    owner_account_id: number | null;
+    visible: number;
+    slug: string;
+    title: string;
+  }>(
+    `SELECT room_id, owner_account_id, visible, slug, title
+       FROM wiki_pages WHERE room_id = ? AND map_media_id = ?`,
+    roomId,
+    mediaId
+  );
+  if (!page || !mayReadWikiFile(account!, page)) return null;
+  return { slug: page.slug, title: page.title };
+}
+
 function removeUploaded(file?: Express.Multer.File) {
   if (!file || path.basename(file.filename) !== file.filename) return;
   try {
@@ -216,7 +236,10 @@ mediaRouter.get("/rooms/:roomId/media", requireAuth, (req: AuthedRequest, res) =
         roomId
       )
     : undefined;
-  const map = activeMap && (role === "gm" || Boolean(activeMap.visible)) ? publicMedia(activeMap) : null;
+  const map =
+    activeMap && (role === "gm" || Boolean(activeMap.visible))
+      ? { ...publicMedia(activeMap), legend: readableMapLegend(req.account, roomId, activeMap.id) }
+      : null;
   const scene = activeScene && (role === "gm" || Boolean(activeScene.visible)) ? publicMedia(activeScene) : null;
 
   if (role === "gm") {

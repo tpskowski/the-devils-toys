@@ -1,8 +1,11 @@
-import { useEffect, useRef, useState, type PointerEvent } from "react";
-import { ArrowUpRight, Focus, ImagePlus, MapPin, Minus, Plus } from "lucide-react";
+import { useCallback, useEffect, useRef, useState, type PointerEvent } from "react";
+import { ArrowUpRight, BookOpen, Focus, ImagePlus, MapPin, Minus, Plus, X } from "lucide-react";
 import type { MapNotationEvent, MediaAsset } from "@devils-toys/shared";
 import { mediaLabel } from "./media-label";
 import { MapNotationLayer } from "./MapNotationLayer";
+import type { MapLegend } from "./MediaModal";
+import { api } from "./api";
+import { RulesMarkdown, type WikiMentionTarget } from "./RulesMarkdown";
 
 export interface ScenePing {
   id: number;
@@ -12,26 +15,119 @@ export interface ScenePing {
   displayName: string;
 }
 
+function MapLegendPanel({
+  roomId,
+  legend,
+  isGm,
+  revision,
+  onClose,
+  onOpenWikiMention
+}: {
+  roomId: number;
+  legend: MapLegend;
+  isGm: boolean;
+  revision: number;
+  onClose: () => void;
+  onOpenWikiMention?: (mention: WikiMentionTarget) => void;
+}) {
+  const [page, setPage] = useState<{ slug: string; title: string; markdown: string }>();
+  const [mentionSummary, setMentionSummary] = useState<string>();
+
+  useEffect(() => {
+    let stopped = false;
+    api<{ page: { slug: string; title: string; markdown: string } }>(
+      `/api/rooms/${roomId}/wiki/pages/${encodeURIComponent(legend.slug)}`
+    )
+      .then((result) => {
+        if (!stopped) setPage(result.page);
+      })
+      // A legend can be unshared while its map stays open. Close rather than
+      // telling a player that a private page exists.
+      .catch(() => {
+        if (!stopped) onClose();
+      });
+    return () => {
+      stopped = true;
+    };
+  }, [legend.slug, revision, onClose, roomId]);
+
+  function openMention(mention: WikiMentionTarget) {
+    if (mention.kind === "npc" || mention.kind === "item") {
+      setMentionSummary(`${mention.kind === "npc" ? "NPC" : "Item"}: ${mention.label}`);
+      return;
+    }
+    onOpenWikiMention?.(mention);
+  }
+
+  return (
+    <aside
+      id="map-legend-panel"
+      className="map-legend-panel"
+      role="dialog"
+      aria-modal="false"
+      aria-labelledby="map-legend-title"
+    >
+      <header>
+        <div>
+          <p className="eyebrow">Map legend</p>
+          <h2 id="map-legend-title">{page?.title ?? legend.title}</h2>
+        </div>
+        <button type="button" onClick={onClose} aria-label="Close legend">
+          <X size={16} />
+        </button>
+      </header>
+      <div className="map-legend-body">
+        {mentionSummary && (
+          <p className="map-legend-mention" role="status">
+            {mentionSummary}
+          </p>
+        )}
+        {page ? (
+          <RulesMarkdown
+            markdown={page.markdown}
+            idPrefix={`map-legend-${page.slug}`}
+            roomId={roomId}
+            isGm={isGm}
+            onWikiMention={openMention}
+          />
+        ) : (
+          <p>Opening legend…</p>
+        )}
+      </div>
+    </aside>
+  );
+}
+
 export function SceneViewer({
   scene,
+  roomId,
   label = "Scene",
   isGm,
   pings,
   onManage,
   onPing,
-  mapNotation
+  mapNotation,
+  legend,
+  legendRevision = 0,
+  onOpenWikiMention
 }: {
   scene: MediaAsset | null;
+  roomId: number;
   label?: "Map" | "Scene";
   isGm: boolean;
   pings: ScenePing[];
   onManage: () => void;
   onPing: (x: number, y: number) => void;
   mapNotation?: { roomId: number; syncRevision: number; change?: MapNotationEvent };
+  /** Present only where this reader is allowed to fetch the linked wiki page. */
+  legend?: MapLegend | null;
+  legendRevision?: number;
+  onOpenWikiMention?: (mention: WikiMentionTarget) => void;
 }) {
   const [scale, setScale] = useState(1);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [pingMode, setPingMode] = useState(false);
+  const [legendOpen, setLegendOpen] = useState(false);
   const viewer = useRef<HTMLDivElement>(null);
   const image = useRef<HTMLImageElement>(null);
   const drag = useRef<{ x: number; y: number; originX: number; originY: number } | undefined>(undefined);
@@ -40,6 +136,16 @@ export function SceneViewer({
     setScale(1);
     setOffset({ x: 0, y: 0 });
   }, [scene?.id]);
+  useEffect(() => setLegendOpen(false), [scene?.id, legend?.slug]);
+  const closeLegend = useCallback(() => setLegendOpen(false), []);
+  useEffect(() => {
+    if (!legendOpen) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") closeLegend();
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [closeLegend, legendOpen]);
 
   function zoom(next: number) {
     const bounded = Math.min(4, Math.max(1, next));
@@ -187,6 +293,19 @@ export function SceneViewer({
         >
           <MapPin />
         </button>
+        {label === "Map" && legend && (
+          <button
+            type="button"
+            className={legendOpen ? "active" : ""}
+            onClick={() => setLegendOpen((current) => !current)}
+            title={`Open ${legend.title}`}
+            aria-label={`Open map legend: ${legend.title}`}
+            aria-pressed={legendOpen}
+            aria-controls="map-legend-panel"
+          >
+            <BookOpen />
+          </button>
+        )}
         <a
           href={scene.url}
           target="_blank"
@@ -197,6 +316,16 @@ export function SceneViewer({
           <ArrowUpRight />
         </a>
       </div>
+      {label === "Map" && legendOpen && legend && (
+        <MapLegendPanel
+          roomId={roomId}
+          legend={legend}
+          isGm={isGm}
+          revision={legendRevision}
+          onClose={closeLegend}
+          onOpenWikiMention={onOpenWikiMention}
+        />
+      )}
     </div>
   );
 }

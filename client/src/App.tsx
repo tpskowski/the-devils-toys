@@ -73,7 +73,7 @@ import { roomConfigPath } from "./room-config";
 import { helpPath } from "./help";
 import { MediaModal, type RoomMediaState } from "./MediaModal";
 import { LibraryModal } from "./LibraryModal";
-import { RulesMarkdown } from "./RulesMarkdown";
+import { RulesMarkdown, type WikiMentionTarget } from "./RulesMarkdown";
 import type { ScenePing } from "./SceneViewer";
 import { TableMediaViewer } from "./TableMediaViewer";
 import { AudioDock, AudioModal } from "./AudioPlayer";
@@ -752,6 +752,11 @@ function TableRoom({
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [media, setMedia] = useState<RoomMediaState>({ map: null, scene: null, references: [] });
   const [mediaOpen, setMediaOpen] = useState(false);
+  const [wikiPageToOpen, setWikiPageToOpen] = useState<string>();
+  const [wikiAssetToOpen, setWikiAssetToOpen] = useState<number>();
+  // Wiki changes are deliberately coarse-grained. Open readers refetch while
+  // an editor keeps its local draft until its normal revision-aware save.
+  const [wikiRevision, setWikiRevision] = useState(0);
   const [pings, setPings] = useState<ScenePing[]>([]);
   const [audio, setAudio] = useState<RoomAudioState>(emptyRoomAudio);
   const [audioOpen, setAudioOpen] = useState(false);
@@ -776,7 +781,7 @@ function TableRoom({
   // Reported by the group page once its definition has loaded; until then the
   // only tab anyone can be on is the party.
   const [groupViews, setGroupViews] = useState<GroupViewOption[]>([PARTY_VIEW]);
-  const [rulesTabRevision, setRulesTabRevision] = useState(0);
+  const [requestedTableTab, setRequestedTableTab] = useState<{ tab: "rules" | "group"; revision: number }>();
   /** The tracker sits above chat; collapsing it leaves only its header. */
   const [trackerOpen, setTrackerOpen] = useState(true);
 
@@ -808,6 +813,45 @@ function TableRoom({
   function closeDice() {
     setDiceOpen(false);
     setDiceInitialSave(undefined);
+  }
+
+  /** Wiki pages own page navigation; room-level targets reopen the surface the
+   * table already uses. NPCs and items remain label-only in the wiki because
+   * there is no player-safe detail payload for either one. */
+  function openWikiMention(mention: WikiMentionTarget) {
+    if (mention.kind === "page") {
+      setWikiAssetToOpen(undefined);
+      setWikiPageToOpen(mention.target);
+      setMediaOpen(true);
+      return;
+    }
+    if (mention.kind === "asset") {
+      const mediaId = Number(mention.target);
+      if (Number.isSafeInteger(mediaId) && mediaId > 0) {
+        setWikiPageToOpen(undefined);
+        setWikiAssetToOpen(mediaId);
+        setMediaOpen(true);
+      }
+      return;
+    }
+    if (mention.kind === "pc") {
+      const characterId = Number(mention.target);
+      if (Number.isSafeInteger(characterId) && characterId > 0) {
+        setMediaOpen(false);
+        setWikiPageToOpen(undefined);
+        setWikiAssetToOpen(undefined);
+        setCharacterToOpen(characterId);
+        setCharactersOpen(true);
+      }
+      return;
+    }
+    if (mention.kind === "follower") {
+      setMediaOpen(false);
+      setWikiPageToOpen(undefined);
+      setWikiAssetToOpen(undefined);
+      setGroupView("hirelings");
+      setRequestedTableTab((current) => ({ tab: "group", revision: (current?.revision ?? 0) + 1 }));
+    }
   }
 
   async function loadMedia() {
@@ -917,6 +961,12 @@ function TableRoom({
         if (data.type === "media-updated") {
           loadMedia();
           loadEncounters();
+        }
+        if (data.type === "wiki-updated") {
+          setWikiRevision((current) => current + 1);
+          // A legend is a wiki page bound to a map, so its title, visibility,
+          // or binding can change even though the media row did not.
+          loadMedia();
         }
         if (data.type === "audio-updated") loadAudio();
         if (data.type === "audio-playback") setAudio((current) => ({ ...current, playback: data.playback }));
@@ -1074,7 +1124,9 @@ function TableRoom({
             mapNotationEnabled={detail.room.mapNotationEnabled}
             mapNotationSyncRevision={mapNotationSyncRevision}
             mapNotationChange={mapNotationChange}
-            requestedTab={rulesTabRevision ? { tab: "rules", revision: rulesTabRevision } : undefined}
+            wikiRevision={wikiRevision}
+            requestedTab={requestedTableTab}
+            onOpenWikiMention={openWikiMention}
             rulesPage={
               <Rules
                 roomId={room.id}
@@ -1255,14 +1307,38 @@ function TableRoom({
       )}
       {mediaOpen &&
         (detail.room.role === "gm" ? (
-          <LibraryModal roomId={room.id} media={media} onChanged={loadMedia} onClose={() => setMediaOpen(false)} />
+          <LibraryModal
+            roomId={room.id}
+            media={media}
+            wikiEnabled={detail.room.wikiEnabled}
+            wikiRevision={wikiRevision}
+            onChanged={loadMedia}
+            onClose={() => {
+              setMediaOpen(false);
+              setWikiPageToOpen(undefined);
+              setWikiAssetToOpen(undefined);
+            }}
+            onOpenMention={openWikiMention}
+            wikiPageSlug={wikiPageToOpen}
+            assetToOpen={wikiAssetToOpen}
+          />
         ) : (
           <MediaModal
             roomId={room.id}
             role={detail.room.role}
+            accountId={accountId}
             media={media}
+            wikiEnabled={detail.room.wikiEnabled}
+            wikiRevision={wikiRevision}
             onChanged={loadMedia}
-            onClose={() => setMediaOpen(false)}
+            onClose={() => {
+              setMediaOpen(false);
+              setWikiPageToOpen(undefined);
+              setWikiAssetToOpen(undefined);
+            }}
+            onOpenMention={openWikiMention}
+            wikiPageSlug={wikiPageToOpen}
+            assetToOpen={wikiAssetToOpen}
           />
         ))}
       {audioOpen && detail.room.musicEnabled && (
@@ -1340,7 +1416,7 @@ function TableRoom({
           onRules={() => {
             closeDice();
             setRulesFocus(systemDefinition.rollRulesQuery);
-            setRulesTabRevision((current) => current + 1);
+            setRequestedTableTab((current) => ({ tab: "rules", revision: (current?.revision ?? 0) + 1 }));
           }}
           onClose={closeDice}
         />

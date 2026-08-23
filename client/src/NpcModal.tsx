@@ -1,10 +1,11 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { Plus, Save, Search, Trash2, X } from "lucide-react";
+import { Eye, EyeOff, Plus, Save, Search, Trash2, X } from "lucide-react";
 import { tagsMatch } from "@devils-toys/shared";
 import { RulesMarkdown } from "./RulesMarkdown";
 import { api } from "./api";
 import { useRoomTags } from "./room-tags";
 import { TagChips, TagField } from "./TagField";
+import { npcRevealCopy } from "./npc-visibility";
 
 interface BuiltInNpc {
   name: string;
@@ -14,6 +15,7 @@ interface CustomNpc {
   id: number;
   name: string;
   notes: string;
+  revealed: boolean;
   updatedAt: string;
 }
 
@@ -75,6 +77,19 @@ export function NpcModal({ roomId, revision, onClose }: { roomId: number; revisi
       body: JSON.stringify({ name: customNpc.name, notes: customNpc.notes })
     });
     await load(selected);
+  }
+
+  async function setRevealed(npc: CustomNpc, revealed: boolean) {
+    setError("");
+    try {
+      await api(`/api/rooms/${roomId}/npcs/${npc.id}/reveal`, {
+        method: "POST",
+        body: JSON.stringify({ revealed })
+      });
+      await load(selected);
+    } catch (cause) {
+      setError((cause as Error).message);
+    }
   }
 
   return (
@@ -168,11 +183,31 @@ export function NpcModal({ roomId, revision, onClose }: { roomId: number; revisi
                     onChange={(next) => roomTags.save("npc", customNpc.id, next)}
                   />
                 )}
+                {(() => {
+                  const reveal = npcRevealCopy(customNpc.revealed);
+                  return (
+                    <section className={`npc-reveal${customNpc.revealed ? "" : " hidden"}`}>
+                      <div>
+                        <strong>{reveal.state}</strong>
+                        <small>{reveal.detail}</small>
+                      </div>
+                      <button
+                        type="button"
+                        aria-pressed={customNpc.revealed}
+                        onClick={() => void setRevealed(customNpc, !customNpc.revealed)}
+                      >
+                        {customNpc.revealed ? <EyeOff /> : <Eye />}
+                        {reveal.action}
+                      </button>
+                    </section>
+                  );
+                })()}
                 <div className="npc-actions">
-                  <button onClick={save}>
+                  <button type="button" onClick={save}>
                     <Save /> Save
                   </button>
                   <button
+                    type="button"
                     className="danger-text"
                     onClick={async () => {
                       if (!confirm(`Delete ${customNpc.name}?`)) return;
