@@ -68,10 +68,11 @@ References are handouts, and you only see the ones your GM has revealed. They
 can be images or written pages. A new one appearing mid-session is normal — that
 is the GM handing you something.
 
-Where the room has its Wiki switched on, **Refs** also has a **Wiki** tab. It is
-the room notebook, not another kind of handout: your new pages begin private,
-and the GM shares a page when it is for the whole table. [The wiki](wiki.md)
-explains its folders, links, and map legends.
+Where the room has its Wiki switched on, **Wiki** appears as its own main-panel
+tab. It is the room notebook, not another kind of handout: browse its folders
+and pages without leaving the table, keep new pages private, and let the GM
+share a page when it is for the whole table. The same notebook remains available
+from **Refs**. [The wiki](wiki.md) explains its folders, links, and map legends.
 
 ## Rules
 

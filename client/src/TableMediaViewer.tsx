@@ -1,4 +1,4 @@
-import { useEffect, useState, type MouseEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from "react";
 import {
   ChevronDown,
   Clapperboard,
@@ -17,8 +17,9 @@ import { mediaLabel } from "./media-label";
 import { SceneViewer, type ScenePing } from "./SceneViewer";
 import { useTabPicker } from "./TabPicker";
 import type { WikiMentionTarget } from "./RulesMarkdown";
+import { WikiWorkspace } from "./WikiWorkspace";
 
-type MediaTab = "map" | "scene" | "reference" | "group" | "encounter" | "rules";
+type MediaTab = "map" | "scene" | "reference" | "wiki" | "group" | "encounter" | "rules";
 
 interface GroupPicker {
   options: readonly { id: string; label: string }[];
@@ -33,6 +34,7 @@ export function mapLegendForSelection(map: RoomMediaState["map"], selectedMapId:
 
 export function TableMediaViewer({
   roomId,
+  accountId,
   media,
   isGm,
   pings,
@@ -46,12 +48,14 @@ export function TableMediaViewer({
   mapNotationEnabled,
   mapNotationSyncRevision,
   mapNotationChange,
+  wikiEnabled,
   wikiRevision,
   rulesPage,
   requestedTab,
   onOpenWikiMention
 }: {
   roomId: number;
+  accountId: number;
   media: RoomMediaState;
   isGm: boolean;
   pings: ScenePing[];
@@ -69,6 +73,7 @@ export function TableMediaViewer({
   mapNotationEnabled: boolean;
   mapNotationSyncRevision: number;
   mapNotationChange?: MapNotationEvent;
+  wikiEnabled: boolean;
   /** Refreshes an already-open map legend after a coarse wiki update. */
   wikiRevision: number;
   rulesPage: ReactNode;
@@ -79,6 +84,7 @@ export function TableMediaViewer({
   const [mapId, setMapId] = useState<number>();
   const [sceneId, setSceneId] = useState<number>();
   const [referenceId, setReferenceId] = useState<number>();
+  const wikiLeaveRequest = useRef<((afterDiscard: () => void) => void) | undefined>(undefined);
 
   const library = media.library ?? [];
   const maps = library.filter((item) => item.kind === "map");
@@ -98,7 +104,8 @@ export function TableMediaViewer({
   useEffect(() => {
     if (!groupPage && tab === "group") setTab("scene");
     if (!encounterEnabled && tab === "encounter") setTab("scene");
-  }, [Boolean(groupPage), encounterEnabled, tab]);
+    if (!wikiEnabled && tab === "wiki") setTab("scene");
+  }, [Boolean(groupPage), encounterEnabled, tab, wikiEnabled]);
 
   useEffect(() => {
     if (requestedTab) setTab(requestedTab.tab);
@@ -154,7 +161,9 @@ export function TableMediaViewer({
             ? "Group view"
             : tab === "encounter"
               ? "Encounter"
-              : "Rules";
+              : tab === "wiki"
+                ? "Wiki"
+                : "Rules";
 
   const picker = useTabPicker({
     options: pickerOptions,
@@ -181,7 +190,8 @@ export function TableMediaViewer({
       picker.toggle(event);
       return;
     }
-    setTab(nextTab);
+    if (tab === "wiki" && wikiLeaveRequest.current) wikiLeaveRequest.current(() => setTab(nextTab));
+    else setTab(nextTab);
   }
 
   return (
@@ -225,6 +235,17 @@ export function TableMediaViewer({
             )}
           </button>
         </div>
+        {wikiEnabled && (
+          <div className={`table-media-tab${tab === "wiki" ? " active" : ""}`}>
+            <button
+              className="table-media-tab-main"
+              aria-label="Wiki"
+              onClick={(event) => activateTab("wiki", event)}
+            >
+              <BookOpen /> Wiki
+            </button>
+          </div>
+        )}
         {groupPage && (
           <div className={`table-media-tab${tab === "group" ? " active" : ""}`}>
             <button
@@ -313,6 +334,19 @@ export function TableMediaViewer({
         <div className="table-rules-panel" hidden={tab !== "rules"}>
           {rulesPage}
         </div>
+        {wikiEnabled && (
+          <div className="table-wiki-panel" hidden={tab !== "wiki"}>
+            <WikiWorkspace
+              roomId={roomId}
+              accountId={accountId}
+              isGm={isGm}
+              revision={wikiRevision}
+              embedded
+              leaveRequestRef={wikiLeaveRequest}
+              onOpenMention={onOpenWikiMention}
+            />
+          </div>
+        )}
         {tab === "reference" && (
           <div className="table-references">
             {selectedReference ? (

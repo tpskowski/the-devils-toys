@@ -1119,11 +1119,13 @@ function TableRoom({
         <section className="scene-stage">
           <TableMediaViewer
             roomId={room.id}
+            accountId={accountId}
             media={media}
             isGm={detail.room.role === "gm"}
             mapNotationEnabled={detail.room.mapNotationEnabled}
             mapNotationSyncRevision={mapNotationSyncRevision}
             mapNotationChange={mapNotationChange}
+            wikiEnabled={detail.room.wikiEnabled}
             wikiRevision={wikiRevision}
             requestedTab={requestedTableTab}
             onOpenWikiMention={openWikiMention}

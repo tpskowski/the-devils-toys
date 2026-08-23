@@ -4,7 +4,8 @@
 
 The **Wiki** is the room's notebook: pages and folders for the facts a table
 discovers, the places it has been, and the notes each player wants to keep. It
-appears as a tab in **Refs** once the GM has turned it on for the room.
+appears as a **Wiki** tab in the room's main panel once the GM has turned it on.
+The same notebook is also available from **Refs** and Room Config.
 
 It is not the rulebook, and it is not a second Library. The Library holds the
 files a room owns; the Wiki is written Markdown that can point at those files
