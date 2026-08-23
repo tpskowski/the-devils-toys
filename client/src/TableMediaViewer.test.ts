@@ -31,7 +31,9 @@ describe("map legend selection", () => {
 
 describe("main table tabs", () => {
   it("shows Wiki as a primary tab only when the room enables it", () => {
-    expect(renderViewer(true)).toContain('aria-label="Wiki"');
+    const enabled = renderViewer(true);
+    expect(enabled).toContain('aria-label="Wiki"');
+    expect(enabled.indexOf('aria-label="Wiki"')).toBeGreaterThan(enabled.indexOf('aria-label="Rules"'));
     expect(renderViewer(false)).not.toContain('aria-label="Wiki"');
   });
 });

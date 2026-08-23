@@ -1945,7 +1945,7 @@ function CreatePlayer({ roomId, onClose }: { roomId: number; onClose: () => void
   );
 }
 
-function RoomSettings({
+export function RoomSettings({
   room,
   optionalRules,
   isAdmin,
@@ -1967,6 +1967,7 @@ function RoomSettings({
   const [calendarEnabled, setCalendarEnabled] = useState(room.calendarEnabled);
   const [mapNotationEnabled, setMapNotationEnabled] = useState(room.mapNotationEnabled);
   const [musicEnabled, setMusicEnabled] = useState(room.musicEnabled);
+  const [wikiEnabled, setWikiEnabled] = useState(room.wikiEnabled);
   const [rules, setRules] = useState<RoomRuleSettings>(room.rules);
   const [confirmName, setConfirmName] = useState("");
   const [error, setError] = useState("");
@@ -1982,7 +1983,7 @@ function RoomSettings({
     try {
       await api(`/api/rooms/${room.id}`, {
         method: "PATCH",
-        body: JSON.stringify({ theme, calendarEnabled, mapNotationEnabled, musicEnabled, rules: moved })
+        body: JSON.stringify({ theme, calendarEnabled, mapNotationEnabled, musicEnabled, wikiEnabled, rules: moved })
       });
       await onChanged();
       onClose();
@@ -2064,6 +2065,16 @@ function RoomSettings({
           </span>
           <span className="toggle-control">
             <input type="checkbox" checked={musicEnabled} onChange={(event) => setMusicEnabled(event.target.checked)} />
+            <span aria-hidden="true" />
+          </span>
+        </label>
+        <label className={`toggle-row ${wikiEnabled ? "enabled" : ""}`}>
+          <span className="toggle-copy">
+            <strong>Wiki</strong>
+            <small>Show the room notebook and its shared and private pages.</small>
+          </span>
+          <span className="toggle-control">
+            <input type="checkbox" checked={wikiEnabled} onChange={(event) => setWikiEnabled(event.target.checked)} />
             <span aria-hidden="true" />
           </span>
         </label>

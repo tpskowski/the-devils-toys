@@ -26,14 +26,14 @@ The sliders icon at the top right of the room.
 override the theme for themselves without affecting anybody else, so you are
 setting the default rather than dictating.
 
-Four features are off until you turn them on:
+These four room features can be switched independently:
 
 |                    | What turning it on does                                               |
 | ------------------ | --------------------------------------------------------------------- |
 | **Calendar**       | Gives the room a shared in-game date, and you the ability to move it. |
 | **Map notation**   | Lets everyone draw, label, and mark up maps together.                 |
 | **Music playback** | Shows shared music controls to the room.                              |
-| **Wiki**           | Adds the room notebook to Refs and Room Config.                       |
+| **Wiki**           | Adds the room notebook after Rules, and to Refs and Room Config.      |
 
 Each one also adds its section to Room Config, so a feature you have switched
 off is still listed there with the switch that turns it on — that is where
