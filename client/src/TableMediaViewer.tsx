@@ -25,6 +25,12 @@ interface GroupPicker {
   selected: string;
   onSelect: (id: string) => void;
 }
+
+/** Only the room's active map can expose its legend; an empty map slot has no legend to read. */
+export function mapLegendForSelection(map: RoomMediaState["map"], selectedMapId: number | undefined) {
+  return map && map.id === selectedMapId ? (map.legend ?? null) : null;
+}
+
 export function TableMediaViewer({
   roomId,
   media,
@@ -282,7 +288,7 @@ export function TableMediaViewer({
                 ? { roomId, syncRevision: mapNotationSyncRevision, change: mapNotationChange }
                 : undefined
             }
-            legend={media.map?.id === selectedMap?.id ? media.map.legend : null}
+            legend={mapLegendForSelection(media.map, selectedMap?.id)}
             legendRevision={wikiRevision}
             onOpenWikiMention={onOpenWikiMention}
           />
