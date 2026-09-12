@@ -47,7 +47,7 @@ test("a player shares a private wiki page only when the GM reveals it", async ({
 
   try {
     await openWiki(alice.page, "Wiki Campaign", "Player");
-    await alice.page.getByTitle("New folder").click();
+    await alice.page.getByRole("complementary", { name: "Wiki pages" }).getByTitle("New folder").click();
     await alice.page.locator(".wiki-folder-create input").fill("Alice's leads");
     await alice.page.getByRole("button", { name: "Create", exact: true }).click();
     await alice.page.getByRole("button", { name: "Alice's leads", exact: true }).click();

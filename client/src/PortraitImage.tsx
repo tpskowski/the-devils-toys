@@ -58,7 +58,13 @@ export function PortraitImage({ src, alt }: { src: string; alt: string }) {
               }
             }}
             onMouseDown={(event) => {
-              if (event.target === event.currentTarget) setOpen(false);
+              if (event.target === event.currentTarget) {
+                // A backdrop click would otherwise focus the dialog after this
+                // state update unmounts it, overwriting the trigger focus the
+                // effect cleanup restores.
+                event.preventDefault();
+                setOpen(false);
+              }
             }}
           >
             <figure>
