@@ -21,6 +21,13 @@ async function joinPlayer(
 async function openWiki(page: Page, roomName: string, role: "Game master" | "Player") {
   await page.getByRole("button", { name: `Open ${roomName}, ${role}` }).click();
   await expect(page.getByRole("heading", { name: roomName })).toBeVisible();
+  // The GM has the Wiki directly in the table tabs. Players go through the
+  // References shell below so this test also covers its unsaved-draft guard.
+  if (role === "Game master") {
+    await page.getByLabel("Wiki").click();
+    await expect(page.getByRole("complementary", { name: "Wiki pages" })).toBeVisible();
+    return;
+  }
   const desktopLibrary = page.getByLabel(role === "Game master" ? "Manage Library" : "Open References and Wiki");
   if (await desktopLibrary.isVisible()) await desktopLibrary.click();
   else await page.getByRole("button", { name: "Refs", exact: true }).click();
