@@ -24,7 +24,7 @@ async function openWiki(page: Page, roomName: string, role: "Game master" | "Pla
   // The GM has the Wiki directly in the table tabs. Players go through the
   // References shell below so this test also covers its unsaved-draft guard.
   if (role === "Game master") {
-    await page.getByLabel("Wiki").click();
+    await page.getByRole("button", { name: "Wiki", exact: true }).click();
     await expect(page.getByRole("complementary", { name: "Wiki pages" })).toBeVisible();
     return;
   }
