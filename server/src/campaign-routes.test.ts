@@ -145,4 +145,17 @@ describe("what a preview says would happen", () => {
     expect(result.systemMatch).toBe("exact");
     expect(result.campaign.name).toBe("Tomb");
   });
+
+  it("includes incoming wiki pages and explicitly indexed empty folders in the preview", () => {
+    const result = preview({
+      "wiki/notes.md": "# Notes",
+      "wiki/index.json": JSON.stringify({ folders: [{ path: "empty", sortOrder: 0 }] })
+    });
+    expect(result.kinds).toEqual(
+      expect.arrayContaining([
+        { kind: "wiki pages", new: 1, conflict: 0 },
+        { kind: "wiki folders", new: 1, conflict: 0 }
+      ])
+    );
+  });
 });

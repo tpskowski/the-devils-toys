@@ -25,6 +25,24 @@ export interface NotationTransform {
   y: number;
 }
 
+/** Whether a viewport point is over the visible, transformed map image. */
+export function pointIsOnNotationPlane(
+  clientX: number,
+  clientY: number,
+  bounds: NotationBounds,
+  transform: NotationTransform = { scale: 1, x: 0, y: 0 }
+) {
+  const scale = Math.max(0.01, transform.scale);
+  const centerX = bounds.left + bounds.width / 2 + transform.x;
+  const centerY = bounds.top + bounds.height / 2 + transform.y;
+  return (
+    clientX >= centerX - (bounds.width * scale) / 2 &&
+    clientX <= centerX + (bounds.width * scale) / 2 &&
+    clientY >= centerY - (bounds.height * scale) / 2 &&
+    clientY <= centerY + (bounds.height * scale) / 2
+  );
+}
+
 /** Converts a viewport pointer position into the map coordinates beneath it. */
 export function notationPoint(
   clientX: number,

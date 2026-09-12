@@ -1,4 +1,5 @@
 import { isSystemId, type SystemId } from "@devils-toys/shared";
+import { previewSelection } from "./player-preview";
 export function stripMarkdownMetadata(markdown: string) {
   const withoutBom = markdown.replace(/^\uFEFF/, "");
   const frontMatter = /^---[ \t]*\r?\n[\s\S]*?\r?\n(?:---|\.\.\.)[ \t]*(?:\r?\n|$)/.exec(withoutBom);
@@ -125,6 +126,8 @@ export const standaloneRuleIdPrefix = "standalone-rule";
 
 export function rulesPath(system: SystemId, roomId?: number) {
   const base = `/rules/${system}`;
+  const preview = previewSelection();
+  if (preview) return `${base}?room=${preview.roomId}&previewRoom=${preview.roomId}&previewPlayer=${preview.player}`;
   return roomId === undefined ? base : `${base}?room=${encodeURIComponent(roomId)}`;
 }
 

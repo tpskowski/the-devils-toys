@@ -14,6 +14,7 @@ import {
   labelArea,
   notationArea,
   notationPoint,
+  pointIsOnNotationPlane,
   type NotationArea,
   type NotationBounds,
   type NotationTransform
@@ -30,7 +31,8 @@ export function MapNotationLayer({
   syncRevision,
   change,
   scale,
-  offset
+  offset,
+  mapBounds
 }: {
   roomId: number;
   mediaId: number;
@@ -39,6 +41,8 @@ export function MapNotationLayer({
   change?: MapNotationEvent;
   scale: number;
   offset: { x: number; y: number };
+  /** The map image's fitted, untransformed rectangle within the viewer. */
+  mapBounds: NotationBounds;
 }) {
   const [notations, setNotations] = useState<MapNotation[]>([]);
   const [tool, setTool] = useState<Tool>();
@@ -162,8 +166,15 @@ export function MapNotationLayer({
       if (id) void erase(id);
       return;
     }
-    const bounds = event.currentTarget.getBoundingClientRect();
+    const layerBounds = event.currentTarget.getBoundingClientRect();
+    const bounds = {
+      left: layerBounds.left + mapBounds.left,
+      top: layerBounds.top + mapBounds.top,
+      width: mapBounds.width,
+      height: mapBounds.height
+    };
     const transform = { scale, x: offset.x, y: offset.y };
+    if (!pointIsOnNotationPlane(event.clientX, event.clientY, bounds, transform)) return;
     const start = notationPoint(event.clientX, event.clientY, bounds, transform);
     if (tool === "label") {
       // Clicking away commits the active editor through blur. It deliberately
@@ -271,6 +282,13 @@ export function MapNotationLayer({
   }
 
   const mapTransform = `translate(${offset.x}px, ${offset.y}px) scale(${scale})`;
+  const mapStyle = {
+    left: mapBounds.left,
+    top: mapBounds.top,
+    width: mapBounds.width,
+    height: mapBounds.height,
+    transform: mapTransform
+  };
 
   return (
     <>
@@ -281,12 +299,7 @@ export function MapNotationLayer({
         onPointerUp={up}
         onPointerCancel={cancel}
       >
-        <svg
-          className="map-notation-content"
-          style={{ transform: mapTransform }}
-          viewBox="0 0 1000 1000"
-          preserveAspectRatio="none"
-        >
+        <svg className="map-notation-content" style={mapStyle} viewBox="0 0 1000 1000" preserveAspectRatio="none">
           {notations.map((item) => (
             <NotationShape key={item.id} notation={item} />
           ))}
@@ -300,7 +313,7 @@ export function MapNotationLayer({
             pointerEvents="none"
           />
         </svg>
-        <div className="map-notation-labels" style={{ transform: mapTransform }}>
+        <div className="map-notation-labels" style={mapStyle}>
           {notations.map(
             (item) =>
               item.kind === "label" && (

@@ -7,6 +7,9 @@ import bcrypt from "bcryptjs";
 import { z } from "zod";
 import type { AuthedRequest } from "./auth.js";
 import { authMiddleware, createSession, requireAuth, roomRole } from "./auth.js";
+import { playerPreviewMiddleware } from "./player-preview.js";
+import { playerPreview } from "./preview-context.js";
+import { roomMembers } from "./realtime.js";
 import { all, db, one } from "./db.js";
 import { inGameDisplayName } from "./display-name.js";
 import { config } from "./config.js";
@@ -38,6 +41,7 @@ import { campaignRouter } from "./campaign-routes.js";
 import { roomItemRouter } from "./room-item-routes.js";
 import { playlistRouter } from "./playlists.js";
 import { helpRouter } from "./help.js";
+import { wikiRouter } from "./wiki.js";
 import { roomAccessRole } from "./room-config-permissions.js";
 import { projectFile } from "./paths.js";
 import { rulesMarkdown, systemIdSchema, systemOrThrow } from "./systems.js";
@@ -71,6 +75,7 @@ app.disable("x-powered-by");
 app.use(express.json({ limit: "1mb" }));
 app.use(cookieParser());
 app.use(authMiddleware);
+app.use(playerPreviewMiddleware);
 app.use("/api", invitationRouter);
 app.use("/api", characterRouter);
 app.use("/api", mediaRouter);
@@ -93,6 +98,7 @@ app.use("/api", roomItemRouter);
 app.use("/api", playlistRouter);
 app.use("/api", campaignRouter);
 app.use("/api", helpRouter);
+app.use("/api", wikiRouter);
 app.use("/api", systemRouter);
 function publicMessage(row: {
   id: number;
@@ -334,21 +340,23 @@ app.get("/api/rooms", requireAuth, (req: AuthedRequest, res) => {
     calendar_enabled: number;
     map_notation_enabled: number;
     music_enabled: number;
+    wiki_enabled: number;
   }>(
     // The system's display name comes from the registry rather than from its
     // definition, so a room on a system that is retired — or whose bundle will
     // not load — still says what it is rather than showing a bare id.
     `SELECT r.id, r.name, r.system, s.name AS systemName, r.theme, m.role, r.archived, r.calendar_enabled,
-            r.map_notation_enabled, r.music_enabled FROM rooms r
+            r.map_notation_enabled, r.music_enabled, r.wiki_enabled FROM rooms r
      JOIN memberships m ON m.room_id = r.id
      JOIN systems s ON s.id = r.system WHERE m.account_id = ? ORDER BY r.archived, r.name`,
     req.account!.id
-  ).map(({ calendar_enabled, map_notation_enabled, music_enabled, ...room }) => ({
+  ).map(({ calendar_enabled, map_notation_enabled, music_enabled, wiki_enabled, ...room }) => ({
     ...room,
     archived: Boolean(room.archived),
     calendarEnabled: Boolean(calendar_enabled),
     mapNotationEnabled: Boolean(map_notation_enabled),
     musicEnabled: Boolean(music_enabled),
+    wikiEnabled: Boolean(wiki_enabled),
     rules: roomRules(room.id, room.system)
   }));
   res.json({ rooms });
@@ -384,6 +392,7 @@ app.post("/api/rooms", requireAuth, (req: AuthedRequest, res) => {
       calendarEnabled: false,
       mapNotationEnabled: false,
       musicEnabled: false,
+      wikiEnabled: true,
       // Nothing is recorded for a room this new, so these are the system's
       // own defaults — which is what the room is actually playing by.
       rules: roomRules(roomId, body.system)
@@ -405,8 +414,9 @@ app.get("/api/rooms/:roomId", requireAuth, (req: AuthedRequest, res) => {
     calendar_json: string | null;
     map_notation_enabled: number;
     music_enabled: number;
+    wiki_enabled: number;
   }>(
-    `SELECT id, name, system, theme, archived, calendar_enabled, calendar_json, map_notation_enabled, music_enabled
+    `SELECT id, name, system, theme, archived, calendar_enabled, calendar_json, map_notation_enabled, music_enabled, wiki_enabled
      FROM rooms WHERE id = ?`,
     roomId
   )!;
@@ -431,7 +441,7 @@ app.get("/api/rooms/:roomId", requireAuth, (req: AuthedRequest, res) => {
     role: member.role,
     isAdmin: Boolean(member.is_admin)
   }));
-  const { calendar_enabled, calendar_json, map_notation_enabled, music_enabled, ...roomFields } = room;
+  const { calendar_enabled, calendar_json, map_notation_enabled, music_enabled, wiki_enabled, ...roomFields } = room;
   res.json({
     room: {
       ...roomFields,
@@ -441,9 +451,11 @@ app.get("/api/rooms/:roomId", requireAuth, (req: AuthedRequest, res) => {
       calendar: calendarForRole(readCalendar(calendar_json), role),
       mapNotationEnabled: Boolean(map_notation_enabled),
       musicEnabled: Boolean(music_enabled),
+      wikiEnabled: Boolean(wiki_enabled),
       rules: roomRules(roomId, room.system)
     },
     members,
+    ...(playerPreview.getStore() ? { presence: roomMembers(roomId).filter((member) => member.role === "player") } : {}),
     // The declarations rather than the settings: the labels and hints belong to
     // the system, and only the GM's settings panel has anywhere to put them.
     optionalRules: systemRules(room.system)
@@ -462,6 +474,7 @@ app.patch("/api/rooms/:roomId", requireAuth, (req: AuthedRequest, res) => {
         calendarEnabled: z.boolean().optional(),
         mapNotationEnabled: z.boolean().optional(),
         musicEnabled: z.boolean().optional(),
+        wikiEnabled: z.boolean().optional(),
         /** Only the rules being moved, by the ids the system declared them under. */
         rules: z.record(z.string(), z.boolean()).optional()
       })
@@ -472,6 +485,7 @@ app.patch("/api/rooms/:roomId", requireAuth, (req: AuthedRequest, res) => {
           value.calendarEnabled !== undefined ||
           value.mapNotationEnabled !== undefined ||
           value.musicEnabled !== undefined ||
+          value.wikiEnabled !== undefined ||
           value.rules !== undefined
       ),
     req.body,
@@ -508,6 +522,8 @@ app.patch("/api/rooms/:roomId", requireAuth, (req: AuthedRequest, res) => {
     db.prepare("UPDATE rooms SET music_enabled = ? WHERE id = ?").run(body.musicEnabled ? 1 : 0, roomId);
     if (!body.musicEnabled && currentRoom.music_enabled) pauseRoomAudio(roomId);
   }
+  if (body.wikiEnabled !== undefined)
+    db.prepare("UPDATE rooms SET wiki_enabled = ? WHERE id = ?").run(body.wikiEnabled ? 1 : 0, roomId);
   const easterEggMessages = [
     firstCalendarEnable ? recordSystemMessage(roomId, req.account!.id, CALENDAR_STRICT_TIME_EGG_MESSAGE) : undefined,
     firstMapNotationEnable ? recordSystemMessage(roomId, req.account!.id, MAP_NOTATION_ROAD_EGG_MESSAGE) : undefined

@@ -1,4 +1,4 @@
-import { THEME_IDS, type ThemeId } from "@devils-toys/shared";
+import { THEME_IDS, type RoomRole, type ThemeId } from "@devils-toys/shared";
 
 /**
  * A player's own choice of theme for one room. It is stored in the browser and
@@ -17,6 +17,15 @@ export function readPersonalTheme(storage: Pick<Storage, "getItem"> | undefined,
   } catch {
     return undefined;
   }
+}
+
+/** A room GM always sees the shared room theme, even if this browser has an old player preference. */
+export function readPersonalThemeForRole(
+  role: RoomRole | undefined,
+  storage: Pick<Storage, "getItem"> | undefined,
+  roomId: number | undefined
+): ThemeId | undefined {
+  return role === "player" && roomId !== undefined ? readPersonalTheme(storage, roomId) : undefined;
 }
 
 export function writePersonalTheme(

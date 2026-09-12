@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { BookOpen, Copy, CopyPlus, Plus, Save, Trash2 } from "lucide-react";
+import { BookOpen, Copy, CopyPlus, Eye, EyeOff, Plus, Save, Trash2 } from "lucide-react";
 import type { CharacterItem, NpcStatblockDefinition, RoomConfigRoom, SystemId } from "@devils-toys/shared";
 import { api } from "./api";
 import { RulesMarkdown } from "./RulesMarkdown";
 import { useRoomTags } from "./room-tags";
 import { TagField } from "./TagField";
+import { npcRevealCopy } from "./npc-visibility";
 
 interface BuiltInNpc {
   name: string;
@@ -31,6 +32,7 @@ interface CustomNpc {
   id: number;
   name: string;
   notes: string;
+  revealed: boolean;
   statblock: Record<string, string | number>;
   updatedAt: string;
 }
@@ -413,6 +415,39 @@ export function RoomConfigNpcs({
                 onChange={(next) => roomTags.save("npc", selected.id, next)}
               />
             )}
+
+            {(() => {
+              const reveal = npcRevealCopy(selected.revealed);
+              return (
+                <section className="rc-npc-reveal" aria-label="Player visibility">
+                  <div>
+                    <strong>{reveal.state}</strong>
+                    <span>{reveal.detail}</span>
+                  </div>
+                  <button
+                    type="button"
+                    className={`rc-visibility${selected.revealed ? "" : " hidden"}`}
+                    aria-pressed={selected.revealed}
+                    disabled={Boolean(busy)}
+                    title={`${reveal.action}: ${selected.name}`}
+                    onClick={() =>
+                      void act(
+                        selected.revealed ? "Hiding from players…" : "Revealing to players…",
+                        () =>
+                          api(`/api/rooms/${roomId}/npcs/${selected.id}/reveal`, {
+                            method: "POST",
+                            body: JSON.stringify({ revealed: !selected.revealed })
+                          }),
+                        { success: selected.revealed ? "Hidden from players." : "Revealed to players." }
+                      )
+                    }
+                  >
+                    {selected.revealed ? <Eye size={14} /> : <EyeOff size={14} />}
+                    {reveal.action}
+                  </button>
+                </section>
+              );
+            })()}
 
             <label className="rc-notes">
               <span>Notes</span>

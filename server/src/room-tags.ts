@@ -75,9 +75,9 @@ export function tagsOn(roomId: number, subject: TagSubject, subjectId: number): 
  * Every tag in the room, as much of it as this account may see.
  *
  * A GM sees all of it. A player sees the tags on characters they can already
- * see, on the party's hirelings, and on the library entries revealed to them —
- * and none of the NPC tags, because the NPC catalogue is the GM's alone and its
- * tags would describe a cast the table has not met.
+ * see, on the party's hirelings, the revealed library entries, and the NPCs the
+ * GM has revealed by name. The vocabulary is derived only after this filter, so
+ * the words attached to unrevealed cast members never reach a player either.
  */
 export function readRoomTags(accountId: number, roomId: number, role: "gm" | "player"): RoomTags {
   if (!roomHasFeature(roomId, "tags")) return emptyRoomTags(false);
@@ -85,7 +85,10 @@ export function readRoomTags(accountId: number, roomId: number, role: "gm" | "pl
   if (role === "gm") return collect(rows, true);
   return collect(
     rows.filter((row) => {
-      if (row.subject === "npc") return false;
+      if (row.subject === "npc")
+        return Boolean(
+          one("SELECT 1 FROM custom_npcs WHERE id = ? AND room_id = ? AND revealed = 1", row.subject_id, roomId)
+        );
       if (row.subject === "character") return Boolean(findVisibleCharacter(accountId, roomId, row.subject_id));
       if (row.subject === "scene")
         return Boolean(one("SELECT 1 FROM media WHERE id = ? AND room_id = ? AND visible = 1", row.subject_id, roomId));

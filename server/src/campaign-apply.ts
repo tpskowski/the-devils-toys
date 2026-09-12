@@ -17,6 +17,9 @@ import { parseCustomSet } from "./table-json.js";
 import { knownTags, tagVocabulary } from "./table-tags.js";
 import { storedUploadBytes } from "./upload-usage.js";
 import type { Campaign, CampaignMedia } from "./campaign-bundles.js";
+import { wikiMentions } from "@devils-toys/shared";
+import { replaceWikiMentions, type ResolvedWikiMention } from "./wiki-mentions.js";
+import { rewriteCampaignWikiDirectives, withCampaignWikiDirectiveTarget } from "./campaign-wiki-mentions.js";
 
 /**
  * Landing a staged campaign in a room.
@@ -59,6 +62,7 @@ export interface ApplyResult {
   tables: ApplyTally;
   items: ApplyTally;
   group: ApplyTally;
+  wiki: ApplyTally;
   /** Which room settings were taken, for the confirmation to name them. */
   room: string[];
   bytes: number;
@@ -243,9 +247,11 @@ export function applyCampaign(
   const encounters = tally();
   const tables = tally();
   const items = tally();
+  const wiki = tally();
   /** Bundle path to the row it became, which is what an encounter resolves through. */
   const npcIds = new Map<string, number>();
   const hirelingIds = new Map<string, number>();
+  const wikiIds = new Map<string, { id: number; slug: string }>();
   const group = tally();
   const room: string[] = [];
   const skipped: string[] = [];
@@ -346,8 +352,10 @@ export function applyCampaign(
 
       applyPlaylists(campaign, roomId, mediaIds, options.policy, playlists, ledger);
       applyNpcs(campaign, roomId, accountId, system, options.policy, npcs, skipped, npcIds, ledger);
-      applyItems(campaign, roomId, accountId, system, items, skipped);
+      const itemIds = new Map<string, string>();
+      applyItems(campaign, roomId, accountId, system, items, skipped, itemIds);
       applyGroup(campaign, roomId, system, group, skipped, portraits, hirelingIds, ledger);
+      applyWiki(campaign, roomId, accountId, mediaIds, npcIds, hirelingIds, wikiIds, itemIds, wiki, skipped, ledger);
       applyEncounters(campaign, roomId, accountId, system, mediaIds, npcIds, hirelingIds, encounters, skipped);
       applyTables(campaign, accountId, options.policy, tables, skipped);
       if (options.takeRoomSettings) room.push(...applyRoomSettings(campaign, roomId));
@@ -392,7 +400,231 @@ export function applyCampaign(
   }
   for (const mediaId of supersededMediaIds) removeCachedThumbnails(mediaId);
 
-  return { media, playlists, npcs, encounters, tables, items, group, room, bytes: incoming, skipped };
+  return { media, playlists, npcs, encounters, tables, items, group, wiki, room, bytes: incoming, skipped };
+}
+
+function applyWiki(
+  campaign: Campaign,
+  roomId: number,
+  accountId: number,
+  mediaIds: Map<string, number>,
+  npcIds: Map<string, number>,
+  hirelingIds: Map<string, number>,
+  wikiIds: Map<string, { id: number; slug: string }>,
+  itemIds: Map<string, string>,
+  counts: ApplyTally,
+  skipped: string[],
+  ledger: CampaignLedger
+) {
+  if (!campaign.wiki.pages.length && !campaign.wiki.folders.length) return;
+  const folderIds = new Map<string, number>();
+  const writable = new Set<string>();
+  const paths = new Set<string>();
+  for (const folder of campaign.wiki.folders) {
+    const parts = folder.path.split("/");
+    for (let index = 1; index <= parts.length; index++) paths.add(parts.slice(0, index).join("/"));
+  }
+  for (const page of campaign.wiki.pages) {
+    const parent = page.path.slice("wiki/".length).split("/").slice(0, -1);
+    for (let index = 1; index <= parent.length; index++) paths.add(parent.slice(0, index).join("/"));
+  }
+  for (const folderPath of [...paths].sort(
+    (left, right) => left.split("/").length - right.split("/").length || left.localeCompare(right)
+  )) {
+    const parts = folderPath.split("/");
+    const name = parts.at(-1)!;
+    const parent = parts.length > 1 ? (folderIds.get(parts.slice(0, -1).join("/")) ?? null) : null;
+    const declared = campaign.wiki.folders.find((folder) => folder.path === folderPath);
+    const held = one<{ id: number; owner_account_id: number | null }>(
+      "SELECT id, owner_account_id FROM wiki_folders WHERE room_id = ? AND COALESCE(parent_id, 0) = COALESCE(?, 0) AND name = ? COLLATE NOCASE",
+      roomId,
+      parent,
+      name
+    );
+    // Folders are not ledger rows. Reusing somebody else's folder would both
+    // break imported ownership and silently replace the meaning of its order.
+    // Reuse only the importing account's folder and preserve its local order.
+    if (held && held.owner_account_id !== accountId)
+      throw new Error(`The campaign's wiki folder "${folderPath}" conflicts with a folder owned by another account.`);
+    const id = held
+      ? held.id
+      : Number(
+          db
+            .prepare(
+              "INSERT INTO wiki_folders (room_id, parent_id, name, sort_order, owner_account_id) VALUES (?, ?, ?, ?, ?)"
+            )
+            .run(roomId, parent, name, declared?.sortOrder ?? 0, accountId).lastInsertRowid
+        );
+    folderIds.set(folderPath, id);
+  }
+  const pageSlug = (path: string, title: string) => {
+    const filename = path.slice(path.lastIndexOf("/") + 1).replace(/\.[^.]+$/, "");
+    const root = filename || title;
+    return (
+      root
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "")
+        .slice(0, 70) || "page"
+    );
+  };
+  const folderPath = (id: number | null): string | undefined => {
+    if (id === null) return "";
+    const row = one<{ parent_id: number | null; name: string }>(
+      "SELECT parent_id, name FROM wiki_folders WHERE id = ? AND room_id = ?",
+      id,
+      roomId
+    );
+    if (!row) return;
+    const parent = folderPath(row.parent_id);
+    return parent === undefined ? undefined : `${parent}${parent ? "/" : ""}${row.name}`;
+  };
+  for (const page of campaign.wiki.pages) {
+    const relative = page.path.slice("wiki/".length);
+    const parent = relative.split("/").slice(0, -1).join("/");
+    let slug = pageSlug(relative, page.title);
+    let suffix = 2;
+    while (one("SELECT 1 FROM wiki_pages WHERE room_id = ? AND slug = ?", roomId, slug))
+      slug = `${pageSlug(relative, page.title)}-${suffix++}`;
+    const source = digestOf(page.markdown, page.title, page.sortOrder, Number(page.visible), page.map);
+    const state = (id: number) => {
+      const row = one<{
+        title: string;
+        markdown: string;
+        folder_id: number | null;
+        sort_order: number;
+        visible: number;
+        map_media_id: number | null;
+      }>(
+        "SELECT title, markdown, folder_id, sort_order, visible, map_media_id FROM wiki_pages WHERE id = ? AND room_id = ?",
+        id,
+        roomId
+      );
+      return (
+        row &&
+        digestOf(row.title, row.markdown, folderPath(row.folder_id), row.sort_order, row.visible, row.map_media_id)
+      );
+    };
+    const verdict = ledger.verdict("wiki", page.path, source, state);
+    if (verdict.state === "unchanged") {
+      const row = one<{ slug: string }>("SELECT slug FROM wiki_pages WHERE id = ?", verdict.rowId)!;
+      wikiIds.set(page.path, { id: verdict.rowId, slug: row.slug });
+      ledger.record("wiki", page.path, verdict.rowId, source, state(verdict.rowId)!);
+      counts.unchanged += 1;
+      continue;
+    }
+    if (verdict.state === "edited") {
+      const row = one<{ slug: string }>("SELECT slug FROM wiki_pages WHERE id = ?", verdict.rowId)!;
+      wikiIds.set(page.path, { id: verdict.rowId, slug: row.slug });
+      ledger.keep("wiki", page.path);
+      counts.skipped += 1;
+      continue;
+    }
+    const id =
+      verdict.state === "updatable"
+        ? verdict.rowId
+        : Number(
+            db
+              .prepare(
+                `INSERT INTO wiki_pages (room_id, folder_id, slug, title, markdown, visible, map_media_id, sort_order, owner_account_id)
+                 VALUES (?, ?, ?, ?, '', ?, ?, ?, ?)`
+              )
+              .run(
+                roomId,
+                folderIds.get(parent) ?? null,
+                slug,
+                page.title,
+                page.visible ? 1 : 0,
+                page.map ? (mediaIds.get(page.map) ?? null) : null,
+                page.sortOrder,
+                accountId
+              ).lastInsertRowid
+          );
+    if (verdict.state === "updatable") {
+      const current = one<{ slug: string }>("SELECT slug FROM wiki_pages WHERE id = ?", id)!;
+      slug = current.slug;
+      counts.replaced += 1;
+    } else counts.added += 1;
+    wikiIds.set(page.path, { id, slug });
+    writable.add(page.path);
+  }
+  for (const page of campaign.wiki.pages) {
+    if (!writable.has(page.path)) continue;
+    const target = wikiIds.get(page.path)!;
+    const markdown = rewriteCampaignWikiDirectives(page.markdown, "path", (directive) => {
+      const { kind, label, target: targetPath } = directive;
+      const id =
+        kind === "npc"
+          ? npcIds.get(targetPath)
+          : kind === "follower"
+            ? hirelingIds.get(targetPath)
+            : kind === "asset"
+              ? mediaIds.get(targetPath)
+              : undefined;
+      const wiki = kind === "page" ? wikiIds.get(targetPath) : undefined;
+      if (id) return withCampaignWikiDirectiveTarget(directive, "id", String(id));
+      if (wiki) return withCampaignWikiDirectiveTarget(directive, "slug", wiki.slug);
+      if (kind === "item" && itemIds.has(targetPath))
+        return withCampaignWikiDirectiveTarget(directive, "id", itemIds.get(targetPath)!);
+      skipped.push(`${page.path}: "${targetPath}" could not be resolved, so its mention is plain text.`);
+      return label;
+    });
+    const resolved: ResolvedWikiMention[] = [];
+    for (const mention of wikiMentions(markdown)) {
+      const numeric = Number(mention.target);
+      if (mention.kind === "npc" && Number.isSafeInteger(numeric)) resolved.push({ kind: "npc", npcId: numeric });
+      else if (mention.kind === "follower" && Number.isSafeInteger(numeric))
+        resolved.push({ kind: "follower", hirelingId: numeric });
+      else if (mention.kind === "asset" && Number.isSafeInteger(numeric))
+        resolved.push({ kind: "asset", mediaId: numeric });
+      else if (mention.kind === "page") {
+        const pageTarget = one<{ id: number }>(
+          "SELECT id FROM wiki_pages WHERE room_id = ? AND slug = ?",
+          roomId,
+          mention.target
+        );
+        if (pageTarget) resolved.push({ kind: "page", targetPageId: pageTarget.id });
+      } else if (mention.kind === "item") {
+        const roomItem = one<{ id: number }>(
+          "SELECT id FROM room_items WHERE room_id = ? AND item_id = ?",
+          roomId,
+          mention.target
+        );
+        resolved.push({ kind: "item", itemId: mention.target, ...(roomItem ? { roomItemId: roomItem.id } : {}) });
+      } else if (mention.kind === "pc") continue;
+      else if (Number.isSafeInteger(numeric)) skipped.push(`${page.path}: mention could not be indexed.`);
+    }
+    const relative = page.path.slice("wiki/".length);
+    const parent = relative.split("/").slice(0, -1).join("/");
+    db.prepare(
+      `UPDATE wiki_pages SET title = ?, markdown = ?, folder_id = ?, visible = ?, map_media_id = ?, sort_order = ?,
+       revision = revision + 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?`
+    ).run(
+      page.title,
+      markdown,
+      folderIds.get(parent) ?? null,
+      page.visible ? 1 : 0,
+      page.map ? (mediaIds.get(page.map) ?? null) : null,
+      page.sortOrder,
+      target.id
+    );
+    replaceWikiMentions(target.id, resolved);
+    const source = digestOf(page.markdown, page.title, page.sortOrder, Number(page.visible), page.map);
+    ledger.record(
+      "wiki",
+      page.path,
+      target.id,
+      source,
+      digestOf(
+        page.title,
+        markdown,
+        parent,
+        page.sortOrder,
+        Number(page.visible),
+        page.map ? (mediaIds.get(page.map) ?? null) : null
+      )
+    );
+  }
 }
 
 function applyPlaylists(
@@ -594,7 +826,8 @@ function applyItems(
   accountId: number,
   system: string,
   counts: ApplyTally,
-  skipped: string[]
+  skipped: string[],
+  itemIds: Map<string, string>
 ) {
   const { added, retired } = campaign.items;
   if (!added.length && !retired.length) return;
@@ -610,7 +843,8 @@ function applyItems(
       counts.skipped += 1;
       continue;
     }
-    writeRoomItem(roomId, accountId, input.listKey, readRoomItem(system, roomId, input));
+    const row = writeRoomItem(roomId, accountId, input.listKey, readRoomItem(system, roomId, input));
+    if (input.key) itemIds.set(`items/index.json#${input.key}`, row.item_id);
     counts.added += 1;
   }
 
@@ -1073,5 +1307,7 @@ function applyRoomSettings(campaign: Campaign, roomId: number) {
       room.mapNotationEnabled ? 1 : 0,
       `map notation ${room.mapNotationEnabled ? "on" : "off"}`
     );
+  if (room.wikiEnabled !== undefined)
+    set("wiki_enabled", room.wikiEnabled ? 1 : 0, `wiki ${room.wikiEnabled ? "on" : "off"}`);
   return taken;
 }

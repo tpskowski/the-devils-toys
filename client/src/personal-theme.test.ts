@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { effectiveTheme, personalThemeKey, readPersonalTheme, writePersonalTheme } from "./personal-theme";
+import {
+  effectiveTheme,
+  personalThemeKey,
+  readPersonalTheme,
+  readPersonalThemeForRole,
+  writePersonalTheme
+} from "./personal-theme";
 
 function fakeStorage(initial: Record<string, string> = {}) {
   const values = new Map(Object.entries(initial));
@@ -58,6 +64,12 @@ describe("a player's own theme for a room", () => {
   it("survives a browser that refuses storage", () => {
     expect(readPersonalTheme(refusing, 1)).toBeUndefined();
     expect(() => writePersonalTheme(refusing, 1, "digital")).not.toThrow();
+  });
+
+  it("does not let an old player preference override the shared theme for a room GM", () => {
+    const storage = fakeStorage({ [personalThemeKey(7)]: "shinji" });
+    expect(readPersonalThemeForRole("gm", storage, 7)).toBeUndefined();
+    expect(readPersonalThemeForRole("player", storage, 7)).toBe("shinji");
   });
 });
 

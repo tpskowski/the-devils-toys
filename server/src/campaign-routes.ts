@@ -155,6 +155,8 @@ function countKinds(campaign: Campaign, roomId: number): KindCount[] {
   add("hirelings", campaign.hirelings.length);
   add("assets", campaign.assets.length);
   add("obligations", campaign.obligations.length);
+  add("wiki pages", campaign.wiki.pages.length);
+  add("wiki folders", campaign.wiki.folders.length);
   return [...counts.values()];
 }
 
@@ -363,6 +365,7 @@ campaignRouter.get("/rooms/:roomId/campaign/export", requireAuth, (req: AuthedRe
   if (!roomId) return;
   const exported = exportRoomCampaign(roomId);
   logger.info("Campaign exported", { room: roomId, bytes: exported.archive.byteLength, by: req.account!.username });
+  for (const warning of exported.warnings) logger.warn("Campaign export warning", { room: roomId, warning });
   res.type("application/zip").attachment(exported.filename);
   res.send(Buffer.from(exported.archive));
 });

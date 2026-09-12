@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { zipSync, strToU8, type Zippable } from "fflate";
@@ -6,6 +7,8 @@ import { all, one } from "./db.js";
 import { CAMPAIGN_BUNDLE_APP, CAMPAIGN_BUNDLE_VERSION, type MediaFolder } from "./campaign-bundles.js";
 import { isRoomItemId, roomItemRows, retiredIds } from "./room-items.js";
 import { parseRollTables } from "@devils-toys/shared";
+import { rewriteCampaignWikiDirectives, withCampaignWikiDirectiveTarget } from "./campaign-wiki-mentions.js";
+import { assertSafeWikiFolderName } from "./wiki-paths.js";
 
 /**
  * A room, written back out as a campaign.
@@ -103,6 +106,7 @@ export interface ExportedCampaign {
   archive: Uint8Array;
   /** What the file should be called, from the room's name. */
   filename: string;
+  warnings: string[];
 }
 
 export function exportRoomCampaign(roomId: number): ExportedCampaign {
@@ -114,14 +118,16 @@ export function exportRoomCampaign(roomId: number): ExportedCampaign {
     calendar_json: string | null;
     music_enabled: number;
     map_notation_enabled: number;
+    wiki_enabled: number;
   }>(
-    `SELECT name, system, theme, calendar_enabled, calendar_json, music_enabled, map_notation_enabled
+    `SELECT name, system, theme, calendar_enabled, calendar_json, music_enabled, map_notation_enabled, wiki_enabled
      FROM rooms WHERE id = ?`,
     roomId
   );
   if (!room) throw new Error("Room not found.");
 
   const files: Zippable = {};
+  const warnings: string[] = [];
   const campaignId =
     room.name
       .toLocaleLowerCase()
@@ -145,7 +151,8 @@ export function exportRoomCampaign(roomId: number): ExportedCampaign {
     theme: room.theme,
     calendarEnabled: Boolean(room.calendar_enabled),
     musicEnabled: Boolean(room.music_enabled),
-    mapNotationEnabled: Boolean(room.map_notation_enabled)
+    mapNotationEnabled: Boolean(room.map_notation_enabled),
+    wikiEnabled: Boolean(room.wiki_enabled)
   });
 
   // Through the same forgiving reader as every other stored blob: a calendar
@@ -350,17 +357,31 @@ export function exportRoomCampaign(roomId: number): ExportedCampaign {
 
   /* ---- gear -------------------------------------------------------------- */
 
+  const roomItemPaths = new Map<string, string>();
+  const itemKey = (itemId: string) => `item-${crypto.createHash("sha256").update(itemId).digest("hex").slice(0, 20)}`;
   const added = roomItemRows(roomId)
-    .map((row) => ({ listKey: row.list_key, item: parseJson(row.item_json) as Record<string, string> }))
+    // A room row's identity, not the order it happened to be read in, becomes
+    // the bundle key. Mentions keep their target when another row is added or
+    // reordered before the next export.
+    .map((row) => ({
+      key: itemKey(row.item_id),
+      id: row.item_id,
+      listKey: row.list_key,
+      item: parseJson(row.item_json) as Record<string, string>
+    }))
     .filter((entry) => typeof entry.item.name === "string")
-    .map(({ listKey, item }) => ({
-      listKey,
-      name: item.name,
-      spec: item.spec ?? "",
-      detail: item.detail ?? "",
-      cost: item.cost ?? "",
-      category: item.category ?? ""
-    }));
+    .map(({ key, id, listKey, item }) => {
+      roomItemPaths.set(id, `items/index.json#${key}`);
+      return {
+        key,
+        listKey,
+        name: item.name,
+        spec: item.spec ?? "",
+        detail: item.detail ?? "",
+        cost: item.cost ?? "",
+        category: item.category ?? ""
+      };
+    });
   // Only the system's own ids: a room item id names this room, and retiring one
   // elsewhere would be meaningless.
   const retired = retiredIds(roomId).filter((id) => !isRoomItemId(id));
@@ -415,8 +436,99 @@ export function exportRoomCampaign(roomId: number): ExportedCampaign {
     }
   }
 
+  /* ---- wiki ------------------------------------------------------------- */
+
+  const wikiPages = all<{
+    id: number;
+    folder_id: number | null;
+    slug: string;
+    title: string;
+    markdown: string;
+    visible: number;
+    map_media_id: number | null;
+    sort_order: number;
+  }>(
+    `SELECT id, folder_id, slug, title, markdown, visible, map_media_id, sort_order
+       FROM wiki_pages WHERE room_id = ? ORDER BY id`,
+    roomId
+  );
+  if (wikiPages.length || one<{ id: number }>("SELECT id FROM wiki_folders WHERE room_id = ? LIMIT 1", roomId)) {
+    const folderRows = all<{ id: number; parent_id: number | null; name: string; sort_order: number }>(
+      "SELECT id, parent_id, name, sort_order FROM wiki_folders WHERE room_id = ? ORDER BY id",
+      roomId
+    );
+    const folderPath = (id: number | null): string => {
+      if (!id) return "";
+      const folder = folderRows.find((row) => row.id === id);
+      if (!folder) return "";
+      assertSafeWikiFolderName(folder.name);
+      return `${folderPath(folder.parent_id)}${folder.name}/`;
+    };
+    const wikiSlug = slugger();
+    const wikiPaths = new Map<number, string>();
+    for (const page of wikiPages)
+      wikiPaths.set(page.id, `wiki/${folderPath(page.folder_id)}${wikiSlug(page.slug || page.title, ".md")}`);
+    const npcById = npcPaths;
+    const hirelingById = hirelingPaths;
+    const portable = (markdown: string, source: string) =>
+      rewriteCampaignWikiDirectives(markdown, "id", (directive) => {
+        const { kind, label, target } = directive;
+        if (kind === "pc") {
+          warnings.push(`${source}: PC mention "${label}" was exported as plain text.`);
+          return label;
+        }
+        const pathFor =
+          kind === "npc"
+            ? npcById.get(Number(target))
+            : kind === "follower"
+              ? hirelingById.get(Number(target))
+              : kind === "asset"
+                ? mediaPaths.get(Number(target))
+                : kind === "page"
+                  ? (() => {
+                      const page = wikiPages.find((candidate) => candidate.slug === target);
+                      return page ? wikiPaths.get(page.id) : undefined;
+                    })()
+                  : undefined;
+        if (pathFor) return withCampaignWikiDirectiveTarget(directive, "path", pathFor);
+        if (kind === "item" && roomItemPaths.has(target))
+          return withCampaignWikiDirectiveTarget(directive, "path", roomItemPaths.get(target)!);
+        if (kind === "item" && !String(target).startsWith("room:")) return directive.source;
+        warnings.push(`${source}: ${kind} mention "${label}" could not be exported and is plain text.`);
+        return label;
+      });
+    const portablePage = (markdown: string, source: string) =>
+      rewriteCampaignWikiDirectives(portable(markdown, source), "slug", (directive) => {
+        const page = wikiPages.find((candidate) => candidate.slug === directive.target);
+        const pathFor = page ? wikiPaths.get(page.id) : undefined;
+        if (pathFor) return withCampaignWikiDirectiveTarget(directive, "path", pathFor);
+        warnings.push(`${source}: page mention "${directive.label}" could not be exported and is plain text.`);
+        return directive.label;
+      });
+    const index = {
+      files: [] as unknown[],
+      folders: folderRows.map((folder) => ({
+        path: folderPath(folder.id).replace(/\/$/, ""),
+        sortOrder: folder.sort_order
+      }))
+    };
+    for (const page of wikiPages) {
+      const relative = wikiPaths.get(page.id)!;
+      files[relative] = [strToU8(portablePage(page.markdown, relative)), DEFLATE];
+      index.files.push({
+        file: relative.slice("wiki/".length),
+        title: page.title,
+        sortOrder: page.sort_order,
+        visible: Boolean(page.visible),
+        ...(page.map_media_id && mediaPaths.has(page.map_media_id) ? { map: mediaPaths.get(page.map_media_id) } : {})
+      });
+    }
+    files["wiki/index.json"] = json(index);
+  }
+
   return {
     archive: zipSync(files),
-    filename: `${campaignId}.devilcampaign.zip`
+    filename: `${campaignId}.devilcampaign.zip`,
+    warnings
   };
 }

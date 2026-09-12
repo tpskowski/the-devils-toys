@@ -16,6 +16,11 @@ without touching the original.
 
 **This room's NPCs** above it are yours. **New** starts an empty one.
 
+An NPC stays GM-facing until you reveal it. That same boundary applies to the
+Wiki: players cannot search for, mention, or follow a chip to an unrevealed
+NPC. A page that was shared before an NPC is revealed keeps the words you wrote,
+but the NPC's name is plain text to a player until it is safe to link.
+
 ### The statblock
 
 The fields come from the system — Cairn gives you HP, Armor, STR, DEX, WIL, and

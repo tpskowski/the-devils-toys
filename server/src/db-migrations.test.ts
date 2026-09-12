@@ -150,6 +150,92 @@ function seedFeatureFlagDatabase(directory: string) {
   legacy.close();
 }
 
+/** Wiki folders as the first wiki build declared them: nested, but unable to
+ * follow a room's cascade because a child RESTRICTed its parent deletion. */
+function seedPreWikiFolderCascadeDatabase(directory: string) {
+  seedLegacyDatabase(directory);
+  const legacy = new DatabaseSync(path.join(directory, "devils-toys.sqlite"));
+  legacy.exec(`
+    CREATE TABLE wiki_folders (
+      id INTEGER PRIMARY KEY,
+      room_id INTEGER NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
+      parent_id INTEGER REFERENCES wiki_folders(id) ON DELETE RESTRICT,
+      name TEXT NOT NULL,
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      owner_account_id INTEGER REFERENCES accounts(id) ON DELETE SET NULL,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE UNIQUE INDEX wiki_folders_name
+      ON wiki_folders (room_id, COALESCE(parent_id, 0), name COLLATE NOCASE);
+    CREATE TABLE media (
+      id INTEGER PRIMARY KEY,
+      room_id INTEGER NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
+      uploaded_by INTEGER NOT NULL REFERENCES accounts(id),
+      kind TEXT NOT NULL CHECK(kind IN ('scene','reference','audio')),
+      category TEXT CHECK(category IS NULL OR category IN ('map','scene','reference','audio')),
+      filename TEXT NOT NULL,
+      display_name TEXT,
+      stored_name TEXT NOT NULL,
+      artist TEXT,
+      title TEXT,
+      album TEXT,
+      track_no INTEGER,
+      metadata_loaded INTEGER NOT NULL DEFAULT 0,
+      visible INTEGER NOT NULL DEFAULT 0,
+      mime_type TEXT NOT NULL,
+      size INTEGER NOT NULL,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE TABLE wiki_pages (
+      id INTEGER PRIMARY KEY,
+      room_id INTEGER NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
+      folder_id INTEGER REFERENCES wiki_folders(id) ON DELETE SET NULL,
+      slug TEXT NOT NULL,
+      title TEXT NOT NULL,
+      markdown TEXT NOT NULL DEFAULT '',
+      visible INTEGER NOT NULL DEFAULT 0,
+      map_media_id INTEGER REFERENCES media(id) ON DELETE SET NULL,
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      revision INTEGER NOT NULL DEFAULT 0,
+      owner_account_id INTEGER REFERENCES accounts(id) ON DELETE SET NULL,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE UNIQUE INDEX wiki_pages_slug ON wiki_pages (room_id, slug);
+    CREATE UNIQUE INDEX wiki_pages_legend ON wiki_pages (map_media_id) WHERE map_media_id IS NOT NULL;
+    INSERT INTO wiki_folders (id, room_id, parent_id, name, sort_order, owner_account_id)
+      VALUES (10, 1, NULL, 'Notes', 0, 1),
+             (11, 1, 10, 'Districts', 1, 1),
+             (12, 1, 11, 'Docks', 2, 1);
+    INSERT INTO wiki_pages (id, room_id, folder_id, slug, title, markdown, owner_account_id)
+      VALUES (20, 1, 12, 'the-ledger', 'The ledger', 'What the guild is owed.', 1);
+  `);
+  legacy.close();
+}
+
+/** An NPC catalogue from just before cast members could be revealed to players. */
+function seedPreNpcRevealDatabase(directory: string) {
+  seedLegacyDatabase(directory);
+  const legacy = new DatabaseSync(path.join(directory, "devils-toys.sqlite"));
+  legacy.exec(`
+    CREATE TABLE custom_npcs (
+      id INTEGER PRIMARY KEY,
+      room_id INTEGER NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
+      created_by INTEGER NOT NULL REFERENCES accounts(id),
+      name TEXT NOT NULL,
+      notes TEXT NOT NULL DEFAULT '',
+      statblock_json TEXT NOT NULL DEFAULT '{}',
+      spawned INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+    INSERT INTO custom_npcs (id, room_id, created_by, name, notes, statblock_json, spawned)
+      VALUES (1, 1, 1, 'The Broker', 'GM-only notes', '{"hp":8}', 0);
+  `);
+  legacy.close();
+}
+
 /** A room whose music predates the album columns and is already marked as read. */
 function seedPreAlbumMusicDatabase(directory: string) {
   seedLegacyDatabase(directory);
@@ -659,7 +745,7 @@ describe("database migrations", () => {
     ).toEqual([{ name: "Old hireling", map_x: null, map_y: null }]);
   });
 
-  it("preserves existing room features while adding disabled music playback", async () => {
+  it("preserves existing room features while adding music and the enabled-by-default wiki", async () => {
     const directory = dataDir();
     seedFeatureFlagDatabase(directory);
     const loaded = await openDatabase(directory);
@@ -670,15 +756,72 @@ describe("database migrations", () => {
         calendar_json: string | null;
         map_notation_enabled: number;
         music_enabled: number;
-      }>("SELECT calendar_enabled, calendar_json, map_notation_enabled, music_enabled FROM rooms")
+        wiki_enabled: number;
+      }>("SELECT calendar_enabled, calendar_json, map_notation_enabled, music_enabled, wiki_enabled FROM rooms")
     ).toEqual([
       {
         calendar_enabled: 1,
         calendar_json: '{"year":7}',
         map_notation_enabled: 1,
-        music_enabled: 0
+        music_enabled: 0,
+        // Unlike the other feature flags, a notebook must exist in every room
+        // unless the GM deliberately turns it off.
+        wiki_enabled: 1
       }
     ]);
+  });
+
+  it("rebuilds nested wiki folders to cascade with their room, preserving the tree exactly once", async () => {
+    const directory = dataDir();
+    seedPreWikiFolderCascadeDatabase(directory);
+    const first = await openDatabase(directory);
+
+    expect(storedSchemaFor(first, "wiki_folders")).toMatch(
+      /parent_id\s+INTEGER\s+REFERENCES\s+wiki_folders\s*\(\s*id\s*\)\s+ON\s+DELETE\s+CASCADE/i
+    );
+    expect(
+      first.all<{ id: number; parent_id: number | null; name: string }>(
+        "SELECT id, parent_id, name FROM wiki_folders ORDER BY id"
+      )
+    ).toEqual([
+      { id: 10, parent_id: null, name: "Notes" },
+      { id: 11, parent_id: 10, name: "Districts" },
+      { id: 12, parent_id: 11, name: "Docks" }
+    ]);
+    expect(first.all<{ folder_id: number; slug: string }>("SELECT folder_id, slug FROM wiki_pages")).toEqual([
+      { folder_id: 12, slug: "the-ledger" }
+    ]);
+    const migratedSchema = storedSchemaFor(first, "wiki_folders");
+    first.db.close();
+    opened.splice(opened.indexOf(first), 1);
+
+    // Stored-schema detection means later starts keep the table and its rows
+    // intact rather than rebuilding it on every launch.
+    const second = await openDatabase(directory);
+    expect(storedSchemaFor(second, "wiki_folders")).toBe(migratedSchema);
+    expect(tableNames(second)).not.toContain("wiki_folders_rebuilt");
+
+    second.db.prepare("DELETE FROM rooms WHERE id = 1").run();
+    expect(second.all("SELECT id FROM wiki_folders")).toEqual([]);
+    expect(second.all("SELECT id FROM wiki_pages")).toEqual([]);
+    expect(second.all("PRAGMA foreign_key_check")).toEqual([]);
+  });
+
+  it("adds an unrevealed cast flag without changing existing NPC records", async () => {
+    const directory = dataDir();
+    seedPreNpcRevealDatabase(directory);
+    const first = await openDatabase(directory);
+
+    expect(
+      first.all<{ name: string; notes: string; revealed: number }>("SELECT name, notes, revealed FROM custom_npcs")
+    ).toEqual([{ name: "The Broker", notes: "GM-only notes", revealed: 0 }]);
+    first.db.prepare("UPDATE custom_npcs SET revealed = 1 WHERE id = 1").run();
+    first.db.close();
+    opened.splice(opened.indexOf(first), 1);
+
+    // The guard must leave a migrated database alone on every later start.
+    const second = await openDatabase(directory);
+    expect(second.all<{ revealed: number }>("SELECT revealed FROM custom_npcs")).toEqual([{ revealed: 1 }]);
   });
 
   it("sends existing music back through the tag reader once, for its album", async () => {

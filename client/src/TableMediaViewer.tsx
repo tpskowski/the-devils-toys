@@ -1,4 +1,4 @@
-import { useEffect, useState, type MouseEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from "react";
 import {
   ChevronDown,
   Clapperboard,
@@ -16,16 +16,25 @@ import { isMarkdownAsset, MediaContent } from "./MediaContent";
 import { mediaLabel } from "./media-label";
 import { SceneViewer, type ScenePing } from "./SceneViewer";
 import { useTabPicker } from "./TabPicker";
+import type { WikiMentionTarget } from "./RulesMarkdown";
+import { WikiWorkspace } from "./WikiWorkspace";
 
-type MediaTab = "map" | "scene" | "reference" | "group" | "encounter" | "rules";
+type MediaTab = "map" | "scene" | "reference" | "wiki" | "group" | "encounter" | "rules";
 
 interface GroupPicker {
   options: readonly { id: string; label: string }[];
   selected: string;
   onSelect: (id: string) => void;
 }
+
+/** Only the room's active map can expose its legend; an empty map slot has no legend to read. */
+export function mapLegendForSelection(map: RoomMediaState["map"], selectedMapId: number | undefined) {
+  return map && map.id === selectedMapId ? (map.legend ?? null) : null;
+}
+
 export function TableMediaViewer({
   roomId,
+  accountId,
   media,
   isGm,
   pings,
@@ -39,10 +48,14 @@ export function TableMediaViewer({
   mapNotationEnabled,
   mapNotationSyncRevision,
   mapNotationChange,
+  wikiEnabled,
+  wikiRevision,
   rulesPage,
-  requestedTab
+  requestedTab,
+  onOpenWikiMention
 }: {
   roomId: number;
+  accountId: number;
   media: RoomMediaState;
   isGm: boolean;
   pings: ScenePing[];
@@ -60,13 +73,18 @@ export function TableMediaViewer({
   mapNotationEnabled: boolean;
   mapNotationSyncRevision: number;
   mapNotationChange?: MapNotationEvent;
+  wikiEnabled: boolean;
+  /** Refreshes an already-open map legend after a coarse wiki update. */
+  wikiRevision: number;
   rulesPage: ReactNode;
-  requestedTab?: { tab: "rules"; revision: number };
+  requestedTab?: { tab: "rules" | "group"; revision: number };
+  onOpenWikiMention?: (mention: WikiMentionTarget) => void;
 }) {
   const [tab, setTab] = useState<MediaTab>("scene");
   const [mapId, setMapId] = useState<number>();
   const [sceneId, setSceneId] = useState<number>();
   const [referenceId, setReferenceId] = useState<number>();
+  const wikiLeaveRequest = useRef<((afterDiscard: () => void) => void) | undefined>(undefined);
 
   const library = media.library ?? [];
   const maps = library.filter((item) => item.kind === "map");
@@ -86,7 +104,8 @@ export function TableMediaViewer({
   useEffect(() => {
     if (!groupPage && tab === "group") setTab("scene");
     if (!encounterEnabled && tab === "encounter") setTab("scene");
-  }, [Boolean(groupPage), encounterEnabled, tab]);
+    if (!wikiEnabled && tab === "wiki") setTab("scene");
+  }, [Boolean(groupPage), encounterEnabled, tab, wikiEnabled]);
 
   useEffect(() => {
     if (requestedTab) setTab(requestedTab.tab);
@@ -142,7 +161,9 @@ export function TableMediaViewer({
             ? "Group view"
             : tab === "encounter"
               ? "Encounter"
-              : "Rules";
+              : tab === "wiki"
+                ? "Wiki"
+                : "Rules";
 
   const picker = useTabPicker({
     options: pickerOptions,
@@ -169,7 +190,8 @@ export function TableMediaViewer({
       picker.toggle(event);
       return;
     }
-    setTab(nextTab);
+    if (tab === "wiki" && wikiLeaveRequest.current) wikiLeaveRequest.current(() => setTab(nextTab));
+    else setTab(nextTab);
   }
 
   return (
@@ -246,15 +268,25 @@ export function TableMediaViewer({
           </div>
         )}
         <div className={`table-media-tab${tab === "rules" ? " active" : ""}`}>
-          <button className="table-media-tab-main" onClick={(event) => activateTab("rules", event)}>
+          <button className="table-media-tab-main" aria-label="Rules" onClick={(event) => activateTab("rules", event)}>
             <BookOpen /> Rules
           </button>
         </div>
-        {isGm && (
-          <button className="table-media-manage" onClick={onManage} title="Manage Library" aria-label="Manage Library">
-            <Settings2 />
-          </button>
+        {wikiEnabled && (
+          <div className={`table-media-tab${tab === "wiki" ? " active" : ""}`}>
+            <button className="table-media-tab-main" aria-label="Wiki" onClick={(event) => activateTab("wiki", event)}>
+              <BookOpen /> Wiki
+            </button>
+          </div>
         )}
+        <button
+          className="table-media-manage"
+          onClick={onManage}
+          title={isGm ? "Manage Library" : "Open References and Wiki"}
+          aria-label={isGm ? "Manage Library" : "Open References and Wiki"}
+        >
+          {isGm ? <Settings2 /> : <BookOpen />}
+        </button>
       </nav>
       {picker.menu}
 
@@ -262,6 +294,7 @@ export function TableMediaViewer({
         {tab === "map" && (
           <SceneViewer
             scene={selectedMap ?? null}
+            roomId={roomId}
             label="Map"
             isGm={isGm}
             pings={pings}
@@ -272,11 +305,15 @@ export function TableMediaViewer({
                 ? { roomId, syncRevision: mapNotationSyncRevision, change: mapNotationChange }
                 : undefined
             }
+            legend={mapLegendForSelection(media.map, selectedMap?.id)}
+            legendRevision={wikiRevision}
+            onOpenWikiMention={onOpenWikiMention}
           />
         )}
         {tab === "scene" && (
           <SceneViewer
             scene={selectedScene ?? null}
+            roomId={roomId}
             label="Scene"
             isGm={isGm}
             pings={pings}
@@ -293,6 +330,19 @@ export function TableMediaViewer({
         <div className="table-rules-panel" hidden={tab !== "rules"}>
           {rulesPage}
         </div>
+        {wikiEnabled && (
+          <div className="table-wiki-panel" hidden={tab !== "wiki"}>
+            <WikiWorkspace
+              roomId={roomId}
+              accountId={accountId}
+              isGm={isGm}
+              revision={wikiRevision}
+              embedded
+              leaveRequestRef={wikiLeaveRequest}
+              onOpenMention={onOpenWikiMention}
+            />
+          </div>
+        )}
         {tab === "reference" && (
           <div className="table-references">
             {selectedReference ? (
@@ -309,7 +359,11 @@ export function TableMediaViewer({
                       onClick={() => setReferenceId(item.id)}
                       title={item.filename}
                     >
-                      {isMarkdownAsset(item) ? <FileText /> : <img src={item.url} alt="" />}
+                      {isMarkdownAsset(item) ? (
+                        <FileText />
+                      ) : (
+                        <img src={item.thumbnailUrl ?? item.url} alt="" loading="lazy" decoding="async" />
+                      )}
                       <span>{mediaLabel(item)}</span>
                     </button>
                   ))}

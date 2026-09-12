@@ -781,6 +781,37 @@ button.rc-name {
   min-width: 0;
 }
 
+.rc-npc-reveal {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin: 0 0 18px;
+  padding: 12px 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+.rc-npc-reveal > div {
+  min-width: 0;
+}
+
+.rc-npc-reveal strong,
+.rc-npc-reveal span {
+  display: block;
+}
+
+.rc-npc-reveal strong {
+  font-size: 12px;
+}
+
+.rc-npc-reveal span {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
 .rc-title-input {
   flex: 1 1 auto;
   font-weight: 600 !important;
@@ -840,6 +871,38 @@ button.rc-name {
   margin-top: 18px;
   padding-top: 16px;
   border-top: 1px solid var(--line);
+}
+
+.rc-map-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.rc-map-legend {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  color: var(--muted);
+  font:
+    9px "DM Mono",
+    monospace;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.rc-map-legend select {
+  width: min(150px, 30vw);
+  min-width: 0;
+  height: 29px;
+  padding: 0 7px;
+  font:
+    12px Inter,
+    sans-serif;
+  letter-spacing: normal;
+  text-transform: none;
 }
 
 .rc-copy-to {
@@ -1436,6 +1499,15 @@ button.rc-name {
     flex-direction: row;
     align-items: center;
     justify-content: space-between;
+  }
+
+  .rc-npc-reveal {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .rc-npc-reveal button {
+    justify-content: center;
   }
 }
 

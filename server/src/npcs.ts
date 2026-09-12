@@ -74,20 +74,43 @@ function room(req: AuthedRequest, res: express.Response) {
   return roomId;
 }
 
+/**
+ * The player-facing cast is intentionally a separate, narrow read from the
+ * GM's NPC catalogue. A name is enough to resolve a reveal; notes and stats
+ * remain GM data even after the cast member is revealed.
+ */
+npcRouter.get("/rooms/:roomId/npcs/revealed", requireAuth, (req: AuthedRequest, res) => {
+  const roomId = Number(req.params.roomId);
+  if (!roomAccessRole(req.account!, roomId)) return res.status(404).json({ error: "Room not found." });
+  const npcs = all<{ id: number; name: string }>(
+    "SELECT id, name FROM custom_npcs WHERE room_id = ? AND revealed = 1 AND spawned = 0 ORDER BY name, id",
+    roomId
+  );
+  res.json({ npcs });
+});
+
 npcRouter.get("/rooms/:roomId/npcs", requireAuth, (req: AuthedRequest, res) => {
   const roomId = room(req, res);
   if (!roomId) return;
   const system = one<{ system: SystemId }>("SELECT system FROM rooms WHERE id = ?", roomId)!.system;
   // Spawned records are the copies made to put something into a fight. They are
   // listed by the spawned-NPC view, not here beside the entries they came from.
-  const custom = all<{ id: number; name: string; notes: string; statblock_json: string; updated_at: string }>(
-    "SELECT id, name, notes, statblock_json, updated_at FROM custom_npcs WHERE room_id = ? AND spawned = 0 ORDER BY name",
+  const custom = all<{
+    id: number;
+    name: string;
+    notes: string;
+    statblock_json: string;
+    revealed: number;
+    updated_at: string;
+  }>(
+    "SELECT id, name, notes, statblock_json, revealed, updated_at FROM custom_npcs WHERE room_id = ? AND spawned = 0 ORDER BY name",
     roomId
   ).map((item) => ({
     id: item.id,
     name: item.name,
     notes: item.notes,
     statblock: parseStatblock(item.statblock_json),
+    revealed: Boolean(item.revealed),
     updatedAt: item.updated_at
   }));
   res.json({ catalog: npcCatalog(system), custom });
@@ -151,7 +174,7 @@ npcRouter.post("/rooms/:roomId/npcs", requireAuth, (req: AuthedRequest, res) => 
     .prepare("INSERT INTO custom_npcs (room_id, created_by, name, notes, statblock_json) VALUES (?, ?, ?, ?, ?)")
     .run(roomId, req.account!.id, parsed.data.name, parsed.data.notes, JSON.stringify(parsed.data.statblock));
   broadcastRoom(roomId, { type: "npcs-updated" });
-  res.status(201).json({ npc: { id: Number(result.lastInsertRowid), ...parsed.data } });
+  res.status(201).json({ npc: { id: Number(result.lastInsertRowid), ...parsed.data, revealed: false } });
 });
 
 npcRouter.patch("/rooms/:roomId/npcs/:npcId", requireAuth, (req: AuthedRequest, res) => {
@@ -185,6 +208,22 @@ npcRouter.patch("/rooms/:roomId/npcs/:npcId", requireAuth, (req: AuthedRequest, 
   res.status(204).end();
 });
 
+/** The GM decides whether the room may resolve this NPC's identity. */
+npcRouter.post("/rooms/:roomId/npcs/:npcId/reveal", requireAuth, (req: AuthedRequest, res) => {
+  const roomId = room(req, res);
+  if (!roomId) return;
+  const parsed = z.object({ revealed: z.boolean() }).safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: "Say whether this NPC is revealed." });
+  const result = db
+    .prepare(
+      "UPDATE custom_npcs SET revealed = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND room_id = ? AND spawned = 0"
+    )
+    .run(Number(parsed.data.revealed), Number(req.params.npcId), roomId);
+  if (!result.changes) return res.status(404).json({ error: "Custom NPC not found." });
+  broadcastRoom(roomId, { type: "npcs-updated" });
+  res.status(204).end();
+});
+
 npcRouter.post("/rooms/:roomId/npcs/:npcId/clone", requireAuth, (req: AuthedRequest, res) => {
   const roomId = room(req, res);
   if (!roomId) return;
@@ -204,7 +243,8 @@ npcRouter.post("/rooms/:roomId/npcs/:npcId/clone", requireAuth, (req: AuthedRequ
       id: Number(result.lastInsertRowid),
       name,
       notes: source.notes,
-      statblock: parseStatblock(source.statblock_json)
+      statblock: parseStatblock(source.statblock_json),
+      revealed: false
     }
   });
 });
@@ -244,7 +284,8 @@ npcRouter.post("/rooms/:roomId/npcs/:npcId/copy-to", requireAuth, (req: AuthedRe
       roomId: targetId,
       name: source.name,
       notes: source.notes,
-      statblock: parseStatblock(source.statblock_json)
+      statblock: parseStatblock(source.statblock_json),
+      revealed: false
     }
   });
 });
@@ -268,6 +309,7 @@ npcRouter.post("/rooms/:roomId/npcs/from-catalog", requireAuth, (req: AuthedRequ
       name: entry.name,
       notes: entry.markdown,
       statblock: parsedStatblock.fields,
+      revealed: false,
       parseWarning:
         typeof parsedStatblock.fields[systemOrThrow(system).npcStatblock.hitPointsKey] !== "number"
           ? "stats could not be read — fill them in"

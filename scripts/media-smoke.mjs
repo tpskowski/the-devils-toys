@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
+import sharp from "sharp";
 import { runSmoke } from "./harness.mjs";
 
-const png = Buffer.from(
-  "89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000d49444154789c6360f8cff0000004010100ad5d4db10000000049454e44ae426082",
-  "hex"
-);
+const png = await sharp({ create: { width: 32, height: 32, channels: 3, background: "#87906b" } })
+  .png()
+  .toBuffer();
 const largePng = Buffer.concat([png, Buffer.alloc(1024 * 1024)]);
 
 await runSmoke(
@@ -73,6 +73,27 @@ await runSmoke(
     assert.equal(reference.visible, false);
     assert.equal(markdownReference.visible, false);
 
+    // Originals and small previews share a stable upload version. A private
+    // browser cache can reuse them without a round trip on remote sessions.
+    assert.match(map.url, /\/file\?v=[a-f0-9]{12}$/);
+    const cachedImage = await fetch(`${base}${map.url}`, { headers: { cookie: gmCookie } });
+    assert.equal(cachedImage.status, 200);
+    assert.equal(cachedImage.headers.get("cache-control"), "private, max-age=31536000, immutable");
+    await cachedImage.arrayBuffer();
+    const cachedThumbnail = await fetch(`${base}${map.thumbnailUrl}`, { headers: { cookie: gmCookie } });
+    assert.equal(cachedThumbnail.status, 200);
+    assert.equal(cachedThumbnail.headers.get("cache-control"), "private, max-age=31536000, immutable");
+    await cachedThumbnail.arrayBuffer();
+    const legacyImage = await fetch(`${base}/api/media/${map.id}/file`, { headers: { cookie: gmCookie } });
+    assert.equal(legacyImage.headers.get("cache-control"), "private, no-cache");
+    await legacyImage.arrayBuffer();
+    const staleImage = await fetch(`${base}/api/media/${map.id}/file?v=old-upload`, { headers: { cookie: gmCookie } });
+    assert.equal(staleImage.status, 404);
+    assert.equal(staleImage.headers.get("cache-control"), "no-store");
+    await staleImage.arrayBuffer();
+    await json(map.url, { headers: { cookie: playerCookie } }, 404);
+    await json(map.thumbnailUrl, { headers: { cookie: playerCookie } }, 404);
+
     const largeSceneUpload = await media(
       roomId,
       gmCookie,
@@ -100,6 +121,7 @@ await runSmoke(
     });
     assert.equal(renamedMap.body.media.displayName, "The Ruined Complex");
     assert.equal(renamedMap.body.media.filename, "ruined-complex.png");
+    assert.equal(renamedMap.body.media.url, map.url);
     await json(
       `/api/rooms/${roomId}/media/${map.id}`,
       { method: "PATCH", headers: playerJson, body: JSON.stringify({ displayName: "Forbidden rename" }) },

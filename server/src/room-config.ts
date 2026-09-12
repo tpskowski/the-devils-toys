@@ -45,6 +45,13 @@ export function sectionsFor(room: ConfigurableRoom): RoomConfigSection[] {
       hint: "The room's music, and the orders it plays in",
       enabled: room.musicEnabled,
       enabledBy: "musicEnabled"
+    },
+    {
+      id: "wiki",
+      label: "Wiki",
+      hint: "Private and shared table notes",
+      enabled: room.wikiEnabled,
+      enabledBy: "wikiEnabled"
     }
   ];
   if (groupPage?.hirelings)

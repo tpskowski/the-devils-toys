@@ -15,6 +15,7 @@ export * from "./system-rules.js";
 export * from "./system-creation.js";
 export * from "./system-versions.js";
 export * from "./calendar.js";
+export * from "./wiki-markdown.js";
 
 /**
  * The systems compiled into the application: none. It ships a virtual tabletop,
@@ -71,6 +72,7 @@ export interface RoomSummary {
   calendarEnabled: boolean;
   mapNotationEnabled: boolean;
   musicEnabled: boolean;
+  wikiEnabled: boolean;
   /**
    * Where this room stands on each of its system's optional rules, already
    * resolved: the room's own setting, the rule's default, or on regardless for a
@@ -86,6 +88,7 @@ export interface RoomSummary {
  */
 export const ROOM_CONFIG_SECTIONS = [
   "library",
+  "wiki",
   "npcs",
   "items",
   "calendar",
@@ -105,7 +108,7 @@ export type RoomConfigSectionId = (typeof ROOM_CONFIG_SECTIONS)[number];
 export type RoomConfigAccess = "gm" | "admin";
 
 /** The room setting a switched-off section is waiting on. */
-export type RoomConfigToggle = "calendarEnabled" | "musicEnabled";
+export type RoomConfigToggle = "calendarEnabled" | "musicEnabled" | "wikiEnabled";
 
 export interface RoomConfigSection {
   id: RoomConfigSectionId;
@@ -129,6 +132,7 @@ export interface RoomConfigRoom {
   calendarEnabled: boolean;
   mapNotationEnabled: boolean;
   musicEnabled: boolean;
+  wikiEnabled: boolean;
   rules: RoomRuleSettings;
   access: RoomConfigAccess;
 }

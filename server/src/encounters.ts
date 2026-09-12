@@ -12,6 +12,7 @@ import {
 import type { AuthedRequest } from "./auth.js";
 import { requireAuth, roomRole } from "./auth.js";
 import { all, db, one } from "./db.js";
+import { imageFileUrl } from "./image-cache.js";
 import {
   findAccessibleCharacter,
   findVisibleCharacter,
@@ -71,6 +72,7 @@ interface CombatantRow {
 
 interface MediaRow {
   id: number;
+  stored_name: string;
   room_id: number;
   kind: "map" | "scene" | "reference" | "audio";
   filename: string;
@@ -113,7 +115,7 @@ function gmRoom(req: AuthedRequest, res: express.Response) {
 function mediaFor(roomId: number, mediaId: number | null | undefined) {
   if (mediaId == null) return null;
   return one<MediaRow>(
-    "SELECT id, room_id, kind, filename, display_name, visible FROM media WHERE id = ? AND room_id = ?",
+    "SELECT id, room_id, kind, filename, display_name, stored_name, visible FROM media WHERE id = ? AND room_id = ?",
     mediaId,
     roomId
   );
@@ -326,7 +328,7 @@ function publicMedia(roomId: number, media: MediaRow | null) {
     filename: media.filename,
     displayName: media.display_name,
     visible: Boolean(media.visible),
-    url: `/api/media/${media.id}/file`
+    url: imageFileUrl(media.id, media.stored_name)
   };
 }
 

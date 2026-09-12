@@ -1,3 +1,9 @@
+"When I was young, I had to choose between the life of being and the life of doing. And I leapt at the latter like a trout to a fly. But each deed you do, each act, binds you to itself and to its consequences, and makes you act again and yet again."
+The Archmage, The Farthest Shore, 1972
+
+"Only a coward feels mighty when stepping on ants."
+Apocalypse, X-Men '97, 2026
+
 “It's time we find out if this ship is capable of deicide.”
 Misato Katsuragi
 

@@ -31,6 +31,7 @@ import { api } from "./api";
 import { CharacterBuilder } from "./CharacterBuilder";
 import { CharacterItemEditor } from "./CharacterItemEditor";
 import { RulesMarkdown } from "./RulesMarkdown";
+import { PortraitImage } from "./PortraitImage";
 import { WeaponMark } from "./WeaponMark";
 import { WeaponSelector } from "./WeaponSelector";
 import { appendEntry, entryName, readEntries, removeEntry, singularLabel, updateEntry } from "./character-entries";
@@ -1409,7 +1410,7 @@ export function CharacterModal({
               <div className="character-profile">
                 <div className={`character-portrait-frame${selected.portraitUrl ? " has-portrait" : ""}`}>
                   {selected.portraitUrl ? (
-                    <img src={selected.portraitUrl} alt={`${selected.name} portrait`} />
+                    <PortraitImage src={selected.portraitUrl} alt={`${selected.name} portrait`} />
                   ) : (
                     <UserRound aria-hidden="true" />
                   )}

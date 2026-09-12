@@ -55,6 +55,7 @@ import {
   type GroupSheetRow
 } from "./group-rows";
 import { Modal } from "./Modal";
+import { PortraitImage } from "./PortraitImage";
 import { otherPartyMembers, partyMemberIsOnline } from "./party-members";
 import { ReadOnlyCharacterSheet, type ReadOnlyCharacter } from "./ReadOnlyCharacterSheet";
 import { headingSlug, rulesAnchorPath, rulesQueryForField } from "./rules";
@@ -918,7 +919,7 @@ export function GroupPage({
     return (
       <div className="group-starship-readout">
         <div className={`group-starship-image-frame${imageUrl ? " has-image" : ""}`}>
-          {imageUrl ? <img src={imageUrl} alt={`${shipName} starship`} /> : <Rocket aria-hidden="true" />}
+          {imageUrl ? <PortraitImage src={imageUrl} alt={`${shipName} starship`} /> : <Rocket aria-hidden="true" />}
         </div>
         <div className="group-starship-readout-sections">
           {sheet?.sections.map((section) => (
@@ -1231,7 +1232,7 @@ export function GroupPage({
                       <div className="group-hireling-sheet" id={`group-hireling-${hireling.id}`}>
                         <div className={`group-hireling-image-frame${imageUrl ? " has-image" : ""}`}>
                           {imageUrl ? (
-                            <img src={imageUrl} alt={`${label} portrait`} />
+                            <PortraitImage src={imageUrl} alt={`${label} portrait`} />
                           ) : (
                             <UserRound aria-hidden="true" />
                           )}

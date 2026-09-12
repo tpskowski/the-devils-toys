@@ -16,6 +16,47 @@
   background: transparent;
   color: var(--text);
 }
+.npc-reveal {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 11px 12px;
+  border: 1px solid color-mix(in srgb, var(--accent), transparent 55%);
+  color: var(--accent);
+}
+.npc-reveal.hidden {
+  border-style: dashed;
+  border-color: var(--line);
+  color: var(--muted);
+}
+.npc-reveal > div {
+  min-width: 0;
+}
+.npc-reveal strong,
+.npc-reveal small {
+  display: block;
+}
+.npc-reveal small {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.35;
+}
+.npc-reveal button {
+  flex: 0 0 auto;
+  min-height: 36px;
+  padding: 0 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid currentColor;
+  background: transparent;
+  color: inherit;
+}
+.npc-reveal button svg {
+  width: 14px;
+}
 .npc-create .primary-button {
   min-height: 40px;
   padding-inline: 14px;
@@ -124,5 +165,12 @@
     max-height: 190px;
     border-right: 0;
     border-bottom: 1px solid var(--line);
+  }
+  .npc-reveal {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .npc-reveal button {
+    justify-content: center;
   }
 }

@@ -4,6 +4,7 @@ import {
   ArrowDown,
   ArrowUp,
   ArrowUpDown,
+  BookOpen,
   Eye,
   EyeOff,
   FileText,
@@ -40,6 +41,12 @@ interface PendingRefile {
   names: string[];
 }
 
+interface WikiPageChoice {
+  slug: string;
+  title: string;
+  mapMediaId: number | null;
+}
+
 const categories: LibraryCategory[] = ["map", "scene", "reference"];
 const libraryCollator = new Intl.Collator(undefined, { numeric: true, sensitivity: "base" });
 
@@ -69,6 +76,7 @@ function activeLabel(asset: MediaAsset, payload: LibraryPayload) {
 
 export function RoomConfigLibrary({ roomId, revision }: { roomId: number; revision: number }) {
   const [payload, setPayload] = useState<LibraryPayload>();
+  const [wikiPages, setWikiPages] = useState<WikiPageChoice[]>([]);
   const [filter, setFilter] = useState<Filter>("all");
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<{ key: SortKey; direction: SortDirection }>({
@@ -89,7 +97,12 @@ export function RoomConfigLibrary({ roomId, revision }: { roomId: number; revisi
   const roomTags = useRoomTags(roomId, revision);
 
   const load = useCallback(async () => {
-    setPayload(await api<LibraryPayload>(`/api/rooms/${roomId}/media`));
+    const [media, wiki] = await Promise.all([
+      api<LibraryPayload>(`/api/rooms/${roomId}/media`),
+      api<{ pages: WikiPageChoice[] }>(`/api/rooms/${roomId}/wiki`).catch(() => ({ pages: [] }))
+    ]);
+    setPayload(media);
+    setWikiPages(wiki.pages);
   }, [roomId]);
 
   useEffect(() => {
@@ -269,6 +282,24 @@ export function RoomConfigLibrary({ roomId, revision }: { roomId: number; revisi
     );
   }
 
+  async function bindLegend(asset: MediaAsset, slug: string | null) {
+    await act(slug ? "Binding legend…" : "Removing legend…", () =>
+      api(`/api/rooms/${roomId}/maps/${asset.id}/legend`, {
+        method: "POST",
+        body: JSON.stringify({ slug })
+      })
+    );
+  }
+
+  async function writeLegend(asset: MediaAsset) {
+    await act("Creating legend…", () =>
+      api(`/api/rooms/${roomId}/wiki/pages`, {
+        method: "POST",
+        body: JSON.stringify({ title: `${mediaLabel(asset)} legend`.slice(0, 160), markdown: "", mapMediaId: asset.id })
+      })
+    );
+  }
+
   if (!payload) return <p className="room-config-muted">{error || "Loading the library…"}</p>;
 
   const orphans = payload.library.filter((asset) => isOrphan(asset, payload)).length;
@@ -406,6 +437,11 @@ export function RoomConfigLibrary({ roomId, revision }: { roomId: number; revisi
             {shown.map((asset) => {
               const useStatus = activeLabel(asset, payload);
               const active = useStatus !== "Unused";
+              const legend = asset.kind === "map" ? wikiPages.find((page) => page.mapMediaId === asset.id) : undefined;
+              const legendChoices =
+                asset.kind === "map"
+                  ? wikiPages.filter((page) => page.mapMediaId === null || page.mapMediaId === asset.id)
+                  : [];
               return (
                 <tr key={asset.id} className={selection.includes(asset.id) ? "is-selected" : ""}>
                   <td className="rc-check">
@@ -534,7 +570,46 @@ export function RoomConfigLibrary({ roomId, revision }: { roomId: number; revisi
                   </td>
                   <td className={active ? "" : "room-config-muted"}>{useStatus}</td>
                   <td className="rc-actions-column">
-                    {asset.kind !== "reference" ? (
+                    {asset.kind === "map" ? (
+                      <div className="rc-map-actions">
+                        <button
+                          type="button"
+                          title={`Make this the room's ${asset.kind}`}
+                          disabled={Boolean(active) || Boolean(busy)}
+                          onClick={() =>
+                            act("Setting…", () =>
+                              api(`/api/rooms/${roomId}/${asset.kind}`, {
+                                method: "PATCH",
+                                body: JSON.stringify({ mediaId: asset.id })
+                              })
+                            )
+                          }
+                        >
+                          <MapIcon size={14} /> Make active
+                        </button>
+                        <label className="rc-map-legend">
+                          <span>Legend</span>
+                          <select
+                            value={legend?.slug ?? ""}
+                            disabled={Boolean(busy)}
+                            onChange={(event) => void bindLegend(asset, event.target.value || null)}
+                            aria-label={`Legend for ${mediaLabel(asset)}`}
+                          >
+                            <option value="">None</option>
+                            {legendChoices.map((page) => (
+                              <option key={page.slug} value={page.slug}>
+                                {page.title}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                        {!legend && (
+                          <button type="button" disabled={Boolean(busy)} onClick={() => void writeLegend(asset)}>
+                            <BookOpen size={14} /> Write one
+                          </button>
+                        )}
+                      </div>
+                    ) : asset.kind !== "reference" ? (
                       <button
                         type="button"
                         title={`Make this the room's ${asset.kind}`}

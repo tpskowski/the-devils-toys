@@ -2,6 +2,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterAll } from "vitest";
+import { markTestDatabaseIsolated } from "./test-data-guard.js";
 
 // Importing anything that reaches db.ts opens a database, so tests must never
 // run against the configured data directory. Each test file gets a throwaway
@@ -9,6 +10,7 @@ import { afterAll } from "vitest";
 // importing db.ts themselves.
 const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "devils-toys-test-"));
 process.env.DEVILS_TOYS_DATA_DIR = dataDir;
+markTestDatabaseIsolated();
 // A server comes configured with the published catalogue. Tests must never reach
 // for it: that would make them slower, flakier, and dependent on what someone
 // else published. Anything testing the catalogue supplies its own.

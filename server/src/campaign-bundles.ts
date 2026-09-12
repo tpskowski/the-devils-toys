@@ -2,8 +2,11 @@ import fs from "node:fs";
 import path from "node:path";
 import { z } from "zod";
 import { SYSTEM_ID_PATTERN, THEME_IDS } from "@devils-toys/shared";
+import remarkParse from "remark-parse";
+import { unified } from "unified";
 import { calendarInput, calendarSchema } from "./calendar.js";
 import type { ZipEntry } from "./zip-safety.js";
+import { isSafeWikiPathComponent } from "./wiki-paths.js";
 
 /**
  * What a campaign bundle is, read off a staged directory.
@@ -26,7 +29,8 @@ import type { ZipEntry } from "./zip-safety.js";
  * is wrong with it.
  */
 
-export const CAMPAIGN_BUNDLE_VERSION = 1;
+/** Version 2 reserves `wiki/`; version 1 bundles remain readable. */
+export const CAMPAIGN_BUNDLE_VERSION = 2;
 export const CAMPAIGN_BUNDLE_APP = "devils-toys-campaign";
 
 /** A campaign that carries only these needs no system, and imports into any room. */
@@ -52,8 +56,12 @@ const FOLDERS = {
   hirelings: { extensions: [".png", ".jpg", ".jpeg", ".webp", ".json"], what: "JSON or a portrait" },
   assets: { extensions: [".png", ".jpg", ".jpeg", ".webp", ".json"], what: "JSON or a portrait" },
   obligations: { extensions: [".json"], what: "JSON" },
-  tables: { extensions: [".json"], what: "JSON" }
+  tables: { extensions: [".json"], what: "JSON" },
+  wiki: { extensions: [".md"], what: "Markdown" }
 } as const;
+
+/** The normal Wiki write boundary, enforced before a bundle reaches the database. */
+export const WIKI_MARKDOWN_LIMIT_BYTES = 256 * 1024;
 
 export type CampaignFolder = keyof typeof FOLDERS;
 
@@ -85,7 +93,8 @@ const roomSchema = z
     theme: z.string().optional(),
     calendarEnabled: z.boolean().optional(),
     musicEnabled: z.boolean().optional(),
-    mapNotationEnabled: z.boolean().optional()
+    mapNotationEnabled: z.boolean().optional(),
+    wikiEnabled: z.boolean().optional()
   })
   .strict();
 
@@ -150,6 +159,10 @@ const itemsSchema = z
       .array(
         z
           .object({
+            key: z
+              .string()
+              .regex(/^[a-z0-9][a-z0-9-]{0,80}$/)
+              .optional(),
             listKey: z.string().min(1).max(80),
             name: z.string().trim().min(1).max(120),
             spec: z.string().trim().max(200).default(""),
@@ -265,6 +278,45 @@ export type CampaignAsset = z.infer<typeof assetSchema> & { path: string; portra
 export type CampaignObligation = z.infer<typeof obligationSchema> & { path: string };
 export type CampaignCalendar = z.infer<typeof calendarSchema>;
 
+const wikiIndexSchema = z
+  .object({
+    files: z
+      .array(
+        z
+          .object({
+            file: z.string().min(1).max(300),
+            title: z.string().trim().min(1).max(160).optional(),
+            sortOrder: z.number().int().min(-1_000_000).max(1_000_000).default(0),
+            visible: z.boolean().default(false),
+            map: z.string().min(1).max(300).optional()
+          })
+          .strict()
+      )
+      .max(5000)
+      .default([]),
+    folders: z
+      .array(
+        z
+          .object({
+            path: z.string().min(1).max(300),
+            sortOrder: z.number().int().min(-1_000_000).max(1_000_000).default(0)
+          })
+          .strict()
+      )
+      .max(5000)
+      .default([])
+  })
+  .strict();
+export type CampaignWikiIndex = z.infer<typeof wikiIndexSchema>;
+export interface CampaignWikiPage {
+  path: string;
+  title: string;
+  markdown: string;
+  sortOrder: number;
+  visible: boolean;
+  map?: string;
+}
+
 export interface CampaignMedia {
   /** The path inside the bundle, which is this file's identity everywhere else. */
   path: string;
@@ -304,6 +356,7 @@ export interface Campaign {
   hirelings: CampaignHireling[];
   assets: CampaignAsset[];
   obligations: CampaignObligation[];
+  wiki: { pages: CampaignWikiPage[]; folders: CampaignWikiIndex["folders"] };
   /** Absent unless the bundle carries one; switching the calendar on is opt-in. */
   calendar?: CampaignCalendar;
   /** Things worth saying to a GM that are not worth refusing an import over. */
@@ -356,14 +409,20 @@ export function refuseUnacceptableEntries(entries: readonly ZipEntry[], limits: 
         `The ${source} holds a "${head}" folder, which is not one a campaign may carry. ` +
           `The folders are ${Object.keys(FOLDERS).join(", ")}.`
       );
-    if (rest.length > 1)
+    if (head !== "wiki" && rest.length > 1)
       throw new Error(`The ${source}'s "${entry.name}" is nested; a campaign's folders hold files directly.`);
 
-    const file = rest[0];
+    if (head === "wiki" && (rest.length > 5 || rest.some((part) => !isSafeWikiPathComponent(part))))
+      throw new Error(`The ${source}'s "${entry.name}" has an unsafe or over-deep wiki path.`);
+
+    const file = rest.at(-1)!;
     const extension = extensionOf(file);
-    if (file !== "index.json" && !(folder.extensions as readonly string[]).includes(extension))
+    const isIndex = rest.length === 1 && file === "index.json";
+    if (!isIndex && !(folder.extensions as readonly string[]).includes(extension))
       throw new Error(`The ${source}'s "${entry.name}" is not ${folder.what}, which is what "${head}" holds.`);
 
+    if (head === "wiki" && extension === ".md" && entry.uncompressedSize > WIKI_MARKDOWN_LIMIT_BYTES)
+      throw new Error(`The ${source}'s "${entry.name}" is larger than a Wiki page may be (256 KiB).`);
     const cap = extension === ".mp3" ? limits.maxAudioBytes : limits.maxImageBytes;
     if (extension !== ".json" && extension !== ".md" && entry.uncompressedSize > cap)
       throw new Error(
@@ -420,6 +479,21 @@ function folderFiles(directory: string, folder: string) {
     .sort((left, right) => left.localeCompare(right));
 }
 
+function wikiFiles(directory: string) {
+  const root = path.join(directory, "wiki");
+  if (!fs.existsSync(root)) return [] as string[];
+  const found: string[] = [];
+  const walk = (current: string, relative = "") => {
+    for (const entry of fs.readdirSync(current, { withFileTypes: true })) {
+      const next = relative ? `${relative}/${entry.name}` : entry.name;
+      if (entry.isDirectory()) walk(path.join(current, entry.name), next);
+      else if (entry.isFile() && entry.name !== "index.json") found.push(next);
+    }
+  };
+  walk(root);
+  return found.sort();
+}
+
 /**
  * A name for a file nothing named. The extension goes, separators become spaces,
  * and nothing else is done to it — `the-keep.png` becomes "the keep" rather than
@@ -433,6 +507,19 @@ export function displayNameFromFile(file: string) {
       .replace(/[-_]+/g, " ")
       .trim() || file
   );
+}
+
+/** The index title wins; otherwise use the first Markdown heading, then the filename. */
+function wikiTitleFromMarkdown(markdown: string, file: string) {
+  const tree = unified().use(remarkParse).parse(markdown) as { children: { type?: string; children?: unknown[] }[] };
+  const text = (node: unknown): string => {
+    if (!node || typeof node !== "object") return "";
+    const value = node as { value?: unknown; children?: unknown[] };
+    return typeof value.value === "string" ? value.value : (value.children ?? []).map(text).join("");
+  };
+  const heading = tree.children.find((node) => node.type === "heading");
+  const title = heading ? text(heading).replace(/\s+/g, " ").trim().slice(0, 160) : "";
+  return title || displayNameFromFile(file);
 }
 
 const CATEGORY: Record<MediaFolder, CampaignMedia["category"]> = {
@@ -702,8 +789,60 @@ export function readCampaign(directory: string, options: ReadOptions = {}): Camp
   const items = exists(directory, "items/index.json")
     ? readJsonFile(directory, "items/index.json", itemsSchema, "the item list")
     : { added: [], retired: [] };
+  const itemKeys = items.added.flatMap((item) => (item.key ? [item.key] : []));
+  if (new Set(itemKeys).size !== itemKeys.length)
+    throw new Error("The campaign's items/index.json uses a room-item key twice.");
   for (const file of folderFiles(directory, "items"))
     warnings.push(`items/${file} is not read — a campaign's gear is listed in items/index.json.`);
+
+  const wikiIndex = exists(directory, "wiki/index.json")
+    ? readJsonFile(directory, "wiki/index.json", wikiIndexSchema, "the wiki listing")
+    : { files: [], folders: [] };
+  const wikiHeld = wikiFiles(directory);
+  for (const file of wikiHeld)
+    if (file.split("/").some((part) => !isSafeWikiPathComponent(part)))
+      throw new Error(`The campaign's wiki/${file} has an unsafe or non-portable path.`);
+  const indexedWiki = new Map(wikiIndex.files.map((entry) => [entry.file, entry]));
+  if (indexedWiki.size !== wikiIndex.files.length)
+    throw new Error("The campaign's wiki/index.json names a file twice.");
+  for (const entry of wikiIndex.files)
+    if (entry.file.split("/").some((part) => !isSafeWikiPathComponent(part)) || entry.file.split("/").length > 5)
+      throw new Error(`The campaign's wiki/index.json names an unsafe or over-deep file "${entry.file}".`);
+  for (const entry of wikiIndex.files)
+    if (!wikiHeld.includes(entry.file))
+      throw new Error(`The campaign's wiki/index.json names "${entry.file}", which the wiki does not hold.`);
+  const wikiFolderPaths = wikiIndex.folders.map((folder) => folder.path);
+  if (new Set(wikiFolderPaths).size !== wikiFolderPaths.length)
+    throw new Error("The campaign's wiki/index.json names a folder twice.");
+  for (const folder of wikiFolderPaths)
+    if (folder.split("/").some((part) => !isSafeWikiPathComponent(part)) || folder.split("/").length > 4)
+      throw new Error(`The campaign's wiki/index.json names an unsafe or over-deep folder "${folder}".`);
+  for (const entry of wikiIndex.files)
+    if (entry.map && !media.some((candidate) => candidate.path === entry.map && candidate.category === "map"))
+      throw new Error(
+        `The campaign's wiki/index.json binds "${entry.file}" to "${entry.map}", which is not a map in the campaign.`
+      );
+  const legendMaps = wikiIndex.files.flatMap((entry) => (entry.map ? [entry.map] : []));
+  if (new Set(legendMaps).size !== legendMaps.length)
+    throw new Error("The campaign's wiki/index.json binds more than one page to the same map.");
+  const wiki = {
+    pages: wikiHeld.map((file) => {
+      const entry = indexedWiki.get(file);
+      const markdownPath = path.join(directory, "wiki", file);
+      if (fs.statSync(markdownPath).size > WIKI_MARKDOWN_LIMIT_BYTES)
+        throw new Error(`The campaign's wiki/${file} is larger than a Wiki page may be (256 KiB).`);
+      const markdown = fs.readFileSync(markdownPath, "utf8");
+      return {
+        path: `wiki/${file}`,
+        title: entry?.title ?? wikiTitleFromMarkdown(markdown, file),
+        markdown,
+        sortOrder: entry?.sortOrder ?? 0,
+        visible: entry?.visible ?? false,
+        ...(entry?.map ? { map: entry.map } : {})
+      };
+    }),
+    folders: wikiIndex.folders
+  };
 
   // Normalised and then validated as one schema, so a calendar that is not one
   // is refused by `readJsonFile`'s message — naming the file and the field —
@@ -728,6 +867,7 @@ export function readCampaign(directory: string, options: ReadOptions = {}): Camp
     encounters,
     tables,
     items,
+    wiki,
     hirelings,
     assets,
     obligations,

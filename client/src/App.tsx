@@ -59,7 +59,8 @@ import type {
   SystemOptionalRule,
   ThemeId
 } from "@devils-toys/shared";
-import { api } from "./api";
+import { api, ApiError } from "./api";
+import { playerPreviewUrl, previewSelection } from "./player-preview";
 import { attributionLines, quoteScale, randomQuote } from "./quotes";
 import { tablesAppUrl, type TablesApp } from "./tables-app";
 import { TablesAppDialog } from "./TablesAppDialog";
@@ -73,7 +74,7 @@ import { roomConfigPath } from "./room-config";
 import { helpPath } from "./help";
 import { MediaModal, type RoomMediaState } from "./MediaModal";
 import { LibraryModal } from "./LibraryModal";
-import { RulesMarkdown } from "./RulesMarkdown";
+import { RulesMarkdown, type WikiMentionTarget } from "./RulesMarkdown";
 import type { ScenePing } from "./SceneViewer";
 import { TableMediaViewer } from "./TableMediaViewer";
 import { AudioDock, AudioModal } from "./AudioPlayer";
@@ -82,7 +83,7 @@ import { defaultGroupView, GroupPage, type GroupView } from "./GroupPage";
 import { movedRules, PARTY_VIEW, type GroupViewOption } from "@devils-toys/shared";
 
 import { AppearanceModal } from "./AppearanceModal";
-import { effectiveTheme, readPersonalTheme, writePersonalTheme } from "./personal-theme";
+import { effectiveTheme, readPersonalThemeForRole, writePersonalTheme } from "./personal-theme";
 import { readRailCollapsed, writeRailCollapsed } from "./rail-collapsed";
 import { NpcModal } from "./NpcModal";
 import { SpawnedNpcModal } from "./SpawnedNpcModal";
@@ -122,6 +123,7 @@ interface Status {
 }
 
 interface RoomDetail {
+  presence?: PresenceMember[];
   room: RoomSummary & { calendar: RoomCalendar };
   members: {
     accountId: number;
@@ -169,6 +171,9 @@ export function App() {
   const [status, setStatus] = useState<Status>();
   const [account, setAccount] = useState<Account>();
   const [loading, setLoading] = useState(true);
+  const [previewError, setPreviewError] = useState<string>();
+  const [startupRetry, setStartupRetry] = useState(0);
+  const [reconnecting, setReconnecting] = useState(false);
 
   /**
    * The status carries which game systems this server has, and installing one
@@ -179,24 +184,62 @@ export function App() {
     setStatus(await api<Status>("/api/status"));
   }
 
-  async function refresh() {
-    const nextStatus = await api<Status>("/api/status");
-    setStatus(nextStatus);
-    if (nextStatus.initialized) {
+  useEffect(() => {
+    let stopped = false;
+    let retry: ReturnType<typeof setTimeout>;
+    let controller: AbortController;
+    let failures = 0;
+    async function connect() {
+      controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 10_000);
       try {
-        setAccount((await api<{ account: Account }>("/api/me")).account);
-      } catch {
-        setAccount(undefined);
+        const nextStatus = await api<Status>("/api/status", { signal: controller.signal });
+        // A restarting proxy can answer with its HTML fallback and a 200.
+        if (typeof nextStatus?.initialized !== "boolean") throw new Error("Server is not ready.");
+        let nextAccount: Account | undefined;
+        if (nextStatus.initialized) {
+          try {
+            nextAccount = (await api<{ account: Account }>("/api/me", { signal: controller.signal })).account;
+            if (!nextAccount) throw new Error("Server is not ready.");
+          } catch (error) {
+            // Only an actual expired/missing session calls for signing in.
+            if (!(error instanceof ApiError && error.status === 401 && !previewSelection())) throw error;
+          }
+        }
+        if (stopped) return;
+        setStatus(nextStatus);
+        setAccount(nextAccount);
+        setReconnecting(false);
+        setLoading(false);
+      } catch (error) {
+        if (stopped) return;
+        if (previewSelection() && error instanceof ApiError && [401, 403, 404].includes(error.status)) {
+          setPreviewError(error.message);
+          return;
+        }
+        setReconnecting(true);
+        retry = setTimeout(connect, Math.min(1000 * 2 ** failures++, 10_000));
+      } finally {
+        clearTimeout(timeout);
       }
     }
-    setLoading(false);
-  }
+    void connect();
+    return () => {
+      stopped = true;
+      clearTimeout(retry);
+      controller.abort();
+    };
+  }, [startupRetry]);
 
-  useEffect(() => {
-    refresh().catch(() => setLoading(false));
-  }, []);
-
-  if (loading || !status) return <LoadingScreen />;
+  if (previewError)
+    return (
+      <main className="loading-screen">
+        <p>{previewError}</p>
+        <a href="/">Return to GM view</a>
+      </main>
+    );
+  if (loading || !status)
+    return <LoadingScreen reconnecting={reconnecting} onRetry={() => setStartupRetry((value) => value + 1)} />;
   const inviteToken = window.location.pathname.match(/^\/invite\/([^/]+)$/)?.[1];
   if (inviteToken) return <InviteScreen token={decodeURIComponent(inviteToken)} onSuccess={setAccount} />;
   if (!status.initialized)
@@ -223,13 +266,17 @@ export function App() {
   );
 }
 
-function LoadingScreen() {
+function LoadingScreen({ reconnecting, onRetry }: { reconnecting: boolean; onRetry: () => void }) {
   return (
     <main className="loading-screen">
       <div className="sigil">
         <span>DT</span>
       </div>
       <p>Setting the table</p>
+      {reconnecting && <p role="status">Waiting for the server. Retrying automatically…</p>}
+      <button className="secondary-button" onClick={onRetry}>
+        Retry now
+      </button>
     </main>
   );
 }
@@ -334,6 +381,13 @@ function Workspace({
   const [themeChoiceRevision, setThemeChoiceRevision] = useState(0);
 
   async function loadRooms() {
+    const preview = previewSelection();
+    if (preview) {
+      const { room } = await api<RoomDetail>(`/api/rooms/${preview.roomId}`);
+      setRooms([room]);
+      setSelectedId(room.id);
+      return;
+    }
     const next = (await api<{ rooms: RoomSummary[] }>("/api/rooms")).rooms;
     setRooms(next);
     setSelectedId((current) =>
@@ -373,8 +427,8 @@ function Workspace({
   // Read on render rather than in an effect so opening a room never shows one
   // theme before settling on another.
   const personalTheme = useMemo(
-    () => (active ? readPersonalTheme(browserStorage, active.id) : undefined),
-    [active?.id, themeChoiceRevision]
+    () => readPersonalThemeForRole(active?.role, browserStorage, active?.id),
+    [active?.id, active?.role, themeChoiceRevision]
   );
   const displayedTheme = roomThemePreview ?? effectiveTheme(active?.theme, personalTheme);
   // A player opens a room to play at it rather than to move between rooms, so
@@ -752,6 +806,11 @@ function TableRoom({
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [media, setMedia] = useState<RoomMediaState>({ map: null, scene: null, references: [] });
   const [mediaOpen, setMediaOpen] = useState(false);
+  const [wikiPageToOpen, setWikiPageToOpen] = useState<string>();
+  const [wikiAssetToOpen, setWikiAssetToOpen] = useState<number>();
+  // Wiki changes are deliberately coarse-grained. Open readers refetch while
+  // an editor keeps its local draft until its normal revision-aware save.
+  const [wikiRevision, setWikiRevision] = useState(0);
   const [pings, setPings] = useState<ScenePing[]>([]);
   const [audio, setAudio] = useState<RoomAudioState>(emptyRoomAudio);
   const [audioOpen, setAudioOpen] = useState(false);
@@ -776,11 +835,13 @@ function TableRoom({
   // Reported by the group page once its definition has loaded; until then the
   // only tab anyone can be on is the party.
   const [groupViews, setGroupViews] = useState<GroupViewOption[]>([PARTY_VIEW]);
-  const [rulesTabRevision, setRulesTabRevision] = useState(0);
+  const [requestedTableTab, setRequestedTableTab] = useState<{ tab: "rules" | "group"; revision: number }>();
   /** The tracker sits above chat; collapsing it leaves only its header. */
   const [trackerOpen, setTrackerOpen] = useState(true);
 
   const socketRef = useRef<WebSocket | null>(null);
+  const [previewPlayer, setPreviewPlayer] = useState("generic");
+  const [previewFailure, setPreviewFailure] = useState<string>();
   // Requests cannot be cancelled; a room switch or disabling music makes every
   // earlier result irrelevant and prevents it from restoring a cleared player.
   const audioLoadGeneration = useRef(0);
@@ -808,6 +869,45 @@ function TableRoom({
   function closeDice() {
     setDiceOpen(false);
     setDiceInitialSave(undefined);
+  }
+
+  /** Wiki pages own page navigation; room-level targets reopen the surface the
+   * table already uses. NPCs and items remain label-only in the wiki because
+   * there is no player-safe detail payload for either one. */
+  function openWikiMention(mention: WikiMentionTarget) {
+    if (mention.kind === "page") {
+      setWikiAssetToOpen(undefined);
+      setWikiPageToOpen(mention.target);
+      setMediaOpen(true);
+      return;
+    }
+    if (mention.kind === "asset") {
+      const mediaId = Number(mention.target);
+      if (Number.isSafeInteger(mediaId) && mediaId > 0) {
+        setWikiPageToOpen(undefined);
+        setWikiAssetToOpen(mediaId);
+        setMediaOpen(true);
+      }
+      return;
+    }
+    if (mention.kind === "pc") {
+      const characterId = Number(mention.target);
+      if (Number.isSafeInteger(characterId) && characterId > 0) {
+        setMediaOpen(false);
+        setWikiPageToOpen(undefined);
+        setWikiAssetToOpen(undefined);
+        setCharacterToOpen(characterId);
+        setCharactersOpen(true);
+      }
+      return;
+    }
+    if (mention.kind === "follower") {
+      setMediaOpen(false);
+      setWikiPageToOpen(undefined);
+      setWikiAssetToOpen(undefined);
+      setGroupView("hirelings");
+      setRequestedTableTab((current) => ({ tab: "group", revision: (current?.revision ?? 0) + 1 }));
+    }
   }
 
   async function loadMedia() {
@@ -870,6 +970,7 @@ function TableRoom({
       api<{ messages: ChatMessage[] }>(`/api/rooms/${room.id}/messages`)
     ]);
     setDetail(nextDetail);
+    if (previewSelection() && nextDetail.presence) setPresence(nextDetail.presence);
     setMessages(nextMessages.messages);
   }
 
@@ -895,6 +996,34 @@ function TableRoom({
   }, [room.id, detail?.room.musicEnabled]);
   useEffect(() => {
     let stopped = false;
+    if (previewSelection()) {
+      // Preview never joins presence or sends pings. Refresh through the same
+      // scoped read boundary, including rechecking GM and player membership.
+      let busy = false;
+      const refreshPreview = async () => {
+        if (busy || stopped) return;
+        busy = true;
+        try {
+          await load();
+          await Promise.all([loadMedia(), loadEncounters(), loadAudio()]);
+          if (!stopped) {
+            setCharactersRevision((value) => value + 1);
+            setGroupRevision((value) => value + 1);
+            setWikiRevision((value) => value + 1);
+            setMapNotationSyncRevision((value) => value + 1);
+          }
+        } catch (error) {
+          if (!stopped) setPreviewFailure(error instanceof Error ? error.message : "Preview unavailable.");
+        } finally {
+          busy = false;
+        }
+      };
+      const timer = window.setInterval(refreshPreview, 3000);
+      return () => {
+        stopped = true;
+        window.clearInterval(timer);
+      };
+    }
     let retry: number;
     const connect = () => {
       const protocol = location.protocol === "https:" ? "wss:" : "ws:";
@@ -917,6 +1046,12 @@ function TableRoom({
         if (data.type === "media-updated") {
           loadMedia();
           loadEncounters();
+        }
+        if (data.type === "wiki-updated") {
+          setWikiRevision((current) => current + 1);
+          // A legend is a wiki page bound to a map, so its title, visibility,
+          // or binding can change even though the media row did not.
+          loadMedia();
         }
         if (data.type === "audio-updated") loadAudio();
         if (data.type === "audio-playback") setAudio((current) => ({ ...current, playback: data.playback }));
@@ -995,6 +1130,12 @@ function TableRoom({
     if (!hasActiveEncounters) setPanel("chat");
   }, [hasActiveEncounters]);
 
+  if (previewFailure)
+    return (
+      <div className="table-loading" role="alert">
+        {previewFailure}
+      </div>
+    );
   if (!detail) return <div className="table-loading">Opening {room.name}…</div>;
   const selectedEncounter = encounters.find((encounter) => encounter.id === selectedEncounterId);
   // The combat rail is live-only. The GM may still select and edit an inactive
@@ -1011,8 +1152,62 @@ function TableRoom({
             {room.system} · {detail.room.role === "gm" ? "Game master" : "Player"}
           </p>
           <h1>{room.name}</h1>
+          {previewSelection() && (
+            <div className="player-preview-controls">
+              <strong>Player preview · Read-only</strong>
+              <label>
+                View as
+                <select
+                  aria-label="Preview player"
+                  value={previewSelection()!.player}
+                  onChange={(event) => {
+                    window.location.href = playerPreviewUrl(room.id, event.target.value);
+                  }}
+                >
+                  <option value="generic">Generic player (shared content)</option>
+                  {detail.members
+                    .filter((member) => member.role === "player")
+                    .map((member) => (
+                      <option key={member.accountId} value={member.accountId}>
+                        {member.displayName}
+                      </option>
+                    ))}
+                </select>
+              </label>
+              <small>Refreshes every 3 seconds. Generic view has no personal characters, rolls, or notes.</small>
+            </div>
+          )}
         </div>
         <div className="header-actions">
+          {detail.room.role === "gm" && (
+            <div className="player-preview-controls">
+              <label>
+                View as
+                <select
+                  aria-label="Player to preview"
+                  value={previewPlayer}
+                  onChange={(event) => setPreviewPlayer(event.target.value)}
+                >
+                  <option value="generic">Generic player (shared content)</option>
+                  {detail.members
+                    .filter((member) => member.role === "player")
+                    .map((member) => (
+                      <option key={member.accountId} value={member.accountId}>
+                        {member.displayName}
+                      </option>
+                    ))}
+                </select>
+              </label>
+              <a
+                className="secondary-button"
+                href={playerPreviewUrl(room.id, previewPlayer)}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Eye size={16} /> Player preview
+              </a>
+            </div>
+          )}
           {detail.room.role === "gm" && (
             <button className="icon-button invite-player-button" onClick={onCreatePlayer} title="Create player">
               <UserPlus />
@@ -1069,12 +1264,16 @@ function TableRoom({
         <section className="scene-stage">
           <TableMediaViewer
             roomId={room.id}
+            accountId={accountId}
             media={media}
             isGm={detail.room.role === "gm"}
             mapNotationEnabled={detail.room.mapNotationEnabled}
             mapNotationSyncRevision={mapNotationSyncRevision}
             mapNotationChange={mapNotationChange}
-            requestedTab={rulesTabRevision ? { tab: "rules", revision: rulesTabRevision } : undefined}
+            wikiEnabled={detail.room.wikiEnabled}
+            wikiRevision={wikiRevision}
+            requestedTab={requestedTableTab}
+            onOpenWikiMention={openWikiMention}
             rulesPage={
               <Rules
                 roomId={room.id}
@@ -1255,14 +1454,38 @@ function TableRoom({
       )}
       {mediaOpen &&
         (detail.room.role === "gm" ? (
-          <LibraryModal roomId={room.id} media={media} onChanged={loadMedia} onClose={() => setMediaOpen(false)} />
+          <LibraryModal
+            roomId={room.id}
+            media={media}
+            wikiEnabled={detail.room.wikiEnabled}
+            wikiRevision={wikiRevision}
+            onChanged={loadMedia}
+            onClose={() => {
+              setMediaOpen(false);
+              setWikiPageToOpen(undefined);
+              setWikiAssetToOpen(undefined);
+            }}
+            onOpenMention={openWikiMention}
+            wikiPageSlug={wikiPageToOpen}
+            assetToOpen={wikiAssetToOpen}
+          />
         ) : (
           <MediaModal
             roomId={room.id}
             role={detail.room.role}
+            accountId={accountId}
             media={media}
+            wikiEnabled={detail.room.wikiEnabled}
+            wikiRevision={wikiRevision}
             onChanged={loadMedia}
-            onClose={() => setMediaOpen(false)}
+            onClose={() => {
+              setMediaOpen(false);
+              setWikiPageToOpen(undefined);
+              setWikiAssetToOpen(undefined);
+            }}
+            onOpenMention={openWikiMention}
+            wikiPageSlug={wikiPageToOpen}
+            assetToOpen={wikiAssetToOpen}
           />
         ))}
       {audioOpen && detail.room.musicEnabled && (
@@ -1340,7 +1563,7 @@ function TableRoom({
           onRules={() => {
             closeDice();
             setRulesFocus(systemDefinition.rollRulesQuery);
-            setRulesTabRevision((current) => current + 1);
+            setRequestedTableTab((current) => ({ tab: "rules", revision: (current?.revision ?? 0) + 1 }));
           }}
           onClose={closeDice}
         />
@@ -1867,7 +2090,7 @@ function CreatePlayer({ roomId, onClose }: { roomId: number; onClose: () => void
   );
 }
 
-function RoomSettings({
+export function RoomSettings({
   room,
   optionalRules,
   isAdmin,
@@ -1889,6 +2112,7 @@ function RoomSettings({
   const [calendarEnabled, setCalendarEnabled] = useState(room.calendarEnabled);
   const [mapNotationEnabled, setMapNotationEnabled] = useState(room.mapNotationEnabled);
   const [musicEnabled, setMusicEnabled] = useState(room.musicEnabled);
+  const [wikiEnabled, setWikiEnabled] = useState(room.wikiEnabled);
   const [rules, setRules] = useState<RoomRuleSettings>(room.rules);
   const [confirmName, setConfirmName] = useState("");
   const [error, setError] = useState("");
@@ -1904,7 +2128,7 @@ function RoomSettings({
     try {
       await api(`/api/rooms/${room.id}`, {
         method: "PATCH",
-        body: JSON.stringify({ theme, calendarEnabled, mapNotationEnabled, musicEnabled, rules: moved })
+        body: JSON.stringify({ theme, calendarEnabled, mapNotationEnabled, musicEnabled, wikiEnabled, rules: moved })
       });
       await onChanged();
       onClose();
@@ -1986,6 +2210,16 @@ function RoomSettings({
           </span>
           <span className="toggle-control">
             <input type="checkbox" checked={musicEnabled} onChange={(event) => setMusicEnabled(event.target.checked)} />
+            <span aria-hidden="true" />
+          </span>
+        </label>
+        <label className={`toggle-row ${wikiEnabled ? "enabled" : ""}`}>
+          <span className="toggle-copy">
+            <strong>Wiki</strong>
+            <small>Show the room notebook and its shared and private pages.</small>
+          </span>
+          <span className="toggle-control">
+            <input type="checkbox" checked={wikiEnabled} onChange={(event) => setWikiEnabled(event.target.checked)} />
             <span aria-hidden="true" />
           </span>
         </label>

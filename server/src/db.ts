@@ -4,7 +4,9 @@ import { DatabaseSync } from "node:sqlite";
 import { BUILTIN_TABLE_TAGS, defaultTagLabel, serializeSet, THEME_IDS } from "@devils-toys/shared";
 import { builtinSystems } from "./builtin-systems.js";
 import { config } from "./config.js";
+import { refuseUnisolatedTestDatabase } from "./test-data-guard.js";
 
+refuseUnisolatedTestDatabase();
 fs.mkdirSync(config.dataDir, { recursive: true });
 fs.mkdirSync(path.join(config.dataDir, "uploads"), { recursive: true });
 fs.mkdirSync(path.join(config.dataDir, "logs"), { recursive: true });
@@ -56,6 +58,7 @@ const roomsColumns = `
     calendar_json TEXT,
     map_notation_enabled INTEGER NOT NULL DEFAULT 0,
     music_enabled INTEGER NOT NULL DEFAULT 0,
+    wiki_enabled INTEGER NOT NULL DEFAULT 1,
     created_by INTEGER NOT NULL REFERENCES accounts(id),
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP`;
 
@@ -124,6 +127,21 @@ const roomTagColumns = `
       (subject = 'hireling' AND hireling_id IS NOT NULL AND character_id IS NULL AND npc_id IS NULL AND media_id IS NULL) OR
       (subject = 'scene' AND media_id IS NOT NULL AND character_id IS NULL AND npc_id IS NULL AND hireling_id IS NULL)
     )`;
+
+/**
+ * A room owns the whole folder tree.  Cascading the parent link is what lets
+ * SQLite remove that tree when the room goes away; the wiki route, rather than
+ * this foreign key, refuses a person's attempt to delete a non-empty folder.
+ */
+const wikiFolderColumns = `
+    id INTEGER PRIMARY KEY,
+    room_id INTEGER NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
+    parent_id INTEGER REFERENCES wiki_folders(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    owner_account_id INTEGER REFERENCES accounts(id) ON DELETE SET NULL,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP`;
 
 /**
  * Portrait columns, in the shape `characters` already carries them. A hireling
@@ -238,6 +256,27 @@ db.exec(`
     group_json TEXT NOT NULL DEFAULT '{}',
     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
   );
+  CREATE TABLE IF NOT EXISTS wiki_folders (${wikiFolderColumns});
+  CREATE UNIQUE INDEX IF NOT EXISTS wiki_folders_name
+    ON wiki_folders (room_id, COALESCE(parent_id, 0), name COLLATE NOCASE);
+  CREATE TABLE IF NOT EXISTS wiki_pages (
+    id INTEGER PRIMARY KEY,
+    room_id INTEGER NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
+    folder_id INTEGER REFERENCES wiki_folders(id) ON DELETE SET NULL,
+    slug TEXT NOT NULL,
+    title TEXT NOT NULL,
+    markdown TEXT NOT NULL DEFAULT '',
+    visible INTEGER NOT NULL DEFAULT 0,
+    map_media_id INTEGER REFERENCES media(id) ON DELETE SET NULL,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    revision INTEGER NOT NULL DEFAULT 0,
+    owner_account_id INTEGER REFERENCES accounts(id) ON DELETE SET NULL,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+  );
+  CREATE UNIQUE INDEX IF NOT EXISTS wiki_pages_slug ON wiki_pages (room_id, slug);
+  CREATE UNIQUE INDEX IF NOT EXISTS wiki_pages_legend
+    ON wiki_pages (map_media_id) WHERE map_media_id IS NOT NULL;
   CREATE TABLE IF NOT EXISTS map_notations (
     id INTEGER PRIMARY KEY,
     room_id INTEGER NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
@@ -276,6 +315,7 @@ db.exec(`
     name TEXT NOT NULL,
     notes TEXT NOT NULL DEFAULT '',
     statblock_json TEXT NOT NULL DEFAULT '{}',
+    revealed INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
   );
@@ -350,6 +390,36 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS group_hirelings_room ON group_hirelings (room_id, sort_order);
   CREATE INDEX IF NOT EXISTS group_assets_room ON group_assets (room_id, kind, sort_order);
   CREATE INDEX IF NOT EXISTS group_obligations_room ON group_obligations (room_id, sort_order);
+  -- Markdown remains authoritative; this is the permission-aware, foreign-keyed
+  -- reverse index rebuilt on every wiki page save.  It follows every target
+  -- table so a new database can validate all of its foreign keys immediately.
+  CREATE TABLE IF NOT EXISTS wiki_mentions (
+    page_id INTEGER NOT NULL REFERENCES wiki_pages(id) ON DELETE CASCADE,
+    kind TEXT NOT NULL CHECK (kind IN ('pc', 'npc', 'follower', 'asset', 'item', 'page')),
+    character_id INTEGER REFERENCES characters(id) ON DELETE CASCADE,
+    npc_id INTEGER REFERENCES custom_npcs(id) ON DELETE CASCADE,
+    hireling_id INTEGER REFERENCES group_hirelings(id) ON DELETE CASCADE,
+    media_id INTEGER REFERENCES media(id) ON DELETE CASCADE,
+    item_id TEXT,
+    room_item_id INTEGER REFERENCES room_items(id) ON DELETE CASCADE,
+    target_page_id INTEGER REFERENCES wiki_pages(id) ON DELETE CASCADE,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    CHECK (
+      (kind = 'pc' AND character_id IS NOT NULL AND npc_id IS NULL AND hireling_id IS NULL AND media_id IS NULL AND item_id IS NULL AND room_item_id IS NULL AND target_page_id IS NULL) OR
+      (kind = 'npc' AND npc_id IS NOT NULL AND character_id IS NULL AND hireling_id IS NULL AND media_id IS NULL AND item_id IS NULL AND room_item_id IS NULL AND target_page_id IS NULL) OR
+      (kind = 'follower' AND hireling_id IS NOT NULL AND character_id IS NULL AND npc_id IS NULL AND media_id IS NULL AND item_id IS NULL AND room_item_id IS NULL AND target_page_id IS NULL) OR
+      (kind = 'asset' AND media_id IS NOT NULL AND character_id IS NULL AND npc_id IS NULL AND hireling_id IS NULL AND item_id IS NULL AND room_item_id IS NULL AND target_page_id IS NULL) OR
+      (kind = 'item' AND item_id IS NOT NULL AND character_id IS NULL AND npc_id IS NULL AND hireling_id IS NULL AND media_id IS NULL AND target_page_id IS NULL) OR
+      (kind = 'page' AND target_page_id IS NOT NULL AND character_id IS NULL AND npc_id IS NULL AND hireling_id IS NULL AND media_id IS NULL AND item_id IS NULL AND room_item_id IS NULL)
+    ),
+    PRIMARY KEY (page_id, sort_order)
+  );
+  CREATE INDEX IF NOT EXISTS wiki_mentions_character ON wiki_mentions (character_id) WHERE character_id IS NOT NULL;
+  CREATE INDEX IF NOT EXISTS wiki_mentions_npc ON wiki_mentions (npc_id) WHERE npc_id IS NOT NULL;
+  CREATE INDEX IF NOT EXISTS wiki_mentions_hireling ON wiki_mentions (hireling_id) WHERE hireling_id IS NOT NULL;
+  CREATE INDEX IF NOT EXISTS wiki_mentions_media ON wiki_mentions (media_id) WHERE media_id IS NOT NULL;
+  CREATE INDEX IF NOT EXISTS wiki_mentions_room_item ON wiki_mentions (room_item_id) WHERE room_item_id IS NOT NULL;
+  CREATE INDEX IF NOT EXISTS wiki_mentions_page_target ON wiki_mentions (target_page_id) WHERE target_page_id IS NOT NULL;
   CREATE TABLE IF NOT EXISTS encounters (
     id INTEGER PRIMARY KEY,
     room_id INTEGER NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
@@ -518,6 +588,7 @@ if (
     "calendar_json",
     "map_notation_enabled",
     "music_enabled",
+    "wiki_enabled",
     "created_by",
     "created_at"
   ].filter((column) => hasColumn("rooms", column));
@@ -601,6 +672,9 @@ if (!hasColumn("rooms", "map_notation_enabled")) {
 if (!hasColumn("rooms", "music_enabled")) {
   db.exec("ALTER TABLE rooms ADD COLUMN music_enabled INTEGER NOT NULL DEFAULT 0");
 }
+if (!hasColumn("rooms", "wiki_enabled")) {
+  db.exec("ALTER TABLE rooms ADD COLUMN wiki_enabled INTEGER NOT NULL DEFAULT 1");
+}
 if (!hasColumn("accounts", "created_by"))
   db.exec("ALTER TABLE accounts ADD COLUMN created_by INTEGER REFERENCES accounts(id) ON DELETE SET NULL");
 if (!hasColumn("characters", "created_by"))
@@ -619,6 +693,106 @@ if (!hasColumn("characters", "portrait_size")) db.exec("ALTER TABLE characters A
 if (!hasColumn("characters", "creation_json")) db.exec("ALTER TABLE characters ADD COLUMN creation_json TEXT");
 if (!hasColumn("custom_npcs", "statblock_json"))
   db.exec("ALTER TABLE custom_npcs ADD COLUMN statblock_json TEXT NOT NULL DEFAULT '{}'");
+// The cast may be named to players without exposing the GM's notes or
+// statblock. It is deliberately a column on the NPC itself, like Library
+// visibility, rather than a per-account reveal ledger.
+if (!hasColumn("custom_npcs", "revealed"))
+  db.exec("ALTER TABLE custom_npcs ADD COLUMN revealed INTEGER NOT NULL DEFAULT 0");
+// A nested wiki tree originally used RESTRICT on its parent link.  That guards
+// an individual folder delete, but it also stops SQLite half way through a
+// room's own cascade: the parent is removed before the child can follow it.
+// The route remains the user-facing non-empty-delete guard; the schema instead
+// must let a room take its entire tree with it.
+const wikiFoldersSchema = storedSchema("wiki_folders");
+if (
+  wikiFoldersSchema &&
+  !/parent_id\s+INTEGER\s+REFERENCES\s+wiki_folders\s*\(\s*id\s*\)\s+ON\s+DELETE\s+CASCADE/i.test(wikiFoldersSchema)
+) {
+  db.exec("PRAGMA foreign_keys = OFF");
+  db.exec("BEGIN IMMEDIATE");
+  try {
+    db.exec(`CREATE TABLE wiki_folders_rebuilt (${wikiFolderColumns}
+    )`);
+    db.exec(`INSERT INTO wiki_folders_rebuilt
+      (id, room_id, parent_id, name, sort_order, owner_account_id, created_at, updated_at)
+      SELECT id, room_id, parent_id, name, sort_order, owner_account_id, created_at, updated_at
+        FROM wiki_folders`);
+    db.exec("DROP TABLE wiki_folders");
+    db.exec("ALTER TABLE wiki_folders_rebuilt RENAME TO wiki_folders");
+    db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS wiki_folders_name
+      ON wiki_folders (room_id, COALESCE(parent_id, 0), name COLLATE NOCASE)`);
+    db.exec("COMMIT");
+  } catch (cause) {
+    db.exec("ROLLBACK");
+    throw cause;
+  } finally {
+    db.exec("PRAGMA foreign_keys = ON");
+  }
+}
+// An early wiki build carried the row-backed targets but predates catalogue
+// items. Keep its derived index readable while new saves write the stable text
+// identity too; the index itself is rewritten whole on the next page save.
+if (!hasColumn("wiki_mentions", "item_id")) db.exec("ALTER TABLE wiki_mentions ADD COLUMN item_id TEXT");
+if (!hasColumn("wiki_mentions", "room_item_id"))
+  db.exec("ALTER TABLE wiki_mentions ADD COLUMN room_item_id INTEGER REFERENCES room_items(id) ON DELETE CASCADE");
+// `wiki_mentions` was introduced while the wiki was being built.  An early
+// development schema represented items solely by their room-row key, which
+// cannot represent a system catalogue item.  Rebuild its CHECK from the same
+// current shape rather than leaving a newly added text column unusable.
+const wikiMentionSql =
+  one<{ sql: string }>("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'wiki_mentions'")?.sql ?? "";
+if (!wikiMentionSql.includes("kind = 'item' AND item_id IS NOT NULL")) {
+  db.exec("PRAGMA foreign_keys = OFF");
+  try {
+    db.exec("BEGIN");
+    db.exec(`
+      CREATE TABLE wiki_mentions_replacement (
+        page_id INTEGER NOT NULL REFERENCES wiki_pages(id) ON DELETE CASCADE,
+        kind TEXT NOT NULL CHECK (kind IN ('pc', 'npc', 'follower', 'asset', 'item', 'page')),
+        character_id INTEGER REFERENCES characters(id) ON DELETE CASCADE,
+        npc_id INTEGER REFERENCES custom_npcs(id) ON DELETE CASCADE,
+        hireling_id INTEGER REFERENCES group_hirelings(id) ON DELETE CASCADE,
+        media_id INTEGER REFERENCES media(id) ON DELETE CASCADE,
+        item_id TEXT,
+        room_item_id INTEGER REFERENCES room_items(id) ON DELETE CASCADE,
+        target_page_id INTEGER REFERENCES wiki_pages(id) ON DELETE CASCADE,
+        sort_order INTEGER NOT NULL DEFAULT 0,
+        CHECK (
+          (kind = 'pc' AND character_id IS NOT NULL AND npc_id IS NULL AND hireling_id IS NULL AND media_id IS NULL AND item_id IS NULL AND room_item_id IS NULL AND target_page_id IS NULL) OR
+          (kind = 'npc' AND npc_id IS NOT NULL AND character_id IS NULL AND hireling_id IS NULL AND media_id IS NULL AND item_id IS NULL AND room_item_id IS NULL AND target_page_id IS NULL) OR
+          (kind = 'follower' AND hireling_id IS NOT NULL AND character_id IS NULL AND npc_id IS NULL AND media_id IS NULL AND item_id IS NULL AND room_item_id IS NULL AND target_page_id IS NULL) OR
+          (kind = 'asset' AND media_id IS NOT NULL AND character_id IS NULL AND npc_id IS NULL AND hireling_id IS NULL AND item_id IS NULL AND room_item_id IS NULL AND target_page_id IS NULL) OR
+          (kind = 'item' AND item_id IS NOT NULL AND character_id IS NULL AND npc_id IS NULL AND hireling_id IS NULL AND media_id IS NULL AND target_page_id IS NULL) OR
+          (kind = 'page' AND target_page_id IS NOT NULL AND character_id IS NULL AND npc_id IS NULL AND hireling_id IS NULL AND media_id IS NULL AND item_id IS NULL AND room_item_id IS NULL)
+        ),
+        PRIMARY KEY (page_id, sort_order)
+      );
+      INSERT INTO wiki_mentions_replacement
+        (page_id, kind, character_id, npc_id, hireling_id, media_id, item_id, room_item_id, target_page_id, sort_order)
+      SELECT page_id, kind, character_id, npc_id, hireling_id, media_id,
+             CASE WHEN kind = 'item' THEN (SELECT item_id FROM room_items WHERE id = room_item_id) END,
+             room_item_id, target_page_id, sort_order
+        FROM wiki_mentions;
+      DROP TABLE wiki_mentions;
+      ALTER TABLE wiki_mentions_replacement RENAME TO wiki_mentions;
+      COMMIT;
+    `);
+  } catch (error) {
+    db.exec("ROLLBACK");
+    throw error;
+  } finally {
+    db.exec("PRAGMA foreign_keys = ON");
+  }
+}
+db.exec(`
+  CREATE INDEX IF NOT EXISTS wiki_mentions_character ON wiki_mentions (character_id) WHERE character_id IS NOT NULL;
+  CREATE INDEX IF NOT EXISTS wiki_mentions_npc ON wiki_mentions (npc_id) WHERE npc_id IS NOT NULL;
+  CREATE INDEX IF NOT EXISTS wiki_mentions_hireling ON wiki_mentions (hireling_id) WHERE hireling_id IS NOT NULL;
+  CREATE INDEX IF NOT EXISTS wiki_mentions_media ON wiki_mentions (media_id) WHERE media_id IS NOT NULL;
+  CREATE INDEX IF NOT EXISTS wiki_mentions_room_item ON wiki_mentions (room_item_id) WHERE room_item_id IS NOT NULL;
+  CREATE INDEX IF NOT EXISTS wiki_mentions_item ON wiki_mentions (item_id) WHERE item_id IS NOT NULL;
+  CREATE INDEX IF NOT EXISTS wiki_mentions_page_target ON wiki_mentions (target_page_id) WHERE target_page_id IS NOT NULL;
+`);
 // A record cloned out of the bestiary to put something into a fight is a spawn,
 // not a monster the GM wrote. It is tracked, but it does not belong in the
 // bestiary beside the entries it was copied from.

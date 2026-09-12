@@ -105,7 +105,7 @@ describe("tags in a room", () => {
     expect(seen.vocabulary).toEqual(["Broker", "Villain"]);
   });
 
-  it("keeps the cast and the unrevealed library from a player", () => {
+  it("keeps unrevealed cast and library tags from a player", () => {
     writeTags(roomId, "character", characterId, ["Villain"], 1);
     writeTags(roomId, "npc", npcId, ["Broker"], 1);
     writeTags(roomId, "scene", sceneId, ["Dock"], 1);
@@ -116,6 +116,20 @@ describe("tags in a room", () => {
     // And the vocabulary is read from what they were sent, so it cannot leak
     // the words on things they cannot see.
     expect(seen.vocabulary).toEqual(["Villain"]);
+  });
+
+  it("shows a player tags on a revealed NPC, without adding unrevealed vocabulary", () => {
+    writeTags(roomId, "npc", npcId, ["Broker"], 1);
+    const hiddenNpcId = Number(
+      db.prepare("INSERT INTO custom_npcs (room_id, created_by, name) VALUES (?, 1, 'The Queen')").run(roomId)
+        .lastInsertRowid
+    );
+    writeTags(roomId, "npc", hiddenNpcId, ["Secret Court"], 1);
+    db.prepare("UPDATE custom_npcs SET revealed = 1 WHERE id = ?").run(npcId);
+
+    const seen = readRoomTags(2, roomId, "player");
+    expect(seen.tags.npc).toEqual({ [String(npcId)]: ["Broker"] });
+    expect(seen.vocabulary).toEqual(["Broker"]);
   });
 
   it("shows a player the tags on a revealed scene", () => {

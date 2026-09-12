@@ -17,6 +17,7 @@ rooms necessarily offer the same thing.
 | Section                         | Always there?                               |
 | ------------------------------- | ------------------------------------------- |
 | **Library**                     | Yes                                         |
+| **Wiki**                        | Only once the room's Wiki setting is on     |
 | **NPCs**                        | Yes                                         |
 | **Items & weapons**             | Yes                                         |
 | **Calendar**                    | Only once the room's Calendar setting is on |
@@ -69,6 +70,34 @@ Two things to hold apart, because they catch people out:
 An encounter map is a third thing again — putting a map on the encounter board
 shows it to the table whether or not the Library has revealed it, and reveals
 nothing elsewhere.
+
+### Map legends
+
+With the Wiki on, each map row has a **Legend** picker. Choose a page already in
+the room, or **Write one** to make a page named for that map; a page can be the
+legend of one map only. The legend button appears on that map at the table.
+
+The map's eye and the legend page's sharing are separate. A map may be visible
+while its legend remains a private GM note, and a player receives no legend in
+that case. Sharing the page makes its legend available without changing the
+map's visibility. The Wiki's pages, private ownership, and links are covered in
+[The wiki](../wiki.md).
+
+## Wiki
+
+The Wiki section is the wide working surface for the room notebook. GMs can
+write, edit, move, and delete every page and folder; a player can do those things
+only to their own. Every new page starts private. The **Share** and **Unshare**
+controls are deliberately GM-only, because making a page visible changes what
+the table knows.
+
+The page tree and search are access-aware: another player's private page is not
+listed or searchable. A visible page can sit under a privately owned folder;
+the readable path is retained without handing another player control of that
+folder.
+
+For how the editor's `@` chips respect NPC, asset, and page visibility, and how
+to resolve a save conflict, see [The wiki](../wiki.md).
 
 ## Items & weapons
 
