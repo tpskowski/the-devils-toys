@@ -4171,3 +4171,37 @@ button.character-slot-weapon-roll:focus-visible {
 .combat-side-hostile {
   color: var(--hostile);
 }
+/* The preview chooser remains usable beside the room actions on small screens. */
+.player-preview-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+  max-width: 100%;
+}
+.player-preview-controls label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+}
+.player-preview-controls select {
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 0;
+  font-family: Inter, sans-serif;
+  height: 2.25rem;
+  padding: 0 0.5rem;
+  min-width: 0;
+  width: 14rem;
+  max-width: 100%;
+}
+.player-preview-controls option {
+  background: var(--surface);
+  color: var(--text);
+}
+.player-preview-controls small {
+  flex-basis: 100%;
+}

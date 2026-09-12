@@ -268,21 +268,13 @@ export function TableMediaViewer({
           </div>
         )}
         <div className={`table-media-tab${tab === "rules" ? " active" : ""}`}>
-          <button
-            className="table-media-tab-main"
-            aria-label="Rules"
-            onClick={(event) => activateTab("rules", event)}
-          >
+          <button className="table-media-tab-main" aria-label="Rules" onClick={(event) => activateTab("rules", event)}>
             <BookOpen /> Rules
           </button>
         </div>
         {wikiEnabled && (
           <div className={`table-media-tab${tab === "wiki" ? " active" : ""}`}>
-            <button
-              className="table-media-tab-main"
-              aria-label="Wiki"
-              onClick={(event) => activateTab("wiki", event)}
-            >
+            <button className="table-media-tab-main" aria-label="Wiki" onClick={(event) => activateTab("wiki", event)}>
               <BookOpen /> Wiki
             </button>
           </div>
@@ -367,7 +359,11 @@ export function TableMediaViewer({
                       onClick={() => setReferenceId(item.id)}
                       title={item.filename}
                     >
-                      {isMarkdownAsset(item) ? <FileText /> : <img src={item.url} alt="" />}
+                      {isMarkdownAsset(item) ? (
+                        <FileText />
+                      ) : (
+                        <img src={item.thumbnailUrl ?? item.url} alt="" loading="lazy" decoding="async" />
+                      )}
                       <span>{mediaLabel(item)}</span>
                     </button>
                   ))}

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import type { MediaAsset } from "@devils-toys/shared";
 import { api } from "./api";
 import { RulesMarkdown } from "./RulesMarkdown";
+import { SceneViewer } from "./SceneViewer";
 
 export function isMarkdownAsset(asset: MediaAsset) {
   return asset.mimeType === "text/markdown" || asset.filename.toLowerCase().endsWith(".md");
@@ -21,7 +22,18 @@ export function MediaContent({ asset }: { asset: MediaAsset }) {
       .catch((cause) => setError((cause as Error).message));
   }, [asset.id, asset.url, markdown]);
 
-  if (!markdown) return <img src={asset.url} alt={asset.filename} />;
+  if (!markdown)
+    return (
+      <SceneViewer
+        key={asset.url}
+        scene={asset}
+        roomId={asset.roomId}
+        label="Reference"
+        isGm={false}
+        pings={[]}
+        onManage={() => {}}
+      />
+    );
   if (error) return <p className="media-content-status">{error}</p>;
   if (!content) return <p className="media-content-status">Loading Reference…</p>;
 

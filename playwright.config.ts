@@ -25,6 +25,8 @@ if (process.env.TEST_WORKER_INDEX === undefined) {
 export default defineConfig({
   testDir: "./e2e",
   fullyParallel: false,
+  // Specs use one server and install the same fixture system before their room.
+  workers: 1,
   reporter: [["list"], ["html", { open: "never" }]],
   use: {
     baseURL: `http://127.0.0.1:${port}`,

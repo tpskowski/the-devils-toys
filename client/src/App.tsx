@@ -59,7 +59,8 @@ import type {
   SystemOptionalRule,
   ThemeId
 } from "@devils-toys/shared";
-import { api } from "./api";
+import { api, ApiError } from "./api";
+import { playerPreviewUrl, previewSelection } from "./player-preview";
 import { attributionLines, quoteScale, randomQuote } from "./quotes";
 import { tablesAppUrl, type TablesApp } from "./tables-app";
 import { TablesAppDialog } from "./TablesAppDialog";
@@ -122,6 +123,7 @@ interface Status {
 }
 
 interface RoomDetail {
+  presence?: PresenceMember[];
   room: RoomSummary & { calendar: RoomCalendar };
   members: {
     accountId: number;
@@ -169,6 +171,9 @@ export function App() {
   const [status, setStatus] = useState<Status>();
   const [account, setAccount] = useState<Account>();
   const [loading, setLoading] = useState(true);
+  const [previewError, setPreviewError] = useState<string>();
+  const [startupRetry, setStartupRetry] = useState(0);
+  const [reconnecting, setReconnecting] = useState(false);
 
   /**
    * The status carries which game systems this server has, and installing one
@@ -179,24 +184,62 @@ export function App() {
     setStatus(await api<Status>("/api/status"));
   }
 
-  async function refresh() {
-    const nextStatus = await api<Status>("/api/status");
-    setStatus(nextStatus);
-    if (nextStatus.initialized) {
+  useEffect(() => {
+    let stopped = false;
+    let retry: ReturnType<typeof setTimeout>;
+    let controller: AbortController;
+    let failures = 0;
+    async function connect() {
+      controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 10_000);
       try {
-        setAccount((await api<{ account: Account }>("/api/me")).account);
-      } catch {
-        setAccount(undefined);
+        const nextStatus = await api<Status>("/api/status", { signal: controller.signal });
+        // A restarting proxy can answer with its HTML fallback and a 200.
+        if (typeof nextStatus?.initialized !== "boolean") throw new Error("Server is not ready.");
+        let nextAccount: Account | undefined;
+        if (nextStatus.initialized) {
+          try {
+            nextAccount = (await api<{ account: Account }>("/api/me", { signal: controller.signal })).account;
+            if (!nextAccount) throw new Error("Server is not ready.");
+          } catch (error) {
+            // Only an actual expired/missing session calls for signing in.
+            if (!(error instanceof ApiError && error.status === 401 && !previewSelection())) throw error;
+          }
+        }
+        if (stopped) return;
+        setStatus(nextStatus);
+        setAccount(nextAccount);
+        setReconnecting(false);
+        setLoading(false);
+      } catch (error) {
+        if (stopped) return;
+        if (previewSelection() && error instanceof ApiError && [401, 403, 404].includes(error.status)) {
+          setPreviewError(error.message);
+          return;
+        }
+        setReconnecting(true);
+        retry = setTimeout(connect, Math.min(1000 * 2 ** failures++, 10_000));
+      } finally {
+        clearTimeout(timeout);
       }
     }
-    setLoading(false);
-  }
+    void connect();
+    return () => {
+      stopped = true;
+      clearTimeout(retry);
+      controller.abort();
+    };
+  }, [startupRetry]);
 
-  useEffect(() => {
-    refresh().catch(() => setLoading(false));
-  }, []);
-
-  if (loading || !status) return <LoadingScreen />;
+  if (previewError)
+    return (
+      <main className="loading-screen">
+        <p>{previewError}</p>
+        <a href="/">Return to GM view</a>
+      </main>
+    );
+  if (loading || !status)
+    return <LoadingScreen reconnecting={reconnecting} onRetry={() => setStartupRetry((value) => value + 1)} />;
   const inviteToken = window.location.pathname.match(/^\/invite\/([^/]+)$/)?.[1];
   if (inviteToken) return <InviteScreen token={decodeURIComponent(inviteToken)} onSuccess={setAccount} />;
   if (!status.initialized)
@@ -223,13 +266,17 @@ export function App() {
   );
 }
 
-function LoadingScreen() {
+function LoadingScreen({ reconnecting, onRetry }: { reconnecting: boolean; onRetry: () => void }) {
   return (
     <main className="loading-screen">
       <div className="sigil">
         <span>DT</span>
       </div>
       <p>Setting the table</p>
+      {reconnecting && <p role="status">Waiting for the server. Retrying automatically…</p>}
+      <button className="secondary-button" onClick={onRetry}>
+        Retry now
+      </button>
     </main>
   );
 }
@@ -334,6 +381,13 @@ function Workspace({
   const [themeChoiceRevision, setThemeChoiceRevision] = useState(0);
 
   async function loadRooms() {
+    const preview = previewSelection();
+    if (preview) {
+      const { room } = await api<RoomDetail>(`/api/rooms/${preview.roomId}`);
+      setRooms([room]);
+      setSelectedId(room.id);
+      return;
+    }
     const next = (await api<{ rooms: RoomSummary[] }>("/api/rooms")).rooms;
     setRooms(next);
     setSelectedId((current) =>
@@ -786,6 +840,8 @@ function TableRoom({
   const [trackerOpen, setTrackerOpen] = useState(true);
 
   const socketRef = useRef<WebSocket | null>(null);
+  const [previewPlayer, setPreviewPlayer] = useState("generic");
+  const [previewFailure, setPreviewFailure] = useState<string>();
   // Requests cannot be cancelled; a room switch or disabling music makes every
   // earlier result irrelevant and prevents it from restoring a cleared player.
   const audioLoadGeneration = useRef(0);
@@ -914,6 +970,7 @@ function TableRoom({
       api<{ messages: ChatMessage[] }>(`/api/rooms/${room.id}/messages`)
     ]);
     setDetail(nextDetail);
+    if (previewSelection() && nextDetail.presence) setPresence(nextDetail.presence);
     setMessages(nextMessages.messages);
   }
 
@@ -939,6 +996,34 @@ function TableRoom({
   }, [room.id, detail?.room.musicEnabled]);
   useEffect(() => {
     let stopped = false;
+    if (previewSelection()) {
+      // Preview never joins presence or sends pings. Refresh through the same
+      // scoped read boundary, including rechecking GM and player membership.
+      let busy = false;
+      const refreshPreview = async () => {
+        if (busy || stopped) return;
+        busy = true;
+        try {
+          await load();
+          await Promise.all([loadMedia(), loadEncounters(), loadAudio()]);
+          if (!stopped) {
+            setCharactersRevision((value) => value + 1);
+            setGroupRevision((value) => value + 1);
+            setWikiRevision((value) => value + 1);
+            setMapNotationSyncRevision((value) => value + 1);
+          }
+        } catch (error) {
+          if (!stopped) setPreviewFailure(error instanceof Error ? error.message : "Preview unavailable.");
+        } finally {
+          busy = false;
+        }
+      };
+      const timer = window.setInterval(refreshPreview, 3000);
+      return () => {
+        stopped = true;
+        window.clearInterval(timer);
+      };
+    }
     let retry: number;
     const connect = () => {
       const protocol = location.protocol === "https:" ? "wss:" : "ws:";
@@ -1045,6 +1130,12 @@ function TableRoom({
     if (!hasActiveEncounters) setPanel("chat");
   }, [hasActiveEncounters]);
 
+  if (previewFailure)
+    return (
+      <div className="table-loading" role="alert">
+        {previewFailure}
+      </div>
+    );
   if (!detail) return <div className="table-loading">Opening {room.name}…</div>;
   const selectedEncounter = encounters.find((encounter) => encounter.id === selectedEncounterId);
   // The combat rail is live-only. The GM may still select and edit an inactive
@@ -1061,8 +1152,62 @@ function TableRoom({
             {room.system} · {detail.room.role === "gm" ? "Game master" : "Player"}
           </p>
           <h1>{room.name}</h1>
+          {previewSelection() && (
+            <div className="player-preview-controls">
+              <strong>Player preview · Read-only</strong>
+              <label>
+                View as
+                <select
+                  aria-label="Preview player"
+                  value={previewSelection()!.player}
+                  onChange={(event) => {
+                    window.location.href = playerPreviewUrl(room.id, event.target.value);
+                  }}
+                >
+                  <option value="generic">Generic player (shared content)</option>
+                  {detail.members
+                    .filter((member) => member.role === "player")
+                    .map((member) => (
+                      <option key={member.accountId} value={member.accountId}>
+                        {member.displayName}
+                      </option>
+                    ))}
+                </select>
+              </label>
+              <small>Refreshes every 3 seconds. Generic view has no personal characters, rolls, or notes.</small>
+            </div>
+          )}
         </div>
         <div className="header-actions">
+          {detail.room.role === "gm" && (
+            <div className="player-preview-controls">
+              <label>
+                View as
+                <select
+                  aria-label="Player to preview"
+                  value={previewPlayer}
+                  onChange={(event) => setPreviewPlayer(event.target.value)}
+                >
+                  <option value="generic">Generic player (shared content)</option>
+                  {detail.members
+                    .filter((member) => member.role === "player")
+                    .map((member) => (
+                      <option key={member.accountId} value={member.accountId}>
+                        {member.displayName}
+                      </option>
+                    ))}
+                </select>
+              </label>
+              <a
+                className="secondary-button"
+                href={playerPreviewUrl(room.id, previewPlayer)}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Eye size={16} /> Player preview
+              </a>
+            </div>
+          )}
           {detail.room.role === "gm" && (
             <button className="icon-button invite-player-button" onClick={onCreatePlayer} title="Create player">
               <UserPlus />

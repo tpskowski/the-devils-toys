@@ -3,9 +3,11 @@ import { ArrowUpRight, BookOpen, Focus, ImagePlus, MapPin, Minus, Plus, X } from
 import type { MapNotationEvent, MediaAsset } from "@devils-toys/shared";
 import { mediaLabel } from "./media-label";
 import { MapNotationLayer } from "./MapNotationLayer";
+import { notationPoint, pointIsOnNotationPlane } from "./map-notation";
 import type { MapLegend } from "./MediaModal";
 import { api } from "./api";
 import { RulesMarkdown, type WikiMentionTarget } from "./RulesMarkdown";
+import { fitScenePlane, zoomOffsetAtPoint, type ScenePlane } from "./scene-transform";
 
 export interface ScenePing {
   id: number;
@@ -113,11 +115,11 @@ export function SceneViewer({
 }: {
   scene: MediaAsset | null;
   roomId: number;
-  label?: "Map" | "Scene";
+  label?: "Map" | "Scene" | "Reference";
   isGm: boolean;
   pings: ScenePing[];
   onManage: () => void;
-  onPing: (x: number, y: number) => void;
+  onPing?: (x: number, y: number) => void;
   mapNotation?: { roomId: number; syncRevision: number; change?: MapNotationEvent };
   /** Present only where this reader is allowed to fetch the linked wiki page. */
   legend?: MapLegend | null;
@@ -128,6 +130,7 @@ export function SceneViewer({
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [pingMode, setPingMode] = useState(false);
   const [legendOpen, setLegendOpen] = useState(false);
+  const [plane, setPlane] = useState<ScenePlane>();
   const viewer = useRef<HTMLDivElement>(null);
   const image = useRef<HTMLImageElement>(null);
   const drag = useRef<{ x: number; y: number; originX: number; originY: number } | undefined>(undefined);
@@ -135,6 +138,7 @@ export function SceneViewer({
   useEffect(() => {
     setScale(1);
     setOffset({ x: 0, y: 0 });
+    setPlane(undefined);
   }, [scene?.id]);
   useEffect(() => setLegendOpen(false), [scene?.id, legend?.slug]);
   const closeLegend = useCallback(() => setLegendOpen(false), []);
@@ -147,10 +151,41 @@ export function SceneViewer({
     return () => window.removeEventListener("keydown", closeOnEscape);
   }, [closeLegend, legendOpen]);
 
-  function zoom(next: number) {
+  const refreshPlane = useCallback(() => {
+    const currentViewer = viewer.current;
+    const currentImage = image.current;
+    if (!currentViewer || !currentImage?.naturalWidth) return;
+    setPlane(
+      fitScenePlane(
+        currentViewer.clientWidth,
+        currentViewer.clientHeight,
+        currentImage.naturalWidth,
+        currentImage.naturalHeight
+      )
+    );
+  }, []);
+
+  useEffect(() => {
+    const currentViewer = viewer.current;
+    if (!currentViewer) return;
+    refreshPlane();
+    if (typeof ResizeObserver === "undefined") {
+      window.addEventListener("resize", refreshPlane);
+      return () => window.removeEventListener("resize", refreshPlane);
+    }
+    const observer = new ResizeObserver(refreshPlane);
+    observer.observe(currentViewer);
+    return () => observer.disconnect();
+  }, [refreshPlane, scene?.id]);
+
+  function zoom(next: number, point?: { x: number; y: number }) {
     const bounded = Math.min(4, Math.max(1, next));
+    const currentViewer = viewer.current;
+    if (currentViewer && bounded !== scale) {
+      const center = { x: currentViewer.clientWidth / 2, y: currentViewer.clientHeight / 2 };
+      setOffset((current) => zoomOffsetAtPoint(current, scale, bounded, point ?? center, center));
+    }
     setScale(bounded);
-    if (bounded === 1) setOffset({ x: 0, y: 0 });
   }
 
   function wheelZoom(event: globalThis.WheelEvent, currentViewer: HTMLDivElement) {
@@ -164,21 +199,22 @@ export function SceneViewer({
       return;
 
     const bounds = currentViewer.getBoundingClientRect();
-    const fit = Math.min(bounds.width / currentImage.naturalWidth, bounds.height / currentImage.naturalHeight);
-    const renderedWidth = currentImage.naturalWidth * fit * scale;
-    const renderedHeight = currentImage.naturalHeight * fit * scale;
-    const centerX = bounds.left + bounds.width / 2 + offset.x;
-    const centerY = bounds.top + bounds.height / 2 + offset.y;
-    const overImage =
-      event.clientX >= centerX - renderedWidth / 2 &&
-      event.clientX <= centerX + renderedWidth / 2 &&
-      event.clientY >= centerY - renderedHeight / 2 &&
-      event.clientY <= centerY + renderedHeight / 2;
-    if (!overImage) return;
+    const fitted =
+      plane ?? fitScenePlane(bounds.width, bounds.height, currentImage.naturalWidth, currentImage.naturalHeight);
+    const imageBounds = {
+      left: bounds.left + fitted.left,
+      top: bounds.top + fitted.top,
+      width: fitted.width,
+      height: fitted.height
+    };
+    if (!pointIsOnNotationPlane(event.clientX, event.clientY, imageBounds, { scale, ...offset })) return;
 
     event.preventDefault();
     event.stopPropagation();
-    zoom(scale + (event.deltaY < 0 ? 0.25 : -0.25));
+    zoom(scale + (event.deltaY < 0 ? 0.25 : -0.25), {
+      x: event.clientX - bounds.left,
+      y: event.clientY - bounds.top
+    });
   }
 
   useEffect(() => {
@@ -187,7 +223,7 @@ export function SceneViewer({
     const handleWheel = (event: globalThis.WheelEvent) => wheelZoom(event, currentViewer);
     currentViewer.addEventListener("wheel", handleWheel, { passive: false });
     return () => currentViewer.removeEventListener("wheel", handleWheel);
-  }, [scene?.id, scale, offset.x, offset.y]);
+  }, [scene?.id, scale, offset.x, offset.y, plane]);
 
   function pointerDown(event: PointerEvent<HTMLDivElement>) {
     if (pingMode || scale === 1) return;
@@ -205,8 +241,17 @@ export function SceneViewer({
 
   function pointerUp(event: PointerEvent<HTMLDivElement>) {
     if (!drag.current && pingMode) {
-      const bounds = event.currentTarget.getBoundingClientRect();
-      onPing((event.clientX - bounds.left) / bounds.width, (event.clientY - bounds.top) / bounds.height);
+      const viewerBounds = event.currentTarget.getBoundingClientRect();
+      if (!plane) return;
+      const bounds = {
+        left: viewerBounds.left + plane.left,
+        top: viewerBounds.top + plane.top,
+        width: plane.width,
+        height: plane.height
+      };
+      if (!pointIsOnNotationPlane(event.clientX, event.clientY, bounds, { scale, ...offset })) return;
+      const point = notationPoint(event.clientX, event.clientY, bounds, { scale, ...offset });
+      onPing?.(point.x, point.y);
       setPingMode(false);
     }
     drag.current = undefined;
@@ -250,17 +295,30 @@ export function SceneViewer({
         src={scene.url}
         alt={mediaLabel(scene)}
         draggable={false}
+        onLoad={refreshPlane}
         style={{ transform: `translate(${offset.x}px, ${offset.y}px) scale(${scale})` }}
       />
-      <div className="scene-pings" aria-live="polite">
-        {pings.map((ping) => (
-          <span key={ping.id} style={{ left: `${ping.x * 100}%`, top: `${ping.y * 100}%` }}>
-            <i />
-            <small>{ping.displayName}</small>
-          </span>
-        ))}
-      </div>
-      {mapNotation && (
+      {plane && (
+        <div
+          className="scene-pings"
+          aria-live="polite"
+          style={{
+            left: plane.left,
+            top: plane.top,
+            width: plane.width,
+            height: plane.height,
+            transform: `translate(${offset.x}px, ${offset.y}px) scale(${scale})`
+          }}
+        >
+          {pings.map((ping) => (
+            <span key={ping.id} style={{ left: `${ping.x * 100}%`, top: `${ping.y * 100}%` }}>
+              <i />
+              <small>{ping.displayName}</small>
+            </span>
+          ))}
+        </div>
+      )}
+      {mapNotation && plane && (
         <MapNotationLayer
           roomId={mapNotation.roomId}
           mediaId={scene.id}
@@ -269,6 +327,7 @@ export function SceneViewer({
           change={mapNotation.change}
           scale={scale}
           offset={offset}
+          mapBounds={plane}
         />
       )}
       <div
@@ -280,19 +339,21 @@ export function SceneViewer({
         <button onClick={() => zoom(scale - 0.5)} disabled={scale === 1} title="Zoom out">
           <Minus />
         </button>
-        <button onClick={() => zoom(1)} title="Fit Scene">
+        <button onClick={() => zoom(1)} title={`Fit ${label}`}>
           <Focus />
         </button>
         <button onClick={() => zoom(scale + 0.5)} disabled={scale === 4} title="Zoom in">
           <Plus />
         </button>
-        <button
-          className={pingMode ? "active" : ""}
-          onClick={() => setPingMode((current) => !current)}
-          title="Ping Scene"
-        >
-          <MapPin />
-        </button>
+        {onPing && (
+          <button
+            className={pingMode ? "active" : ""}
+            onClick={() => setPingMode((current) => !current)}
+            title={`Ping ${label}`}
+          >
+            <MapPin />
+          </button>
+        )}
         {label === "Map" && legend && (
           <button
             type="button"

@@ -3,6 +3,7 @@ import type { CharacterSheetDefinition, CharacterVice, SystemId } from "@devils-
 import { slotIsWeapon, slotWeapon } from "@devils-toys/shared";
 import { entryName, readEntries, singularLabel } from "./character-entries";
 import { InlineMarkdown } from "./InlineMarkdown";
+import { PortraitImage } from "./PortraitImage";
 import { WeaponMark } from "./WeaponMark";
 import "./ReadOnlyCharacterSheet.css";
 
@@ -175,7 +176,7 @@ export function ReadOnlyCharacterSheet({
       <header className="party-character-profile">
         <div className={`party-character-portrait${character.portraitUrl ? " has-portrait" : ""}`}>
           {character.portraitUrl ? (
-            <img src={character.portraitUrl} alt={`${character.name} portrait`} />
+            <PortraitImage src={character.portraitUrl} alt={`${character.name} portrait`} />
           ) : (
             <UserRound aria-hidden="true" />
           )}

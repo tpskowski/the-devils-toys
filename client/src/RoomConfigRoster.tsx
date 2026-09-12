@@ -4,6 +4,7 @@ import type { CharacterSheetDefinition, GroupPageDefinition } from "@devils-toys
 import { groupAssetDefinitions } from "@devils-toys/shared";
 import { ApiError, api } from "./api";
 import { RoomConfigSheetFields } from "./RoomConfigSheetFields";
+import { PortraitImage } from "./PortraitImage";
 
 interface RosterRow {
   id: number;
@@ -287,7 +288,7 @@ export function RoomConfigRoster({
             <div className="rc-portrait">
               <div className={`rc-portrait-frame${selected.imageUrl ? " has-image" : ""}`}>
                 {selected.imageUrl ? (
-                  <img src={selected.imageUrl} alt={`${draft.name || singular} portrait`} />
+                  <PortraitImage src={selected.imageUrl} alt={`${draft.name || singular} portrait`} />
                 ) : (
                   <UserRound aria-hidden="true" />
                 )}

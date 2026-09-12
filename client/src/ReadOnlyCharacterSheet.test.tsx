@@ -58,4 +58,17 @@ describe("read-only character sheet", () => {
     expect(html).not.toMatch(/<(button|input|textarea|select)\b/);
     expect(html).not.toContain("Roll STR");
   });
+
+  it("makes a portrait available as a full-size image", () => {
+    const html = renderToStaticMarkup(
+      <ReadOnlyCharacterSheet
+        character={{ ...character, portraitUrl: "/portraits/orchid.webp" }}
+        definition={definition}
+        system="cairn"
+      />
+    );
+
+    expect(html).toContain('aria-label="View Orchid portrait full size"');
+    expect(html).toContain('src="/portraits/orchid.webp"');
+  });
 });

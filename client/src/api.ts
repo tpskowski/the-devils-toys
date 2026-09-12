@@ -1,3 +1,5 @@
+import { previewApiPath } from "./player-preview";
+
 /**
  * A failed request, carrying the status beside the server's own sentence. A
  * caller that only wants to show the message keeps reading `.message` as before;
@@ -18,7 +20,7 @@ export class ApiError extends Error {
 
 export async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const hasJsonBody = init?.body && !(init.body instanceof FormData);
-  const response = await fetch(path, {
+  const response = await fetch(previewApiPath(path), {
     ...init,
     headers: { ...(hasJsonBody ? { "Content-Type": "application/json" } : {}), ...init?.headers }
   });

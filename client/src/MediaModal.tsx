@@ -247,7 +247,7 @@ export function MediaModal({
                         <FileText />
                       </span>
                     ) : (
-                      <img src={item.url} alt="" />
+                      <img src={item.thumbnailUrl ?? item.url} alt="" loading="lazy" decoding="async" />
                     )}
                   </button>
                   <div>

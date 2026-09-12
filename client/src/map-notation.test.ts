@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 import type { MapNotation } from "@devils-toys/shared";
-import { appendNotationPoint, applyMapNotationEvent, labelArea, notationArea, notationPoint } from "./map-notation";
+import {
+  appendNotationPoint,
+  applyMapNotationEvent,
+  labelArea,
+  notationArea,
+  notationPoint,
+  pointIsOnNotationPlane
+} from "./map-notation";
 
 const line = (id: number): MapNotation => ({
   id,
@@ -24,6 +31,13 @@ describe("map notation gestures", () => {
     const transform = { scale: 2, x: 40, y: -20 };
     expect(notationPoint(340, 130, bounds, transform)).toEqual({ x: 0.5, y: 0.5 });
     expect(notationPoint(500, 230, bounds, transform)).toEqual({ x: 0.7, y: 0.75 });
+  });
+
+  it("recognizes the transformed map separately from its letterboxed viewer", () => {
+    const map = { left: 300, top: 50, width: 200, height: 400 };
+    const transform = { scale: 1.5, x: -20, y: 30 };
+    expect(pointIsOnNotationPlane(280, 80, map, transform)).toBe(true);
+    expect(pointIsOnNotationPlane(100, 80, map, transform)).toBe(false);
   });
 
   it("samples points only after the pointer moves far enough", () => {

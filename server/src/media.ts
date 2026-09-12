@@ -14,6 +14,7 @@ import { all, db, one } from "./db.js";
 import { broadcastRoom } from "./realtime.js";
 import { roomAccessRole } from "./room-config-permissions.js";
 import { mayReadWikiFile } from "./wiki-permissions.js";
+import { imageFileUrl, imageVersion } from "./image-cache.js";
 
 export const mediaRouter = express.Router();
 
@@ -59,7 +60,7 @@ const upload = multer({
 });
 
 function publicMedia(row: MediaRow): MediaAsset {
-  const thumbnailVersion = crypto.createHash("sha256").update(row.stored_name).digest("hex").slice(0, 12);
+  const thumbnailVersion = imageVersion(row.stored_name);
   return {
     id: row.id,
     roomId: row.room_id,
@@ -70,14 +71,14 @@ function publicMedia(row: MediaRow): MediaAsset {
     size: row.size,
     visible: Boolean(row.visible),
     createdAt: row.created_at,
-    url: `/api/media/${row.id}/file`,
+    url: imageTypes.has(row.mime_type) ? imageFileUrl(row.id, row.stored_name) : `/api/media/${row.id}/file`,
     ...(imageTypes.has(row.mime_type) ? { thumbnailUrl: `/api/media/${row.id}/thumbnail?v=${thumbnailVersion}` } : {})
   };
 }
 
 function thumbnailPath(row: MediaRow) {
   if (path.basename(row.stored_name) !== row.stored_name) return;
-  const version = crypto.createHash("sha256").update(row.stored_name).digest("hex").slice(0, 12);
+  const version = imageVersion(row.stored_name);
   return path.join(thumbnailsDir, `${row.id}-${version}.webp`);
 }
 
@@ -595,10 +596,12 @@ mediaRouter.get("/media/:mediaId/thumbnail", requireAuth, async (req: AuthedRequ
     const role = roomAccessRole(req.account!, row.room_id);
     const allowed = role === "gm" || (role === "player" && Boolean(row.visible));
     if (!allowed) return res.status(404).json({ error: "Thumbnail not found." });
+    if (req.query.v !== undefined && req.query.v !== imageVersion(row.stored_name))
+      return res.setHeader("Cache-Control", "no-store").status(404).json({ error: "Thumbnail not found." });
     const cached = await ensureThumbnail(row);
     res.type("image/webp");
     res.setHeader("X-Content-Type-Options", "nosniff");
-    res.setHeader("Cache-Control", "private, max-age=31536000, immutable");
+    res.setHeader("Cache-Control", req.query.v ? "private, max-age=31536000, immutable" : "private, no-cache");
     res.sendFile(path.basename(cached), { root: thumbnailsDir });
   } catch (error) {
     next(error);
@@ -620,6 +623,12 @@ mediaRouter.get("/media/:mediaId/file", requireAuth, (req: AuthedRequest, res) =
   if (!allowed) return res.status(404).json({ error: "Media not found." });
   if (path.basename(row.stored_name) !== row.stored_name)
     return res.status(404).json({ error: "Media file not found." });
+  if (imageTypes.has(row.mime_type)) {
+    if (req.query.v !== undefined && req.query.v !== imageVersion(row.stored_name))
+      return res.setHeader("Cache-Control", "no-store").status(404).json({ error: "Media file not found." });
+    // Only a versioned image is immutable. Older links remain usable but revalidate.
+    res.setHeader("Cache-Control", req.query.v ? "private, max-age=31536000, immutable" : "private, no-cache");
+  }
   res.type(row.mime_type);
   res.setHeader("X-Content-Type-Options", "nosniff");
   res.setHeader("Content-Disposition", `inline; filename*=UTF-8''${encodeURIComponent(row.filename)}`);

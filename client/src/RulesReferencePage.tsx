@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, BookOpen } from "lucide-react";
 import type { RoomSummary, SystemId } from "@devils-toys/shared";
 import { api } from "./api";
+import { previewSelection, playerPreviewUrl } from "./player-preview";
 import { RulesMarkdown } from "./RulesMarkdown";
 import { extractRuleTocHeadings, filterRules, standaloneRuleIdPrefix } from "./rules";
 
@@ -31,7 +32,11 @@ export function RulesReferencePage({ system }: { system: SystemId }) {
 
     setLoading(true);
     setLoadError("");
-    api<{ rooms: RoomSummary[] }>("/api/rooms")
+    const preview = previewSelection();
+    const roomsRequest = preview
+      ? api<{ room: RoomSummary }>(`/api/rooms/${preview.roomId}`).then(({ room }) => ({ rooms: [room] }))
+      : api<{ rooms: RoomSummary[] }>("/api/rooms");
+    roomsRequest
       .then(({ rooms }) => {
         const matchingRooms = rooms.filter((candidate) => candidate.system === system);
         const selectedRoom =
@@ -66,7 +71,10 @@ export function RulesReferencePage({ system }: { system: SystemId }) {
   return (
     <main className={`standalone-rules theme-${theme}`}>
       <header className="standalone-rules-header">
-        <a href="/" className="standalone-rules-back">
+        <a
+          href={previewSelection() ? playerPreviewUrl(previewSelection()!.roomId, previewSelection()!.player) : "/"}
+          className="standalone-rules-back"
+        >
           <ArrowLeft size={16} />
           Tables
         </a>

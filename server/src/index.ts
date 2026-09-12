@@ -7,6 +7,9 @@ import bcrypt from "bcryptjs";
 import { z } from "zod";
 import type { AuthedRequest } from "./auth.js";
 import { authMiddleware, createSession, requireAuth, roomRole } from "./auth.js";
+import { playerPreviewMiddleware } from "./player-preview.js";
+import { playerPreview } from "./preview-context.js";
+import { roomMembers } from "./realtime.js";
 import { all, db, one } from "./db.js";
 import { inGameDisplayName } from "./display-name.js";
 import { config } from "./config.js";
@@ -72,6 +75,7 @@ app.disable("x-powered-by");
 app.use(express.json({ limit: "1mb" }));
 app.use(cookieParser());
 app.use(authMiddleware);
+app.use(playerPreviewMiddleware);
 app.use("/api", invitationRouter);
 app.use("/api", characterRouter);
 app.use("/api", mediaRouter);
@@ -451,6 +455,7 @@ app.get("/api/rooms/:roomId", requireAuth, (req: AuthedRequest, res) => {
       rules: roomRules(roomId, room.system)
     },
     members,
+    ...(playerPreview.getStore() ? { presence: roomMembers(roomId).filter((member) => member.role === "player") } : {}),
     // The declarations rather than the settings: the labels and hints belong to
     // the system, and only the GM's settings panel has anywhere to put them.
     optionalRules: systemRules(room.system)

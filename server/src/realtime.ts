@@ -42,7 +42,7 @@ function watcherMayReceive(event: unknown) {
   return typeof type === "string" && type.endsWith("-updated");
 }
 
-function roomMembers(roomId: number) {
+export function roomMembers(roomId: number) {
   const rows = all<{
     account_id: number;
     username: string;

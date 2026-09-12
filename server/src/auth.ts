@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import type { NextFunction, Request, Response } from "express";
 import type { AccountRole } from "@devils-toys/shared";
 import { one, db } from "./db.js";
+import { playerPreview } from "./preview-context.js";
 
 export interface AuthAccount {
   id: number;
@@ -53,6 +54,8 @@ export function clearSession(req: AuthedRequest, res: Response) {
 }
 
 export function roomRole(accountId: number, roomId: number): "gm" | "player" | undefined {
+  const preview = playerPreview.getStore();
+  if (preview && preview.accountId === accountId) return preview.roomId === roomId ? "player" : undefined;
   return one<{ role: "gm" | "player" }>(
     "SELECT role FROM memberships WHERE account_id = ? AND room_id = ?",
     accountId,

@@ -1,5 +1,11 @@
 # Changelog
 
+- “Setting the table” now retries automatically when the server is restarting or unavailable, times out stalled startup requests, and offers **Retry now**. Temporary connection failures keep waiting for the server instead of showing the login form.
+
+- GMs can open **Player preview** in a new tab, choosing a room player or a generic player who sees shared content without personal characters, private rolls, or private Wiki pages. Preview uses the server's player visibility checks, refuses changes, refreshes every three seconds, and never joins presence or changes the GM's session.
+
+- Image References now support cursor-centered wheel zoom, zoom buttons, drag-to-pan, and Fit in both the table and Library preview. Reference and Library lists use small, lazily loaded thumbnails. Full-size Maps, Scenes, References, and encounter images now use upload-versioned URLs with a year of private browser caching, matching the existing portrait and thumbnail policy; replacing an upload changes its URL, while legacy image links revalidate. Server access checks still run on network requests. Already downloaded images can remain in the browser cache after sharing is withdrawn.
+
 - The Wiki now has its own tab after Rules in the table's main panel. Its page tree, search, reader, and editor stay in the room's primary browsing surface, while Refs and Room Config continue to offer the same notebook. The room's settings carry the switch that adds or removes these surfaces, and leaving the tab with an unsaved draft still asks before discarding it.
 - Map, Scene, and image Reference dropdowns now carry a tiny preview at the end of each option. Rows keep their existing compact height and names keep the menu's reading edge; the preview occupies only the unused trailing edge.
 - Empty Map, Scene, and Reference notices now sit above the shared music dock instead of behind it. Silent rooms keep their existing alignment, and the extra clearance follows the taller mobile dock when the player controls move above the bottom navigation.
