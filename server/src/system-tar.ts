@@ -1,4 +1,4 @@
-import { gunzipSync } from "fflate";
+import { gunzipSync } from "node:zlib";
 
 /**
  * Enough of tar to read a source archive, and no more.
@@ -118,8 +118,10 @@ export function stripArchivePrefix(entries: readonly TarEntry[]) {
 export function gunzip(archive: Uint8Array, maxBytes: number): Uint8Array {
   let unpacked: Uint8Array;
   try {
-    unpacked = gunzipSync(archive);
-  } catch {
+    unpacked = gunzipSync(archive, { maxOutputLength: maxBytes });
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ERR_BUFFER_TOO_LARGE")
+      throw new Error("That archive expands beyond this server's size limit.");
     throw new Error("That download is not a readable gzip archive.");
   }
   if (unpacked.byteLength > maxBytes) throw new Error("That archive expands beyond this server's size limit.");

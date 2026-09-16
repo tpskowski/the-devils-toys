@@ -20,7 +20,7 @@ export function accountForSession(sessionId?: string): AuthAccount | undefined {
   const row = one<{ id: number; username: string; is_admin: number; account_role: AccountRole }>(
     `SELECT a.id, a.username, a.is_admin, a.account_role FROM sessions s
      JOIN accounts a ON a.id = s.account_id
-     WHERE s.id = ? AND s.expires_at > CURRENT_TIMESTAMP`,
+     WHERE s.id = ? AND julianday(s.expires_at) > julianday('now')`,
     sessionId
   );
   return row && { id: row.id, username: row.username, isAdmin: Boolean(row.is_admin), role: row.account_role };

@@ -119,6 +119,7 @@ interface SystemStatus {
 interface Status {
   initialized: boolean;
   systems: SystemStatus[];
+  roomSystems: SystemStatus[];
   themes: ThemeId[];
 }
 
@@ -478,7 +479,7 @@ function Workspace({
                 }}
               >
                 <span className="system-glyph">
-                  {status.systems.find((system) => system.id === room.system)?.glyph ?? "?"}
+                  {status.roomSystems.find((system) => system.id === room.system)?.glyph ?? "?"}
                 </span>
                 <span>
                   {room.name}
@@ -631,10 +632,10 @@ function Workspace({
       ) : active ? (
         <TableRoom
           room={active}
-          systemDefinition={status.systems.find((system) => system.id === active.system)!}
+          systemDefinition={status.roomSystems.find((system) => system.id === active.system)!}
           isAdmin={account.isAdmin}
           accountId={account.id}
-          hasGroupPage={status.systems.find((system) => system.id === active.system)?.groupPage ?? false}
+          hasGroupPage={status.roomSystems.find((system) => system.id === active.system)?.groupPage ?? false}
           onRoomChange={loadRooms}
           onRoomThemePreview={setRoomThemePreview}
           onCreatePlayer={() => setShowPlayer(true)}
@@ -647,7 +648,7 @@ function Workspace({
       ) : (
         <Lobby
           rooms={rooms}
-          systems={status.systems}
+          systems={status.roomSystems}
           canCreate={account.role !== "player"}
           onCreate={() => setShowCreate(true)}
           onSelect={setSelectedId}

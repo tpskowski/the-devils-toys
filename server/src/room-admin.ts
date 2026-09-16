@@ -29,7 +29,7 @@ roomAdminRouter.get("/rooms/:roomId/member-options", requireAuth, (req: AuthedRe
        ) AND NOT EXISTS (
          SELECT 1 FROM invitations i
          WHERE i.account_id = a.id AND i.redeemed_at IS NULL AND i.revoked_at IS NULL
-           AND i.expires_at > CURRENT_TIMESTAMP
+           AND julianday(i.expires_at) > julianday('now')
        )
        ORDER BY a.username`,
     req.account!.isAdmin ? 1 : 0,

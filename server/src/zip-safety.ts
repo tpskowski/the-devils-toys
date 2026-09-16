@@ -5,8 +5,8 @@ import { Inflate } from "fflate";
 /**
  * Reading an archive without holding it.
  *
- * A system bundle is a hundred kilobytes of JSON and Markdown, so `unzipSync`
- * reads the whole thing into memory and everything is fine. A campaign is a
+ * A system bundle is small enough to retain its bounded output in memory
+ * (see zip-memory.ts). A campaign is a
  * hundred maps and forty music tracks, and the same approach would put a
  * gigabyte of compressed archive and a gigabyte of decompressed output in the
  * heap at once, on a server whose whole job is to be small enough to run beside

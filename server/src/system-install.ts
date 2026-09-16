@@ -18,6 +18,7 @@ import {
   type SystemId
 } from "@devils-toys/shared";
 import { config } from "./config.js";
+import { logger } from "./logger.js";
 import { isBuiltinSystem } from "./builtin-systems.js";
 import { creationPacketSections } from "./character-creation.js";
 import { installedSystemRoot, systemRulesFile, systemTablesJsonFile } from "./system-content.js";
@@ -86,6 +87,20 @@ export interface InstallResult {
   /** True when a system of this id was already installed and has been replaced. */
   replaced: boolean;
   licenses: string[];
+}
+
+/** Filesystem rollback did not restore the previous installed content. */
+export class SystemBundleRollbackError extends Error {
+  constructor(
+    readonly primary: unknown,
+    readonly activeContent: "new" | "none",
+    readonly recovery: string
+  ) {
+    const message = primary instanceof Error ? primary.message : String(primary);
+    super(`${message} System files could not be restored: ${recovery}`);
+    this.name = "SystemBundleRollbackError";
+    this.cause = primary;
+  }
 }
 
 /**
@@ -498,7 +513,7 @@ export function refuseUninstallableCreation(bundle: SystemBundleContent) {
  * install leaves the previous content untouched rather than a half-written
  * system that would fail to load on the next start.
  */
-export function writeSystemBundle(bundle: SystemBundleContent): InstallResult {
+export function writeSystemBundle(bundle: SystemBundleContent, commit?: () => void): InstallResult {
   const { system, items, traits, rules, tables } = bundle;
   const root = installedSystemRoot(system.id);
   const staging = `${root}.incoming`;
@@ -522,17 +537,38 @@ export function writeSystemBundle(bundle: SystemBundleContent): InstallResult {
     }
     try {
       fs.renameSync(staging, root);
+      // Keep the old files until registration and its database transaction commit.
+      commit?.();
     } catch (error) {
-      if (replaced && fs.existsSync(retired)) {
-        try {
-          fs.renameSync(retired, root);
-        } catch {
-          // Keep the install error: it is the failure the caller can act on.
+      let recoveryFailure: unknown;
+      let activeContent: "new" | "none" = fs.existsSync(root) ? "new" : "none";
+      try {
+        if (activeContent === "new") {
+          fs.rmSync(root, { recursive: true, force: true });
+          activeContent = "none";
         }
+        if (replaced && fs.existsSync(retired)) {
+          fs.renameSync(retired, root);
+        }
+      } catch (cause) {
+        recoveryFailure = cause;
+      }
+      if (recoveryFailure) {
+        const recovery =
+          activeContent === "new"
+            ? `stop the server, remove "${root}", then rename "${retired}" to "${root}" before restarting (${String(recoveryFailure)}).`
+            : `stop the server and rename "${retired}" to "${root}" before restarting (${String(recoveryFailure)}).`;
+        // Do not remove .replaced: it is the only recoverable copy of the old system.
+        throw new SystemBundleRollbackError(error, activeContent, recovery);
       }
       throw error;
     }
-    fs.rmSync(retired, { recursive: true, force: true });
+    try {
+      fs.rmSync(retired, { recursive: true, force: true });
+    } catch (error) {
+      // The installation is committed; leftover backup cleanup is not a refusal.
+      logger.warn("Could not remove system backup", { system: system.id, error: String(error) });
+    }
     return {
       system: system.id,
       name: system.name,

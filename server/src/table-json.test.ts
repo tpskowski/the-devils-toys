@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   normalizeCustomTables,
   parseCustomSet,
+  parseSetJson,
   parseRepositorySetRegistry,
   validateRepositoryTableTags
 } from "./table-json.js";
@@ -17,6 +18,37 @@ const table = {
     { label: "11-20", min: 11, max: 20, cells: ["Second"] }
   ]
 };
+
+describe("installed table validation", () => {
+  const storedTable = () => ({ ...table, id: "encounters", category: "Travel", section: "Travel" });
+  const read = (entry: unknown) =>
+    parseSetJson(JSON.stringify({ formatVersion: 1, setName: "Travel", tables: [entry] }), "tables.json");
+
+  it("accepts supported dice and rows beyond the stated die without rewriting them", () => {
+    expect(read(storedTable()).tables[0]).toEqual(storedTable());
+    expect(read({ ...storedTable(), dice: "2d6" }).tables[0].dice).toBe("2d6");
+  });
+
+  it.each(["tags", "columns", "dice", "section", "category", "rows"])("rejects a missing %s", (key) => {
+    const entry: Record<string, unknown> = storedTable();
+    delete entry[key];
+    expect(() => read(entry)).toThrow(/Invalid table JSON/);
+  });
+
+  it.each([
+    { tags: "fantasy" },
+    { tags: [null] },
+    { columns: [] },
+    { dice: "d7" },
+    { rows: [null] },
+    { rows: [{ label: "1", min: 1, max: 1, cells: [12] }] },
+    { rows: [{ label: "1", min: 2, max: 1, cells: ["Invalid"] }] },
+    { rows: [{ label: "1", min: 1, max: 1, cells: [] }] },
+    { classification: "everyone" }
+  ])("rejects malformed runtime fields: %j", (overrides) => {
+    expect(() => read({ ...storedTable(), ...overrides })).toThrow(/Invalid table JSON/);
+  });
+});
 
 describe("custom table JSON compatibility", () => {
   it("rejects overlapping or unordered normalized ranges", () => {

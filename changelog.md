@@ -1,5 +1,7 @@
 # Changelog
 
+- Retired systems retain the metadata existing rooms need, and rulebook table links open their roll controls. Hidden-map annotations are sent only to GMs. Initial setup admits one administrator even when requests overlap; malformed WebSocket frames close their connection, and session and invitation expiry checks compare timestamps consistently. System installation rolls back files and registration together on failure, validates complete table records, and bounds archive expansion during decompression.
+
 - “Setting the table” now retries automatically when the server is restarting or unavailable, times out stalled startup requests, and offers **Retry now**. Temporary connection failures keep waiting for the server instead of showing the login form.
 
 - GMs can open **Player preview** in a new tab, choosing a room player or a generic player who sees shared content without personal characters, private rolls, or private Wiki pages. Preview uses the server's player visibility checks, refuses changes, refreshes every three seconds, and never joins presence or changes the GM's session.

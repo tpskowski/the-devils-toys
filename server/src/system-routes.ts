@@ -6,6 +6,7 @@ import { isSystemId } from "@devils-toys/shared";
 import type { AuthedRequest } from "./auth.js";
 import { requireAuth } from "./auth.js";
 import { config } from "./config.js";
+import { db } from "./db.js";
 import { isBuiltinSystem } from "./builtin-systems.js";
 import { logger } from "./logger.js";
 import { asyncRoute } from "./session-routes.js";
@@ -16,6 +17,7 @@ import {
   refuseUninstallableBundle,
   refuseUninstallableCreation,
   removeSystemContent,
+  SystemBundleRollbackError,
   verifySystemTables,
   writeSystemBundle
 } from "./system-install.js";
@@ -26,6 +28,7 @@ import { SCHEMA_FILE } from "./system-schema-json.js";
 import { requireSystemAdmin } from "./system-permissions.js";
 import {
   deleteSystemRow,
+  forgetSystemContent,
   loadInstalledSystem,
   recordInstalledSystem,
   roomNamesOn,
@@ -38,7 +41,7 @@ import {
   systemUsage,
   unloadSystem
 } from "./system-registry.js";
-import { hasSystem, systemOrThrow } from "./systems.js";
+import { hasSystem, registerSystem, systemOrThrow, unregisterSystem } from "./systems.js";
 
 /**
  * Installing, retiring, and exporting a game system.
@@ -130,10 +133,74 @@ function installValidated(
   );
   if (change && acknowledgeBreaking !== change.fingerprint) throw new BreakingSystemChangeRequired(change);
 
-  const result = writeSystemBundle(content);
-  recordInstalledSystem({ id: content.system.id, name: content.system.name, manifest, installedBy });
-  loadInstalledSystem(content.system.id);
-  return { ...result, breakingAcknowledged: Boolean(change) };
+  const previousDefinition = hasSystem(content.system.id) ? systemOrThrow(content.system.id) : undefined;
+  try {
+    const result = writeSystemBundle(content, () => {
+      db.exec("BEGIN IMMEDIATE");
+      try {
+        recordInstalledSystem({ id: content.system.id, name: content.system.name, manifest, installedBy });
+        loadInstalledSystem(content.system.id);
+        db.exec("COMMIT");
+      } catch (error) {
+        rollbackInstallTransaction(error);
+      }
+    });
+    return { ...result, breakingAcknowledged: Boolean(change) };
+  } catch (error) {
+    if (error instanceof SystemBundleRollbackError) {
+      // Recovery did not put the previous files back. Keep the registry aligned
+      // with the files that remain, rather than registering a definition no
+      // longer present on disk.
+      if (error.activeContent === "new") {
+        try {
+          loadInstalledSystem(content.system.id);
+        } catch {
+          forgetSystemContent(content.system.id);
+          unregisterSystem(content.system.id);
+        }
+      } else {
+        forgetSystemContent(content.system.id);
+        unregisterSystem(content.system.id);
+      }
+    } else {
+      // writeSystemBundle restored the previous files, so restore their cached definition too.
+      forgetSystemContent(content.system.id);
+      if (previousDefinition) registerSystem(previousDefinition);
+      else unregisterSystem(content.system.id);
+    }
+    throw error;
+  }
+}
+
+/** Preserve the installation failure while making sure the shared connection is usable again. */
+function rollbackInstallTransaction(primary: unknown): never {
+  const rollbackFailures: unknown[] = [];
+  try {
+    db.exec("ROLLBACK");
+  } catch (error) {
+    rollbackFailures.push(error);
+  }
+  // A synthetic or transient rollback failure can leave the transaction open.
+  // Retry once only when SQLite still reports an active transaction.
+  if (db.isTransaction) {
+    try {
+      db.exec("ROLLBACK");
+    } catch (error) {
+      rollbackFailures.push(error);
+    }
+  }
+  if (db.isTransaction)
+    rollbackFailures.push(
+      new Error("The installation transaction is still active; restart the server before making another change.")
+    );
+
+  if (rollbackFailures.length) {
+    const original = primary instanceof Error ? primary : new Error(String(primary));
+    original.message += ` Database rollback also failed: ${rollbackFailures.map(String).join("; ")}`;
+    Object.assign(original, { rollbackFailures });
+    throw original;
+  }
+  throw primary;
 }
 
 systemRouter.get("/admin/systems", requireAuth, (req: AuthedRequest, res) => {
