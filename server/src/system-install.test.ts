@@ -7,6 +7,7 @@ import {
   installedSystemIds,
   refuseUninstallableBundle,
   refuseUninstallableCreation,
+  SystemBundleRollbackError,
   systemContentFor,
   writeSystemBundle
 } from "./system-install.js";
@@ -557,6 +558,63 @@ describe("writing an installed system", () => {
 
     expect(fs.existsSync(root)).toBe(true);
     expect(fs.existsSync(`${root}.replaced`)).toBe(false);
+  });
+
+  it("keeps the backup and reports recovery steps when it cannot remove promoted content", () => {
+    fs.rmSync(root, { recursive: true, force: true });
+    fs.rmSync(`${root}.replaced`, { recursive: true, force: true });
+    writeSystemBundle(bundle());
+
+    const remove = fs.rmSync;
+    const blocked = vi.spyOn(fs, "rmSync").mockImplementation(((target: fs.PathLike, options?: fs.RmDirOptions) => {
+      if (String(target) === root) throw new Error("root removal blocked");
+      return remove.call(fs, target, options);
+    }) as typeof fs.rmSync);
+    let failure: unknown;
+    try {
+      writeSystemBundle(bundle(), () => {
+        throw new Error("registration failed");
+      });
+    } catch (error) {
+      failure = error;
+    } finally {
+      blocked.mockRestore();
+    }
+
+    expect(failure).toBeInstanceOf(SystemBundleRollbackError);
+    expect((failure as Error).message).toMatch(/registration failed.*remove.*\.replaced/i);
+    expect((failure as SystemBundleRollbackError).primary).toMatchObject({ message: "registration failed" });
+    expect((failure as SystemBundleRollbackError).activeContent).toBe("new");
+    expect(fs.existsSync(root)).toBe(true);
+    expect(fs.existsSync(`${root}.replaced`)).toBe(true);
+  });
+
+  it("keeps the backup and reports recovery steps when it cannot restore it", () => {
+    fs.rmSync(root, { recursive: true, force: true });
+    fs.rmSync(`${root}.replaced`, { recursive: true, force: true });
+    writeSystemBundle(bundle());
+
+    const rename = fs.renameSync;
+    const blocked = vi.spyOn(fs, "renameSync").mockImplementation(((from: fs.PathLike, to: fs.PathLike) => {
+      if (String(from) === `${root}.replaced` && String(to) === root) throw new Error("backup restore blocked");
+      return rename.call(fs, from, to);
+    }) as typeof fs.renameSync);
+    let failure: unknown;
+    try {
+      writeSystemBundle(bundle(), () => {
+        throw new Error("registration failed");
+      });
+    } catch (error) {
+      failure = error;
+    } finally {
+      blocked.mockRestore();
+    }
+
+    expect(failure).toBeInstanceOf(SystemBundleRollbackError);
+    expect((failure as Error).message).toMatch(/registration failed.*rename.*\.replaced/i);
+    expect((failure as SystemBundleRollbackError).activeContent).toBe("none");
+    expect(fs.existsSync(root)).toBe(false);
+    expect(fs.existsSync(`${root}.replaced`)).toBe(true);
   });
 
   it("recovers a replaced directory left behind by an interrupted replacement on startup", () => {

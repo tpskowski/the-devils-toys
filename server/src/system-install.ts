@@ -89,6 +89,20 @@ export interface InstallResult {
   licenses: string[];
 }
 
+/** Filesystem rollback did not restore the previous installed content. */
+export class SystemBundleRollbackError extends Error {
+  constructor(
+    readonly primary: unknown,
+    readonly activeContent: "new" | "none",
+    readonly recovery: string
+  ) {
+    const message = primary instanceof Error ? primary.message : String(primary);
+    super(`${message} System files could not be restored: ${recovery}`);
+    this.name = "SystemBundleRollbackError";
+    this.cause = primary;
+  }
+}
+
 /**
  * Checks a bundle against what this server can actually do with it, beyond what
  * the schema can see on its own. Each of these is a message an author can act
@@ -526,13 +540,26 @@ export function writeSystemBundle(bundle: SystemBundleContent, commit?: () => vo
       // Keep the old files until registration and its database transaction commit.
       commit?.();
     } catch (error) {
-      if (fs.existsSync(root)) fs.rmSync(root, { recursive: true, force: true });
-      if (replaced && fs.existsSync(retired)) {
-        try {
-          fs.renameSync(retired, root);
-        } catch {
-          // Keep the install error: it is the failure the caller can act on.
+      let recoveryFailure: unknown;
+      let activeContent: "new" | "none" = fs.existsSync(root) ? "new" : "none";
+      try {
+        if (activeContent === "new") {
+          fs.rmSync(root, { recursive: true, force: true });
+          activeContent = "none";
         }
+        if (replaced && fs.existsSync(retired)) {
+          fs.renameSync(retired, root);
+        }
+      } catch (cause) {
+        recoveryFailure = cause;
+      }
+      if (recoveryFailure) {
+        const recovery =
+          activeContent === "new"
+            ? `stop the server, remove "${root}", then rename "${retired}" to "${root}" before restarting (${String(recoveryFailure)}).`
+            : `stop the server and rename "${retired}" to "${root}" before restarting (${String(recoveryFailure)}).`;
+        // Do not remove .replaced: it is the only recoverable copy of the old system.
+        throw new SystemBundleRollbackError(error, activeContent, recovery);
       }
       throw error;
     }

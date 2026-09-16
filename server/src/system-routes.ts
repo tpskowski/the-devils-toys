@@ -17,6 +17,7 @@ import {
   refuseUninstallableBundle,
   refuseUninstallableCreation,
   removeSystemContent,
+  SystemBundleRollbackError,
   verifySystemTables,
   writeSystemBundle
 } from "./system-install.js";
@@ -141,18 +142,65 @@ function installValidated(
         loadInstalledSystem(content.system.id);
         db.exec("COMMIT");
       } catch (error) {
-        db.exec("ROLLBACK");
-        throw error;
+        rollbackInstallTransaction(error);
       }
     });
     return { ...result, breakingAcknowledged: Boolean(change) };
   } catch (error) {
-    // writeSystemBundle has restored the files; discard anything read during the failed install.
-    forgetSystemContent(content.system.id);
-    if (previousDefinition) registerSystem(previousDefinition);
-    else unregisterSystem(content.system.id);
+    if (error instanceof SystemBundleRollbackError) {
+      // Recovery did not put the previous files back. Keep the registry aligned
+      // with the files that remain, rather than registering a definition no
+      // longer present on disk.
+      if (error.activeContent === "new") {
+        try {
+          loadInstalledSystem(content.system.id);
+        } catch {
+          forgetSystemContent(content.system.id);
+          unregisterSystem(content.system.id);
+        }
+      } else {
+        forgetSystemContent(content.system.id);
+        unregisterSystem(content.system.id);
+      }
+    } else {
+      // writeSystemBundle restored the previous files, so restore their cached definition too.
+      forgetSystemContent(content.system.id);
+      if (previousDefinition) registerSystem(previousDefinition);
+      else unregisterSystem(content.system.id);
+    }
     throw error;
   }
+}
+
+/** Preserve the installation failure while making sure the shared connection is usable again. */
+function rollbackInstallTransaction(primary: unknown): never {
+  const rollbackFailures: unknown[] = [];
+  try {
+    db.exec("ROLLBACK");
+  } catch (error) {
+    rollbackFailures.push(error);
+  }
+  // A synthetic or transient rollback failure can leave the transaction open.
+  // Retry once only when SQLite still reports an active transaction.
+  if (db.isTransaction) {
+    try {
+      db.exec("ROLLBACK");
+    } catch (error) {
+      rollbackFailures.push(error);
+    }
+  }
+  if (db.isTransaction)
+    rollbackFailures.push(
+      new Error("The installation transaction is still active; restart the server before making another change.")
+    );
+
+  if (rollbackFailures.length) {
+    const original = primary instanceof Error ? primary : new Error(String(primary));
+    original.message += ` Database rollback also failed: ${rollbackFailures.map(String).join("; ")}`;
+    Object.assign(original, { rollbackFailures });
+    throw original;
+  }
+  throw primary;
 }
 
 systemRouter.get("/admin/systems", requireAuth, (req: AuthedRequest, res) => {

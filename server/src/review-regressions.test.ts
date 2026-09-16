@@ -227,6 +227,29 @@ describe("review regression scenarios", () => {
     expect(systemContentFor("toybox")).toEqual(before);
   });
 
+  it("keeps the installation error primary while retrying a failed database rollback", async () => {
+    const before = systemContentFor("toybox");
+    const exec = db.exec.bind(db);
+    let rollbackAttempts = 0;
+    const failure = vi.spyOn(db, "exec").mockImplementation((sql) => {
+      if (sql === "COMMIT") throw new Error("test commit failure");
+      if (sql === "ROLLBACK" && rollbackAttempts++ === 0) throw new Error("test rollback failure");
+      return exec(sql);
+    });
+    let response: Response;
+    try {
+      response = await install(before);
+    } finally {
+      failure.mockRestore();
+    }
+    const body = await response!.json();
+    expect(response!.status).toBe(400);
+    expect(body.error).toMatch(/test commit failure.*test rollback failure/i);
+    expect(rollbackAttempts).toBe(2);
+    expect(db.isTransaction).toBe(false);
+    expect(systemContentFor("toybox")).toEqual(before);
+  });
+
   it("rejects incomplete tables before replacing installed content", async () => {
     const before = systemContentFor("toybox");
     const malformed = structuredClone(before);
