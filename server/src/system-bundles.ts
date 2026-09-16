@@ -1,4 +1,4 @@
-import { unzipSync, zipSync, strFromU8, strToU8 } from "fflate";
+import { zipSync, strFromU8, strToU8 } from "fflate";
 import { z } from "zod";
 import {
   SYSTEM_ID_PATTERN,
@@ -8,6 +8,7 @@ import {
 } from "@devils-toys/shared";
 import { gameSystemSchema } from "./system-schema.js";
 import { refuseUnsafePaths } from "./zip-safety.js";
+import { unzipBounded } from "./zip-memory.js";
 import { config } from "./config.js";
 
 /**
@@ -319,17 +320,7 @@ export function systemContentFromFiles(files: Record<string, Uint8Array>, source
 export function readSystemBundle(archive: Uint8Array): SystemBundle {
   if (archive.byteLength > MAX_SYSTEM_BUNDLE_BYTES)
     throw new Error("That system bundle is larger than this server accepts.");
-  let files: Record<string, Uint8Array>;
-  try {
-    files = unzipSync(archive);
-  } catch {
-    throw new Error("That file is not a readable zip archive.");
-  }
-
-  refuseUnsafeEntries(Object.keys(files));
-  if (Object.keys(files).length > MAX_SYSTEM_BUNDLE_ENTRIES) throw new Error("That system bundle has too many files.");
-  if (Object.values(files).reduce((total, file) => total + file.byteLength, 0) > MAX_SYSTEM_BUNDLE_BYTES)
-    throw new Error("That system bundle expands beyond this server's size limit.");
+  const files = unzipBounded(archive, MAX_SYSTEM_BUNDLE_BYTES, MAX_SYSTEM_BUNDLE_ENTRIES, refuseUnsafeEntries);
 
   const rawManifest = readJson<unknown>(files, "manifest.json", "the bundle");
   if (!rawManifest || typeof rawManifest !== "object" || (rawManifest as { app?: unknown }).app !== SYSTEM_BUNDLE_APP)

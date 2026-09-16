@@ -178,6 +178,8 @@ export function attachRealtime(server: Server) {
   });
 
   wss.on("connection", (socket: WebSocket, _request: IncomingMessage, account: AuthAccount) => {
+    // Protocol errors are emitted before a message can reach the JSON handler.
+    socket.on("error", () => socket.terminate());
     const client: Client = { socket, account, accountId: account.id, username: account.username };
     clients.add(client);
     send(client, { type: "ready" });

@@ -4,7 +4,7 @@ import { MAP_NOTATION_COLORS, type MapNotation } from "@devils-toys/shared";
 import type { AuthedRequest } from "./auth.js";
 import { requireAuth, roomRole } from "./auth.js";
 import { all, db, one } from "./db.js";
-import { broadcastRoom } from "./realtime.js";
+import { broadcastRoom, sendToRoomGms } from "./realtime.js";
 
 export const mapNotationRouter = express.Router();
 
@@ -65,7 +65,12 @@ function access(req: AuthedRequest, res: express.Response) {
     res.status(409).json({ error: "Map notation is not enabled for this room." });
     return;
   }
-  return { roomId, mediaId, role };
+  return { roomId, mediaId, role, visible: Boolean(media.visible) };
+}
+
+function broadcastNotation(allowed: NonNullable<ReturnType<typeof access>>, event: unknown) {
+  if (allowed.visible) broadcastRoom(allowed.roomId, event);
+  else sendToRoomGms(allowed.roomId, event);
 }
 
 function list(roomId: number, mediaId: number): MapNotation[] {
@@ -100,7 +105,7 @@ mapNotationRouter.post("/rooms/:roomId/maps/:mediaId/notations", requireAuth, (r
     .prepare("INSERT INTO map_notations (room_id, media_id, notation_json, created_by) VALUES (?, ?, ?, ?)")
     .run(allowed.roomId, allowed.mediaId, JSON.stringify(parsed.data.notation), req.account!.id);
   const created = { id: Number(result.lastInsertRowid), ...parsed.data.notation };
-  broadcastRoom(allowed.roomId, {
+  broadcastNotation(allowed, {
     type: "map-notation-added",
     mediaId: allowed.mediaId,
     notation: created,
@@ -119,7 +124,7 @@ mapNotationRouter.delete(
       .prepare("DELETE FROM map_notations WHERE id = ? AND room_id = ? AND media_id = ?")
       .run(Number(req.params.notationId), allowed.roomId, allowed.mediaId);
     if (result.changes)
-      broadcastRoom(allowed.roomId, {
+      broadcastNotation(allowed, {
         type: "map-notation-removed",
         mediaId: allowed.mediaId,
         notationId: Number(req.params.notationId)
@@ -138,7 +143,7 @@ mapNotationRouter.post("/rooms/:roomId/maps/:mediaId/notations/undo", requireAut
   );
   if (latest) {
     db.prepare("DELETE FROM map_notations WHERE id = ?").run(latest.id);
-    broadcastRoom(allowed.roomId, {
+    broadcastNotation(allowed, {
       type: "map-notation-removed",
       mediaId: allowed.mediaId,
       notationId: latest.id
@@ -152,6 +157,6 @@ mapNotationRouter.delete("/rooms/:roomId/maps/:mediaId/notations", requireAuth, 
   if (!allowed) return;
   if (allowed.role !== "gm") return res.status(403).json({ error: "Only the room GM can clear map notation." });
   db.prepare("DELETE FROM map_notations WHERE room_id = ? AND media_id = ?").run(allowed.roomId, allowed.mediaId);
-  broadcastRoom(allowed.roomId, { type: "map-notations-cleared", mediaId: allowed.mediaId });
+  broadcastNotation(allowed, { type: "map-notations-cleared", mediaId: allowed.mediaId });
   res.status(204).end();
 });

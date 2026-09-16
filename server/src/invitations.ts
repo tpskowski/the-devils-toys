@@ -158,7 +158,7 @@ invitationRouter.post(
         `SELECT i.id, i.room_id, i.account_id, a.username FROM invitations i
          JOIN accounts a ON a.id = i.account_id
          WHERE i.token_hash = ? AND i.redeemed_at IS NULL AND i.revoked_at IS NULL
-         AND i.expires_at > CURRENT_TIMESTAMP`,
+         AND julianday(i.expires_at) > julianday('now')`,
         tokenHash
       );
       if (!invitation) return res.status(410).json({ error: "This invitation is no longer valid." });
@@ -168,7 +168,7 @@ invitationRouter.post(
         const claimed = db
           .prepare(
             `UPDATE invitations SET redeemed_at = CURRENT_TIMESTAMP
-             WHERE id = ? AND redeemed_at IS NULL AND revoked_at IS NULL AND expires_at > CURRENT_TIMESTAMP`
+             WHERE id = ? AND redeemed_at IS NULL AND revoked_at IS NULL AND julianday(expires_at) > julianday('now')`
           )
           .run(invitation.id);
         if (!claimed.changes) {

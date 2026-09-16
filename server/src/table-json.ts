@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import { z } from "zod";
 import {
   DIE_SIDES_PATTERN,
   parseRowLabel,
@@ -46,12 +47,59 @@ interface StoredSet {
   tables: StoredTable[];
 }
 
+const sourceSchema = z.object({
+  heading: z
+    .object({ line: z.number().int().nonnegative(), level: z.number().int().min(1).max(6), text: z.string() })
+    .nullable(),
+  headingPath: z.array(z.string()),
+  tagsLine: z.number().int().nonnegative().nullable(),
+  tableStart: z.number().int().nonnegative(),
+  tableEnd: z.number().int().nonnegative(),
+  dieColumn: z.string(),
+  dice: z.string(),
+  soleTable: z.boolean(),
+  markdownFile: z.string().optional()
+});
+
+const storedSetSchema = z.object({
+  formatVersion: z.literal(1),
+  setName: z.string(),
+  sourceDocument: z.string().optional(),
+  tables: z.array(
+    z
+      .object({
+        id: z.string().min(1),
+        name: z.string().min(1),
+        section: z.string(),
+        category: z.string(),
+        dice: z.string().regex(new RegExp(`^(?:[1-9]\\d?)?d(?:${DIE_SIDES_PATTERN})$`, "i")),
+        columns: z.array(z.string()).min(1),
+        tags: z.array(z.string()),
+        rows: z.array(
+          z.object({
+            label: z.string(),
+            min: z.number().int(),
+            max: z.number().int(),
+            cells: z.array(z.string()),
+            nextTableId: z.string().optional()
+          })
+        ),
+        classification: z.enum(["player", "gm"]).optional(),
+        origin: sourceSchema.optional()
+      })
+      .superRefine((table, ctx) => {
+        for (const row of table.rows) {
+          if (row.max < row.min || row.cells.length !== table.columns.length)
+            ctx.addIssue({ code: "custom", message: "Invalid row range or column count." });
+        }
+      })
+  )
+});
+
 export function parseSetJson(value: string, file: string): StoredSet {
-  const parsed = JSON.parse(value) as StoredSet;
-  if (parsed.formatVersion !== 1 || !Array.isArray(parsed.tables)) throw new Error(`Invalid table JSON: ${file}`);
-  if (parsed.tables.some((table) => !table.id || !table.name || !Array.isArray(table.rows)))
-    throw new Error(`Invalid table entry in ${file}`);
-  return parsed;
+  const parsed = storedSetSchema.safeParse(JSON.parse(value));
+  if (!parsed.success) throw new Error(`Invalid table JSON: ${file}: ${parsed.error.issues[0]?.message}`);
+  return parsed.data;
 }
 
 /**

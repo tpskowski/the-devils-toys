@@ -5,7 +5,7 @@ import { THEME_IDS, type AccountRole } from "@devils-toys/shared";
 import type { AuthedRequest } from "./auth.js";
 import { clearSession, createSession, requireAuth } from "./auth.js";
 import { one } from "./db.js";
-import { systemOrThrow } from "./systems.js";
+import { allSystems, systemOrThrow } from "./systems.js";
 import { offeredSystemIds } from "./system-registry.js";
 
 const offeredSystems = () => offeredSystemIds().map(systemOrThrow);
@@ -43,31 +43,44 @@ export function publicAccount(row: { id: number; username: string; is_admin: num
   return { id: row.id, username: row.username, isAdmin: Boolean(row.is_admin), role: row.account_role };
 }
 
+const systemStatus = ({
+  id,
+  name,
+  shortName,
+  glyph,
+  tagline,
+  defaultTheme,
+  rollRulesQuery,
+  dice,
+  groupPage,
+  optionalRules
+}: ReturnType<typeof systemOrThrow>) => ({
+  id,
+  name,
+  shortName,
+  glyph,
+  tagline,
+  defaultTheme,
+  rollRulesQuery,
+  dice,
+  groupPage: Boolean(groupPage),
+  // What the system offers rather than imposes. A room's own settings come
+  // with the room; these are the labels a switch needs to be drawn with.
+  optionalRules: optionalRules ?? [],
+  // What this system's weapon words mean, so anything that shows one can
+  // say so rather than repeating the word back.
+  traits: itemTraitsFor(id)
+});
+
 sessionRouter.get("/status", (_req, res) => {
   const count = one<{ count: number }>("SELECT COUNT(*) AS count FROM accounts")?.count ?? 0;
   res.json({
     initialized: count > 0,
     // Only what a new room may be made on. A retired system keeps its rooms
     // working, but nothing offers to start another on it.
-    systems: offeredSystems().map(
-      ({ id, name, shortName, glyph, tagline, defaultTheme, rollRulesQuery, dice, groupPage, optionalRules }) => ({
-        id,
-        name,
-        shortName,
-        glyph,
-        tagline,
-        defaultTheme,
-        rollRulesQuery,
-        dice,
-        groupPage: Boolean(groupPage),
-        // What the system offers rather than imposes. A room's own settings come
-        // with the room; these are the labels a switch needs to be drawn with.
-        optionalRules: optionalRules ?? [],
-        // What this system's weapon words mean, so anything that shows one can
-        // say so rather than repeating the word back.
-        traits: itemTraitsFor(id)
-      })
-    ),
+    systems: offeredSystems().map(systemStatus),
+    // Existing rooms still need the metadata of retired systems.
+    roomSystems: allSystems().map(systemStatus),
     themes: THEME_IDS
   });
 });

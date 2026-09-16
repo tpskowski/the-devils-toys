@@ -98,7 +98,7 @@ export function RulesMarkdown({
             ),
             a: ({ node: _node, href = "", children, ...props }: any) => {
               if (href.startsWith("devils-table:")) {
-                const match = /^devils-table:([^/]+)\/([^/]+)$/.exec(href.slice("devils-table:".length));
+                const match = /^devils-table:([^/]+)\/([^/]+)$/.exec(href);
                 if (roomId && match) {
                   return (
                     <button

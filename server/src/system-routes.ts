@@ -6,6 +6,7 @@ import { isSystemId } from "@devils-toys/shared";
 import type { AuthedRequest } from "./auth.js";
 import { requireAuth } from "./auth.js";
 import { config } from "./config.js";
+import { db } from "./db.js";
 import { isBuiltinSystem } from "./builtin-systems.js";
 import { logger } from "./logger.js";
 import { asyncRoute } from "./session-routes.js";
@@ -26,6 +27,7 @@ import { SCHEMA_FILE } from "./system-schema-json.js";
 import { requireSystemAdmin } from "./system-permissions.js";
 import {
   deleteSystemRow,
+  forgetSystemContent,
   loadInstalledSystem,
   recordInstalledSystem,
   roomNamesOn,
@@ -38,7 +40,7 @@ import {
   systemUsage,
   unloadSystem
 } from "./system-registry.js";
-import { hasSystem, systemOrThrow } from "./systems.js";
+import { hasSystem, registerSystem, systemOrThrow, unregisterSystem } from "./systems.js";
 
 /**
  * Installing, retiring, and exporting a game system.
@@ -130,10 +132,27 @@ function installValidated(
   );
   if (change && acknowledgeBreaking !== change.fingerprint) throw new BreakingSystemChangeRequired(change);
 
-  const result = writeSystemBundle(content);
-  recordInstalledSystem({ id: content.system.id, name: content.system.name, manifest, installedBy });
-  loadInstalledSystem(content.system.id);
-  return { ...result, breakingAcknowledged: Boolean(change) };
+  const previousDefinition = hasSystem(content.system.id) ? systemOrThrow(content.system.id) : undefined;
+  try {
+    const result = writeSystemBundle(content, () => {
+      db.exec("BEGIN IMMEDIATE");
+      try {
+        recordInstalledSystem({ id: content.system.id, name: content.system.name, manifest, installedBy });
+        loadInstalledSystem(content.system.id);
+        db.exec("COMMIT");
+      } catch (error) {
+        db.exec("ROLLBACK");
+        throw error;
+      }
+    });
+    return { ...result, breakingAcknowledged: Boolean(change) };
+  } catch (error) {
+    // writeSystemBundle has restored the files; discard anything read during the failed install.
+    forgetSystemContent(content.system.id);
+    if (previousDefinition) registerSystem(previousDefinition);
+    else unregisterSystem(content.system.id);
+    throw error;
+  }
 }
 
 systemRouter.get("/admin/systems", requireAuth, (req: AuthedRequest, res) => {

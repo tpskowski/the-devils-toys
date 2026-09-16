@@ -1,3 +1,4 @@
+import { setupRouter } from "./setup-routes.js";
 import http from "node:http";
 import fs from "node:fs";
 import { randomUUID } from "node:crypto";
@@ -6,7 +7,7 @@ import cookieParser from "cookie-parser";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import type { AuthedRequest } from "./auth.js";
-import { authMiddleware, createSession, requireAuth, roomRole } from "./auth.js";
+import { authMiddleware, requireAuth, roomRole } from "./auth.js";
 import { playerPreviewMiddleware } from "./player-preview.js";
 import { playerPreview } from "./preview-context.js";
 import { roomMembers } from "./realtime.js";
@@ -201,28 +202,7 @@ function privateRollMessage(row: {
   };
 }
 
-app.post(
-  "/api/setup",
-  asyncRoute(async (req, res) => {
-    const existing = one<{ count: number }>("SELECT COUNT(*) AS count FROM accounts")?.count ?? 0;
-    if (existing) return res.status(409).json({ error: "Server setup is already complete." });
-    const body = parse(
-      z.object({ username: z.string().trim().min(2).max(32), password: z.string().min(8).max(128) }),
-      req.body,
-      res
-    );
-    if (!body) return;
-    const hash = await bcrypt.hash(body.password, 12);
-    const result = db
-      .prepare("INSERT INTO accounts (username, password_hash, is_admin, account_role) VALUES (?, ?, 1, 'admin')")
-      .run(body.username, hash);
-    createSession(res, Number(result.lastInsertRowid));
-    res
-      .status(201)
-      .json({ account: { id: Number(result.lastInsertRowid), username: body.username, isAdmin: true, role: "admin" } });
-  })
-);
-
+app.use("/api", setupRouter);
 app.get("/api/project/:document", requireAuth, (req, res) => {
   // The guides cite two of these by filename, so they are reachable rather than
   // dead links out of `docs/guide/` into a repository nobody reading has.

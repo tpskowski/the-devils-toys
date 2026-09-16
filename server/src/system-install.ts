@@ -18,6 +18,7 @@ import {
   type SystemId
 } from "@devils-toys/shared";
 import { config } from "./config.js";
+import { logger } from "./logger.js";
 import { isBuiltinSystem } from "./builtin-systems.js";
 import { creationPacketSections } from "./character-creation.js";
 import { installedSystemRoot, systemRulesFile, systemTablesJsonFile } from "./system-content.js";
@@ -498,7 +499,7 @@ export function refuseUninstallableCreation(bundle: SystemBundleContent) {
  * install leaves the previous content untouched rather than a half-written
  * system that would fail to load on the next start.
  */
-export function writeSystemBundle(bundle: SystemBundleContent): InstallResult {
+export function writeSystemBundle(bundle: SystemBundleContent, commit?: () => void): InstallResult {
   const { system, items, traits, rules, tables } = bundle;
   const root = installedSystemRoot(system.id);
   const staging = `${root}.incoming`;
@@ -522,7 +523,10 @@ export function writeSystemBundle(bundle: SystemBundleContent): InstallResult {
     }
     try {
       fs.renameSync(staging, root);
+      // Keep the old files until registration and its database transaction commit.
+      commit?.();
     } catch (error) {
+      if (fs.existsSync(root)) fs.rmSync(root, { recursive: true, force: true });
       if (replaced && fs.existsSync(retired)) {
         try {
           fs.renameSync(retired, root);
@@ -532,7 +536,12 @@ export function writeSystemBundle(bundle: SystemBundleContent): InstallResult {
       }
       throw error;
     }
-    fs.rmSync(retired, { recursive: true, force: true });
+    try {
+      fs.rmSync(retired, { recursive: true, force: true });
+    } catch (error) {
+      // The installation is committed; leftover backup cleanup is not a refusal.
+      logger.warn("Could not remove system backup", { system: system.id, error: String(error) });
+    }
     return {
       system: system.id,
       name: system.name,
