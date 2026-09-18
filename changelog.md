@@ -1,10 +1,12 @@
 # Changelog
 
+- Player simulation now opens from a compact **Simulate** button in the room header. Its modal holds the themed player chooser and starts simulation in the current tab; **Stop simulating** returns to the same room as GM, and the refresh footnote is removed. Reading legacy audio in simulation no longer saves missing track metadata.
+
 - Retired systems retain the metadata existing rooms need, and rulebook table links open their roll controls. Hidden-map annotations are sent only to GMs. Initial setup admits one administrator even when requests overlap; malformed WebSocket frames close their connection, and session and invitation expiry checks compare timestamps consistently. System installation rolls back files and registration together on failure, validates complete table records, and bounds archive expansion during decompression.
 
 - “Setting the table” now retries automatically when the server is restarting or unavailable, times out stalled startup requests, and offers **Retry now**. Temporary connection failures keep waiting for the server instead of showing the login form.
 
-- GMs can open **Player preview** in a new tab, choosing a room player or a generic player who sees shared content without personal characters, private rolls, or private Wiki pages. Preview uses the server's player visibility checks, refuses changes, refreshes every three seconds, and never joins presence or changes the GM's session.
+- GMs can open **Player preview** in the current tab, choosing a room player or a generic player who sees shared content without personal characters, private rolls, or private Wiki pages. Preview uses the server's player visibility checks, refuses changes, refreshes every three seconds, and never joins presence or changes the GM's session.
 
 - Image References now support cursor-centered wheel zoom, zoom buttons, drag-to-pan, and Fit in both the table and Library preview. Reference and Library lists use small, lazily loaded thumbnails. Full-size Maps, Scenes, References, and encounter images now use upload-versioned URLs with a year of private browser caching, matching the existing portrait and thumbnail policy; replacing an upload changes its URL, while legacy image links revalidate. Server access checks still run on network requests. Already downloaded images can remain in the browser cache after sharing is withdrawn.
 

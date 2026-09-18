@@ -7,6 +7,7 @@ import { playerPreviewMiddleware } from "./player-preview.js";
 import { mayReadWikiFile } from "./wiki-permissions.js";
 import { characterRouter } from "./characters.js";
 import { mediaRouter } from "./media.js";
+import { audioRouter } from "./audio.js";
 import { installToybox } from "./test-fixture.js";
 
 installToybox();
@@ -22,6 +23,7 @@ beforeAll(async () => {
   app.use(playerPreviewMiddleware);
   app.use("/api", characterRouter);
   app.use("/api", mediaRouter);
+  app.use("/api", audioRouter);
   app.get("/api/rooms/:roomId", async (req: AuthedRequest, res) => {
     await Promise.resolve();
     res.json({
@@ -117,4 +119,22 @@ it("scopes media URLs and applies real media visibility checks", async () => {
   ).run();
   expect((await preview("generic", "/media/1/file")).status).toBe(404);
   expect((await preview("2", "/media/1/thumbnail")).status).toBe(404);
+});
+
+it("reads legacy audio without persisting metadata during either kind of preview", async () => {
+  db.prepare("UPDATE rooms SET music_enabled = 1 WHERE id = 1").run();
+  db.prepare(
+    `INSERT INTO media (id, room_id, uploaded_by, kind, category, filename, stored_name, mime_type, size, visible, metadata_loaded)
+     VALUES (1, 1, 1, 'audio', 'audio', 'legacy.mp3', 'missing.mp3', 'audio/mpeg', 10, 1, 0)`
+  ).run();
+  const before = db.prepare("SELECT * FROM media WHERE id = 1").get();
+  for (const player of ["generic", "2"]) {
+    const response = await preview(player, "/rooms/1/audio");
+    expect(response.ok).toBe(true);
+    expect((await response.json()).tracks).toHaveLength(1);
+    expect(db.prepare("SELECT * FROM media WHERE id = 1").get()).toEqual(before);
+  }
+  // Ordinary reads still backfill legacy metadata.
+  expect((await fetch(`${origin}/api/rooms/1/audio`)).ok).toBe(true);
+  expect(db.prepare("SELECT metadata_loaded FROM media WHERE id = 1").get()).toEqual({ metadata_loaded: 1 });
 });

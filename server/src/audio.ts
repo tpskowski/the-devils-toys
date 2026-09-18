@@ -14,6 +14,7 @@ import { broadcastRoom } from "./realtime.js";
 import { readMp3Metadata, type Mp3Metadata } from "./mp3-metadata.js";
 import { playlistsFor } from "./playlists.js";
 import { roomAccessRole } from "./room-config-permissions.js";
+import { playerPreview } from "./preview-context.js";
 
 export const audioRouter = express.Router();
 const uploadsDir = path.join(config.dataDir, "uploads");
@@ -87,13 +88,16 @@ function withMetadata(row: AudioRow) {
     album: row.album ?? metadata.album,
     track_no: row.track_no ?? metadata.trackNo
   };
-  db.prepare("UPDATE media SET artist = ?, title = ?, album = ?, track_no = ?, metadata_loaded = 1 WHERE id = ?").run(
-    read.artist,
-    read.title,
-    read.album,
-    read.track_no,
-    row.id
-  );
+  // Preview may read legacy tags, but must not persist its lazy metadata backfill.
+  if (!playerPreview.getStore()) {
+    db.prepare("UPDATE media SET artist = ?, title = ?, album = ?, track_no = ?, metadata_loaded = 1 WHERE id = ?").run(
+      read.artist,
+      read.title,
+      read.album,
+      read.track_no,
+      row.id
+    );
+  }
   return { ...row, ...read, metadata_loaded: 1 };
 }
 

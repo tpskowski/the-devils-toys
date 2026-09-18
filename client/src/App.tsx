@@ -367,7 +367,10 @@ function Workspace({
   onLogout: () => void;
 }) {
   const [rooms, setRooms] = useState<RoomSummary[]>([]);
-  const [selectedId, setSelectedId] = useState<number>();
+  const [selectedId, setSelectedId] = useState<number | undefined>(() => {
+    const roomId = Number(new URLSearchParams(window.location.search).get("room"));
+    return Number.isSafeInteger(roomId) && roomId > 0 ? roomId : undefined;
+  });
   const [showCreate, setShowCreate] = useState(false);
   const [showPlayer, setShowPlayer] = useState(false);
   const [document, setDocument] = useState<string>();
@@ -841,7 +844,9 @@ function TableRoom({
   const [trackerOpen, setTrackerOpen] = useState(true);
 
   const socketRef = useRef<WebSocket | null>(null);
-  const [previewPlayer, setPreviewPlayer] = useState("generic");
+  const preview = previewSelection();
+  const [previewPlayer, setPreviewPlayer] = useState(preview?.player ?? "generic");
+  const [previewOpen, setPreviewOpen] = useState(false);
   const [previewFailure, setPreviewFailure] = useState<string>();
   // Requests cannot be cancelled; a room switch or disabling music makes every
   // earlier result irrelevant and prevents it from restoring a cleared player.
@@ -1134,7 +1139,10 @@ function TableRoom({
   if (previewFailure)
     return (
       <div className="table-loading" role="alert">
-        {previewFailure}
+        <p>{previewFailure}</p>
+        <a className="secondary-button" href={`/?room=${room.id}`}>
+          Stop simulating
+        </a>
       </div>
     );
   if (!detail) return <div className="table-loading">Opening {room.name}…</div>;
@@ -1150,64 +1158,30 @@ function TableRoom({
       <header className="table-header">
         <div>
           <p className="eyebrow">
-            {room.system} · {detail.room.role === "gm" ? "Game master" : "Player"}
+            {room.system} · {preview ? "Player · Read-only" : detail.room.role === "gm" ? "Game master" : "Player"}
           </p>
           <h1>{room.name}</h1>
-          {previewSelection() && (
-            <div className="player-preview-controls">
-              <strong>Player preview · Read-only</strong>
-              <label>
-                View as
-                <select
-                  aria-label="Preview player"
-                  value={previewSelection()!.player}
-                  onChange={(event) => {
-                    window.location.href = playerPreviewUrl(room.id, event.target.value);
-                  }}
-                >
-                  <option value="generic">Generic player (shared content)</option>
-                  {detail.members
-                    .filter((member) => member.role === "player")
-                    .map((member) => (
-                      <option key={member.accountId} value={member.accountId}>
-                        {member.displayName}
-                      </option>
-                    ))}
-                </select>
-              </label>
-              <small>Refreshes every 3 seconds. Generic view has no personal characters, rolls, or notes.</small>
-            </div>
-          )}
         </div>
         <div className="header-actions">
-          {detail.room.role === "gm" && (
-            <div className="player-preview-controls">
-              <label>
-                View as
-                <select
-                  aria-label="Player to preview"
-                  value={previewPlayer}
-                  onChange={(event) => setPreviewPlayer(event.target.value)}
-                >
-                  <option value="generic">Generic player (shared content)</option>
-                  {detail.members
-                    .filter((member) => member.role === "player")
-                    .map((member) => (
-                      <option key={member.accountId} value={member.accountId}>
-                        {member.displayName}
-                      </option>
-                    ))}
-                </select>
-              </label>
-              <a
-                className="secondary-button"
-                href={playerPreviewUrl(room.id, previewPlayer)}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <Eye size={16} /> Player preview
-              </a>
-            </div>
+          {(detail.room.role === "gm" || preview) && (
+            <button
+              className="secondary-button simulation-action"
+              onClick={() => setPreviewOpen(true)}
+              aria-label={preview ? "Simulating · Read-only" : "Simulate"}
+              title={preview ? "Simulating · Read-only" : "Simulate"}
+            >
+              <Eye size={16} /> <span>{preview ? "Simulating · Read-only" : "Simulate"}</span>
+            </button>
+          )}
+          {preview && (
+            <a
+              className="secondary-button simulation-action"
+              href={`/?room=${room.id}`}
+              aria-label="Stop simulating"
+              title="Stop simulating"
+            >
+              <X size={16} /> <span>Stop simulating</span>
+            </a>
           )}
           {detail.room.role === "gm" && (
             <button className="icon-button invite-player-button" onClick={onCreatePlayer} title="Create player">
@@ -1432,6 +1406,46 @@ function TableRoom({
           <span>Refs</span>
         </button>
       </nav>
+      {previewOpen && (
+        <Modal title="Simulate a player" onClose={() => setPreviewOpen(false)}>
+          <div className="stack-form">
+            <div className="player-preview-controls">
+              <label>
+                View as
+                <select
+                  aria-label="Player to preview"
+                  value={previewPlayer}
+                  onChange={(event) => setPreviewPlayer(event.target.value)}
+                  autoFocus
+                >
+                  <option value="generic">Generic player (shared content)</option>
+                  {detail.members
+                    .filter((member) => member.role === "player")
+                    .map((member) => (
+                      <option key={member.accountId} value={member.accountId}>
+                        {member.displayName}
+                      </option>
+                    ))}
+                </select>
+              </label>
+              {preview && (
+                <a className="secondary-button" href={`/?room=${room.id}`}>
+                  Stop simulating
+                </a>
+              )}
+            </div>
+            <div className="player-preview-actions">
+              <a
+                className="primary-button"
+                href={playerPreviewUrl(room.id, previewPlayer)}
+                onClick={() => setPreviewOpen(false)}
+              >
+                <Eye size={16} /> {preview ? "View as player" : "Start simulating"}
+              </a>
+            </div>
+          </div>
+        </Modal>
+      )}
       {charactersOpen && (
         <CharacterModal
           roomId={room.id}
