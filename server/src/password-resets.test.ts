@@ -10,7 +10,12 @@ import { managementRouter } from "./management.js";
 import { createPasswordReset, passwordResetRouter } from "./password-resets.js";
 import { disconnectAccount } from "./realtime.js";
 
-vi.mock("./realtime.js", () => ({ disconnectAccount: vi.fn(), broadcastRoom: vi.fn(), refreshRoomAccess: vi.fn() }));
+vi.mock("./realtime.js", () => ({
+  disconnectAccount: vi.fn(),
+  disconnectSession: vi.fn(),
+  broadcastRoom: vi.fn(),
+  refreshRoomAccess: vi.fn()
+}));
 let server: Server;
 let base: string;
 let originalHash: string;

@@ -11,6 +11,7 @@ import { roomConfigAccess } from "./room-config-permissions.js";
 
 interface Client {
   socket: WebSocket;
+  sessionId: string;
   account: AuthAccount;
   accountId: number;
   username: string;
@@ -144,6 +145,11 @@ export function refreshRoomPresence(roomId: number) {
   publishPresence(roomId);
 }
 
+export function disconnectSession(sessionId?: string) {
+  if (!sessionId) return;
+  for (const client of clients) if (client.sessionId === sessionId) client.socket.close(4001, "Session revoked");
+}
+
 export function disconnectAccount(accountId: number) {
   for (const client of clients) if (client.accountId === accountId) client.socket.close(4001, "Session revoked");
 }
@@ -177,14 +183,22 @@ export function attachRealtime(server: Server) {
     wss.handleUpgrade(request, socket, head, (ws) => wss.emit("connection", ws, request, account));
   });
 
-  wss.on("connection", (socket: WebSocket, _request: IncomingMessage, account: AuthAccount) => {
+  wss.on("connection", (socket: WebSocket, request: IncomingMessage, account: AuthAccount) => {
     // Protocol errors are emitted before a message can reach the JSON handler.
     socket.on("error", () => socket.terminate());
-    const client: Client = { socket, account, accountId: account.id, username: account.username };
+    const client: Client = {
+      socket,
+      sessionId: parse(request.headers.cookie ?? "").devils_session!,
+      account,
+      accountId: account.id,
+      username: account.username
+    };
     clients.add(client);
     send(client, { type: "ready" });
 
     socket.on("message", (raw) => {
+      // A revoked socket may still have buffered messages while it closes.
+      if (socket.readyState !== WebSocket.OPEN) return;
       try {
         const message = JSON.parse(raw.toString()) as { type?: string; roomId?: number };
         if (message.type === "scene-ping") {

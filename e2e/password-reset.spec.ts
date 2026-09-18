@@ -24,7 +24,10 @@ test("an account link signs out its visitor, sets a password, and returns to nor
   await page.goto(link);
   await expect(page.getByLabel("New password", { exact: true })).toBeVisible();
   expect((await page.request.get("/api/me")).status()).toBe(401);
-  expect(new URL(page.url()).hash).toBe("");
+  expect(new URL(page.url()).hash).toBe(new URL(link).hash);
+  await page.reload();
+  await expect(page.getByLabel("New password", { exact: true })).toBeVisible();
+  expect(new URL(page.url()).hash).toBe(new URL(link).hash);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   await page.getByLabel("New password", { exact: true }).fill("chosen-password");
   await page.getByLabel("Confirm password").fill("mismatched-password");
@@ -33,6 +36,7 @@ test("an account link signs out its visitor, sets a password, and returns to nor
   await page.getByLabel("Confirm password").fill("chosen-password");
   await page.getByRole("button", { name: "Save password", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Password saved" })).toBeVisible();
+  expect(new URL(page.url()).hash).toBe("");
   expect((await page.request.get("/api/me")).status()).toBe(401);
   await page.getByRole("link", { name: "Continue to sign in" }).click();
   await page.getByLabel("Username").fill(username);

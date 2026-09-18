@@ -1,5 +1,7 @@
 # Changelog
 
+- Password reset links close live connections for the visiting browser’s session and revoke pending invitations when the new password is saved. Unused links survive a page refresh; the token leaves the URL after a successful reset.
+
 - The signed-out landing page replaces its left-hand graphic with a random quote and attribution, using the lobby’s typography and length-aware sizing. A quote is picked once on load; on phones it appears below the login form.
 
 - Newly set passwords require at least 14 characters across setup, account creation, invitations, password resets, and command-line recovery. Existing passwords still work for sign-in. Password reset links now appear at the top of the account record.

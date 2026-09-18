@@ -5,7 +5,7 @@ import { z } from "zod";
 import { db, one } from "./db.js";
 import { clearSession } from "./auth.js";
 import { asyncRoute, parse } from "./session-routes.js";
-import { disconnectAccount } from "./realtime.js";
+import { disconnectAccount, disconnectSession } from "./realtime.js";
 
 const digest = (token: string) => crypto.createHash("sha256").update(token).digest("hex");
 const tokenSchema = z.string().regex(/^[A-Za-z0-9_-]{43}$/);
@@ -44,7 +44,7 @@ passwordResetRouter.post(
   "/password-reset/open",
   asyncRoute((req, res) => {
     // Opening even an expired link leaves this browser signed out.
-    clearSession(req, res);
+    disconnectSession(clearSession(req, res));
     const body = parse(z.object({ token: tokenSchema }), req.body, res);
     if (!body) return;
     const reset = pendingReset(body.token);
@@ -56,7 +56,7 @@ passwordResetRouter.post(
 passwordResetRouter.post(
   "/password-reset",
   asyncRoute(async (req, res) => {
-    clearSession(req, res);
+    disconnectSession(clearSession(req, res));
     const body = parse(
       z.object({
         token: tokenSchema,
@@ -79,6 +79,10 @@ passwordResetRouter.post(
       }
       accountId = reset.account_id;
       db.prepare("UPDATE accounts SET password_hash = ? WHERE id = ?").run(hash, accountId);
+      db.prepare(
+        `UPDATE invitations SET revoked_at = CURRENT_TIMESTAMP
+        WHERE account_id = ? AND redeemed_at IS NULL AND revoked_at IS NULL`
+      ).run(accountId);
       db.prepare("DELETE FROM password_resets WHERE account_id = ?").run(accountId);
       db.prepare("DELETE FROM sessions WHERE account_id = ?").run(accountId);
       db.exec("COMMIT");

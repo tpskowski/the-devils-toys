@@ -1,3 +1,4 @@
+import { createPasswordReset, passwordResetRouter } from "./password-resets.js";
 import fs from "node:fs";
 import http from "node:http";
 import type { Socket } from "node:net";
@@ -32,7 +33,16 @@ const sockets: WebSocket[] = [];
 beforeAll(async () => {
   const app = express();
   app.use(express.json(), cookieParser(), authMiddleware);
-  app.use("/api", setupRouter, sessionRouter, systemRouter, invitationRouter, roomAdminRouter, mapNotationRouter);
+  app.use(
+    "/api",
+    passwordResetRouter,
+    setupRouter,
+    sessionRouter,
+    systemRouter,
+    invitationRouter,
+    roomAdminRouter,
+    mapNotationRouter
+  );
   server = http.createServer(app);
   attachRealtime(server);
   await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
@@ -93,9 +103,9 @@ function post(path: string, body: unknown = {}, account = 1) {
   );
 }
 
-async function connect(account: number) {
+async function connect(account: number, session = `session-${account}`) {
   const socket = new WebSocket(origin.replace("http:", "ws:") + "/ws", {
-    headers: { cookie: `devils_session=session-${account}` }
+    headers: { cookie: `devils_session=${session}` }
   });
   sockets.push(socket);
   const events: Record<string, unknown>[] = [];
@@ -276,5 +286,45 @@ describe("review regression scenarios", () => {
     const options = await (await request("/rooms/1/member-options")).json();
     expect(options.accounts.some((account: { id: number }) => account.id === 3)).toBe(true);
     expect(one("SELECT account_id FROM memberships WHERE account_id = 3")).toBeUndefined();
+  });
+});
+
+describe("password reset review regressions", () => {
+  it.each([true, false])("closes only the visiting session's sockets when opening a link (valid=%s)", async (valid) => {
+    db.prepare("INSERT INTO sessions (id, account_id, expires_at) VALUES ('other-device', 1, ?)").run(
+      new Date(Date.now() + 3600000).toISOString()
+    );
+    const firstTab = await connect(1);
+    const secondTab = await connect(1);
+    const otherDevice = await connect(1, "other-device");
+    const closures = [once(firstTab.socket, "close"), once(secondTab.socket, "close")];
+    const { token } = createPasswordReset(3);
+    expect((await post("/password-reset/open", { token: valid ? token : "invalid" }, 1)).status).toBe(
+      valid ? 200 : 400
+    );
+    for (const closed of await Promise.all(closures)) expect(closed[0]).toBe(4001);
+    expect(one("SELECT id FROM sessions WHERE id = 'session-1'")).toBeUndefined();
+    expect(one("SELECT id FROM sessions WHERE id = 'other-device'")).toBeDefined();
+    broadcastRoom(1, { type: "review-probe" });
+    await vi.waitFor(() => expect(otherDevice.events.some((event) => event.type === "review-probe")).toBe(true));
+    expect(firstTab.events.some((event) => event.type === "review-probe")).toBe(false);
+    expect(secondTab.events.some((event) => event.type === "review-probe")).toBe(false);
+    expect(otherDevice.socket.readyState).toBe(WebSocket.OPEN);
+  });
+
+  it("revokes an older pending invitation only after a successful password reset", async () => {
+    db.prepare("INSERT INTO invitations (token_hash, room_id, account_id, expires_at) VALUES (?, 1, 3, ?)").run(
+      invitationTokenHash("old-invite"),
+      new Date(Date.now() + 3600000).toISOString()
+    );
+    const { token } = createPasswordReset(3);
+    expect((await post("/password-reset", { token, password: "short" })).status).toBe(400);
+    expect(
+      one<{ revoked_at: string | null }>("SELECT revoked_at FROM invitations WHERE account_id = 3")!.revoked_at
+    ).toBeNull();
+    expect((await post("/password-reset", { token, password: "reset-password-chosen" })).status).toBe(204);
+    expect((await post("/invitations/old-invite/redeem", { password: "old-invite-takeover" })).status).toBe(410);
+    expect((await post("/login", { username: "user-3", password: "reset-password-chosen" })).status).toBe(200);
+    expect((await post("/login", { username: "user-3", password: "old-invite-takeover" })).status).toBe(401);
   });
 });

@@ -47,10 +47,11 @@ export function createSession(res: Response, accountId: number) {
   res.cookie(sessionCookie, id, { httpOnly: true, sameSite: "strict", secure: false, expires, path: "/" });
 }
 
-export function clearSession(req: AuthedRequest, res: Response) {
+export function clearSession(req: AuthedRequest, res: Response): string | undefined {
   const id = req.cookies?.[sessionCookie];
   if (id) db.prepare("DELETE FROM sessions WHERE id = ?").run(id);
   res.clearCookie(sessionCookie, { path: "/" });
+  return id;
 }
 
 export function roomRole(accountId: number, roomId: number): "gm" | "player" | undefined {

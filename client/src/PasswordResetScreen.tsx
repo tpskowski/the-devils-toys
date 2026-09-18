@@ -3,7 +3,6 @@ import { api } from "./api";
 
 // The fragment is never sent in page requests or Referer headers.
 const resetToken = new URLSearchParams(window.location.hash.slice(1)).get("token") ?? "";
-if (window.location.pathname === "/reset-password") window.history.replaceState({}, "", "/reset-password");
 
 export function PasswordResetScreen() {
   const [username, setUsername] = useState("");
@@ -34,6 +33,7 @@ export function PasswordResetScreen() {
         method: "POST",
         body: JSON.stringify({ token: resetToken, password: form.get("password") })
       });
+      window.history.replaceState({}, "", "/reset-password");
       setDone(true);
     } catch (cause) {
       setError((cause as Error).message);
