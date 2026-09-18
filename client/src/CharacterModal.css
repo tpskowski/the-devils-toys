@@ -296,7 +296,7 @@
   gap: 18px;
 }
 
-.character-sheet-heading input {
+.character-sheet-heading > label > input {
   font:
     600 23px Unbounded,
     sans-serif !important;

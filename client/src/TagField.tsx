@@ -111,6 +111,7 @@ export function TagField({
           </span>
         ))}
         <input
+          className="tag-field-input"
           value={draft}
           list={listId}
           disabled={busy}
