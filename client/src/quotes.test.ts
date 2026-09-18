@@ -5,25 +5,23 @@ import { attributionLines, parseQuotes, quoteScale, quotes, randomQuote } from "
 describe("parseQuotes", () => {
   it("reads a quote and the name on its last line", () => {
     expect(parseQuotes("There may be an ending, but there is no end.\nYu Miri")).toEqual([
-      { lines: ["There may be an ending, but there is no end."], attribution: "Yu Miri", selfQuoted: false }
+      { lines: ["There may be an ending, but there is no end."], attribution: "Yu Miri" }
     ]);
   });
 
-  it("takes the marks off a quote the author wrapped, whichever kind they used", () => {
-    expect(parseQuotes('"To me my X-Men!"\nProfessor Xavier')[0].lines).toEqual(["To me my X-Men!"]);
-    expect(parseQuotes("“All we have to decide.”\nGandalf")[0].lines).toEqual(["All we have to decide."]);
+  it("preserves quotation marks exactly as written in the source", () => {
+    expect(parseQuotes('"To me my X-Men!"\nProfessor Xavier')[0].lines).toEqual(['"To me my X-Men!"']);
+    expect(parseQuotes("“All we have to decide.”\nGandalf")[0].lines).toEqual(["“All we have to decide.”"]);
   });
 
-  it("keeps a verse's lines apart and unwraps it as one quote", () => {
-    const [verse] = parseQuotes('"I sang of leaves, of leaves of gold:\nOf wind I sang, a wind there came."\nTolkien');
+  it("keeps a verse's lines apart", () => {
+    const [verse] = parseQuotes("I sang of leaves, of leaves of gold:\nOf wind I sang, a wind there came.\nTolkien");
     expect(verse.lines).toEqual(["I sang of leaves, of leaves of gold:", "Of wind I sang, a wind there came."]);
-    expect(verse.selfQuoted).toBe(false);
   });
 
   it("leaves an exchange its own marks, so the page does not speak both halves at once", () => {
     const [exchange] = parseQuotes("“Don’t you have a religion?”\n“Yes, my survival.”\nIain Banks");
     expect(exchange.lines).toEqual(["“Don’t you have a religion?”", "“Yes, my survival.”"]);
-    expect(exchange.selfQuoted).toBe(true);
   });
 
   it("drops a dash of any kind in front of a name", () => {
@@ -36,7 +34,7 @@ ${dash} Douglas Adams`)[0].attribution
 
   it("drops a dash in front of a name, and trailing spaces", () => {
     expect(parseQuotes('"We\'ve had one, yes." \n-Pippin Took')[0]).toMatchObject({
-      lines: ["We've had one, yes."],
+      lines: ['"We\'ve had one, yes."'],
       attribution: "Pippin Took"
     });
   });
@@ -57,13 +55,18 @@ describe("the quotes file", () => {
     for (const quote of quotes) {
       expect(quote.attribution).not.toBe("");
       expect(quote.lines.join("").trim()).not.toBe("");
-      // A stray mark left on one end reads as a typo on the page.
-      expect(quote.selfQuoted || !/^["“]/.test(quote.lines[0])).toBe(true);
     }
   });
 
   it("holds the one the page opened with before it had a file to read", () => {
     expect(quotes.map((quote) => quote.attribution)).toContain("Thomas Fuller");
+  });
+
+  it("preserves the opening and closing dialogue marks around narrated speech", () => {
+    const quote = quotes.find((quote) => quote.lines[0].includes("he sighed to no one"));
+    expect(quote?.lines).toEqual([
+      "“Well,” he sighed to no one in particular, and looked up into yet another alien sky. “Here we are again.”"
+    ]);
   });
 });
 
@@ -101,7 +104,7 @@ describe("randomQuote", () => {
 });
 
 describe("quoteScale", () => {
-  const of = (length: number) => ({ lines: ["x".repeat(length)], attribution: "Someone", selfQuoted: false });
+  const of = (length: number) => ({ lines: ["x".repeat(length)], attribution: "Someone" });
 
   it("sets the short ones large and the long ones small", () => {
     expect(quoteScale(of(40))).toBe("short");
@@ -112,12 +115,12 @@ describe("quoteScale", () => {
   });
 
   it("sets a quote written over many lines smaller still, however short its lines", () => {
-    const column = { lines: Array.from({ length: 6 }, () => "Mayday …"), attribution: "Traveller", selfQuoted: false };
+    const column = { lines: Array.from({ length: 6 }, () => "Mayday …"), attribution: "Traveller" };
     expect(quoteScale(column)).toBe("tall");
     expect(quoteScale({ ...column, lines: column.lines.slice(0, 5) })).toBe("short");
   });
 
   it("measures the whole of a verse rather than its first line", () => {
-    expect(quoteScale({ lines: ["x".repeat(80), "y".repeat(80)], attribution: "A", selfQuoted: false })).toBe("medium");
+    expect(quoteScale({ lines: ["x".repeat(80), "y".repeat(80)], attribution: "A" })).toBe("medium");
   });
 });
