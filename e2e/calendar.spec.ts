@@ -1,4 +1,5 @@
 import { expect, request as apiRequest, test } from "@playwright/test";
+import sharp from "sharp";
 import { prepareTable } from "./setup";
 
 test("GM configures shared calendar and persistent map notation", async ({ page }) => {
@@ -64,10 +65,9 @@ test("GM configures shared calendar and persistent map notation", async ({ page 
       file: {
         name: "campaign-map.png",
         mimeType: "image/png",
-        buffer: Buffer.from(
-          "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
-          "base64"
-        )
+        buffer: await sharp({ create: { width: 320, height: 240, channels: 3, background: "#c8c1ad" } })
+          .png()
+          .toBuffer()
       }
     }
   });
@@ -142,9 +142,14 @@ test("GM configures shared calendar and persistent map notation", async ({ page 
   await page.getByRole("button", { name: "Maps" }).click();
   await expect(page.getByAltText("campaign-map")).toBeVisible();
   await page.getByRole("button", { name: "Draw", exact: true }).click();
-  const map = page.locator(".scene-viewer");
+  // Fit keeps small maps at native size, so draw within the image's notation
+  // plane rather than the surrounding viewer (which includes empty space).
+  const map = page.locator(".map-notation-content");
+  await expect(map).toBeVisible();
   const bounds = await map.boundingBox();
   expect(bounds).not.toBeNull();
+  expect(bounds!.width).toBeCloseTo(320, 0);
+  expect(bounds!.height).toBeCloseTo(240, 0);
   await page.mouse.move(bounds!.x + bounds!.width * 0.25, bounds!.y + bounds!.height * 0.3);
   await page.mouse.down();
   await page.mouse.move(bounds!.x + bounds!.width * 0.7, bounds!.y + bounds!.height * 0.65, { steps: 12 });
@@ -156,7 +161,12 @@ test("GM configures shared calendar and persistent map notation", async ({ page 
   // which is what a line being drawn is rendered into.
   await expect(page.locator(".map-notation-layer polyline[data-notation-id]")).toHaveCount(1);
   const saved = await page.request.get(`/api/rooms/${roomId}/maps/${mapId}/notations`);
-  expect((await saved.json()).notations).toHaveLength(1);
+  const notations = (await saved.json()).notations;
+  expect(notations).toHaveLength(1);
+  expect(notations[0].points[0].x).toBeCloseTo(0.25, 2);
+  expect(notations[0].points[0].y).toBeCloseTo(0.3, 2);
+  expect(notations[0].points.at(-1).x).toBeCloseTo(0.7, 2);
+  expect(notations[0].points.at(-1).y).toBeCloseTo(0.65, 2);
   const invitation = await page.request.post(`/api/rooms/${roomId}/invitations`, {
     data: { username: "MapPlayer" }
   });
