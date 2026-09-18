@@ -15,18 +15,7 @@ export interface Quote {
   /** The quote's lines, kept apart so a verse or an exchange stays one. */
   lines: string[];
   attribution: string;
-  /**
-   * Whether the lines are an exchange carrying quotation marks of their own.
-   * Those marks belong to the dialogue and survive removal of outer wrapping.
-   */
-  selfQuoted: boolean;
 }
-
-const openers = '"“‘«';
-const closers = '"”’»';
-
-const opens = (line: string) => openers.includes(line[0] ?? "");
-const closes = (line: string) => closers.includes(line.at(-1) ?? "");
 
 export function parseQuotes(markdown: string): Quote[] {
   return markdown
@@ -44,14 +33,9 @@ export function parseQuotes(markdown: string): Quote[] {
       // most of them. The page draws its own, so any of them here would come
       // out doubled.
       const attribution = lines.pop()!.replace(/^[-‒–—―−]\s*/, "");
-      // Remove a pair wrapping the whole passage. Preserve internal quotation
-      // marks, including an exchange whose individual lines are quoted.
-      const selfQuoted = lines.length > 1 && lines.every((line) => opens(line) && closes(line));
-      if (!selfQuoted && opens(lines[0]) && closes(lines.at(-1)!)) {
-        lines[0] = lines[0].slice(1);
-        lines[lines.length - 1] = lines[lines.length - 1].slice(0, -1);
-      }
-      return { lines, attribution, selfQuoted };
+      // Punctuation belongs to the source. quotes.md omits decorative wrapping
+      // marks and keeps the marks that are part of dialogue or quoted words.
+      return { lines, attribution };
     });
 }
 

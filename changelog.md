@@ -1,5 +1,7 @@
 # Changelog
 
+- Landing-page quotes preserve dialogue punctuation exactly as written in `quotes.md`. Decorative outer quotation marks are removed from the source instead of stripped at display time, keeping narrated speech intact.
+
 - Player simulation now opens from a compact **Simulate** button in the room header. Its modal holds the themed player chooser and starts simulation in the current tab; **Stop simulating** returns to the same room as GM, and the refresh footnote is removed. Reading legacy audio in simulation no longer saves missing track metadata.
 
 - Encounter panels let GMs rename encounters, edit descriptions, create another encounter, and create an NPC directly into the roster. Unplaced combatants have a remove button that leaves their source character or NPC intact. Activating an encounter deactivates the previous one in that room.
