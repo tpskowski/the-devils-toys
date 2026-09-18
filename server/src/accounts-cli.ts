@@ -33,7 +33,7 @@ import { config } from "./config.js";
 /** The cost the application hashes with. Kept in step deliberately. */
 const BCRYPT_COST = 12;
 /** The same bounds the HTTP routes enforce, so the two cannot disagree. */
-const MIN_PASSWORD = 8;
+const MIN_PASSWORD = 14;
 const MAX_PASSWORD = 128;
 
 interface AccountRow {
