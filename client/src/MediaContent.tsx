@@ -3,12 +3,21 @@ import type { MediaAsset } from "@devils-toys/shared";
 import { api } from "./api";
 import { RulesMarkdown } from "./RulesMarkdown";
 import { SceneViewer } from "./SceneViewer";
+import { AssetVisibilityControl } from "./AssetVisibilityControl";
 
 export function isMarkdownAsset(asset: MediaAsset) {
   return asset.mimeType === "text/markdown" || asset.filename.toLowerCase().endsWith(".md");
 }
 
-export function MediaContent({ asset }: { asset: MediaAsset }) {
+export function MediaContent({
+  asset,
+  isGm = false,
+  onMediaChanged
+}: {
+  asset: MediaAsset;
+  isGm?: boolean;
+  onMediaChanged?: () => Promise<void>;
+}) {
   const markdown = isMarkdownAsset(asset);
   const [content, setContent] = useState("");
   const [error, setError] = useState("");
@@ -29,17 +38,26 @@ export function MediaContent({ asset }: { asset: MediaAsset }) {
         scene={asset}
         roomId={asset.roomId}
         label="Reference"
-        isGm={false}
+        isGm={isGm}
+        onMediaChanged={onMediaChanged}
         pings={[]}
         onManage={() => {}}
       />
     );
-  if (error) return <p className="media-content-status">{error}</p>;
-  if (!content) return <p className="media-content-status">Loading Reference…</p>;
-
   return (
     <div className="markdown media-markdown">
-      <RulesMarkdown markdown={content} idPrefix={`media-reference-${asset.id}`} />
+      {isGm && onMediaChanged && (
+        <div className="scene-toolbar reference-visibility-toolbar">
+          <AssetVisibilityControl key={asset.id} asset={asset} onChanged={onMediaChanged} />
+        </div>
+      )}
+      {error ? (
+        <p className="media-content-status">{error}</p>
+      ) : !content ? (
+        <p className="media-content-status">Loading Reference…</p>
+      ) : (
+        <RulesMarkdown markdown={content} idPrefix={`media-reference-${asset.id}`} />
+      )}
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Columns3, Map as MapIcon, Plus } from "lucide-react";
+import { Columns3, Map as MapIcon, Pencil, Plus } from "lucide-react";
 import type {
   AttributeDamageDefinition,
   InitiativeRules,
@@ -99,7 +99,8 @@ export function EncounterPage({
   isGm,
   viewerId,
   maps,
-  onChanged
+  onChanged,
+  onCreated
 }: {
   roomId: number;
   encounter?: EncounterRecord;
@@ -109,11 +110,21 @@ export function EncounterPage({
   /** The room's maps, for the GM to choose what this encounter is fought over. */
   maps: { id: number; label: string }[];
   onChanged: () => void;
+  onCreated?: (id: number) => void | Promise<void>;
 }) {
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [candidates, setCandidates] = useState<Candidates>(noCandidates);
+  const [editor, setEditor] = useState<"name" | "notes" | "new" | "npc">();
+  const [draft, setDraft] = useState("");
+  const [npcNotes, setNpcNotes] = useState("");
+  const [npcFields, setNpcFields] = useState<Record<string, string>>({});
+  const [candidateRevision, setCandidateRevision] = useState(0);
+  useEffect(() => {
+    setEditor(undefined);
+    setError("");
+  }, [encounter?.id]);
 
   // The roster is assembled from lists the room already publishes, so nothing here
   // is a second source of truth for who exists.
@@ -142,7 +153,7 @@ export function EncounterPage({
     return () => {
       active = false;
     };
-  }, [roomId, isGm]);
+  }, [roomId, isGm, candidateRevision]);
 
   async function act(run: () => Promise<unknown>) {
     setBusy(true);
@@ -188,11 +199,13 @@ export function EncounterPage({
   async function create() {
     if (!name.trim()) return;
     await act(async () => {
-      await api(`/api/rooms/${roomId}/encounters`, {
+      const result = await api<{ encounter: EncounterRecord }>(`/api/rooms/${roomId}/encounters`, {
         method: "POST",
         body: JSON.stringify({ name: name.trim() })
       });
       setName("");
+      setEditor(undefined);
+      await onCreated?.(result.encounter.id);
     });
   }
 
@@ -203,6 +216,39 @@ export function EncounterPage({
         body: encounter!.active ? undefined : JSON.stringify({ confirm: true })
       })
     );
+  }
+
+  function edit(next: "name" | "notes" | "new" | "npc") {
+    setError("");
+    setEditor(next);
+    setDraft(next === "name" ? encounter!.name : next === "notes" ? (encounter!.notes ?? "") : "");
+    setNpcNotes("");
+    setNpcFields({});
+  }
+
+  async function saveEdit() {
+    if (editor === "new") return create();
+    await act(async () => {
+      if (editor === "npc") {
+        const statblock = Object.fromEntries(
+          (encounter!.npcStatblock?.fields ?? []).flatMap((field) => {
+            const value = npcFields[field.key]?.trim();
+            return value ? [[field.key, field.kind === "number" ? Number(value) : value]] : [];
+          })
+        );
+        await api(`/api/rooms/${roomId}/encounters/${encounter!.id}/combatants`, {
+          method: "POST",
+          body: JSON.stringify({ kind: "npc", newNpc: { name: draft.trim(), notes: npcNotes, statblock } })
+        });
+        setCandidateRevision((value) => value + 1);
+      } else {
+        await api(`/api/rooms/${roomId}/encounters/${encounter!.id}`, {
+          method: "PATCH",
+          body: JSON.stringify(editor === "name" ? { name: draft.trim() } : { notes: draft })
+        });
+      }
+      setEditor(undefined);
+    });
   }
 
   if (!encounter) {
@@ -241,15 +287,123 @@ export function EncounterPage({
     <div className="encounter-page">
       <header className="encounter-header">
         <div>
-          <p className="eyebrow">{encounter.active ? "Active encounter" : "Encounter"}</p>
-          <h2>{encounter.name}</h2>
+          <div className="encounter-title">
+            <h2>{encounter.name}</h2>
+            {isGm && (
+              <button
+                className="encounter-edit-icon"
+                aria-label="Edit encounter name"
+                title="Edit encounter name"
+                disabled={busy}
+                onClick={() => edit("name")}
+              >
+                <Pencil />
+              </button>
+            )}
+            {encounter.active && <span className="eyebrow">Active</span>}
+          </div>
         </div>
         {isGm && (
-          <button className="secondary-button" onClick={() => void toggleActive()} disabled={busy}>
-            {busy ? "Saving…" : encounter.active ? "Deactivate" : "Activate"}
-          </button>
+          <div className="encounter-header-actions">
+            <button
+              className="secondary-button"
+              disabled={busy}
+              onClick={() => {
+                setName("");
+                edit("new");
+              }}
+            >
+              <Plus /> New encounter
+            </button>
+            <button
+              className="secondary-button"
+              onClick={() => void toggleActive()}
+              disabled={busy}
+              title={
+                encounter.active
+                  ? "Deactivate this encounter"
+                  : "Activate this encounter and deactivate any other in this room"
+              }
+            >
+              {busy ? "Saving…" : encounter.active ? "Deactivate" : "Activate"}
+            </button>
+          </div>
         )}
       </header>
+      {isGm && editor && (
+        <form
+          className="encounter-editor"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void saveEdit();
+          }}
+        >
+          <label>
+            {editor === "new"
+              ? "New encounter name"
+              : editor === "npc"
+                ? "NPC name"
+                : editor === "name"
+                  ? "Encounter name"
+                  : "Encounter description"}
+            {editor === "notes" ? (
+              <textarea
+                autoFocus
+                value={draft}
+                maxLength={10000}
+                disabled={busy}
+                onChange={(event) => setDraft(event.target.value)}
+              />
+            ) : (
+              <input
+                autoFocus
+                required
+                maxLength={editor === "npc" ? 100 : 120}
+                disabled={busy}
+                value={editor === "new" ? name : draft}
+                onChange={(event) => (editor === "new" ? setName(event.target.value) : setDraft(event.target.value))}
+              />
+            )}
+          </label>
+          {editor === "npc" && (
+            <>
+              <label>
+                NPC notes
+                <textarea
+                  value={npcNotes}
+                  maxLength={10000}
+                  disabled={busy}
+                  onChange={(event) => setNpcNotes(event.target.value)}
+                />
+              </label>
+              <div className="encounter-npc-fields">
+                {encounter.npcStatblock?.fields.map((field) => (
+                  <label key={field.key}>
+                    {field.label}
+                    <input
+                      type={field.kind === "number" ? "number" : "text"}
+                      disabled={busy}
+                      value={npcFields[field.key] ?? ""}
+                      onChange={(event) => setNpcFields((current) => ({ ...current, [field.key]: event.target.value }))}
+                    />
+                  </label>
+                ))}
+              </div>
+            </>
+          )}
+          <div className="encounter-header-actions">
+            <button
+              className="primary-button"
+              disabled={busy || (editor !== "notes" && !(editor === "new" ? name : draft).trim())}
+            >
+              {editor === "new" ? "Create encounter" : editor === "npc" ? "Create and add NPC" : "Save"}
+            </button>
+            <button type="button" className="secondary-button" disabled={busy} onClick={() => setEditor(undefined)}>
+              Cancel
+            </button>
+          </div>
+        </form>
+      )}
       {isGm && (
         <div className="encounter-display" role="group" aria-label="What this encounter shows">
           {(["map", "zones"] as const).map((mode) => (
@@ -291,11 +445,19 @@ export function EncounterPage({
         </p>
       )}
       {encounter.notes && <p className="encounter-notes">{encounter.notes}</p>}
+      {isGm && (
+        <button className="encounter-edit-description" disabled={busy} onClick={() => edit("notes")}>
+          <Pencil /> {encounter.notes ? "Edit description" : "Add description"}
+        </button>
+      )}
       {error && <p className="form-error">{error}</p>}
 
       {isGm && (
         <div className="encounter-add" aria-label="Add combatants">
           <h3>Add to this encounter</h3>
+          <button className="secondary-button" disabled={busy} onClick={() => edit("npc")}>
+            <Plus /> Create NPC
+          </button>
           {(
             [
               {

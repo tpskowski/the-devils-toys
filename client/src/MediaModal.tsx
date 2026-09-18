@@ -5,6 +5,7 @@ import { api } from "./api";
 import { isMarkdownAsset, MediaContent } from "./MediaContent";
 import { WikiWorkspace } from "./WikiWorkspace";
 import type { WikiMentionTarget } from "./RulesMarkdown";
+import { mediaLabel, sortMediaByLabel } from "./media-label";
 
 export interface RoomMediaState {
   map: (MediaAsset & { legend?: MapLegend | null }) | null;
@@ -114,7 +115,7 @@ export function MediaModal({
     }
   }
 
-  const items = role === "gm" ? (media.library ?? []) : media.references;
+  const items = sortMediaByLabel(role === "gm" ? (media.library ?? []) : media.references);
 
   function openWikiMention(mention: WikiMentionTarget) {
     if (mention.kind === "asset") {
@@ -252,7 +253,7 @@ export function MediaModal({
                   </button>
                   <div>
                     <p className="eyebrow">{item.kind}</p>
-                    <strong title={item.filename}>{item.filename}</strong>
+                    <strong title={item.filename}>{mediaLabel(item)}</strong>
                     <small>{Math.max(1, Math.round(item.size / 1024))} KB</small>
                   </div>
                   <div className="media-actions">

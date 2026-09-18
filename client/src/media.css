@@ -25,7 +25,7 @@
   height: 100%;
   position: absolute;
   inset: 0;
-  object-fit: contain;
+  object-fit: scale-down;
   transform-origin: center;
   transition: transform 120ms ease-out;
 }
@@ -70,6 +70,63 @@
 
 .scene-toolbar svg {
   width: 16px;
+}
+
+.asset-visibility-dialog {
+  width: min(380px, calc(100vw - 32px));
+  max-height: calc(100dvh - 32px);
+  box-sizing: border-box;
+  padding: 22px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--text);
+  font-family: Inter, sans-serif;
+  user-select: text;
+  touch-action: auto;
+}
+
+.asset-visibility-dialog::backdrop {
+  background: rgb(0 0 0 / 55%);
+}
+
+.asset-visibility-dialog h2 {
+  margin: 0 0 10px;
+  font-size: 18px;
+  overflow-wrap: anywhere;
+}
+
+.asset-visibility-dialog p {
+  margin: 0 0 18px;
+  font-size: 13px;
+}
+
+.asset-visibility-actions {
+  display: grid;
+  gap: 8px;
+}
+
+.asset-visibility-actions button {
+  min-height: 42px;
+  padding: 9px 12px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+}
+
+.asset-visibility-actions button:hover {
+  border-color: var(--accent);
+}
+
+.asset-visibility-actions button:disabled {
+  opacity: 0.5;
+}
+
+.reference-visibility-toolbar {
+  position: sticky;
+  float: right;
+  top: 0;
+  margin: 0 0 12px 12px;
 }
 
 .scene-pings {

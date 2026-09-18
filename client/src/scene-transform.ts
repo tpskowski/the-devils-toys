@@ -10,7 +10,7 @@ export interface ScenePoint {
   y: number;
 }
 
-/** The untransformed rectangle occupied by an object-fit: contain image. */
+/** The untransformed rectangle occupied by an object-fit: scale-down image. */
 export function fitScenePlane(
   viewportWidth: number,
   viewportHeight: number,
@@ -19,7 +19,7 @@ export function fitScenePlane(
 ): ScenePlane {
   if (viewportWidth <= 0 || viewportHeight <= 0 || naturalWidth <= 0 || naturalHeight <= 0)
     return { left: 0, top: 0, width: 0, height: 0 };
-  const fit = Math.min(viewportWidth / naturalWidth, viewportHeight / naturalHeight);
+  const fit = Math.min(1, viewportWidth / naturalWidth, viewportHeight / naturalHeight);
   const width = naturalWidth * fit;
   const height = naturalHeight * fit;
   return {

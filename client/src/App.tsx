@@ -96,7 +96,7 @@ import { CombatTracker } from "./CombatTracker";
 import { CombatantSheet } from "./CombatantSheet";
 import { useTabPicker } from "./TabPicker";
 import { useHoverTip } from "./HoverTip";
-import { mediaLabel } from "./media-label";
+import { mediaLabel, sortMediaByLabel } from "./media-label";
 import { describeTraits } from "@devils-toys/shared";
 import { rollBodyParts } from "./weapon-roll";
 import { ThemePicker } from "./ThemePicker";
@@ -709,12 +709,9 @@ function Lobby({
   return (
     <section className="lobby">
       <div className="lobby-copy">
-        {/* A verse's line breaks are its own, and the heading is set to keep
-            them. The pair of marks is the page's, except around an exchange,
-            which carries a pair per speaker already. */}
-        <h2 className={`lobby-quote is-${quoteScale(quote)}`}>
-          {quote.selfQuoted ? quote.lines.join("\n") : `“${quote.lines.join("\n")}”`}
-        </h2>
+        {/* Preserve the author's line breaks and internal dialogue punctuation
+            without adding quotation marks around the whole passage. */}
+        <h2 className={`lobby-quote is-${quoteScale(quote)}`}>{quote.lines.join("\n")}</h2>
         {/* A name on the first line, the work and the year on the second, so
             the attribution does not run wider than the quote it sits under. */}
         <p className="lobby-attribution">
@@ -722,11 +719,6 @@ function Lobby({
             <span key={index}>{index === 0 ? `— ${line}` : line}</span>
           ))}
         </p>
-        {canCreate && (
-          <button className="primary-button" onClick={onCreate}>
-            <Plus size={18} /> Create a room
-          </button>
-        )}
         <section className="lobby-rooms" aria-label="Your tables">
           <p className="nav-label">Your tables</p>
           {joined.length > 0 ? (
@@ -759,6 +751,11 @@ function Lobby({
             </p>
           )}
         </section>
+        {canCreate && (
+          <button className="primary-button" onClick={onCreate}>
+            <Plus size={18} /> Create a room
+          </button>
+        )}
       </div>
       {archived.length > 0 && (
         <div className="archived-list">
@@ -1239,6 +1236,7 @@ function TableRoom({
         <section className="scene-stage">
           <TableMediaViewer
             roomId={room.id}
+            onMediaChanged={loadMedia}
             accountId={accountId}
             media={media}
             isGm={detail.room.role === "gm"}
@@ -1293,11 +1291,15 @@ function TableRoom({
             encounterEnabled={encounters.length > 0 || detail.room.role === "gm"}
             encounterPage={
               <EncounterPage
+                onCreated={async (id) => {
+                  await loadEncounters();
+                  setSelectedEncounterId(id);
+                }}
                 roomId={room.id}
                 encounter={selectedEncounter}
                 isGm={detail.room.role === "gm"}
                 viewerId={accountId}
-                maps={(media.library ?? [])
+                maps={sortMediaByLabel(media.library ?? [])
                   .filter((asset) => asset.kind === "map")
                   .map((asset) => ({ id: asset.id, label: mediaLabel(asset) }))}
                 onChanged={loadEncounters}

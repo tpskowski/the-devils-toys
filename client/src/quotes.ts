@@ -16,9 +16,8 @@ export interface Quote {
   lines: string[];
   attribution: string;
   /**
-   * Whether the lines carry quotation marks of their own, which is the page's
-   * signal not to add a pair. True only of an exchange between two speakers,
-   * where one pair around the whole thing would put both halves in one mouth.
+   * Whether the lines are an exchange carrying quotation marks of their own.
+   * Those marks belong to the dialogue and survive removal of outer wrapping.
    */
   selfQuoted: boolean;
 }
@@ -45,12 +44,8 @@ export function parseQuotes(markdown: string): Quote[] {
       // most of them. The page draws its own, so any of them here would come
       // out doubled.
       const attribution = lines.pop()!.replace(/^[-‒–—―−]\s*/, "");
-      // Three shapes are written in the file, and they differ in exactly the
-      // way that matters to a page adding marks of its own: a quote with no
-      // marks at all, one the author wrapped from its first line to its last,
-      // and an exchange whose every line carries its own pair. Only the middle
-      // one is unwrapped here, so that what is left is either bare — and gets a
-      // pair from the page — or is punctuation the author meant.
+      // Remove a pair wrapping the whole passage. Preserve internal quotation
+      // marks, including an exchange whose individual lines are quoted.
       const selfQuoted = lines.length > 1 && lines.every((line) => opens(line) && closes(line));
       if (!selfQuoted && opens(lines[0]) && closes(lines.at(-1)!)) {
         lines[0] = lines[0].slice(1);

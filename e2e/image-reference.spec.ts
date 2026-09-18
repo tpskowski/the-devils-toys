@@ -31,12 +31,14 @@ test("image references zoom, pan, fit, and reuse cached originals", async ({ pag
   const image = viewer.locator(":scope > img");
   await expect(viewer).toBeVisible();
   await expect.poll(() => image.evaluate((node: HTMLImageElement) => node.naturalWidth)).toBeGreaterThan(0);
+  await expect(image).toHaveCSS("object-fit", "scale-down");
   await viewer.getByTitle("Zoom in", { exact: true }).click();
   await expect(image).toHaveCSS("transform", "matrix(1.5, 0, 0, 1.5, 0, 0)");
   await viewer.getByTitle("Zoom out", { exact: true }).click();
   await expect(image).toHaveCSS("transform", "matrix(1, 0, 0, 1, 0, 0)");
   const box = (await viewer.boundingBox())!;
-  const x = box.x + box.width / 2 + 30;
+  // Fit keeps this tiny fixture at native size; wheel zoom must target the image itself.
+  const x = box.x + box.width / 2;
   const y = box.y + box.height / 2;
   await page.mouse.move(x, y);
   await page.mouse.wheel(0, -100);

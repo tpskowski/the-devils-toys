@@ -2,6 +2,11 @@ import { describe, expect, it } from "vitest";
 import { fitScenePlane, zoomOffsetAtPoint } from "./scene-transform";
 
 describe("scene geometry", () => {
+  it("centers small images at native size so pings and annotations follow the visible image", () => {
+    expect(fitScenePlane(1000, 600, 320, 240)).toEqual({ left: 340, top: 180, width: 320, height: 240 });
+    expect(fitScenePlane(200, 600, 320, 240)).toEqual({ left: 0, top: 225, width: 200, height: 150 });
+  });
+
   it("finds the actual letterboxed image rectangle", () => {
     expect(fitScenePlane(1000, 600, 1000, 1000)).toEqual({ left: 200, top: 0, width: 600, height: 600 });
     expect(fitScenePlane(600, 1000, 1600, 900)).toEqual({ left: 0, top: 331.25, width: 600, height: 337.5 });

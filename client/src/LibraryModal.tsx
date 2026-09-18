@@ -16,7 +16,7 @@ import {
 import type { MediaAsset } from "@devils-toys/shared";
 import { api } from "./api";
 import { isMarkdownAsset, MediaContent } from "./MediaContent";
-import { mediaKindLabel, mediaLabel } from "./media-label";
+import { mediaKindLabel, mediaLabel, sortMediaByLabel } from "./media-label";
 import type { RoomMediaState } from "./MediaModal";
 import { WikiWorkspace } from "./WikiWorkspace";
 import type { WikiMentionTarget } from "./RulesMarkdown";
@@ -79,10 +79,12 @@ export function LibraryModal({
   const library = media.library ?? [];
   const items = useMemo(() => {
     const needle = query.trim().toLowerCase();
-    return library.filter(
-      (item) =>
-        (filter === "all" || item.kind === filter) &&
-        (!needle || mediaLabel(item).toLowerCase().includes(needle) || item.filename.toLowerCase().includes(needle))
+    return sortMediaByLabel(
+      library.filter(
+        (item) =>
+          (filter === "all" || item.kind === filter) &&
+          (!needle || mediaLabel(item).toLowerCase().includes(needle) || item.filename.toLowerCase().includes(needle))
+      )
     );
   }, [filter, library, query]);
 
