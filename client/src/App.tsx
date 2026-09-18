@@ -283,6 +283,7 @@ function LoadingScreen({ reconnecting, onRetry }: { reconnecting: boolean; onRet
 }
 
 function AuthScreen({ mode, onSuccess }: { mode: "setup" | "login"; onSuccess: (account: Account) => void }) {
+  const [quote] = useState(randomQuote);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -306,11 +307,16 @@ function AuthScreen({ mode, onSuccess }: { mode: "setup" | "login"; onSuccess: (
 
   return (
     <main className="auth-screen">
-      <div className="auth-atmosphere" aria-hidden="true">
-        <span className="orbit orbit-one" />
-        <span className="orbit orbit-two" />
-        <div className="sun-mark">✦</div>
-      </div>
+      <section className="auth-quote" aria-label="Opening quote">
+        <div className="lobby-copy">
+          <h2 className={`lobby-quote is-${quoteScale(quote)}`}>{quote.lines.join("\n")}</h2>
+          <p className="lobby-attribution">
+            {attributionLines(quote.attribution).map((line, index) => (
+              <span key={index}>{index === 0 ? `— ${line}` : line}</span>
+            ))}
+          </p>
+        </div>
+      </section>
       <section className="auth-panel">
         <p className="eyebrow">Local virtual tabletop</p>
         <h1>
@@ -332,7 +338,7 @@ function AuthScreen({ mode, onSuccess }: { mode: "setup" | "login"; onSuccess: (
               name="password"
               type="password"
               autoComplete={mode === "setup" ? "new-password" : "current-password"}
-              minLength={mode === "setup" ? 8 : 1}
+              minLength={mode === "setup" ? 14 : 1}
               required
             />
           </label>

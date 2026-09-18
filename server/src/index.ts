@@ -21,6 +21,7 @@ import { characterRouter } from "./characters.js";
 import { roomAdminRouter } from "./room-admin.js";
 import { createRoom } from "./rooms.js";
 import { canResetAccountPassword } from "./account-permissions.js";
+import { passwordResetRouter } from "./password-resets.js";
 import { managementRouter } from "./management.js";
 import { mediaRouter } from "./media.js";
 import { audioRouter, pauseRoomAudio } from "./audio.js";
@@ -93,6 +94,7 @@ app.use("/api", encounterRouter);
 app.use("/api", roomAdminRouter);
 app.use("/api", managementRouter);
 app.use("/api", sessionRouter);
+app.use("/api", passwordResetRouter);
 app.use("/api", mapNotationRouter);
 app.use("/api", roomConfigRouter);
 app.use("/api", roomItemRouter);
@@ -234,7 +236,7 @@ app.post(
     const body = parse(
       z.object({
         username: z.string().trim().min(2).max(32),
-        password: z.string().min(8).max(128),
+        password: z.string().min(14, "Passwords must contain at least 14 characters.").max(128),
         role: z.enum(["admin", "gm", "player"]).default("player"),
         roomId: z.number().int().positive().optional()
       }),
@@ -292,7 +294,11 @@ app.patch(
         : "You can only reset passwords for your room’s players.";
       return res.status(403).json({ error });
     }
-    const body = parse(z.object({ password: z.string().min(8).max(128) }), req.body, res);
+    const body = parse(
+      z.object({ password: z.string().min(14, "Passwords must contain at least 14 characters.").max(128) }),
+      req.body,
+      res
+    );
     if (!body) return;
     const passwordHash = await bcrypt.hash(body.password, 12);
     db.exec("BEGIN");

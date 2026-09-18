@@ -116,7 +116,7 @@ describe("review regression scenarios", () => {
   it("allows only one initial administrator when setup requests overlap", async () => {
     db.exec("DELETE FROM rooms; DELETE FROM accounts;");
     const results = await Promise.all(
-      ["first-owner", "second-owner"].map((username) => post("/setup", { username, password: "test-password" }))
+      ["first-owner", "second-owner"].map((username) => post("/setup", { username, password: "test-password-long" }))
     );
     expect(results.map((result) => result.status).sort()).toEqual([201, 409]);
     expect(one<{ count: number }>("SELECT COUNT(*) AS count FROM accounts WHERE is_admin = 1")!.count).toBe(1);
@@ -272,7 +272,7 @@ describe("review regression scenarios", () => {
       invitationTokenHash("expired"),
       new Date(Date.now() - 1).toISOString()
     );
-    expect((await post("/invitations/expired/redeem", { password: "test-password" })).status).toBe(410);
+    expect((await post("/invitations/expired/redeem", { password: "test-password-long" })).status).toBe(410);
     const options = await (await request("/rooms/1/member-options")).json();
     expect(options.accounts.some((account: { id: number }) => account.id === 3)).toBe(true);
     expect(one("SELECT account_id FROM memberships WHERE account_id = 3")).toBeUndefined();

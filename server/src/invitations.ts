@@ -151,7 +151,11 @@ invitationRouter.post(
   "/invitations/:token/redeem",
   async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
     try {
-      const body = requestBody(z.object({ password: z.string().min(8).max(128) }), req.body, res);
+      const body = requestBody(
+        z.object({ password: z.string().min(14, "Passwords must contain at least 14 characters.").max(128) }),
+        req.body,
+        res
+      );
       if (!body) return;
       const tokenHash = invitationTokenHash(String(req.params.token));
       const invitation = one<{ id: number; room_id: number; account_id: number; username: string }>(

@@ -501,6 +501,8 @@ function PlayerManagement({
   act: (action: () => Promise<void>, success: string) => Promise<void>;
 }) {
   const [resetPassword, setResetPassword] = useState("");
+  const [resetLink, setResetLink] = useState<{ accountId: number; url: string; expiresAt: string }>();
+  const [copiedResetLink, setCopiedResetLink] = useState(false);
   const [accountRole, setAccountRole] = useState<AccountRole>(selected?.role ?? "player");
 
   useEffect(() => setAccountRole(selected?.role ?? "player"), [selected?.id, selected?.role]);
@@ -571,7 +573,7 @@ function PlayerManagement({
         </label>
         <label>
           Initial password
-          <input name="password" type="password" minLength={8} maxLength={128} required placeholder="8+ characters" />
+          <input name="password" type="password" minLength={14} maxLength={128} required placeholder="14+ characters" />
         </label>
         <label>
           Role
@@ -621,6 +623,56 @@ function PlayerManagement({
                 </div>
                 <span className="record-number">A-{String(selected.id).padStart(3, "0")}</span>
               </div>
+              <section className="inspector-section">
+                <h3>Password reset link</h3>
+                <p>
+                  Let this account choose its own password. Links work once, expire after 24 hours, and replace any
+                  previous link.
+                </p>
+                <button
+                  className="secondary-button"
+                  disabled={busy}
+                  onClick={() => {
+                    act(async () => {
+                      const result = await api<{ token: string; expiresAt: string }>(
+                        `/api/management/players/${selected.id}/password-reset`,
+                        { method: "POST" }
+                      );
+                      setResetLink({
+                        accountId: selected.id,
+                        url: `${window.location.origin}/reset-password#token=${result.token}`,
+                        expiresAt: result.expiresAt
+                      });
+                      setCopiedResetLink(false);
+                    }, "Password reset link created. Share it privately with the account holder.");
+                  }}
+                >
+                  Create reset link
+                </button>
+                {resetLink?.accountId === selected.id && (
+                  <div className="invite-link">
+                    <label>
+                      Share this link
+                      <input readOnly value={resetLink.url} onFocus={(event) => event.currentTarget.select()} />
+                    </label>
+                    <button
+                      className="secondary-button"
+                      onClick={() => {
+                        navigator.clipboard
+                          .writeText(resetLink.url)
+                          .then(() => setCopiedResetLink(true))
+                          .catch(() => setCopiedResetLink(false));
+                      }}
+                    >
+                      {copiedResetLink ? "Copied" : "Copy link"}
+                    </button>
+                    <small>
+                      Expires {new Date(resetLink.expiresAt).toLocaleString()}. Anyone with this link can set the
+                      password.
+                    </small>
+                  </div>
+                )}
+              </section>
               {data.viewerRole === "admin" && (
                 <section className="inspector-section role-setting">
                   <h3>Account role</h3>
@@ -697,7 +749,7 @@ function PlayerManagement({
                 <div>
                   <input
                     type="password"
-                    minLength={8}
+                    minLength={14}
                     maxLength={128}
                     required
                     value={resetPassword}

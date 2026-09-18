@@ -1,3 +1,4 @@
+import { createPasswordReset } from "./password-resets.js";
 import express from "express";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
@@ -369,7 +370,7 @@ managementRouter.post(
     const parsed = z
       .object({
         username: usernameSchema,
-        password: z.string().min(8).max(128),
+        password: z.string().min(14, "Passwords must contain at least 14 characters.").max(128),
         role: z.enum(["admin", "gm", "player"]).default("player")
       })
       .safeParse(req.body);
@@ -405,6 +406,14 @@ managementRouter.post(
   })
 );
 
+managementRouter.post("/management/players/:playerId/password-reset", requireAuth, (req: AuthedRequest, res) => {
+  const context = managerContext(req, res);
+  if (!context) return;
+  const playerId = Number(req.params.playerId);
+  if (!context.playerIds.has(playerId)) return res.status(404).json({ error: "Player not found." });
+  res.set("Cache-Control", "no-store").json(createPasswordReset(playerId));
+});
+
 managementRouter.patch(
   "/management/players/:playerId/password",
   requireAuth,
@@ -413,8 +422,10 @@ managementRouter.patch(
     if (!context) return;
     const playerId = Number(req.params.playerId);
     if (!context.playerIds.has(playerId)) return res.status(404).json({ error: "Player not found." });
-    const parsed = z.object({ password: z.string().min(8).max(128) }).safeParse(req.body);
-    if (!parsed.success) return res.status(400).json({ error: "Passwords must contain at least 8 characters." });
+    const parsed = z
+      .object({ password: z.string().min(14, "Passwords must contain at least 14 characters.").max(128) })
+      .safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: "Passwords must contain 14–128 characters." });
     const passwordHash = await bcrypt.hash(parsed.data.password, 12);
     db.exec("BEGIN");
     try {

@@ -1,5 +1,11 @@
 # Changelog
 
+- The signed-out landing page replaces its left-hand graphic with a random quote and attribution, using the lobby’s typography and length-aware sizing. A quote is picked once on load; on phones it appears below the login form.
+
+- Newly set passwords require at least 14 characters across setup, account creation, invitations, password resets, and command-line recovery. Existing passwords still work for sign-in. Password reset links now appear at the top of the account record.
+
+- Account management can create private, single-use password reset links that expire after 24 hours. Opening one signs out the current browser; saving signs the target account out everywhere and prompts them to sign in with their new password.
+
 - Player simulation now opens from a compact **Simulate** button in the room header. Its modal holds the themed player chooser and starts simulation in the current tab; **Stop simulating** returns to the same room as GM, and the refresh footnote is removed. Reading legacy audio in simulation no longer saves missing track metadata.
 
 - Encounter panels let GMs rename encounters, edit descriptions, create another encounter, and create an NPC directly into the roster. Unplaced combatants have a remove button that leaves their source character or NPC intact. Activating an encounter deactivates the previous one in that room.
