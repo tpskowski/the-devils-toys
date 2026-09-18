@@ -2,6 +2,16 @@
 
 - Player simulation now opens from a compact **Simulate** button in the room header. Its modal holds the themed player chooser and starts simulation in the current tab; **Stop simulating** returns to the same room as GM, and the refresh footnote is removed. Reading legacy audio in simulation no longer saves missing track metadata.
 
+- Encounter panels let GMs rename encounters, edit descriptions, create another encounter, and create an NPC directly into the roster. Unplaced combatants have a remove button that leaves their source character or NPC intact. Activating an encounter deactivates the previous one in that room.
+
+- Maps, Scenes, and image References fit within their panels without enlarging small images beyond native size. Manual zoom remains available, with map annotations and pings aligned to the displayed image.
+
+- GMs can change an asset's visibility from its viewing toolbar. The eye reflects whether players can see it and opens a confirmation with Hide or Reveal; maps and scenes also offer Make active or Reveal and make active when they are not already active. References offer visibility only.
+
+- Maps, Scenes, and References are listed alphabetically by their displayed names for GMs and players, including the Library and encounter map picker. Existing visibility and active-asset settings are preserved.
+
+- Shared audio plays 7 dB quieter across the full volume range. The local volume slider keeps its existing percentages and default setting.
+
 - Retired systems retain the metadata existing rooms need, and rulebook table links open their roll controls. Hidden-map annotations are sent only to GMs. Initial setup admits one administrator even when requests overlap; malformed WebSocket frames close their connection, and session and invitation expiry checks compare timestamps consistently. System installation rolls back files and registration together on failure, validates complete table records, and bounds archive expansion during decompression.
 
 - “Setting the table” now retries automatically when the server is restarting or unavailable, times out stalled startup requests, and offers **Retry now**. Temporary connection failures keep waiting for the server instead of showing the login form.

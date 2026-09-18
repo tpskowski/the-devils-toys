@@ -25,7 +25,7 @@ import { rollDice } from "./dice.js";
 import { roomHirelings } from "./group.js";
 import { groupRow, publicHireling, type SheetRow } from "./group-rows.js";
 import { broadcastRoom } from "./realtime.js";
-import { npcCatalog } from "./npcs.js";
+import { npcCatalog, validateStatblock } from "./npcs.js";
 import { parseNpcStatblock } from "./npc-statblocks.js";
 import { systemOrThrow } from "./systems.js";
 
@@ -588,10 +588,21 @@ encounterRouter.post("/rooms/:roomId/encounters/:encounterId/activate", requireA
   );
   if (active && !confirm)
     return res.status(409).json({ error: `Another encounter is active: ${active.name}.`, requiresConfirmation: true });
-  db.prepare("UPDATE encounters SET active = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND room_id = ?").run(
-    existing.encounter.id,
-    roomId
-  );
+  db.exec("BEGIN IMMEDIATE");
+  try {
+    db.prepare("UPDATE encounters SET active = 0 WHERE room_id = ? AND active = 1 AND id <> ?").run(
+      roomId,
+      existing.encounter.id
+    );
+    db.prepare("UPDATE encounters SET active = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND room_id = ?").run(
+      existing.encounter.id,
+      roomId
+    );
+    db.exec("COMMIT");
+  } catch (error) {
+    db.exec("ROLLBACK");
+    throw error;
+  }
   broadcastRoom(roomId, { type: "encounters-updated" });
   res.json({ encounter: visibleEncounter(req.account!.id, roomId, existing.encounter.id) });
 });
@@ -736,6 +747,13 @@ encounterRouter.post("/rooms/:roomId/encounters/:encounterId/combatants", requir
       hirelingId: z.number().int().positive().optional(),
       npcId: z.number().int().positive().optional(),
       catalogName: z.string().trim().min(1).max(200).optional(),
+      newNpc: z
+        .object({
+          name: z.string().trim().min(1).max(100),
+          notes: z.string().max(10000).default(""),
+          statblock: z.record(z.union([z.string(), z.number()])).default({})
+        })
+        .optional(),
       name: z.string().trim().min(1).max(120).optional(),
       side: z.string().min(1).max(40).optional(),
       sortOrder: z.number().int().default(0)
@@ -750,8 +768,14 @@ encounterRouter.post("/rooms/:roomId/encounters/:encounterId/combatants", requir
     return res.status(400).json({ error: "Choose a character." });
   if (body.kind === "hireling" && body.hirelingId === undefined)
     return res.status(400).json({ error: "Choose a hireling." });
-  if (body.kind === "npc" && body.npcId === undefined && body.catalogName === undefined)
+  if (body.kind === "npc" && body.npcId === undefined && body.catalogName === undefined && body.newNpc === undefined)
     return res.status(400).json({ error: "Choose an NPC." });
+  if (body.newNpc) {
+    if (body.kind !== "npc" || body.npcId !== undefined || body.catalogName !== undefined)
+      return res.status(400).json({ error: "Choose one NPC source." });
+    const error = validateStatblock(existing.context.system, body.newNpc.statblock);
+    if (error) return res.status(400).json({ error });
+  }
 
   let sourceName = body.name ?? "Combatant";
   let characterId: number | null = null;
@@ -772,7 +796,10 @@ encounterRouter.post("/rooms/:roomId/encounters/:encounterId/combatants", requir
     sourceName = body.name ?? hireling.name ?? "Hireling";
     if (body.side === "enemies") return res.status(400).json({ error: "Hirelings must be on the party side." });
   } else {
-    if (body.catalogName !== undefined) {
+    if (body.newNpc) {
+      sourceName = body.newNpc.name;
+      snapshot = body.newNpc.statblock;
+    } else if (body.catalogName !== undefined) {
       const entry = npcCatalog(existing.context.system).find((candidate) => candidate.name === body.catalogName);
       if (!entry) return res.status(404).json({ error: "Built-in bestiary entry not found." });
       const parsedNpc = parseNpcStatblock(existing.context.system, entry.markdown);
@@ -793,6 +820,12 @@ encounterRouter.post("/rooms/:roomId/encounters/:encounterId/combatants", requir
   }
   db.exec("BEGIN IMMEDIATE");
   try {
+    if (body.newNpc) {
+      const created = db
+        .prepare("INSERT INTO custom_npcs (room_id, created_by, name, notes, statblock_json) VALUES (?, ?, ?, ?, ?)")
+        .run(roomId, req.account!.id, body.newNpc.name, body.newNpc.notes, JSON.stringify(snapshot));
+      npcId = Number(created.lastInsertRowid);
+    }
     if (catalogMarkdown !== undefined) {
       // One spawned record per bestiary entry per room. Adding a third goblin
       // reuses the record and gets its own combatant, rather than leaving three
@@ -833,6 +866,7 @@ encounterRouter.post("/rooms/:roomId/encounters/:encounterId/combatants", requir
       );
     const combatantId = Number(result.lastInsertRowid);
     db.exec("COMMIT");
+    if (body.newNpc) broadcastRoom(roomId, { type: "npcs-updated" });
     broadcastRoom(roomId, { type: "encounters-updated" });
     res.status(201).json({ combatantId, encounter: visibleEncounter(req.account!.id, roomId, existing.encounter.id) });
   } catch (error) {

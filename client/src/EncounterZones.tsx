@@ -2,6 +2,7 @@ import { useEffect, useState, type DragEvent } from "react";
 import { GripVertical, Plus, Trash2, X } from "lucide-react";
 import { api } from "./api";
 import { CombatantAvatar } from "./CombatantAvatar";
+import { RemoveEncounterCombatant } from "./RemoveEncounterCombatant";
 import { canControlCombatant } from "./encounter-control";
 import type { EncounterCombatant, EncounterRecord } from "./EncounterPage";
 
@@ -297,7 +298,22 @@ export function EncounterZones({
           <p className="eyebrow">Not placed</p>
           <div className="encounter-zone-tokens">
             {waiting.length === 0 ? <span className="encounter-zones-empty">Everyone is on the board.</span> : null}
-            {waiting.map(token)}
+            {waiting.map((combatant) => (
+              <div className="encounter-unplaced-token" key={combatant.id}>
+                {token(combatant)}
+                {isGm && (
+                  <RemoveEncounterCombatant
+                    roomId={roomId}
+                    encounterId={encounter.id}
+                    combatant={combatant}
+                    onRemoved={() => {
+                      setCarried(undefined);
+                      onChanged();
+                    }}
+                  />
+                )}
+              </div>
+            ))}
           </div>
           {carried !== undefined && zones.length > 0 && (
             <button className="encounter-zone-drop" onClick={() => choose(null)}>

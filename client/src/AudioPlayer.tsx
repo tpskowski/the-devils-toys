@@ -32,6 +32,9 @@ import {
 
 type PlaybackCommand = Omit<AudioPlaybackState, "updatedAt">;
 
+// Lower playback by 7 dB across the slider without changing its percentages.
+const AUDIO_OUTPUT_GAIN = 10 ** (-7 / 20);
+
 function playbackCommand(playback: AudioPlaybackState, changes: Partial<PlaybackCommand>): PlaybackCommand {
   return {
     trackId: playback.trackId,
@@ -279,7 +282,7 @@ export function AudioDock({
 
   useEffect(() => {
     if (player.current) {
-      player.current.volume = volume;
+      player.current.volume = volume * AUDIO_OUTPUT_GAIN;
       player.current.muted = muted;
     }
   }, [volume, muted]);

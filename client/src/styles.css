@@ -581,7 +581,7 @@ button:disabled {
   padding: clamp(56px, 6vw, 96px) clamp(72px, 11vw, 160px);
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: flex-start;
   background: linear-gradient(135deg, var(--surface), var(--bg));
 }
 .lobby-copy {
@@ -618,6 +618,7 @@ button:disabled {
    the line breaks they were written with. */
 .lobby-quote {
   white-space: pre-line;
+  padding-block: clamp(12px, 2vw, 24px);
 }
 /* Weight comes off as the size does: 600 is right for a line at 72px and heavy
    for a paragraph at 24. */
@@ -670,6 +671,9 @@ button:disabled {
   gap: 8px;
   max-height: min(42svh, 420px);
   overflow-y: auto;
+}
+.lobby-rooms + .primary-button {
+  margin-top: 24px;
 }
 .lobby-room {
   display: flex;
@@ -1032,7 +1036,90 @@ button:disabled {
   padding: clamp(18px, 4vw, 44px);
   overflow-y: auto;
 }
+.encounter-title,
+.encounter-header-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.encounter-title h2 {
+  overflow-wrap: anywhere;
+}
+.encounter-header .encounter-title h2 {
+  margin: 0;
+}
+.encounter-edit-icon,
+.encounter-edit-description {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  padding: 6px;
+}
+.encounter-edit-icon svg,
+.encounter-edit-description svg {
+  width: 15px;
+  height: 15px;
+}
+.encounter-editor {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  margin: 12px 0;
+}
+.encounter-editor label {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+.encounter-editor input,
+.encounter-editor textarea {
+  box-sizing: border-box;
+  min-width: 0;
+  width: 100%;
+  padding: 8px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+}
+.encounter-editor textarea {
+  min-height: 90px;
+  resize: vertical;
+}
+.encounter-npc-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px;
+}
+.encounter-unplaced-token {
+  display: inline-flex;
+  align-items: flex-start;
+  position: relative;
+}
+.encounter-unplaced-remove {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 28px;
+  padding: 3px;
+  background: transparent;
+  color: var(--muted);
+  border: 0;
+}
+.encounter-unplaced-remove:hover {
+  color: var(--text);
+}
+.encounter-unplaced-remove svg {
+  width: 13px;
+  height: 13px;
+}
 .encounter-header {
+  flex-wrap: wrap;
   display: flex;
   justify-content: space-between;
   align-items: start;
@@ -1233,6 +1320,9 @@ button:disabled {
 }
 .encounter-add h3 {
   margin: 0;
+}
+.encounter-add > .secondary-button {
+  justify-self: start;
 }
 .encounter-add .eyebrow {
   margin: 0 0 6px;

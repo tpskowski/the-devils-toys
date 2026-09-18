@@ -13,7 +13,7 @@ import {
 import type { MapNotationEvent, MediaAsset } from "@devils-toys/shared";
 import type { RoomMediaState } from "./MediaModal";
 import { isMarkdownAsset, MediaContent } from "./MediaContent";
-import { mediaLabel } from "./media-label";
+import { mediaLabel, sortMediaByLabel } from "./media-label";
 import { SceneViewer, type ScenePing } from "./SceneViewer";
 import { useTabPicker } from "./TabPicker";
 import type { WikiMentionTarget } from "./RulesMarkdown";
@@ -44,6 +44,7 @@ export function TableMediaViewer({
   encounterPicker,
   encounterEnabled,
   onManage,
+  onMediaChanged,
   onPing,
   mapNotationEnabled,
   mapNotationSyncRevision,
@@ -69,6 +70,7 @@ export function TableMediaViewer({
   };
   encounterEnabled: boolean;
   onManage: () => void;
+  onMediaChanged?: () => Promise<void>;
   onPing: (x: number, y: number) => void;
   mapNotationEnabled: boolean;
   mapNotationSyncRevision: number;
@@ -86,14 +88,23 @@ export function TableMediaViewer({
   const [referenceId, setReferenceId] = useState<number>();
   const wikiLeaveRequest = useRef<((afterDiscard: () => void) => void) | undefined>(undefined);
 
-  const library = media.library ?? [];
+  const library = sortMediaByLabel(media.library ?? []);
+  const references = sortMediaByLabel(media.references);
   const maps = library.filter((item) => item.kind === "map");
   const scenes = library.filter((item) => item.kind === "scene");
   const selectedMap =
     maps.find((item) => item.id === mapId) ?? maps.find((item) => item.id === media.map?.id) ?? maps[0];
   const selectedScene =
     scenes.find((item) => item.id === sceneId) ?? scenes.find((item) => item.id === media.scene?.id) ?? scenes[0];
-  const selectedReference = media.references.find((item) => item.id === referenceId) ?? media.references[0];
+  const selectedReference = references.find((item) => item.id === referenceId) ?? references[0];
+
+  // A GM activating an asset updates the player's selection on that tab.
+  useEffect(() => {
+    if (!isGm && media.map) setMapId(media.map.id);
+  }, [isGm, media.map?.id]);
+  useEffect(() => {
+    if (!isGm && media.scene) setSceneId(media.scene.id);
+  }, [isGm, media.scene?.id]);
 
   useEffect(() => {
     setMapId(selectedMap?.id);
@@ -127,7 +138,7 @@ export function TableMediaViewer({
             thumbnailUrl: item.thumbnailUrl ?? item.url
           }))
         : tab === "reference"
-          ? media.references.map((item) => ({
+          ? references.map((item) => ({
               id: String(item.id),
               label: mediaLabel(item),
               hiddenFromPlayers: isGm && !item.visible,
@@ -296,6 +307,8 @@ export function TableMediaViewer({
             scene={selectedMap ?? null}
             roomId={roomId}
             label="Map"
+            active={selectedMap?.id === media.map?.id}
+            onMediaChanged={onMediaChanged}
             isGm={isGm}
             pings={pings}
             onManage={onManage}
@@ -315,6 +328,8 @@ export function TableMediaViewer({
             scene={selectedScene ?? null}
             roomId={roomId}
             label="Scene"
+            active={selectedScene?.id === media.scene?.id}
+            onMediaChanged={onMediaChanged}
             isGm={isGm}
             pings={pings}
             onManage={onManage}
@@ -348,11 +363,11 @@ export function TableMediaViewer({
             {selectedReference ? (
               <>
                 <div className="table-reference-view">
-                  <MediaContent asset={selectedReference} />
+                  <MediaContent asset={selectedReference} isGm={isGm} onMediaChanged={onMediaChanged} />
                   <p>{mediaLabel(selectedReference)}</p>
                 </div>
                 <nav className="table-reference-list" aria-label="Available References">
-                  {media.references.map((item) => (
+                  {references.map((item) => (
                     <button
                       key={item.id}
                       className={item.id === selectedReference.id ? "active" : ""}

@@ -2,6 +2,7 @@ import { useRef, useState, type CSSProperties, type PointerEvent } from "react";
 import { MapPinOff } from "lucide-react";
 import { api } from "./api";
 import { CombatantAvatar } from "./CombatantAvatar";
+import { RemoveEncounterCombatant } from "./RemoveEncounterCombatant";
 import { canControlCombatant, clampMapPosition } from "./encounter-control";
 import type { EncounterCombatant, EncounterRecord } from "./EncounterPage";
 
@@ -198,7 +199,26 @@ export function EncounterMap({
           <small>{carriedCombatant ? "Choose a point on the map." : "Drag or select a token to place it."}</small>
         </div>
         <div className="encounter-map-roster-tokens">
-          {unplaced.length ? unplaced.map((combatant) => token(combatant, false)) : <span>Everyone is placed.</span>}
+          {unplaced.length ? (
+            unplaced.map((combatant) => (
+              <div className="encounter-unplaced-token" key={combatant.id}>
+                {token(combatant, false)}
+                {isGm && (
+                  <RemoveEncounterCombatant
+                    roomId={roomId}
+                    encounterId={encounter.id}
+                    combatant={combatant}
+                    onRemoved={() => {
+                      setCarried(undefined);
+                      onChanged();
+                    }}
+                  />
+                )}
+              </div>
+            ))
+          ) : (
+            <span>Everyone is placed.</span>
+          )}
         </div>
         {carriedCombatant?.mapPosition && canMove(carriedCombatant) && (
           <button

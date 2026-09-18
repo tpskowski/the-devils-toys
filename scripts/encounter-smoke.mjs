@@ -565,7 +565,7 @@ await runSmoke(
       400
     );
 
-    // A second activation needs confirmation before it is allowed to stand alongside the first.
+    // A confirmed activation replaces the room's previous active encounter.
     const other = await json(
       `/api/rooms/${roomId}/encounters`,
       { method: "POST", headers: gmJson, body: JSON.stringify({ name: "The bridge" }) },
@@ -579,6 +579,22 @@ await runSmoke(
     await json(
       `/api/rooms/${roomId}/encounters/${other.body.encounter.id}/activate`,
       { method: "POST", headers: gmJson, body: JSON.stringify({ confirm: true }) },
+      200
+    );
+
+    const soleActive = await json(`/api/rooms/${roomId}/encounters`, { headers: { cookie: playerCookie } });
+    assert.deepEqual(
+      soleActive.body.encounters.map((entry) => entry.id),
+      [other.body.encounter.id]
+    );
+
+    await json(
+      `/api/rooms/${roomId}/encounters/${encounterId}/activate`,
+      {
+        method: "POST",
+        headers: gmJson,
+        body: JSON.stringify({ confirm: true })
+      },
       200
     );
 

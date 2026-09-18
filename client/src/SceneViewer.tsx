@@ -8,6 +8,7 @@ import type { MapLegend } from "./MediaModal";
 import { api } from "./api";
 import { RulesMarkdown, type WikiMentionTarget } from "./RulesMarkdown";
 import { fitScenePlane, zoomOffsetAtPoint, type ScenePlane } from "./scene-transform";
+import { AssetVisibilityControl } from "./AssetVisibilityControl";
 
 export interface ScenePing {
   id: number;
@@ -111,7 +112,9 @@ export function SceneViewer({
   mapNotation,
   legend,
   legendRevision = 0,
-  onOpenWikiMention
+  onOpenWikiMention,
+  active = false,
+  onMediaChanged
 }: {
   scene: MediaAsset | null;
   roomId: number;
@@ -125,6 +128,8 @@ export function SceneViewer({
   legend?: MapLegend | null;
   legendRevision?: number;
   onOpenWikiMention?: (mention: WikiMentionTarget) => void;
+  active?: boolean;
+  onMediaChanged?: () => Promise<void>;
 }) {
   const [scale, setScale] = useState(1);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
@@ -366,6 +371,9 @@ export function SceneViewer({
           >
             <BookOpen />
           </button>
+        )}
+        {isGm && onMediaChanged && (
+          <AssetVisibilityControl key={scene.id} asset={scene} active={active} onChanged={onMediaChanged} />
         )}
         <a
           href={scene.url}
