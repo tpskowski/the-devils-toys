@@ -1,5 +1,6 @@
 import { StrictMode, Suspense, lazy } from "react";
 import { createRoot } from "react-dom/client";
+import { PasswordResetScreen } from "./PasswordResetScreen";
 import { App } from "./App";
 import { RulesReferencePage } from "./RulesReferencePage";
 import { rulesSystemFromPath } from "./rules";
@@ -38,6 +39,7 @@ const RoomConfigPage = lazy(() => import("./RoomConfigPage").then((module) => ({
 const HelpPage = lazy(() => import("./HelpPage").then((module) => ({ default: module.HelpPage })));
 
 function Entry() {
+  if (window.location.pathname === "/reset-password") return <PasswordResetScreen />;
   if (isHelpPath(window.location.pathname))
     return (
       <Suspense fallback={null}>

@@ -178,6 +178,12 @@ db.exec(`
     account_role TEXT NOT NULL DEFAULT 'player' CHECK(account_role IN ('admin','gm','player')),
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
   );
+  CREATE TABLE IF NOT EXISTS password_resets (
+    account_id INTEGER PRIMARY KEY REFERENCES accounts(id) ON DELETE CASCADE,
+    token_hash TEXT NOT NULL UNIQUE,
+    password_hash TEXT NOT NULL,
+    expires_at TEXT NOT NULL
+  );
   CREATE TABLE IF NOT EXISTS sessions (
     id TEXT PRIMARY KEY,
     account_id INTEGER NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,

@@ -122,6 +122,15 @@ button:disabled {
   grid-template-columns: minmax(0, 1.35fr) minmax(400px, 0.65fr);
   overflow: hidden;
 }
+.auth-quote {
+  --muted: #aaa797;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  padding: clamp(40px, 6vw, 96px);
+  color: #ebe7dc;
+  background: linear-gradient(135deg, #24241d, #10110e);
+}
 .auth-atmosphere {
   position: relative;
   min-height: 100svh;
@@ -601,7 +610,8 @@ button:disabled {
    That face is built for three or four words and the quotes here run to a
    paragraph; Bricolage Grotesque keeps the display character the page wants and
    stays readable at the length these actually reach. */
-.lobby h2 {
+.lobby h2,
+.auth-quote h2 {
   margin: 0;
   font:
     600 clamp(40px, 5vw, 72px)/1.02 "Bricolage Grotesque Variable",
@@ -3863,6 +3873,10 @@ button.wiki-mention:focus-visible {
 @media (max-width: 760px) {
   .auth-screen {
     grid-template-columns: 1fr;
+  }
+  .auth-quote {
+    order: 2;
+    padding: 40px 24px;
   }
   .auth-atmosphere {
     position: absolute;

@@ -1,5 +1,15 @@
 # Changelog
 
+- Password resets reject old-password logins still in progress when the reset completes. Opening a different reset link in the same tab starts a fresh form for the new account and token.
+
+- Password reset links close live connections for the visiting browser’s session and revoke pending invitations when the new password is saved. Unused links survive a page refresh; the token leaves the URL after a successful reset.
+
+- The signed-out landing page replaces its left-hand graphic with a random quote and attribution, using the lobby’s typography and length-aware sizing. A quote is picked once on load; on phones it appears below the login form.
+
+- Newly set passwords require at least 14 characters across setup, account creation, invitations, password resets, and command-line recovery. Existing passwords still work for sign-in. Password reset links now appear at the top of the account record.
+
+- Account management can create private, single-use password reset links that expire after 24 hours. Opening one signs out the current browser; saving signs the target account out everywhere and prompts them to sign in with their new password.
+
 - Landing-page quotes preserve dialogue punctuation exactly as written in `quotes.md`. Decorative outer quotation marks are removed from the source instead of stripped at display time, keeping narrated speech intact.
 
 - Player simulation now opens from a compact **Simulate** button in the room header. Its modal holds the themed player chooser and starts simulation in the current tab; **Stop simulating** returns to the same room as GM, and the refresh footnote is removed. Reading legacy audio in simulation no longer saves missing track metadata.

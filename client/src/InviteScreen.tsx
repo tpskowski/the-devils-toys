@@ -66,7 +66,14 @@ export function InviteScreen({ token, onSuccess }: { token: string; onSuccess: (
               <form onSubmit={redeem}>
                 <label>
                   Choose a password
-                  <input name="password" type="password" autoComplete="new-password" minLength={8} required autoFocus />
+                  <input
+                    name="password"
+                    type="password"
+                    autoComplete="new-password"
+                    minLength={14}
+                    required
+                    autoFocus
+                  />
                 </label>
                 <small className="invite-expiry">Link expires {new Date(invitation.expiresAt).toLocaleString()}.</small>
                 {error && (

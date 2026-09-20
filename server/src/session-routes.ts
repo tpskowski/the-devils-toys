@@ -4,7 +4,7 @@ import { z } from "zod";
 import { THEME_IDS, type AccountRole } from "@devils-toys/shared";
 import type { AuthedRequest } from "./auth.js";
 import { clearSession, createSession, requireAuth } from "./auth.js";
-import { one } from "./db.js";
+import { db, one } from "./db.js";
 import { allSystems, systemOrThrow } from "./systems.js";
 import { offeredSystemIds } from "./system-registry.js";
 
@@ -99,8 +99,27 @@ sessionRouter.post(
     }>("SELECT id, username, password_hash, is_admin, account_role FROM accounts WHERE username = ?", body.username);
     if (!account || !(await bcrypt.compare(body.password, account.password_hash)))
       return res.status(401).json({ error: "Username or password is incorrect." });
-    createSession(res, account.id);
-    res.json({ account: publicAccount(account) });
+    // Password verification yields. A reset may have revoked every session in
+    // the meantime, so only issue a session if the verified hash is still current.
+    // The transaction also covers resets made by the other server or the CLI.
+    db.exec("BEGIN IMMEDIATE");
+    try {
+      const current = one<typeof account>(
+        "SELECT id, username, password_hash, is_admin, account_role FROM accounts WHERE id = ? AND password_hash = ?",
+        account.id,
+        account.password_hash
+      );
+      if (!current) {
+        db.exec("ROLLBACK");
+        return res.status(401).json({ error: "Username or password is incorrect." });
+      }
+      createSession(res, current.id);
+      db.exec("COMMIT");
+      res.json({ account: publicAccount(current) });
+    } catch (error) {
+      db.exec("ROLLBACK");
+      throw error;
+    }
   })
 );
 

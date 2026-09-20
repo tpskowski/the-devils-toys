@@ -24,9 +24,8 @@ password or change your own role — see
 
 - Usernames are 2–32 characters, and may contain letters, numbers, dots,
   dashes, and underscores.
-- Passwords are 8–128 characters. This one is temporary in spirit but not in
-  mechanism — nothing forces a change, and the account holder cannot change it
-  themselves, so hand it over in a way you are comfortable with.
+- Passwords are 14–128 characters, with no required capitals, numbers, or symbols.
+  You can share a password reset link so the account holder chooses their own.
 - **Only an admin may create a game master or another admin.** A GM creating an
   account can only make a player.
 
@@ -53,7 +52,15 @@ link that has already been handed out — reissue instead.
 
 ## Resetting a password
 
-From the account's record. It does two things:
+From the account's record, choose **Create reset link** and **Copy link** to
+share it privately. The link works once and expires after 24 hours. Creating a
+new link replaces the previous one; changing the password also invalidates it.
+Opening it signs the current browser session out, even if it belongs to another
+account. The recipient chooses and confirms a password, then signs in normally.
+Saving signs the target account out everywhere. Merely creating or opening the
+link does not change the target account's password.
+
+The direct **Reset password** form is also available. It does two things:
 
 1. Replaces the password.
 2. **Signs that account out everywhere**, dropping its sessions and

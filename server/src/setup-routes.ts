@@ -13,7 +13,10 @@ setupRouter.post(
     const existing = one<{ count: number }>("SELECT COUNT(*) AS count FROM accounts")?.count ?? 0;
     if (existing) return res.status(409).json({ error: "Server setup is already complete." });
     const body = parse(
-      z.object({ username: z.string().trim().min(2).max(32), password: z.string().min(8).max(128) }),
+      z.object({
+        username: z.string().trim().min(2).max(32),
+        password: z.string().min(14, "Passwords must contain at least 14 characters.").max(128)
+      }),
       req.body,
       res
     );

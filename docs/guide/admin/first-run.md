@@ -31,7 +31,7 @@ and that account is made a **server admin** as well as a GM. It is the only
 account ever created this way.
 
 - Usernames are 2–32 characters.
-- Passwords are at least 8 characters.
+- Passwords are at least 14 characters.
 
 There is no email, no confirmation step, and no recovery question. The password
 you choose here is the only way back in.
