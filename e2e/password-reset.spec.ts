@@ -48,3 +48,45 @@ test("an account link signs out its visitor, sets a password, and returns to nor
   await expect(page.getByRole("alert")).toContainText("invalid or expired");
   expect((await page.request.get("/api/me")).status()).toBe(401);
 });
+
+test("opening another reset link in the same tab switches the account and token", async ({ page }) => {
+  await prepareTable(page.request);
+  const links: string[] = [];
+  for (const username of ["FirstResetPlayer", "SecondResetPlayer"]) {
+    const created = await page.request.post("/api/management/players", {
+      data: { username, password: "original-password", role: "player" }
+    });
+    expect(created.status()).toBe(201);
+    const { player } = await created.json();
+    const reset = await page.request.post(`/api/management/players/${player.id}/password-reset`);
+    expect(reset.status()).toBe(200);
+    const { token } = await reset.json();
+    links.push(`/reset-password#token=${token}`);
+  }
+
+  await page.goto(links[0]);
+  await expect(page.getByText("Choose a new password for FirstResetPlayer.")).toBeVisible();
+  await page.getByLabel("New password", { exact: true }).fill("first-player-draft");
+  // Only the fragment changes, so the browser keeps the existing document.
+  await page.goto(links[1]);
+  await expect(page.getByText("Choose a new password for SecondResetPlayer.")).toBeVisible();
+  await expect(page.getByLabel("New password", { exact: true })).toHaveValue("");
+  await page.getByLabel("New password", { exact: true }).fill("second-player-password");
+  await page.getByLabel("Confirm password").fill("second-player-password");
+  await page.getByRole("button", { name: "Save password", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Password saved" })).toBeVisible();
+  expect(
+    (
+      await page.request.post("/api/login", {
+        data: { username: "SecondResetPlayer", password: "second-player-password" }
+      })
+    ).status()
+  ).toBe(200);
+  expect(
+    (
+      await page.request.post("/api/login", {
+        data: { username: "FirstResetPlayer", password: "original-password" }
+      })
+    ).status()
+  ).toBe(200);
+});

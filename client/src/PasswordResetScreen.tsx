@@ -2,9 +2,23 @@ import { useEffect, useState, type FormEvent } from "react";
 import { api } from "./api";
 
 // The fragment is never sent in page requests or Referer headers.
-const resetToken = new URLSearchParams(window.location.hash.slice(1)).get("token") ?? "";
+const readResetToken = () => new URLSearchParams(window.location.hash.slice(1)).get("token") ?? "";
 
 export function PasswordResetScreen() {
+  const [token, setToken] = useState(readResetToken);
+
+  useEffect(() => {
+    const changed = () => setToken(readResetToken());
+    window.addEventListener("hashchange", changed);
+    return () => window.removeEventListener("hashchange", changed);
+  }, []);
+
+  // Another link to this path changes only the fragment. Start a fresh form so
+  // the account, draft password, and request token always belong to that link.
+  return <PasswordResetForm key={token} resetToken={token} />;
+}
+
+function PasswordResetForm({ resetToken }: { resetToken: string }) {
   const [username, setUsername] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -17,7 +31,7 @@ export function PasswordResetScreen() {
     })
       .then((result) => setUsername(result.username))
       .catch((cause: Error) => setError(cause.message));
-  }, []);
+  }, [resetToken]);
 
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -33,6 +47,8 @@ export function PasswordResetScreen() {
         method: "POST",
         body: JSON.stringify({ token: resetToken, password: form.get("password") })
       });
+      // A save for the previous link must not erase a newer link's fragment.
+      if (readResetToken() !== resetToken) return;
       window.history.replaceState({}, "", "/reset-password");
       setDone(true);
     } catch (cause) {

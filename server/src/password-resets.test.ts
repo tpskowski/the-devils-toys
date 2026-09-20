@@ -134,4 +134,25 @@ describe("password reset links", () => {
     const responses = await Promise.all([redeem(token, "test-password-one"), redeem(token, "test-password-two")]);
     expect(responses.map((response) => response.status).sort()).toEqual([204, 400]);
   });
+
+  it("rejects an old-password login that finishes after the password was reset", async () => {
+    const { token } = createPasswordReset(3);
+    let finishComparison!: (matches: boolean) => void;
+    const comparison = new Promise<boolean>((resolve) => (finishComparison = resolve));
+    const compare = vi.spyOn(bcrypt, "compare").mockImplementationOnce(() => comparison);
+    const login = post("/login", { username: "Player", password: "old-password" });
+    try {
+      await vi.waitFor(() => expect(compare).toHaveBeenCalledWith("old-password", originalHash));
+      expect((await redeem(token)).status).toBe(204);
+      finishComparison(true);
+      const response = await login;
+      expect(response.status).toBe(401);
+      expect(response.headers.get("set-cookie")).toBeNull();
+      expect(one("SELECT id FROM sessions WHERE account_id = 3")).toBeUndefined();
+    } finally {
+      finishComparison(true);
+      await login;
+      compare.mockRestore();
+    }
+  });
 });
