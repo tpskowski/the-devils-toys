@@ -7,6 +7,7 @@ import { clearSession, createSession, requireAuth } from "./auth.js";
 import { db, one } from "./db.js";
 import { allSystems, systemOrThrow } from "./systems.js";
 import { offeredSystemIds } from "./system-registry.js";
+import { disconnectSession } from "./realtime.js";
 
 const offeredSystems = () => offeredSystemIds().map(systemOrThrow);
 import { itemTraitsFor } from "./character-items.js";
@@ -124,7 +125,7 @@ sessionRouter.post(
 );
 
 sessionRouter.post("/logout", (req: AuthedRequest, res) => {
-  clearSession(req, res);
+  disconnectSession(clearSession(req, res));
   res.status(204).end();
 });
 

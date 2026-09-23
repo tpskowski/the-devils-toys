@@ -167,6 +167,7 @@ const charactersColumns = `
     name TEXT NOT NULL,
     sheet_json TEXT NOT NULL DEFAULT '{}',${portraitColumns},
     creation_json TEXT,
+    created_by INTEGER REFERENCES accounts(id) ON DELETE SET NULL,
     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP`;
 
 db.exec(`
@@ -260,6 +261,7 @@ db.exec(`
     scene_id INTEGER REFERENCES media(id) ON DELETE SET NULL,
     audio_json TEXT NOT NULL DEFAULT '{}',
     group_json TEXT NOT NULL DEFAULT '{}',
+    group_revision INTEGER NOT NULL DEFAULT 0,
     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
   );
   CREATE TABLE IF NOT EXISTS wiki_folders (${wikiFolderColumns});
@@ -635,6 +637,7 @@ if (charactersSchema && !/system\s+TEXT[^,]*REFERENCES\s+systems/i.test(characte
     "portrait_mime_type",
     "portrait_size",
     "creation_json",
+    "created_by",
     "updated_at"
   ].filter((column) => hasColumn("characters", column));
   db.exec("PRAGMA foreign_keys = OFF");
@@ -896,6 +899,8 @@ if (!hasColumn("room_state", "map_id"))
   db.exec("ALTER TABLE room_state ADD COLUMN map_id INTEGER REFERENCES media(id)");
 if (!hasColumn("room_state", "group_json"))
   db.exec("ALTER TABLE room_state ADD COLUMN group_json TEXT NOT NULL DEFAULT '{}'");
+if (!hasColumn("room_state", "group_revision"))
+  db.exec("ALTER TABLE room_state ADD COLUMN group_revision INTEGER NOT NULL DEFAULT 0");
 
 /*
  * Hirelings, ships, and obligations were array entries inside `room_state`'s

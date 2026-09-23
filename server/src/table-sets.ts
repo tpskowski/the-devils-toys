@@ -193,7 +193,7 @@ tableSetRouter.get("/table-sets/:setId", requireAuth, (req: AuthedRequest, res) 
 
   if (setId.startsWith("system:")) {
     const systemId = setId.slice("system:".length);
-    if (!hasSystem(systemId)) refreshInstalledSystems();
+    refreshInstalledSystems();
     if (!hasSystem(systemId)) return res.status(404).json({ error: "Table set not found." });
     const system = systemOrThrow(systemId);
     return res.json({
