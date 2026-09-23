@@ -108,8 +108,8 @@ export function parseGroupState(json: string | null | undefined) {
 }
 
 function stateRow(roomId: number) {
-  return one<{ group_json: string; updated_at: string }>(
-    "SELECT group_json, updated_at FROM room_state WHERE room_id = ?",
+  return one<{ group_json: string; group_revision: number; updated_at: string }>(
+    "SELECT group_json, group_revision, updated_at FROM room_state WHERE room_id = ?",
     roomId
   );
 }
@@ -133,7 +133,8 @@ groupRouter.get("/rooms/:roomId/group", requireAuth, (req: AuthedRequest, res) =
     hirelings: hirelingsFor(roomId).map(publicHireling),
     assets: assetsFor(roomId).map(publicAsset),
     obligations: obligationsFor(roomId).map(publicObligation),
-    updatedAt: row?.updated_at ?? null
+    updatedAt: row?.updated_at ?? null,
+    revision: row?.group_revision ?? 0
   });
 });
 
@@ -141,16 +142,39 @@ groupRouter.get("/rooms/:roomId/group", requireAuth, (req: AuthedRequest, res) =
 groupRouter.patch("/rooms/:roomId/group", requireAuth, (req: AuthedRequest, res) => {
   const roomId = Number(req.params.roomId);
   if (!requireGroupGm(req, res, roomId)) return;
-  const parsed = z.object({ state: groupStateSchema, updatedAt: z.string().nullable().optional() }).safeParse(req.body);
+  const parsed = z
+    .object({
+      state: groupStateSchema,
+      revision: z.number().int().nonnegative().optional(),
+      updatedAt: z.string().nullable().optional()
+    })
+    .safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Invalid group data." });
-  const existing = stateRow(roomId);
-  if (parsed.data.updatedAt !== undefined && parsed.data.updatedAt !== (existing?.updated_at ?? null))
-    return res.status(409).json({ error: "The group changed elsewhere. Reload before saving." });
-  db.prepare(
-    `INSERT INTO room_state (room_id, group_json, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)
-     ON CONFLICT(room_id) DO UPDATE SET group_json = excluded.group_json, updated_at = CURRENT_TIMESTAMP`
-  ).run(roomId, JSON.stringify(parsed.data.state));
-  changed(roomId, res, { state: parsed.data.state, updatedAt: stateRow(roomId)!.updated_at });
+  // An already-open older client must reload, rather than silently losing its
+  // conflict check when its timestamp is no longer the group's revision.
+  if (parsed.data.revision === undefined && parsed.data.updatedAt !== undefined)
+    return res.status(409).json({ error: "Reload this page before saving group changes." });
+  // Compare and increment in one statement, including the first save in a room.
+  const result = db
+    .prepare(
+      `INSERT INTO room_state (room_id, group_json, group_revision, updated_at)
+     SELECT ?, ?, 1, CURRENT_TIMESTAMP WHERE ? IS NULL OR ? = 0 OR EXISTS (SELECT 1 FROM room_state WHERE room_id = ?)
+     ON CONFLICT(room_id) DO UPDATE SET group_json = excluded.group_json,
+       group_revision = room_state.group_revision + 1, updated_at = CURRENT_TIMESTAMP
+     WHERE ? IS NULL OR room_state.group_revision = ?
+     RETURNING group_revision, updated_at`
+    )
+    .get(
+      roomId,
+      JSON.stringify(parsed.data.state),
+      parsed.data.revision ?? null,
+      parsed.data.revision ?? null,
+      roomId,
+      parsed.data.revision ?? null,
+      parsed.data.revision ?? null
+    ) as { group_revision: number; updated_at: string } | undefined;
+  if (!result) return res.status(409).json({ error: "The group changed elsewhere. Reload before saving." });
+  changed(roomId, res, { state: parsed.data.state, updatedAt: result.updated_at, revision: result.group_revision });
 });
 
 /* -------------------------------------------------------------------------- */

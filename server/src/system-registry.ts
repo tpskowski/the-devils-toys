@@ -5,7 +5,7 @@ import { logger } from "./logger.js";
 import { forgetInstalledCatalogs } from "./character-items.js";
 import { forgetSetJson } from "./table-json.js";
 import { forgetStarshipParts } from "./starship-parts.js";
-import { forgetLinkedRules, hasSystem, registerSystem, unregisterSystem } from "./systems.js";
+import { allSystems, forgetLinkedRules, hasSystem, registerSystem, unregisterSystem } from "./systems.js";
 import { forgetSystemTables } from "./table-sets.js";
 import { installedSystemIds, readInstalledSystem, verifySystemTables } from "./system-install.js";
 import { normalizeSystemRelease, type SystemRelease, type SystemReleaseInput } from "./system-repo.js";
@@ -149,7 +149,12 @@ export function loadInstalledSystem(system: SystemId) {
  */
 export function loadInstalledSystems() {
   const onDisk = new Set(installedSystemIds());
-  for (const row of systemRows()) {
+  const rows = systemRows();
+  const installed = new Set(rows.filter((row) => row.origin === "installed").map((row) => row.id));
+  for (const system of allSystems()) {
+    if (!isBuiltinSystem(system.id) && (!installed.has(system.id) || !onDisk.has(system.id))) unloadSystem(system.id);
+  }
+  for (const row of rows) {
     if (row.origin !== "installed") continue;
     if (!onDisk.has(row.id)) {
       logger.warn("System recorded but not on disk", { system: row.id });
@@ -178,19 +183,16 @@ export function loadInstalledSystems() {
  * into a running server, the editor would go on listing what it had at start
  * until someone restarted it.
  *
- * The check is a count and the latest timestamp, so the common case costs one
- * cheap query and the reload only happens when the registry has actually moved.
+ * Include each row's identity and release metadata: a delete and install can
+ * leave both the count and the latest second-resolution timestamp unchanged.
  */
 let registrySignature = "";
 
 export function refreshInstalledSystems() {
-  const row = one<{ count: number; latest: string | null }>(
-    "SELECT COUNT(*) AS count, MAX(updated_at) AS latest FROM systems"
-  );
-  const signature = `${row?.count ?? 0}:${row?.latest ?? ""}`;
+  const signature = JSON.stringify(systemRows());
   if (signature === registrySignature) return false;
-  registrySignature = signature;
   loadInstalledSystems();
+  registrySignature = signature;
   return true;
 }
 

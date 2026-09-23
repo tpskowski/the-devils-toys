@@ -29,8 +29,19 @@ const clients = new Set<Client>();
 let presenceNoticeId = -1;
 let scenePingId = 1;
 
+function authenticated(client: Client) {
+  if (client.socket.readyState !== WebSocket.OPEN) return false;
+  const account = accountForSession(client.sessionId);
+  if (!account) {
+    client.socket.close(4001, "Session revoked");
+    return false;
+  }
+  client.account = account;
+  return true;
+}
+
 function send(client: Client, event: unknown) {
-  if (client.socket.readyState === WebSocket.OPEN) client.socket.send(JSON.stringify(event));
+  if (authenticated(client)) client.socket.send(JSON.stringify(event));
 }
 
 /**
@@ -174,6 +185,12 @@ export function refreshRoomAccess(roomId: number) {
 
 export function attachRealtime(server: Server) {
   const wss = new WebSocketServer({ noServer: true });
+  // Sessions can expire or be revoked by the separate tables server or CLI.
+  const sessionCheck = setInterval(() => {
+    for (const client of clients) if (wss.clients.has(client.socket)) authenticated(client);
+  }, 30_000);
+  sessionCheck.unref();
+  server.once("close", () => clearInterval(sessionCheck));
 
   server.on("upgrade", (request, socket, head) => {
     if (new URL(request.url ?? "/", "http://local").pathname !== "/ws") return socket.destroy();
@@ -198,7 +215,8 @@ export function attachRealtime(server: Server) {
 
     socket.on("message", (raw) => {
       // A revoked socket may still have buffered messages while it closes.
-      if (socket.readyState !== WebSocket.OPEN) return;
+      if (!authenticated(client)) return;
+      const account = client.account;
       try {
         const message = JSON.parse(raw.toString()) as { type?: string; roomId?: number };
         if (message.type === "scene-ping") {

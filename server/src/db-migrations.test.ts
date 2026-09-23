@@ -488,6 +488,32 @@ afterEach(() => {
 });
 
 describe("database migrations", () => {
+  it("preserves a legacy character's creator when adding the systems reference", async () => {
+    const directory = dataDir();
+    seedLegacyDatabase(directory);
+    const legacy = new DatabaseSync(path.join(directory, "devils-toys.sqlite"));
+    legacy.exec(`ALTER TABLE characters ADD COLUMN created_by INTEGER REFERENCES accounts(id) ON DELETE SET NULL;
+      INSERT INTO characters (id, system, name, created_by) VALUES (1, 'cairn', 'Unassigned hero', 1);`);
+    legacy.close();
+    const loaded = await openDatabase(directory);
+    expect(loaded.all("SELECT created_by, owner_account_id, pool_room_id FROM characters WHERE id = 1")).toEqual([
+      { created_by: 1, owner_account_id: null, pool_room_id: null }
+    ]);
+    const reopened = await openDatabase(directory);
+    expect(reopened.all("SELECT created_by FROM characters WHERE id = 1")).toEqual([{ created_by: 1 }]);
+  });
+
+  it("adds a group revision without changing legacy state and preserves it on restart", async () => {
+    const directory = dataDir();
+    seedLegacyDatabase(directory);
+    const loaded = await openDatabase(directory);
+    expect(loaded.all("SELECT group_revision, audio_json FROM room_state WHERE room_id = 1")).toEqual([
+      { group_revision: 0, audio_json: '{"trackId":null}' }
+    ]);
+    loaded.db.exec("UPDATE room_state SET group_revision = 7 WHERE room_id = 1");
+    const reopened = await openDatabase(directory);
+    expect(reopened.all("SELECT group_revision FROM room_state WHERE room_id = 1")).toEqual([{ group_revision: 7 }]);
+  });
   it("waits for the other application when both open the shared database", async () => {
     const directory = dataDir();
     const lock = await holdDatabaseLock(directory);

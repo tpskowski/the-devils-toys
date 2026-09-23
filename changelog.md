@@ -1,5 +1,7 @@
 # Changelog
 
+- Revoked and expired sessions lose live room access. Group autosaves use their own revision and finish in order when leaving the page. Database upgrades preserve character creators, and the table editor forgets systems deleted by the game server.
+
 - Password resets reject old-password logins still in progress when the reset completes. Opening a different reset link in the same tab starts a fresh form for the new account and token.
 
 - Password reset links close live connections for the visiting browser’s session and revoke pending invitations when the new password is saved. Unused links survive a page refresh; the token leaves the URL after a successful reset.

@@ -24,6 +24,9 @@ import { installedSystemRoot } from "./system-content.js";
 import { systemOrThrow, hasSystem } from "./systems.js";
 import { systemRow } from "./system-registry.js";
 import { characterItemsFor } from "./character-items.js";
+import { groupRouter } from "./group.js";
+import { tableSetRouter, tablesForSystem } from "./table-sets.js";
+import { deleteSystemRow, refreshInstalledSystems } from "./system-registry.js";
 
 installToybox();
 let server: http.Server;
@@ -41,6 +44,8 @@ beforeAll(async () => {
     systemRouter,
     invitationRouter,
     roomAdminRouter,
+    groupRouter,
+    tableSetRouter,
     mapNotationRouter
   );
   server = http.createServer(app);
@@ -123,6 +128,86 @@ async function install(content: SystemBundleContent) {
 }
 
 describe("review regression scenarios", () => {
+  it("closes the logged-out socket without disconnecting another session", async () => {
+    const revoked = await connect(1);
+    const other = await connect(2);
+    const closed = once(revoked.socket, "close");
+    expect((await post("/logout")).status).toBe(204);
+    expect((await closed)[0]).toBe(4001);
+    broadcastRoom(1, { type: "still-signed-in" });
+    await vi.waitFor(() => expect(other.events.some((event) => event.type === "still-signed-in")).toBe(true));
+  });
+
+  it.each(["expired", "deleted"])("blocks incoming and outgoing traffic for %s sessions", async (mode) => {
+    const revoked = await connect(2);
+    const other = await connect(1);
+    if (mode === "expired")
+      db.exec("UPDATE sessions SET expires_at = '2000-01-01T00:00:00.000Z' WHERE id = 'session-2'");
+    else db.exec("DELETE FROM sessions WHERE id = 'session-2'");
+    const closed = once(revoked.socket, "close");
+    if (mode === "expired") revoked.socket.send(JSON.stringify({ type: "scene-ping", x: 0.2, y: 0.3 }));
+    else broadcastRoom(1, { type: "private-after-revocation" });
+    expect((await closed)[0]).toBe(4001);
+    broadcastRoom(1, { type: "session-check-finished" });
+    await vi.waitFor(() => expect(other.events.some((event) => event.type === "session-check-finished")).toBe(true));
+    expect(other.events.some((event) => event.type === "scene-ping")).toBe(false);
+    expect(revoked.events.some((event) => event.type === "private-after-revocation")).toBe(false);
+  });
+
+  it("uses group revisions independently of audio and rejects repeated revisions", async () => {
+    const initial = await (await request("/rooms/1/group")).json();
+    expect(initial.revision).toBe(0);
+    db.exec(`INSERT INTO room_state (room_id, audio_json, updated_at) VALUES (1, '{"playing":true}', '2099-01-01')`);
+    const save = (revision: number, notes: string) =>
+      request("/rooms/1/group", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ state: { notes }, revision })
+      });
+    const first = await save(0, "first");
+    expect(first.status).toBe(200);
+    expect((await first.json()).revision).toBe(1);
+    expect((await save(0, "stale")).status).toBe(409);
+    db.exec("UPDATE room_state SET updated_at = '2099-02-01' WHERE room_id = 1");
+    const second = await save(1, "second");
+    expect(second.status).toBe(200);
+    expect((await second.json()).revision).toBe(2);
+    expect(one("SELECT group_json, audio_json FROM room_state WHERE room_id = 1")).toEqual({
+      group_json: '{"notes":"second"}',
+      audio_json: '{"playing":true}'
+    });
+  });
+
+  it("requires the initial revision for a first group save and refuses obsolete timestamp guards", async () => {
+    const save = (guard: object) =>
+      request("/rooms/1/group", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ state: { notes: "first" }, ...guard })
+      });
+    expect((await save({ revision: 3 })).status).toBe(409);
+    expect((await save({ updatedAt: null })).status).toBe(409);
+    expect(one("SELECT room_id FROM room_state WHERE room_id = 1")).toBeUndefined();
+    const saved = await save({ revision: 0 });
+    expect(saved.status).toBe(200);
+    expect((await saved.json()).revision).toBe(1);
+  });
+
+  it("refreshes a cached table set after another process removes its system", async () => {
+    const content = renameSystem(systemContentFor("toybox"), "removed-system", "Removed system");
+    expect((await install(content)).status).toBe(201);
+    refreshInstalledSystems();
+    expect(tablesForSystem("removed-system").length).toBeGreaterThan(0);
+    // Simulate the other process: do not call this process's unloadSystem.
+    deleteSystemRow("removed-system");
+    fs.rmSync(installedSystemRoot("removed-system"), { recursive: true });
+    const detail = await request("/table-sets/system:removed-system");
+    expect(detail.status).toBe(404);
+    expect(hasSystem("removed-system")).toBe(false);
+    expect(() => tablesForSystem("removed-system")).toThrow();
+    const listing = await (await request("/table-sets")).json();
+    expect(JSON.stringify(listing)).not.toContain("removed-system");
+  });
   it("allows only one initial administrator when setup requests overlap", async () => {
     db.exec("DELETE FROM rooms; DELETE FROM accounts;");
     const results = await Promise.all(

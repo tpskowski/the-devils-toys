@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowUpRight,
   Check,
@@ -39,6 +39,7 @@ import {
   weaponOverrideKey
 } from "@devils-toys/shared";
 import { api } from "./api";
+import { createGroupStateSaver } from "./group-state-saver";
 import { CharacterItemEditor } from "./CharacterItemEditor";
 import { characterItemsForSlot, weaponTraitSuggestions } from "./character-items";
 import { WeaponMark } from "./WeaponMark";
@@ -74,7 +75,7 @@ interface GroupResponse {
   hirelings?: GroupSheetRow[];
   assets?: GroupSheetRow[];
   obligations?: GroupObligation[];
-  updatedAt: string | null;
+  revision: number;
 }
 
 /** Which roster a row belongs to, and so which routes reach it. */
@@ -220,7 +221,18 @@ export function GroupPage({
   const [rollingHireling, setRollingHireling] = useState(false);
   const [holdError, setHoldError] = useState("");
   const saveTimerRef = useRef<number | undefined>(undefined);
-  const saveChainRef = useRef<Promise<void>>(Promise.resolve());
+  const stateSaver = useMemo(
+    () =>
+      createGroupStateSaver((state, revision) =>
+        api<{ revision: number }>(`/api/rooms/${roomId}/group`, {
+          method: "PATCH",
+          body: JSON.stringify({ state, revision })
+        })
+      ),
+    [roomId, viewerId]
+  );
+  const stateSaverRef = useRef(stateSaver);
+  stateSaverRef.current = stateSaver;
   const latestStateRef = useRef<Record<string, unknown>>({});
   const [itemCatalogue, setItemCatalogue] = useState<Record<string, CharacterItem[]>>({});
   const editVersionRef = useRef(0);
@@ -228,10 +240,10 @@ export function GroupPage({
   // The group's own fields and its rows save by different routes but share the
   // dirty flag, so each has to know the other is settled before putting it down.
   const stateDirtyRef = useRef(false);
-  const updatedAtRef = useRef<string | null>(null);
 
   async function load() {
     const response = await api<GroupResponse>(`/api/rooms/${roomId}/group`);
+    if (stateSaverRef.current !== stateSaver || dirtyRef.current) return;
     setDefinition(response.definition);
     onViewsChange?.(groupViewsForDefinition(response.definition));
     setItemCatalogue(response.itemCatalogue ?? {});
@@ -240,7 +252,7 @@ export function GroupPage({
     setStarships(flattenRows(response.assets ?? []));
     setObligations(response.obligations ?? []);
     latestStateRef.current = response.state;
-    updatedAtRef.current = response.updatedAt;
+    stateSaver.readRevision(response.revision);
     // The rows just answered for themselves, so a revision remembered from a
     // write against the previous set of them no longer describes anything.
     rowSaves.current.clear();
@@ -252,6 +264,8 @@ export function GroupPage({
   }
 
   useEffect(() => {
+    dirtyRef.current = false;
+    stateDirtyRef.current = false;
     void load().catch((cause: Error) => setError(cause.message));
     return () => {
       window.clearTimeout(saveTimerRef.current);
@@ -259,13 +273,14 @@ export function GroupPage({
       // route's to flush, and sending the state back unchanged would broadcast
       // a change nobody made.
       if (canEditGroup && stateDirtyRef.current) {
-        void api<{ updatedAt: string }>(`/api/rooms/${roomId}/group`, {
-          method: "PATCH",
-          body: JSON.stringify({ state: latestStateRef.current, updatedAt: updatedAtRef.current })
-        }).catch(() => undefined);
+        // The final snapshot must wait for any in-flight save's new revision.
+        // This queue belongs to the old room even if the next page has loaded.
+        void stateSaver.save(latestStateRef.current).catch((cause: Error) => {
+          if (stateSaverRef.current === stateSaver) setError(cause.message);
+        });
       }
     };
-  }, [roomId, canEditGroup]);
+  }, [stateSaver, canEditGroup]);
 
   useEffect(() => {
     const storage = typeof localStorage === "undefined" ? undefined : localStorage;
@@ -311,13 +326,10 @@ export function GroupPage({
     window.clearTimeout(saveTimerRef.current);
     saveTimerRef.current = window.setTimeout(() => {
       setStatus("Saving…");
-      saveChainRef.current = saveChainRef.current
-        .then(async () => {
-          const saved = await api<{ updatedAt: string }>(`/api/rooms/${roomId}/group`, {
-            method: "PATCH",
-            body: JSON.stringify({ state: next, updatedAt: updatedAtRef.current })
-          });
-          updatedAtRef.current = saved.updatedAt;
+      void stateSaver
+        .save(next)
+        .then(() => {
+          if (stateSaverRef.current !== stateSaver) return;
           if (version === editVersionRef.current) {
             stateDirtyRef.current = false;
             // A row still waiting keeps the page dirty: clearing it here would
@@ -328,6 +340,7 @@ export function GroupPage({
           }
         })
         .catch((cause: Error) => {
+          if (stateSaverRef.current !== stateSaver) return;
           if (version === editVersionRef.current) setStatus("Unsaved");
           setError(cause.message);
         });
