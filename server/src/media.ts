@@ -14,7 +14,7 @@ import { all, db, one } from "./db.js";
 import { broadcastRoom } from "./realtime.js";
 import { roomAccessRole } from "./room-config-permissions.js";
 import { mayReadWikiFile } from "./wiki-permissions.js";
-import { imageFileUrl, imageVersion } from "./image-cache.js";
+import { imageFileUrl, imageVersion, redirectPreviewImage } from "./image-cache.js";
 
 export const mediaRouter = express.Router();
 
@@ -598,6 +598,7 @@ mediaRouter.get("/media/:mediaId/thumbnail", requireAuth, async (req: AuthedRequ
     if (!allowed) return res.status(404).json({ error: "Thumbnail not found." });
     if (req.query.v !== undefined && req.query.v !== imageVersion(row.stored_name))
       return res.setHeader("Cache-Control", "no-store").status(404).json({ error: "Thumbnail not found." });
+    if (redirectPreviewImage(req, res)) return;
     const cached = await ensureThumbnail(row);
     res.type("image/webp");
     res.setHeader("X-Content-Type-Options", "nosniff");
@@ -626,6 +627,7 @@ mediaRouter.get("/media/:mediaId/file", requireAuth, (req: AuthedRequest, res) =
   if (imageTypes.has(row.mime_type)) {
     if (req.query.v !== undefined && req.query.v !== imageVersion(row.stored_name))
       return res.setHeader("Cache-Control", "no-store").status(404).json({ error: "Media file not found." });
+    if (redirectPreviewImage(req, res)) return;
     // Only a versioned image is immutable. Older links remain usable but revalidate.
     res.setHeader("Cache-Control", req.query.v ? "private, max-age=31536000, immutable" : "private, no-cache");
   }

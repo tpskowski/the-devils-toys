@@ -1,17 +1,29 @@
 import { Component, useCallback, useEffect, useRef, useState, type ErrorInfo, type ReactNode } from "react";
-import { Editor, defaultValueCtx, remarkPluginsCtx, rootCtx } from "@milkdown/kit/core";
-import { commonmark } from "@milkdown/kit/preset/commonmark";
+import { Editor, defaultValueCtx, editorViewCtx, remarkPluginsCtx, rootCtx } from "@milkdown/kit/core";
+import {
+  commonmark,
+  remarkPreserveEmptyLinePlugin,
+  toggleStrongCommand,
+  toggleEmphasisCommand,
+  toggleInlineCodeCommand,
+  wrapInHeadingCommand,
+  turnIntoTextCommand,
+  wrapInBulletListCommand,
+  wrapInOrderedListCommand,
+  wrapInBlockquoteCommand
+} from "@milkdown/kit/preset/commonmark";
 import { gfm } from "@milkdown/kit/preset/gfm";
 import { clipboard } from "@milkdown/kit/plugin/clipboard";
 import { cursor } from "@milkdown/kit/plugin/cursor";
-import { history } from "@milkdown/kit/plugin/history";
+import { history, undoCommand, redoCommand } from "@milkdown/kit/plugin/history";
 import { listener, listenerCtx } from "@milkdown/kit/plugin/listener";
 import { trailing } from "@milkdown/kit/plugin/trailing";
 import { SlashProvider, slashFactory } from "@milkdown/kit/plugin/slash";
 import { TextSelection } from "@milkdown/kit/prose/state";
-import { $nodeSchema, getMarkdown } from "@milkdown/kit/utils";
+import { $nodeSchema, callCommand, getMarkdown } from "@milkdown/kit/utils";
+import { Bold, Italic, Code, Heading2, Heading3, Pilcrow, List, ListOrdered, Quote, Undo2, Redo2 } from "lucide-react";
 import { Milkdown, MilkdownProvider, useEditor } from "@milkdown/react";
-import { remarkWiki, type WikiMentionKind } from "@devils-toys/shared";
+import { normalizeWikiBreaks, remarkWiki, remarkWikiSpacing, type WikiMentionKind } from "@devils-toys/shared";
 import { api } from "./api";
 import "@milkdown/kit/prose/view/style/prosemirror.css";
 import "./WikiEditor.css";
@@ -19,6 +31,21 @@ import "./WikiEditor.css";
 /** Kept deliberately local: changing text does not change the document's
  * revision or save it. The parent only receives a settled Markdown snapshot. */
 export const WIKI_EDITOR_DEBOUNCE_MS = 180;
+
+// Milkdown registers command keys on mount, so resolve them only on click.
+const formattingActions = [
+  { label: "Bold", icon: Bold, command: () => callCommand(toggleStrongCommand.key) },
+  { label: "Italic", icon: Italic, command: () => callCommand(toggleEmphasisCommand.key) },
+  { label: "Inline code", icon: Code, command: () => callCommand(toggleInlineCodeCommand.key) },
+  { label: "Paragraph", icon: Pilcrow, command: () => callCommand(turnIntoTextCommand.key) },
+  { label: "Heading 2", icon: Heading2, command: () => callCommand(wrapInHeadingCommand.key, 2) },
+  { label: "Heading 3", icon: Heading3, command: () => callCommand(wrapInHeadingCommand.key, 3) },
+  { label: "Bullet list", icon: List, command: () => callCommand(wrapInBulletListCommand.key) },
+  { label: "Numbered list", icon: ListOrdered, command: () => callCommand(wrapInOrderedListCommand.key) },
+  { label: "Block quote", icon: Quote, command: () => callCommand(wrapInBlockquoteCommand.key) },
+  { label: "Undo", icon: Undo2, command: () => callCommand(undoCommand.key) },
+  { label: "Redo", icon: Redo2, command: () => callCommand(redoCommand.key) }
+];
 
 export interface WikiEditorHandle {
   markdown(): string;
@@ -244,7 +271,9 @@ function MilkdownEditor({
   onReady,
   onFallback
 }: WikiEditorProps & { onFallback: () => void }) {
-  const markdownRef = useRef(markdown);
+  const [initialMarkdown] = useState(() => normalizeWikiBreaks(markdown));
+  const markdownRef = useRef(initialMarkdown);
+  const [toolbarVisible, setToolbarVisible] = useState(true);
   const timerRef = useRef<number | undefined>(undefined);
   const editorGetterRef = useRef<() => Editor | undefined>(() => undefined);
 
@@ -281,7 +310,10 @@ function MilkdownEditor({
           // Milkdown stores plugins as an attacher plus an options object. The
           // shared attacher takes no options, but unified safely calls it with
           // this empty record when rebuilding its parser and serializer.
-          ctx.set(remarkPluginsCtx, [{ plugin: remarkWiki() as never, options: {} }]);
+          ctx.set(remarkPluginsCtx, [
+            { plugin: remarkWiki() as never, options: {} },
+            { plugin: remarkWikiSpacing() as never, options: {} }
+          ]);
           ctx.set(wikiMentionPicker.key, {
             view: (view) => new WikiMentionPickerView(roomId, view)
           });
@@ -290,7 +322,8 @@ function MilkdownEditor({
           });
         })
         .use(wikiMentionSchema)
-        .use(commonmark)
+        // Empty paragraphs stay blank Markdown lines, not literal <br /> tags.
+        .use(commonmark.filter((plugin) => !remarkPreserveEmptyLinePlugin.includes(plugin)))
         .use(gfm)
         .use(history)
         .use(listener)
@@ -314,19 +347,46 @@ function MilkdownEditor({
     <>
       <div className="wiki-editor-mode">
         <p>Rich editor</p>
-        <button
-          type="button"
-          onClick={() => {
-            // This is a mode switch rather than navigation, so the workspace
-            // cannot flush on our behalf. Preserve text still in the local
-            // debounce before replacing Milkdown with the textarea.
-            flush();
-            onFallback();
-          }}
-        >
-          Use plain Markdown
-        </button>
+        <div className="wiki-editor-mode-actions">
+          <button type="button" aria-expanded={toolbarVisible} onClick={() => setToolbarVisible((visible) => !visible)}>
+            {toolbarVisible ? "Hide toolbar" : "Show toolbar"}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              // This is a mode switch rather than navigation, so the workspace
+              // cannot flush on our behalf. Preserve text still in the local
+              // debounce before replacing Milkdown with the textarea.
+              flush();
+              onFallback();
+            }}
+          >
+            Use plain Markdown
+          </button>
+        </div>
       </div>
+      {toolbarVisible && (
+        <div className="wiki-formatting-toolbar" role="group" aria-label="Text formatting">
+          {formattingActions.map(({ label, icon: Icon, command }) => (
+            <button
+              key={label}
+              type="button"
+              title={label}
+              aria-label={label}
+              disabled={editor.loading}
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() =>
+                editor.get()?.action((ctx) => {
+                  command()(ctx);
+                  ctx.get(editorViewCtx).focus();
+                })
+              }
+            >
+              <Icon size={16} />
+            </button>
+          ))}
+        </div>
+      )}
       <Milkdown />
     </>
   );

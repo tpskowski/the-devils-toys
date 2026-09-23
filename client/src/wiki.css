@@ -391,7 +391,7 @@
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
-.wiki-reader h2 {
+.wiki-reader > header h2 {
   margin: 0;
   font:
     600 clamp(24px, 4vw, 38px)/1.1 Unbounded,
@@ -414,31 +414,71 @@
 }
 .wiki-markdown {
   padding-top: 25px;
-  line-height: 1.65;
 }
-.wiki-markdown > :first-child {
-  margin-top: 0;
+:is(.wiki-markdown, .wiki-milkdown .ProseMirror) {
+  font:
+    14px/1.65 Inter,
+    sans-serif;
+  overflow-wrap: anywhere;
 }
-.wiki-markdown h1,
-.wiki-markdown h2,
-.wiki-markdown h3 {
-  margin-top: 1.8em;
+:is(.wiki-markdown, .wiki-milkdown .ProseMirror) p {
+  min-height: 1.65em;
+  margin: 1em 0;
+}
+:is(.wiki-markdown, .wiki-milkdown .ProseMirror) :is(h1, h2, h3, h4, h5, h6) {
+  margin: 1.8em 0 0.7em;
   font-family: Unbounded, sans-serif;
+  font-weight: 600;
+  line-height: 1.25;
   letter-spacing: -0.04em;
 }
-.wiki-markdown h1 {
+:is(.wiki-markdown, .wiki-milkdown .ProseMirror) h1 {
   font-size: 1.65em;
 }
-.wiki-markdown h2 {
+:is(.wiki-markdown, .wiki-milkdown .ProseMirror) h2 {
   font-size: 1.35em;
 }
-.wiki-markdown h3 {
+:is(.wiki-markdown, .wiki-milkdown .ProseMirror) h3 {
   font-size: 1.12em;
 }
-.wiki-markdown code {
+:is(.wiki-markdown, .wiki-milkdown .ProseMirror) > :first-child {
+  margin-top: 0;
+}
+:is(.wiki-markdown, .wiki-milkdown .ProseMirror) code {
   padding: 1px 4px;
   background: color-mix(in srgb, var(--surface), var(--line) 15%);
   font-family: "DM Mono", monospace;
+}
+:is(.wiki-markdown, .wiki-milkdown .ProseMirror) pre {
+  margin: 1em 0;
+  padding: 10px;
+  overflow-x: auto;
+  background: var(--bg);
+  border: 1px solid var(--line);
+}
+:is(.wiki-markdown, .wiki-milkdown .ProseMirror) pre code {
+  padding: 0;
+  background: transparent;
+}
+:is(.wiki-markdown, .wiki-milkdown .ProseMirror) blockquote {
+  margin: 1em 0;
+  padding-left: 12px;
+  border-left: 2px solid var(--accent);
+  color: var(--muted);
+}
+:is(.wiki-markdown, .wiki-milkdown .ProseMirror) :is(ul, ol) {
+  margin: 1em 0;
+  padding-left: 24px;
+}
+:is(.wiki-markdown, .wiki-milkdown .ProseMirror) li > p {
+  margin: 0;
+}
+:is(.wiki-markdown, .wiki-milkdown .ProseMirror) table {
+  border-collapse: collapse;
+}
+:is(.wiki-markdown, .wiki-milkdown .ProseMirror) :is(th, td) {
+  padding: 5px 7px;
+  border: 1px solid var(--line);
 }
 .wiki-mention-summary {
   display: flex;
@@ -519,6 +559,11 @@
   background: var(--accent);
   color: var(--bg);
   border-color: var(--accent);
+  transform: none;
+  transition:
+    background-color 0.2s,
+    border-color 0.2s,
+    filter 0.2s;
 }
 .wiki-empty,
 .wiki-conflict {

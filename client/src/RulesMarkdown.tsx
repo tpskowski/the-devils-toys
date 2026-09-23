@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { defaultUrlTransform } from "react-markdown";
-import { remarkWiki, type WikiMentionKind } from "@devils-toys/shared";
+import { normalizeWikiBreaks, remarkWiki, remarkWikiSpacing, type WikiMentionKind } from "@devils-toys/shared";
 import { extractRuleHeadings, headingSlug, stripMarkdownMetadata } from "./rules";
 import { TableRollModal } from "./TableRollModal";
 
@@ -14,7 +14,7 @@ export interface WikiMentionTarget {
 
 /** Rules and Library Markdown stay literal unless a wiki reader opts in. */
 export function rulesMarkdownPlugins(wikiMentions: boolean) {
-  return wikiMentions ? [remarkGfm, remarkWiki()] : [remarkGfm];
+  return wikiMentions ? [remarkGfm, remarkWiki(), remarkWikiSpacing()] : [remarkGfm];
 }
 
 function decodeFragment(value: string) {
@@ -53,7 +53,8 @@ export function RulesMarkdown({
   wikiMentions?: boolean;
 }) {
   const [tableLink, setTableLink] = useState<{ setId: string; tableId: string }>();
-  const visibleMarkdown = stripMarkdownMetadata(markdown);
+  const isWiki = Boolean(onWikiMention) || wikiMentions;
+  const visibleMarkdown = stripMarkdownMetadata(isWiki ? normalizeWikiBreaks(markdown) : markdown);
   const headingIds = new globalThis.Map(
     extractRuleHeadings(visibleMarkdown).map((heading) => [heading.line, heading.id])
   );
@@ -78,7 +79,7 @@ export function RulesMarkdown({
   return (
     <>
       <ReactMarkdown
-        remarkPlugins={rulesMarkdownPlugins(Boolean(onWikiMention) || wikiMentions)}
+        remarkPlugins={rulesMarkdownPlugins(isWiki)}
         components={
           {
             h1: ({ node, children, ...props }: any) => (

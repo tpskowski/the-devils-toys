@@ -18,7 +18,17 @@ describe("RulesMarkdown wiki grammar boundary", () => {
     expect(rulesMarkdownPlugins(false)).toHaveLength(1);
   });
 
-  it("only adds directive parsing for an opted-in wiki reader", () => {
-    expect(rulesMarkdownPlugins(true)).toHaveLength(2);
+  it("only adds directive parsing and paragraph spacing for an opted-in wiki reader", () => {
+    expect(rulesMarkdownPlugins(true)).toHaveLength(3);
+  });
+
+  it("renders Wiki breaks and blank paragraphs while keeping arbitrary HTML and code literal", () => {
+    const markdown = "First<br>Second\n\n<br />\n\nThird\n\n`<br>`\n\n<script>alert(1)</script>";
+    const html = renderToStaticMarkup(createElement(RulesMarkdown, { markdown, idPrefix: "wiki", wikiMentions: true }));
+    expect(html).toContain("First<br/>");
+    expect(html).toContain("<p></p>");
+    expect(html).toContain("<code>&lt;br&gt;</code>");
+    expect(html).not.toContain("<script>");
+    expect(html).toContain("&lt;script&gt;");
   });
 });

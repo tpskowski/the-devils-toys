@@ -1168,22 +1168,23 @@ function TableRoom({
         <div className="header-actions">
           {(detail.room.role === "gm" || preview) && (
             <button
-              className="secondary-button simulation-action"
+              className={`secondary-button simulation-action${preview ? " simulation-switch" : ""}`}
               onClick={() => setPreviewOpen(true)}
-              aria-label={preview ? "Simulating · Read-only" : "Simulate"}
-              title={preview ? "Simulating · Read-only" : "Simulate"}
+              aria-label={preview ? "Change simulated player" : "Simulate"}
+              title={preview ? "Change simulated player" : "Simulate"}
             >
-              <Eye size={16} /> <span>{preview ? "Simulating · Read-only" : "Simulate"}</span>
+              <Eye size={16} /> {!preview && <span>Simulate</span>}
             </button>
           )}
           {preview && (
             <a
-              className="secondary-button simulation-action"
+              className="secondary-button simulation-action simulation-stop"
               href={`/?room=${room.id}`}
               aria-label="Stop simulating"
               title="Stop simulating"
             >
-              <X size={16} /> <span>Stop simulating</span>
+              <X size={16} /> <span className="simulation-label-long">Stop simulating</span>
+              <span className="simulation-label-short">Stop</span>
             </a>
           )}
           {detail.room.role === "gm" && (
@@ -1436,13 +1437,13 @@ function TableRoom({
                     ))}
                 </select>
               </label>
+            </div>
+            <div className="player-preview-actions">
               {preview && (
                 <a className="secondary-button" href={`/?room=${room.id}`}>
                   Stop simulating
                 </a>
               )}
-            </div>
-            <div className="player-preview-actions">
               <a
                 className="primary-button"
                 href={playerPreviewUrl(room.id, previewPlayer)}

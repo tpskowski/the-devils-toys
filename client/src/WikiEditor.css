@@ -8,6 +8,7 @@
 
 .wiki-editor-mode {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
@@ -34,14 +35,43 @@
     600 10px Inter,
     sans-serif;
 }
+.wiki-editor-mode-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-left: auto;
+}
+.wiki-editor-mode-actions button {
+  min-height: 34px;
+  padding: 0;
+}
+.wiki-formatting-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  padding: 6px 9px;
+  border-bottom: 1px solid var(--line);
+}
+.wiki-formatting-toolbar button {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text);
+}
+.wiki-formatting-toolbar button:hover {
+  border-color: var(--line);
+  background: color-mix(in srgb, var(--accent), transparent 92%);
+  color: var(--accent);
+}
 
 .wiki-milkdown .milkdown {
   min-height: 312px;
   padding: 12px;
   color: var(--text);
-  font:
-    14px/1.6 Inter,
-    sans-serif;
 }
 
 .wiki-milkdown .ProseMirror {
@@ -110,41 +140,6 @@
   padding: 10px;
   color: var(--muted);
   font-size: 12px;
-}
-
-.wiki-milkdown .ProseMirror > :first-child {
-  margin-top: 0;
-}
-.wiki-milkdown .ProseMirror h1,
-.wiki-milkdown .ProseMirror h2,
-.wiki-milkdown .ProseMirror h3 {
-  font-family: Unbounded, sans-serif;
-  letter-spacing: -0.04em;
-}
-.wiki-milkdown .ProseMirror code {
-  padding: 1px 4px;
-  background: color-mix(in srgb, var(--surface), var(--line) 15%);
-  font-family: "DM Mono", monospace;
-}
-.wiki-milkdown .ProseMirror pre {
-  padding: 10px;
-  overflow-x: auto;
-  background: var(--bg);
-  border: 1px solid var(--line);
-}
-.wiki-milkdown .ProseMirror blockquote {
-  margin-inline: 0;
-  padding-left: 12px;
-  border-left: 2px solid var(--accent);
-  color: var(--muted);
-}
-.wiki-milkdown .ProseMirror table {
-  border-collapse: collapse;
-}
-.wiki-milkdown .ProseMirror th,
-.wiki-milkdown .ProseMirror td {
-  padding: 5px 7px;
-  border: 1px solid var(--line);
 }
 
 .wiki-markdown-fallback textarea {

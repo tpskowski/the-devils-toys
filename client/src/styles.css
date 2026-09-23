@@ -4311,20 +4311,62 @@ button.character-slot-weapon-roll:focus-visible {
 
 .player-preview-actions {
   display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
   justify-content: flex-end;
+}
+.player-preview-actions a {
+  min-height: 44px;
+  padding: 0 16px;
+  font-size: 14px;
 }
 .player-preview-actions a,
 .simulation-action {
   text-decoration: none;
 }
+.simulation-action {
+  flex-shrink: 0;
+  height: 39px;
+  min-height: 39px;
+  padding: 0 12px;
+  font-size: 13px;
+  white-space: nowrap;
+}
+.simulation-action svg {
+  flex-shrink: 0;
+}
+.simulation-switch {
+  width: 39px;
+  padding: 0;
+}
+.simulation-stop {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent), var(--surface) 88%);
+  color: var(--text);
+  font-weight: 600;
+}
+.simulation-stop:hover {
+  background: color-mix(in srgb, var(--accent), var(--surface) 76%);
+}
+.simulation-label-short {
+  display: none;
+}
 @media (max-width: 760px) {
   .simulation-action {
-    flex-shrink: 0;
     width: 35px;
     height: 35px;
+    min-height: 35px;
     padding: 0;
   }
   .simulation-action span {
     display: none;
+  }
+  .simulation-stop {
+    width: auto;
+    padding: 0 10px;
+    gap: 5px;
+  }
+  .simulation-stop .simulation-label-short {
+    display: inline;
   }
 }

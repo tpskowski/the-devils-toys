@@ -18,6 +18,7 @@ import {
 import type { AuthedRequest } from "./auth.js";
 import { requireAuth, roomRole } from "./auth.js";
 import { config } from "./config.js";
+import { redirectPreviewImage } from "./image-cache.js";
 import { storedUploadBytes } from "./upload-usage.js";
 import { characterItemsFor } from "./character-items.js";
 import { all, db, one } from "./db.js";
@@ -798,6 +799,7 @@ characterRouter.get("/rooms/:roomId/characters/:characterId/portrait", requireAu
     return res.status(404).json({ error: "Character portrait not found." });
   if (path.basename(visible.row.portrait_stored_name) !== visible.row.portrait_stored_name)
     return res.status(404).json({ error: "Character portrait not found." });
+  if (req.query.v === visible.row.portrait_stored_name && redirectPreviewImage(req, res)) return;
   res.type(visible.row.portrait_mime_type);
   res.setHeader("Cache-Control", "private, max-age=31536000, immutable");
   res.setHeader(

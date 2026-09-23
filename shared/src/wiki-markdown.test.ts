@@ -1,9 +1,41 @@
 import { describe, expect, it } from "vitest";
-import { plainMentions, remarkWiki, wikiMentions } from "./wiki-markdown.js";
+import { normalizeWikiBreaks, plainMentions, remarkWiki, remarkWikiSpacing, wikiMentions } from "./wiki-markdown.js";
 import remarkParse from "remark-parse";
+import remarkStringify from "remark-stringify";
 import { unified } from "unified";
 
 describe("wiki Markdown", () => {
+  it("replaces legacy line-break tags without changing code, escaped tags, or other HTML", () => {
+    const markdown =
+      "First<br>Second\n\n<br />\n\nThird\n\n`<br>` and \\<br>\n\n```html\n<br />\n```\n\n<br onclick=bad>";
+    expect(normalizeWikiBreaks(markdown)).toBe(
+      "First  \nSecond\n\n\n\nThird\n\n`<br>` and \\<br>\n\n```html\n<br />\n```\n\n<br onclick=bad>"
+    );
+    expect(normalizeWikiBreaks("First<br />\nSecond")).toBe("First  \nSecond");
+  });
+
+  it("round-trips empty paragraphs as blank Markdown lines, including inside quotes", () => {
+    const processor = unified().use(remarkParse).use(remarkWikiSpacing()).use(remarkStringify);
+    const markdown = "\n\nFirst\n\n\n\n\n\nLast\n\n> Quote\n>\n>\n>\n> More\n";
+    const tree = processor.runSync(processor.parse(markdown));
+    expect(tree.children.map((node) => node.type)).toEqual([
+      "paragraph",
+      "paragraph",
+      "paragraph",
+      "paragraph",
+      "paragraph",
+      "blockquote"
+    ]);
+    expect(tree.children[0]).toMatchObject({ type: "paragraph", children: [] });
+    expect(tree.children[2]).toMatchObject({ type: "paragraph", children: [] });
+    expect(tree.children[3]).toMatchObject({ type: "paragraph", children: [] });
+    expect(tree.children[5]).toMatchObject({
+      type: "blockquote",
+      children: [expect.anything(), { type: "paragraph", children: [] }, expect.anything()]
+    });
+    expect(processor.stringify(tree)).toBe(markdown);
+  });
+
   it("finds valid mentions in source order", () => {
     expect(wikiMentions(":pc[Vess]{id=41} meets :page[the ledger]{slug=guild-ledger}.")).toEqual([
       { kind: "pc", target: "41", label: "Vess" },
