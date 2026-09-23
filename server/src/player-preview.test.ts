@@ -1,5 +1,8 @@
 import http from "node:http";
+import fs from "node:fs";
+import path from "node:path";
 import express from "express";
+import sharp from "sharp";
 import { afterAll, beforeAll, beforeEach, expect, it } from "vitest";
 import { type AuthedRequest, roomRole } from "./auth.js";
 import { db } from "./db.js";
@@ -8,6 +11,9 @@ import { mayReadWikiFile } from "./wiki-permissions.js";
 import { characterRouter } from "./characters.js";
 import { mediaRouter } from "./media.js";
 import { audioRouter } from "./audio.js";
+import { groupRouter } from "./group.js";
+import { config } from "./config.js";
+import { imageVersion } from "./image-cache.js";
 import { installToybox } from "./test-fixture.js";
 
 installToybox();
@@ -24,6 +30,7 @@ beforeAll(async () => {
   app.use("/api", characterRouter);
   app.use("/api", mediaRouter);
   app.use("/api", audioRouter);
+  app.use("/api", groupRouter);
   app.get("/api/rooms/:roomId", async (req: AuthedRequest, res) => {
     await Promise.resolve();
     res.json({
@@ -137,4 +144,80 @@ it("reads legacy audio without persisting metadata during either kind of preview
   // Ordinary reads still backfill legacy metadata.
   expect((await fetch(`${origin}/api/rooms/1/audio`)).ok).toBe(true);
   expect(db.prepare("SELECT metadata_loaded FROM media WHERE id = 1").get()).toEqual({ metadata_loaded: 1 });
+});
+
+it("shares versioned image and thumbnail cache URLs after checking each simulated player's access", async () => {
+  const storedName = "preview-cache.png";
+  const pixels = await sharp({ create: { width: 2, height: 2, channels: 3, background: "red" } })
+    .png()
+    .toBuffer();
+  fs.writeFileSync(path.join(config.dataDir, "uploads", storedName), pixels);
+  db.prepare(
+    `INSERT INTO media (id, room_id, uploaded_by, kind, category, filename, stored_name, mime_type, size, visible)
+     VALUES (1, 1, 1, 'scene', 'scene', ?, ?, 'image/png', ?, 1)`
+  ).run(storedName, storedName, pixels.length);
+  for (const kind of ["file", "thumbnail"]) {
+    const imagePath = `/media/1/${kind}?v=${imageVersion(storedName)}`;
+    const canonical = await fetch(`${origin}/api${imagePath}`);
+    expect(canonical.status).toBe(200);
+    expect(canonical.headers.get("cache-control")).toBe("private, max-age=31536000, immutable");
+    const bytes = await canonical.arrayBuffer();
+    for (const player of ["generic", "2"]) {
+      const redirect = await preview(player, imagePath, { redirect: "manual" });
+      expect(redirect.status).toBe(307);
+      expect(redirect.headers.get("location")).toBe(`/api${imagePath}`);
+      expect(redirect.headers.get("cache-control")).toBe("private, no-store");
+      const followed = await preview(player, imagePath);
+      expect(followed.url).toBe(canonical.url);
+      expect(await followed.arrayBuffer()).toEqual(bytes);
+    }
+    expect((await preview("2", `/media/1/${kind}?v=outdated`, { redirect: "manual" })).status).toBe(404);
+  }
+  // Previously loading the GM's cached image must not bypass preview visibility.
+  db.prepare("UPDATE media SET visible = 0 WHERE id = 1").run();
+  for (const player of ["generic", "2"])
+    for (const kind of ["file", "thumbnail"]) {
+      const denied = await preview(player, `/media/1/${kind}?v=${imageVersion(storedName)}`, { redirect: "manual" });
+      expect(denied.status).toBe(404);
+      expect(denied.headers.get("location")).toBeNull();
+    }
+});
+
+it("keeps unversioned images uncached and does not redirect documents", async () => {
+  fs.writeFileSync(path.join(config.dataDir, "uploads", "preview-note.md"), "Shared note");
+  db.prepare(
+    `INSERT INTO media (id, room_id, uploaded_by, kind, category, filename, stored_name, mime_type, size, visible)
+     VALUES (1, 1, 1, 'reference', 'reference', 'note.md', 'preview-note.md', 'text/markdown', 11, 1)`
+  ).run();
+  const document = await preview("2", "/media/1/file?v=anything", { redirect: "manual" });
+  expect(document.status).toBe(200);
+  expect(document.headers.get("cache-control")).toBe("private, no-store");
+  expect(document.headers.get("location")).toBeNull();
+  db.prepare("UPDATE media SET mime_type = 'image/png' WHERE id = 1").run();
+  const unversioned = await preview("2", "/media/1/file", { redirect: "manual" });
+  expect(unversioned.status).toBe(200);
+  expect(unversioned.headers.get("cache-control")).toBe("private, no-store");
+  expect(unversioned.headers.get("location")).toBeNull();
+});
+
+it("shares portrait cache URLs only after the selected player's character and group checks", async () => {
+  db.prepare(
+    "UPDATE characters SET portrait_stored_name = 'personal.png', portrait_mime_type = 'image/png' WHERE id = 1"
+  ).run();
+  const portrait = "/rooms/1/characters/1/portrait?v=personal.png";
+  const selected = await preview("2", portrait, { redirect: "manual" });
+  expect(selected.status).toBe(307);
+  expect(selected.headers.get("location")).toBe(`/api${portrait}`);
+  expect(selected.headers.get("cache-control")).toBe("private, no-store");
+  expect((await preview("generic", portrait, { redirect: "manual" })).status).toBe(404);
+  db.prepare(
+    "INSERT INTO group_hirelings (id, room_id, name, portrait_stored_name, portrait_mime_type) VALUES (1, 1, 'Guide', 'guide.png', 'image/png')"
+  ).run();
+  const groupImage = "/rooms/1/group/hirelings/1/image?v=guide.png";
+  for (const player of ["generic", "2"]) {
+    const response = await preview(player, groupImage, { redirect: "manual" });
+    expect(response.status).toBe(307);
+    expect(response.headers.get("location")).toBe(`/api${groupImage}`);
+    expect(response.headers.get("cache-control")).toBe("private, no-store");
+  }
 });

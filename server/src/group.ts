@@ -7,6 +7,7 @@ import type { AuthedRequest } from "./auth.js";
 import { requireAuth } from "./auth.js";
 import { characterItemsFor } from "./character-items.js";
 import { config } from "./config.js";
+import { redirectPreviewImage } from "./image-cache.js";
 import { all, db, one } from "./db.js";
 import {
   assetsFor,
@@ -395,6 +396,7 @@ groupRouter.get("/rooms/:roomId/group/:kind/:rowId/image", requireAuth, (req: Au
   const row = groupRow<SheetRow>(portraitTables[kind], roomId, Number(req.params.rowId));
   if (!row?.portrait_stored_name || path.basename(row.portrait_stored_name) !== row.portrait_stored_name)
     return res.status(404).json({ error: "Image not found." });
+  if (req.query.v === row.portrait_stored_name && redirectPreviewImage(req, res)) return;
   res.type(row.portrait_mime_type ?? "application/octet-stream");
   res.setHeader("Cache-Control", "private, max-age=31536000, immutable");
   res.setHeader(

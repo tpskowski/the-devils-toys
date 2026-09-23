@@ -9,10 +9,13 @@
 - Newly set passwords require at least 14 characters across setup, account creation, invitations, password resets, and command-line recovery. Existing passwords still work for sign-in. Password reset links now appear at the top of the account record.
 
 - Account management can create private, single-use password reset links that expire after 24 hours. Opening one signs out the current browser; saving signs the target account out everywhere and prompts them to sign in with their new password.
+- Wiki rich editing and saved pages share paragraph, heading, and line-break spacing. Empty paragraphs stay as blank Markdown lines, and older bare `<br>` tags render as breaks without enabling HTML. The formatting toolbar can be hidden or shown, and the Wiki Save button no longer moves on hover.
+
+- Room tabs wrap onto a second row when the panel is too narrow to show them all, keeping every tab and the Library button visible.
 
 - Landing-page quotes preserve dialogue punctuation exactly as written in `quotes.md`. Decorative outer quotation marks are removed from the source instead of stripped at display time, keeping narrated speech intact.
 
-- Player simulation now opens from a compact **Simulate** button in the room header. Its modal holds the themed player chooser and starts simulation in the current tab; **Stop simulating** returns to the same room as GM, and the refresh footnote is removed. Reading legacy audio in simulation no longer saves missing track metadata.
+- Player simulation opens from a **Simulate** button sized to match the room header controls. While simulating, a highlighted **Stop simulating** button (**Stop** on phones) returns to the same room as GM, and the eye button changes the simulated player. The chooser's actions share a consistent size. Images and portraits reuse the browser's private cache across GM and player views after checking the simulated player's access on every request. Reading legacy audio in simulation does not save missing track metadata.
 
 - Encounter panels let GMs rename encounters, edit descriptions, create another encounter, and create an NPC directly into the roster. Unplaced combatants have a remove button that leaves their source character or NPC intact. Activating an encounter deactivates the previous one in that room.
 

@@ -90,6 +90,58 @@ function mentionNode(mention: WikiMention, position: TextDirective["position"]):
 
 type TreeNode = { type?: unknown; children?: unknown };
 
+/** Replace only parsed, bare HTML breaks. Code examples, escaped tags, and all
+ * other HTML remain literal text; this never enables HTML rendering. */
+export function normalizeWikiBreaks(markdown: string): string {
+  const tree = unified().use(remarkParse).parse(markdown);
+  const replacements: Array<{ start: number; end: number; text: string }> = [];
+  function visit(node: TreeNode, parent?: TreeNode) {
+    const html = node as { type?: string; value?: string; position?: Root["position"] };
+    if (html.type === "html" && /^<br[ \t]*\/?[ \t]*>$/i.test(html.value?.trim() ?? "")) {
+      const start = html.position?.start.offset;
+      const end = html.position?.end.offset;
+      if (start !== undefined && end !== undefined) {
+        const block = ["root", "blockquote", "listItem"].includes(String(parent?.type));
+        replacements.push({ start, end, text: block ? "" : markdown[end] === "\n" ? "  " : "  \n" });
+      }
+    }
+    if (Array.isArray(node.children)) for (const child of node.children) visit(child, node);
+  }
+  visit(tree);
+  for (const { start, end, text } of replacements.reverse())
+    markdown = markdown.slice(0, start) + text + markdown.slice(end);
+  return markdown;
+}
+
+/** An empty rich-text paragraph serializes as an extra pair of newlines.
+ * Restore those paragraphs in both Wiki views without storing HTML placeholders. */
+export function remarkWikiSpacing(): Plugin<[], Root> {
+  return () => (tree) => {
+    type SpacingNode = { type: string; children?: SpacingNode[]; position?: Root["position"] };
+    function visit(node: SpacingNode) {
+      if (!node.children) return;
+      const children: SpacingNode[] = [];
+      let previousLine = node.type === "root" ? -1 : undefined;
+      for (const child of node.children) {
+        const startLine = child.position?.start.line;
+        if (
+          ["root", "blockquote", "listItem"].includes(node.type) &&
+          previousLine !== undefined &&
+          startLine !== undefined
+        ) {
+          const blanks = Math.max(0, Math.floor((startLine - previousLine - 2) / 2));
+          for (let index = 0; index < blanks; index++) children.push({ type: "paragraph", children: [] });
+        }
+        visit(child);
+        children.push(child);
+        previousLine = child.position?.end.line;
+      }
+      node.children = children;
+    }
+    visit(tree);
+  };
+}
+
 function transformMentions(node: TreeNode): void {
   if (!Array.isArray(node.children)) return;
 
