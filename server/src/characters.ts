@@ -31,7 +31,8 @@ import {
   validPortraitFile
 } from "./portrait-files.js";
 import { broadcastRoom, refreshRoomPresence } from "./realtime.js";
-import { presentDice } from "./dice-3d.js";
+import { presentDice, withRoomDice } from "./dice-3d.js";
+import { PendingPhysics } from "./dice-physics.js";
 import type { DiceResult } from "./dice.js";
 import { characterWarningsFor, systemOrThrow } from "./systems.js";
 import { characterVicesFor } from "./character-vices.js";
@@ -431,6 +432,7 @@ export function rollCreationStep(
       ...(request.choice !== undefined ? { choice: request.choice } : {})
     });
   } catch (cause) {
+    if (cause instanceof PendingPhysics) throw cause;
     return { error: cause instanceof Error ? cause.message : "That step could not be rolled.", status: 400 };
   }
 
@@ -759,25 +761,34 @@ const creationChangeSchema = z
   })
   .strict();
 
-characterRouter.post("/rooms/:roomId/characters/:characterId/creation/roll", requireAuth, (req: AuthedRequest, res) => {
-  const parsed = creationRollSchema.safeParse(req.body ?? {});
-  if (!parsed.success) return res.status(400).json({ error: "Invalid creation step." });
-  const rolls: DiceResult[] = [];
-  const result = rollCreationStep(
-    req.account!.id,
-    Number(req.params.roomId),
-    Number(req.params.characterId),
-    parsed.data,
-    (roll) => rolls.push(roll)
-  );
-  if ("error" in result) return res.status(result.status).json({ error: result.error });
-  res.json({
-    ...result,
-    diceAnimations: rolls.flatMap((roll) =>
-      presentDice(Number(req.params.roomId), req.account!.id, roll, "roller", "Character creation")
-    )
-  });
-});
+characterRouter.post(
+  "/rooms/:roomId/characters/:characterId/creation/roll",
+  requireAuth,
+  async (req: AuthedRequest, res) => {
+    const parsed = creationRollSchema.safeParse(req.body ?? {});
+    if (!parsed.success) return res.status(400).json({ error: "Invalid creation step." });
+    const access = creationAccess(req.account!.id, Number(req.params.roomId), Number(req.params.characterId));
+    if ("error" in access) return res.status(access.status).json({ error: access.error });
+    const rolls: DiceResult[] = [];
+    const result = await withRoomDice(Number(req.params.roomId), req.account!.id, () => {
+      rolls.length = 0;
+      return rollCreationStep(
+        req.account!.id,
+        Number(req.params.roomId),
+        Number(req.params.characterId),
+        parsed.data,
+        (roll) => rolls.push(roll)
+      );
+    });
+    if ("error" in result) return res.status(result.status).json({ error: result.error });
+    res.json({
+      ...result,
+      diceAnimations: rolls.flatMap((roll) =>
+        presentDice(Number(req.params.roomId), req.account!.id, roll, "roller", "Character creation")
+      )
+    });
+  }
+);
 
 characterRouter.patch("/rooms/:roomId/characters/:characterId/creation", requireAuth, (req: AuthedRequest, res) => {
   const parsed = creationChangeSchema.safeParse(req.body ?? {});

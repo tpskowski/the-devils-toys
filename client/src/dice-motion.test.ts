@@ -1,78 +1,65 @@
 import { describe, expect, it } from "vitest";
-import { Quaternion, Vector3 } from "three";
-import { DICE_SHAPES, diceGeometry, diceResultFaces, faceNormal, type PresentedDie } from "@devils-toys/shared";
-import { buildDiceMotion, diceTrayExtents, DICE_TUMBLE_MS, sampleDiceMotion } from "./dice-motion";
-import { landingQuaternion } from "./dice-renderer";
+import { Quaternion, Vec3 } from "cannon-es";
+import { simulateDice, settledDieFace, physicalGeometry } from "@devils-toys/shared/dice-physics";
+import { DICE_SHAPES, type PresentedDie } from "@devils-toys/shared";
+import { sampleDiceMotion } from "./dice-motion";
 
-describe("bounded dice motion", () => {
-  it("rebounds from walls, hits the floor and loses momentum before stopping", () => {
-    const motion = buildDiceMotion(800, 500, 17, [new Quaternion()]);
-    expect(motion.impacts.walls).toBeGreaterThanOrEqual(2);
-    expect(motion.impacts.floor).toBeGreaterThanOrEqual(2);
-    const xs = motion.frames.map((frame) => frame[0].x);
-    expect(xs.some((x, i) => i > 0 && x < xs[i - 1] - 0.005)).toBe(true);
-    expect(xs.some((x, i) => i > 0 && x > xs[i - 1] + 0.005)).toBe(true);
-    const last = motion.frames.at(-1)![0],
-      previous = motion.frames.at(-2)![0];
-    expect(last.height).toBe(0);
-    expect(Math.abs(last.x - previous.x) + Math.abs(last.y - previous.y)).toBeLessThan(0.0001);
-    expect(last.rotation.angleTo(previous.rotation)).toBeLessThan(0.001);
-  });
+function randomSeed(seed: number) {
+  return () => (seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0) / 2 ** 32;
+}
+const die = (shape: PresentedDie["shape"]): PresentedDie => ({
+  definition: `d${shape}`,
+  shape,
+  face: 0,
+  value: 1,
+  kept: true,
+  group: 0
+});
 
-  for (const [width, height, count] of [
-    [800, 500, 13],
-    [390, 640, 40],
-    [180, 190, 20]
-  ])
-    it(`keeps ${count} colliding dice inside a ${width}×${height} tray`, () => {
-      const motion = buildDiceMotion(
-        width,
-        height,
-        172,
-        Array.from({ length: count }, () => new Quaternion())
+describe("recorded rigid-body dice", () => {
+  for (const shape of DICE_SHAPES)
+    it(`d${shape} settles naturally and the replay agrees with its result`, () => {
+      const dice = [die(shape)];
+      const { faces, replay } = simulateDice(dice, randomSeed(shape * 19));
+      const last = sampleDiceMotion(replay, 0, Infinity);
+      const q = new Quaternion(last.rotation.x, last.rotation.y, last.rotation.z, last.rotation.w);
+      expect(settledDieFace(dice[0], q)).toBe(faces[0]);
+      const lowest = Math.min(
+        ...physicalGeometry(dice[0]).vertices.map((v) => q.vmult(new Vec3(...v)).z * replay.radius + last.z)
       );
-      expect(motion.impacts.dice).toBeGreaterThan(0);
-      for (const frame of motion.frames)
-        for (const pose of frame) {
-          expect(Math.abs(pose.x)).toBeLessThanOrEqual(1.000001);
-          expect(Math.abs(pose.y)).toBeLessThanOrEqual(1.000001);
-          expect(pose.height).toBeGreaterThanOrEqual(0);
-          expect(Number.isFinite(pose.rotation.lengthSq())).toBe(true);
-        }
-      const final = motion.frames.at(-1)!,
-        extents = diceTrayExtents(width, height, motion.radius);
-      for (let a = 0; a < count; a++)
-        for (let b = a + 1; b < count; b++) {
-          const distance = Math.hypot((final[a].x - final[b].x) * extents.x, (final[a].y - final[b].y) * extents.y);
-          expect(distance).toBeGreaterThanOrEqual(motion.radius * 1.98);
-        }
+      expect(Math.abs(lowest)).toBeLessThan(0.02);
+      expect(replay.frames.length).toBeGreaterThan(20);
     });
-
-  it("samples the same throw independently of frame rate and does not snap at the end", () => {
-    const landing = new Quaternion().setFromAxisAngle(new Vector3(1, 2, 3).normalize(), 1.7);
-    const a = buildDiceMotion(800, 500, 42, [landing]),
-      b = buildDiceMotion(800, 500, 42, [landing]);
-    for (const time of [0, 173, 1274, 2321, DICE_TUMBLE_MS, 10000])
-      expect(sampleDiceMotion(a.frames, 0, time)).toEqual(sampleDiceMotion(b.frames, 0, time));
-    for (let i = 1; i < a.frames.length; i++)
-      expect(a.frames[i][0].rotation.angleTo(a.frames[i - 1][0].rotation)).toBeLessThan(0.4);
-    expect(sampleDiceMotion(a.frames, 0, DICE_TUMBLE_MS).rotation.angleTo(landing)).toBeLessThan(1e-6);
+  it("replays the same body poses on phones, large screens, and skipped frames", () => {
+    const { replay } = simulateDice([die(6), die(8)], randomSeed(97));
+    const halfway = ((replay.frames.length - 1) * replay.stepMs) / 2;
+    const at = sampleDiceMotion(replay, 0, halfway);
+    sampleDiceMotion(replay, 0, 99999);
+    expect(sampleDiceMotion(replay, 0, halfway)).toEqual(at);
+    const end = sampleDiceMotion(replay, 0, Infinity);
+    expect(end.rotation.length()).toBeCloseTo(1, 8);
+    const final = replay.frames.at(-1)!;
+    expect([end.x, end.y, end.z]).toEqual(final.slice(0, 3));
   });
-
-  it("preserves every numbered result throughout the change to collision-driven motion", () => {
-    for (const shape of DICE_SHAPES) {
-      const geometry = diceGeometry(shape),
-        resultFaces = diceResultFaces(shape);
-      for (let face = 0; face < shape; face++) {
-        const die: PresentedDie = { definition: `d${shape}`, shape, face, value: face + 1, kept: true, group: 0 };
-        const landing = landingQuaternion(die);
-        const motion = buildDiceMotion(620, 480, shape * 100 + face, [landing]);
-        const final = sampleDiceMotion(motion.frames, 0, DICE_TUMBLE_MS);
-        const normal = new Vector3(
-          ...(shape === 4 ? geometry.vertices[face] : faceNormal(geometry, geometry.faces[resultFaces[face]]))
-        ).normalize();
-        expect(normal.applyQuaternion(final.rotation).z).toBeCloseTo(1, 8);
+  for (const shape of DICE_SHAPES)
+    it(`settles a crowded d${shape} throw without forcing faces`, () => {
+      const dice = Array.from({ length: 20 }, () => die(shape));
+      const { faces, replay } = simulateDice(dice, randomSeed(6 * 771 + shape));
+      const final = replay.frames.at(-1)!;
+      dice.forEach((d, i) => {
+        const q = new Quaternion(...(final.slice(i * 7 + 3, i * 7 + 7) as [number, number, number, number]));
+        expect(settledDieFace(d, q)).toBe(faces[i]);
+      });
+    });
+  it("keeps a crowded throw inside the physical walls", () => {
+    const dice = Array.from({ length: 20 }, () => die(6));
+    const { faces, replay } = simulateDice(dice, randomSeed(172));
+    expect(faces).toHaveLength(dice.length);
+    for (const frame of replay.frames)
+      for (let i = 0; i < dice.length; i++) {
+        expect(Math.abs(frame[i * 7])).toBeLessThan(replay.width / 2);
+        expect(Math.abs(frame[i * 7 + 1])).toBeLessThan(replay.height / 2);
+        expect(frame[i * 7 + 2]).toBeGreaterThan(0);
       }
-    }
   });
 });

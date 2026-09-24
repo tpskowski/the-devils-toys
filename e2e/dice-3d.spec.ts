@@ -1,6 +1,9 @@
 import { expect, test } from "@playwright/test";
 import { DICE_SHAPES, DICE_THEMES, DEFAULT_DICE_PREFERENCES } from "../shared/src/dice-3d";
 import { prepareTable } from "./setup";
+import { bundleSystemRepo, MINIMAL_SYSTEM } from "../scripts/harness.mjs";
+import { simulateDice } from "../shared/src/dice-physics";
+import type { PresentedDie } from "../shared/src/dice-3d";
 
 test("3D dice: room gate, preferences, all shapes, bounded desktop/mobile rendering and fallback", async ({
   page
@@ -52,16 +55,27 @@ test("3D dice: room gate, preferences, all shapes, bounded desktop/mobile render
       group: i
     }))
   };
+  let seed = 172;
+  const physical = simulateDice(
+    animation.dice as PresentedDie[],
+    () => (seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0) / 2 ** 32
+  );
+  const replayAnimation = {
+    ...animation,
+    physics: physical.replay,
+    dice: animation.dice.map((die, i) => ({ ...die, face: physical.faces[i], value: physical.faces[i] + 1 }))
+  };
+  const duration = (physical.replay.frames.length - 1) * physical.replay.stepMs;
   await page.evaluate(
     (animation) => window.dispatchEvent(new CustomEvent("devils-dice-roll", { detail: animation })),
-    animation
+    replayAnimation
   );
   await expect(canvas).toBeVisible();
   await page.waitForTimeout(400);
   await page.screenshot({ path: testInfo.outputPath("dice-bounce-start.png") });
   await page.waitForTimeout(800);
   await page.screenshot({ path: testInfo.outputPath("dice-bounce-rebound.png") });
-  await page.waitForTimeout(1500);
+  await page.waitForTimeout(Math.max(100, duration - 1200 + 100));
   await page.screenshot({ path: testInfo.outputPath("dice-all-shapes.png") });
   expect(await page.locator(".dice-overlay").evaluate((el) => getComputedStyle(el).pointerEvents)).toBe("none");
   const bounds = await page.locator(".scene-stage .table-media-panel").boundingBox(),
@@ -76,12 +90,12 @@ test("3D dice: room gate, preferences, all shapes, bounded desktop/mobile render
     (animation) =>
       window.dispatchEvent(
         new CustomEvent("devils-dice-roll", {
-          detail: { ...animation, id: "phone", createdAt: Date.now(), dice: animation.dice.slice(0, 6) }
+          detail: { ...animation, id: "phone", createdAt: Date.now() }
         })
       ),
-    animation
+    replayAnimation
   );
-  await page.waitForTimeout(2700);
+  await page.waitForTimeout(duration + 100);
   await page.screenshot({ path: testInfo.outputPath("dice-phone.png") });
   const phone = await page.locator(".dice-overlay").boundingBox();
   expect(phone!.width).toBeLessThanOrEqual(390);
@@ -137,6 +151,11 @@ test("roll metadata respects server audiences, custom dice and fresh live delive
   ).json();
   await expect.poll(() => player.evaluate(() => (window as any).diceEvents.length)).toBe(1);
   expect(await player.evaluate(() => (window as any).diceEvents[0].id)).toBe(publicRoll.diceAnimations[0].id);
+  expect(publicRoll.diceAnimations[0].physics.frames.length).toBeGreaterThan(20);
+  expect(await player.evaluate(() => (window as any).diceEvents[0].physics)).toEqual(
+    publicRoll.diceAnimations[0].physics
+  );
+  expect(publicRoll.roll.physics).toBeUndefined();
   await page.request.post(`/api/rooms/${roomId}/rolls`, { data: { expression: "d20", private: true } });
   await page.request.post(`/api/rooms/${roomId}/rolls`, { data: { expression: "d20", invisible: true } });
   await player.waitForTimeout(250);
@@ -196,4 +215,60 @@ test("a device without WebGL still completes and displays its roll", async ({ pa
   await expect(page.locator(".dice-canvas canvas")).toHaveCount(0);
   const history = await (await page.request.get(`/api/rooms/${roomId}/messages`)).json();
   expect(history.messages.some((message: any) => message.body.includes("1d20"))).toBe(true);
+});
+
+test("physics feeds chat, checks, creation ledgers, and encounter initiative", async ({ page }) => {
+  const system = await prepareTable(page.request);
+  const room = await (await page.request.post("/api/rooms", { data: { name: "Physical mechanics", system } })).json();
+  const roomId = room.room.id;
+  await page.request.patch(`/api/rooms/${roomId}`, { data: { dice3dEnabled: true } });
+  const post = async (url: string, data: unknown) => {
+    const response = await page.request.post(url, { data });
+    expect(response.ok(), await response.text()).toBe(true);
+    return response.json();
+  };
+  const chat = await post(`/api/rooms/${roomId}/messages`, { body: "/r 3d6kh2" });
+  expect(chat.diceAnimations[0].physics.frames.length).toBeGreaterThan(20);
+  const save = await post(`/api/rooms/${roomId}/rolls`, {
+    expression: "d20",
+    save: { target: 10, label: "Muscle", position: "normal" }
+  });
+  expect(save.diceAnimations[0].total).toBe(save.roll.total);
+  expect(save.diceAnimations[0].physics.frames.length).toBeGreaterThan(20);
+  const created = await post(`/api/rooms/${roomId}/characters`, { name: "Physical character" });
+  const rolled = await post(`/api/rooms/${roomId}/characters/${created.character.id}/creation/roll`, {
+    stepId: "abilities"
+  });
+  expect(rolled.diceAnimations).toHaveLength(3);
+  expect(rolled.character.creation.steps.abilities.runs).toBe(1);
+  for (let i = 0; i < 3; i++) {
+    expect(rolled.character.creation.steps.abilities.scores[i].total).toBe(rolled.diceAnimations[i].total);
+    expect(rolled.diceAnimations[i].physics.frames.length).toBeGreaterThan(20);
+  }
+  const assignedResponse = await page.request.patch(
+    `/api/rooms/${roomId}/characters/${created.character.id}/creation`,
+    {
+      data: { stepId: "abilities", assign: rolled.diceAnimations.map((animation: any) => animation.total) }
+    }
+  );
+  expect(assignedResponse.ok()).toBe(true);
+  const assigned = await assignedResponse.json();
+  for (const [i, key] of ["muscleMax", "nerveMax", "knackMax"].entries())
+    expect(assigned.character.sheet[key]).toBe(rolled.diceAnimations[i].total);
+  const { id, zip } = await bundleSystemRepo(MINIMAL_SYSTEM);
+  const installed = await page.request.post("/api/admin/systems", {
+    multipart: { bundle: { name: `${id}.devilsystem.zip`, mimeType: "application/zip", buffer: zip } }
+  });
+  expect(installed.ok()).toBe(true);
+  const combatRoom = await post("/api/rooms", { name: "Physical initiative", system: id });
+  const combatRoomId = combatRoom.room.id;
+  await page.request.patch(`/api/rooms/${combatRoomId}`, { data: { dice3dEnabled: true } });
+  const encounter = await post(`/api/rooms/${combatRoomId}/encounters`, { name: "Physics encounter" });
+  const initiative = await post(`/api/rooms/${combatRoomId}/encounters/${encounter.encounter.id}/roll-initiative`, {});
+  expect(initiative.diceAnimations).toHaveLength(2);
+  for (const side of initiative.encounter.sides) {
+    const animation = initiative.diceAnimations.find((entry: any) => entry.label === `${side.side} initiative`);
+    expect(side.initiative).toBe(animation.total);
+    expect(animation.physics.frames.length).toBeGreaterThan(20);
+  }
 });

@@ -1,15 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { Vector3 } from "three";
+import { Vector3, Quaternion } from "three";
 import {
   DICE_SHAPES,
   diceGeometry,
   diceResultFaces,
   faceNormal,
   invalidDiceGeometry,
-  type DicePresentation,
-  type PresentedDie
+  type DicePresentation
 } from "@devils-toys/shared";
-import { landingQuaternion } from "./dice-renderer";
+
 import { DiceInbox } from "./dice-events";
 
 describe("numeric dice geometry and landing", () => {
@@ -20,20 +19,13 @@ describe("numeric dice geometry and landing", () => {
       const results = diceResultFaces(sides);
       expect(results.length).toBe([3, 5, 7].includes(sides) ? sides * 2 : sides);
       for (let face = 0; face < sides; face++) {
-        const die: PresentedDie = {
-          definition: `d${sides}`,
-          shape: sides,
-          face,
-          value: face + 1,
-          kept: true,
-          group: 0
-        };
         const normal = new Vector3(
           ...(sides === 4 ? geometry.vertices[face] : faceNormal(geometry, geometry.faces[results[face]]))
         ).normalize();
-        expect(normal.applyQuaternion(landingQuaternion(die)).z).toBeCloseTo(1, 8);
+        const orientation = new Quaternion().setFromUnitVectors(normal, new Vector3(0, 0, 1));
+        expect(normal.applyQuaternion(orientation).z).toBeCloseTo(1, 8);
         // A stable floor has at least three coplanar lowest vertices.
-        const heights = geometry.vertices.map((v) => new Vector3(...v).applyQuaternion(landingQuaternion(die)).z);
+        const heights = geometry.vertices.map((v) => new Vector3(...v).applyQuaternion(orientation).z);
         expect(heights.filter((z) => Math.abs(z - Math.min(...heights)) < 1e-5).length).toBeGreaterThanOrEqual(3);
       }
     });

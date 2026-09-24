@@ -17,7 +17,8 @@ import { config } from "./config.js";
 import { logger } from "./logger.js";
 import { invitationRouter } from "./invitations.js";
 import { evaluateCheck, evaluateSave, parseRollCommand, rollDice, rollCustomDie, type DiceResult } from "./dice.js";
-import { dice3dRouter, presentDice } from "./dice-3d.js";
+import { dice3dRouter, presentDice, withRoomDice } from "./dice-3d.js";
+import { DicePhysicsError } from "./dice-physics.js";
 import { characterRouter } from "./characters.js";
 import { roomAdminRouter } from "./room-admin.js";
 import { createRoom } from "./rooms.js";
@@ -747,7 +748,7 @@ app.delete("/api/rooms/:roomId/messages", requireAuth, (req: AuthedRequest, res)
   res.status(204).end();
 });
 
-app.post("/api/rooms/:roomId/messages", requireAuth, (req: AuthedRequest, res) => {
+app.post("/api/rooms/:roomId/messages", requireAuth, async (req: AuthedRequest, res) => {
   const roomId = Number(req.params.roomId);
   if (!roomRole(req.account!.id, roomId)) return res.status(404).json({ error: "Room not found." });
   const body = parse(z.object({ body: z.string().trim().min(1).max(2000) }), req.body, res);
@@ -759,7 +760,7 @@ app.post("/api/rooms/:roomId/messages", requireAuth, (req: AuthedRequest, res) =
   let diceResult: DiceResult | undefined;
   if (expression) {
     try {
-      const rolled = rollDice(expression);
+      const rolled = await withRoomDice(roomId, req.account!.id, () => rollDice(expression));
       diceResult = rolled;
       kind = "roll";
       messageBody = `${rolled.expression} → ${rolled.total}`;
@@ -787,7 +788,7 @@ app.post("/api/rooms/:roomId/messages", requireAuth, (req: AuthedRequest, res) =
     .json({ message, diceAnimations: diceResult ? presentDice(roomId, req.account!.id, diceResult, "room") : [] });
 });
 
-app.post("/api/rooms/:roomId/rolls", requireAuth, (req: AuthedRequest, res) => {
+app.post("/api/rooms/:roomId/rolls", requireAuth, async (req: AuthedRequest, res) => {
   const roomId = Number(req.params.roomId);
   const role = roomRole(req.account!.id, roomId);
   if (!role) return res.status(404).json({ error: "Room not found." });
@@ -855,7 +856,7 @@ app.post("/api/rooms/:roomId/rolls", requireAuth, (req: AuthedRequest, res) => {
     return res.status(400).json({
       error: `${systemOrThrow(system).name} does not define ${body.save.position} for saves.`
     });
-  let attackExpression;
+  let attackExpression: string | undefined;
   if (body.attack && !body.save) {
     attackExpression = damageExpression(body.attack.damage, diceRules.damage?.multipleRolls);
     if (!attackExpression)
@@ -867,24 +868,24 @@ app.post("/api/rooms/:roomId/rolls", requireAuth, (req: AuthedRequest, res) => {
   let saveOutcome;
   let checkOutcome;
   try {
-    rolled = customDie
-      ? rollCustomDie(system, customDie, body.count)
-      : rollDice(body.save ? "1d20" : (attackExpression ?? body.expression!));
-    if (body.attack && !body.save) rolled = { ...rolled, detail: `${rolled.detail} · ${body.attack.damage}` };
+    rolled = await withRoomDice(roomId, req.account!.id, () =>
+      customDie
+        ? rollCustomDie(system, customDie, body.count)
+        : rollDice(body.save ? "1d20" : (attackExpression ?? body.expression!))
+    );
+    if (body.attack && !body.save) rolled.detail = `${rolled.detail} · ${body.attack.damage}`;
     if (body.save) {
       saveOutcome = evaluateSave(rolled.total, body.save.target, body.save.position, diceRules);
-      rolled = {
-        ...rolled,
+      Object.assign(rolled, {
         outcome: saveOutcome,
         detail: `${rolled.detail} · ${body.save.label} ${body.save.target} · ${saveOutcome.label}`
-      };
+      });
     } else if (body.check) {
       checkOutcome = evaluateCheck(rolled.total, body.check.difficulty);
-      rolled = {
-        ...rolled,
+      Object.assign(rolled, {
         outcome: checkOutcome,
         detail: `${rolled.detail} · difficulty ${body.check.difficulty} · ${checkOutcome.label}`
-      };
+      });
     }
   } catch (error) {
     return res.status(400).json({ error: (error as Error).message });
@@ -998,6 +999,7 @@ if (fs.existsSync(clientDist)) {
 }
 
 app.use((error: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  if (error instanceof DicePhysicsError) return res.status(400).json({ error: error.message });
   logger.error("Request failed", { error: error instanceof Error ? error.message : String(error) });
   res.status(500).json({ error: "The server could not complete that request." });
 });

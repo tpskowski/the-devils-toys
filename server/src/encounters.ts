@@ -25,7 +25,7 @@ import { rollDice } from "./dice.js";
 import { roomHirelings } from "./group.js";
 import { groupRow, publicHireling, type SheetRow } from "./group-rows.js";
 import { broadcastRoom } from "./realtime.js";
-import { presentDice } from "./dice-3d.js";
+import { presentDice, withRoomDice } from "./dice-3d.js";
 import { npcCatalog, validateStatblock } from "./npcs.js";
 import { parseNpcStatblock } from "./npc-statblocks.js";
 import { systemOrThrow } from "./systems.js";
@@ -1083,7 +1083,7 @@ encounterRouter.delete(
 encounterRouter.post(
   "/rooms/:roomId/encounters/:encounterId/roll-initiative",
   requireAuth,
-  (req: AuthedRequest, res) => {
+  async (req: AuthedRequest, res) => {
     const roomId = gmRoom(req, res);
     if (!roomId) return;
     const existing = encounterForGm(req.account!.id, roomId, Number(req.params.encounterId));
@@ -1106,12 +1106,17 @@ encounterRouter.post(
       return Number.isFinite(modifier) && modifier > best ? modifier : best;
     }, 0);
 
+    // Resolve every side before writing any of them: a failed throw changes none.
+    const rolledSides = await withRoomDice(roomId, req.account!.id, () =>
+      sidesFor(existing.context.system).map((side) => {
+        const modifier = side.id === "party" && rules.roll!.modifierFrom === "best-dex" ? bestPartyDex : 0;
+        const expression = `${rules.roll!.dice}${modifier ? (modifier > 0 ? `+${modifier}` : String(modifier)) : ""}`;
+        return { side, rolled: rollDice(expression) };
+      })
+    );
     const update = db.prepare("UPDATE encounter_sides SET initiative = ? WHERE encounter_id = ? AND side = ?");
     const diceAnimations = [];
-    for (const side of sidesFor(existing.context.system)) {
-      const modifier = side.id === "party" && rules.roll.modifierFrom === "best-dex" ? bestPartyDex : 0;
-      const expression = `${rules.roll.dice}${modifier ? (modifier > 0 ? `+${modifier}` : String(modifier)) : ""}`;
-      const rolled = rollDice(expression);
+    for (const { side, rolled } of rolledSides) {
       update.run(rolled.total, existing.encounter.id, side.id);
       // Initiative includes unrevealed enemy sides, so effects are GM-only.
       diceAnimations.push(...presentDice(roomId, req.account!.id, rolled, "roller-and-gms", `${side.id} initiative`));

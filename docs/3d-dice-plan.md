@@ -4,18 +4,22 @@ Status: Phase 1 implemented, 2026-09-23. The original design rationale follows; 
 
 ## Phase 1 decisions
 
-- The server selects results with cryptographic randomness. A lazy-loaded Three.js renderer uses a client-side collision simulation for wall rebounds, floor bounces, and dice collisions. Starting orientations are solved from the completed motion and requested result, so fixed numbered meshes settle correctly without a final orientation correction or face relabeling. No physics server is needed.
+- With the room switch enabled, the server runs Cannon rigid-body physics in background workers and reads results from settled faces. Cryptographic randomness supplies initial positions, orientations, velocities, and spin. A lazy-loaded Three.js renderer replays recorded poses; it neither chooses results nor forces a landing. Personal opt-out does not change the room's roll method. Rooms with 3D dice off retain cryptographic RNG.
 - Rooms start with 3D dice off. Personal animation starts on and is saved per account across rooms and devices. The default set follows the room theme; a named set or custom palette stays fixed. Authorized viewers see the roller's colors.
-- All thirteen requested shapes, percentile tens, full percentile pairs, and existing d44/d66 digit pairs are supported. Odd dice use barrels with repeated labels, d4 reads its upper tip, d14 uses a trapezohedron, d16/d24 use bipyramids, and d30 uses a rhombic triacontahedron.
+- All thirteen requested shapes, percentile tens, full percentile pairs, and existing d44/d66 digit pairs are supported. Odd dice use barrels with repeated labels, d4 reads its upper tip, d14 uses a trapezohedron, d16 uses a bipyramid, d24 uses a deltoidal icositetrahedron, and d30 uses a rhombic triacontahedron.
 - `d%` aliases the full `d100` roll. `d%10` rolls the tens die alone, from 00 through 90.
 - The overlay is clipped to the main media panel. Phones use the active Chat/Combat panel when the scene is hidden, excluding the composer. It remains visible over dialogs while allowing all pointer input through.
-- Roll groups play sequentially with a bounded visual queue. Stale effects are discarded using local receipt time, so mismatched device clocks cannot hide fresh rolls. Text and game-state writes are immediate and independent of animation.
+- Roll groups play sequentially with a bounded visual queue. Stale effects are discarded using local receipt time, so mismatched device clocks cannot hide fresh rolls. Text and game-state writes occur after the server simulation finishes and do not wait for client animation.
 - Custom dice are declarative numeric definitions: built-in templates or validated convex geometry, with repeated numeric values supported. Each roll carries a validated definition snapshot so an in-flight roll survives a system update. Selection is through the dice picker or roll API; custom expression syntax and symbol rules are outside Phase 1.
 - Reduced motion, unavailable WebGL, and context loss preserve textual results. There are no dice sounds or image textures in this phase.
 
 See [the player guide](guide/rolling-dice.md) and [custom-dice authoring](guide/admin/custom-dice.md) for the supported controls and data format.
 
-## Direction
+## Original proposal (superseded motion design)
+
+The user subsequently chose physics-determined results. The Phase 1 decisions above supersede the RNG-driven motion and timing proposals below. The implemented tray has shared simulation dimensions and scales uniformly into each viewport; it does not rerun physics for different screen sizes. Cocked dice receive a physical impulse, never a prescribed result. At most two worker simulations run concurrently, and a throw that does not settle returns a retry error.
+
+### Direction
 
 Keep the server authoritative for randomness and rules. Render the resulting dice on each eligible viewer's device, inside the main scene area. Animation is presentation: a failed renderer, disabled animation, or slow device must never change or postpone a game-state write.
 

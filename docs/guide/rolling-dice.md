@@ -41,8 +41,15 @@ Combat open, they use that panel instead. They do not block clicks, map controls
 or the chat composer. Results still appear in text immediately.
 
 Dice bounce off the tray edges, tumble across the floor, and knock into each
-other before settling. The throw takes about 2.6 seconds. The server chooses the
-result; the motion lands on that recorded number without changing face labels.
+other before settling. With the room switch on, the server simulates the throw
+and reads the result from the face where each die actually stops. Everyone sees
+the same recorded motion, fitted inside their screen's available space. Throws
+usually settle within a few seconds; crowded throws can take longer. A die resting
+on an edge or an unnumbered end receives another tumble. If it still cannot
+settle, the roll fails with a request to try again rather than inventing a result.
+
+Turning animations off personally does not change how the room rolls. With the
+room switch off, rolls use the ordinary random-number generator.
 
 Open the dice box and expand **Your 3D dice** to turn animations off for yourself,
 choose a set, or customize the body, numbers, accent, and finish. Press **Save dice

@@ -1,11 +1,10 @@
 import * as THREE from "three";
-import { buildDiceMotion, diceTrayExtents, DICE_TUMBLE_MS, sampleDiceMotion } from "./dice-motion";
+import { sampleDiceMotion } from "./dice-motion";
+import { physicalGeometry, simulateDice } from "@devils-toys/shared/dice-physics";
 import {
-  diceGeometry,
   diceResultFaces,
   faceCenter,
   faceNormal,
-  vUnit,
   type DiceAppearance,
   type DiceGeometry,
   type DicePresentation,
@@ -14,43 +13,7 @@ import {
 } from "@devils-toys/shared";
 
 const vector = (v: DiceVector) => new THREE.Vector3(...v);
-function geometryFor(die: PresentedDie): DiceGeometry {
-  const source = die.custom?.geometry ?? diceGeometry(die.shape);
-  const center = source.vertices
-    .reduce((sum, p) => sum.add(vector(p)), new THREE.Vector3())
-    .multiplyScalar(1 / source.vertices.length);
-  const radius = Math.max(...source.vertices.map((p) => vector(p).distanceTo(center)));
-  return {
-    faces: source.faces,
-    vertices: source.vertices.map(
-      (p) =>
-        vector(p)
-          .sub(center)
-          .multiplyScalar(1 / radius)
-          .toArray() as DiceVector
-    )
-  };
-}
-export function landingQuaternion(die: PresentedDie, geometry = geometryFor(die)) {
-  const tip = die.shape === 4 && !die.custom?.geometry;
-  const resultFaces = die.custom?.resultFaces ?? diceResultFaces(die.shape, geometry);
-  const normal = vector(
-    tip ? vUnit(geometry.vertices[die.face]) : faceNormal(geometry, geometry.faces[resultFaces[die.face]])
-  );
-  const orientation = new THREE.Quaternion().setFromUnitVectors(normal, new THREE.Vector3(0, 0, 1));
-  if (!tip) {
-    const face = geometry.faces[resultFaces[die.face]];
-    const edge = vector(geometry.vertices[face[1]])
-      .sub(vector(geometry.vertices[face[0]]))
-      .normalize()
-      .applyQuaternion(orientation);
-    orientation.premultiply(
-      new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), -Math.atan2(edge.y, edge.x))
-    );
-  }
-  return orientation;
-}
-
+const geometryFor = physicalGeometry;
 function labelTexture(value: number, ink: string, tens: boolean) {
   const canvas = document.createElement("canvas");
   canvas.width = 256;
@@ -167,7 +130,7 @@ function shadowTexture() {
   return new THREE.CanvasTexture(canvas);
 }
 
-/** One renderer per visible tray. No persistent animation loop or physics server. */
+/** One renderer per visible tray. No persistent animation loop; rolls replay server physics. */
 export class DiceRenderer {
   private renderer: THREE.WebGLRenderer;
   private scene = new THREE.Scene();
@@ -208,14 +171,13 @@ export class DiceRenderer {
   play(presentation: DicePresentation, onDone: () => void, staticOnly = false, hold = false) {
     this.clear();
     const dice = presentation.dice;
-    const motion = buildDiceMotion(
-      this.width,
-      this.height,
-      presentation.seed,
-      dice.map((die) => landingQuaternion(die))
-    );
-    const originalWidth = this.width,
-      originalHeight = this.height;
+    // Only the appearance preview runs local physics. Real rolls always replay
+    // the authoritative server trajectory, even when this device is a phone.
+    const motion = presentation.physics ?? (hold ? simulateDice(dice, Math.random).replay : undefined);
+    if (!motion) {
+      onDone();
+      return;
+    }
     const objects: DieObject[] = dice.map((die) => {
       const object = buildDie(die, presentation.appearance),
         geometry = geometryFor(die);
@@ -239,7 +201,8 @@ export class DiceRenderer {
         disposeObject(shadow);
       });
     const started = performance.now(),
-      duration = staticOnly ? 0 : DICE_TUMBLE_MS;
+      replayDuration = (motion.frames.length - 1) * motion.stepMs,
+      duration = staticOnly ? 0 : replayDuration;
     const update = (now: number) => {
       if (this.disposed) return;
       const elapsed = now - started,
@@ -247,20 +210,20 @@ export class DiceRenderer {
       const fade = hold ? 1 : Math.max(0, Math.min(1, (duration + 1650 - elapsed) / 350));
       this.host.style.opacity = String(fade);
       for (const [index, die] of objects.entries()) {
-        const size = die.size * Math.min(1, this.width / originalWidth, this.height / originalHeight);
+        const scale = Math.max(0.01, Math.min((this.width - 24) / motion.width, (this.height - 24) / motion.height));
+        const size = die.size * scale;
         die.object.scale.setScalar(size);
-        const pose = sampleDiceMotion(motion.frames, index, staticOnly ? DICE_TUMBLE_MS : elapsed);
-        const extents = diceTrayExtents(this.width, this.height, size);
-        const x = pose.x * extents.x,
-          y = pose.y * extents.y;
+        const pose = sampleDiceMotion(motion, index, staticOnly ? replayDuration : elapsed);
+        const x = pose.x * scale,
+          y = pose.y * scale;
         die.object.quaternion.copy(pose.rotation);
         const support =
           -Math.min(...die.geometry.vertices.map((v) => vector(v).applyQuaternion(die.object.quaternion).z)) * size;
-        const bounce = pose.height * size;
-        die.object.position.set(x, y, support + bounce + 1);
+        const bounce = Math.max(0, pose.z * scale - support);
+        die.object.position.set(x, y, pose.z * scale);
         die.shadow.position.set(x + size * 0.18, y - size * 0.18, 0);
         die.shadow.scale.setScalar(size * (2.5 + (bounce / size) * 0.25));
-        (die.shadow.material as THREE.MeshBasicMaterial).opacity = 1 - bounce / (size * 4);
+        (die.shadow.material as THREE.MeshBasicMaterial).opacity = Math.max(0.15, 1 - bounce / (size * 6));
         die.object.traverse((child) => {
           if (child instanceof THREE.Mesh) {
             child.material.transparent = true;

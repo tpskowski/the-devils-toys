@@ -1,9 +1,11 @@
 import { randomInt } from "node:crypto";
 import { DIE_SIDES_PATTERN } from "@devils-toys/shared";
 import type { CustomDie, DiceRules, DiceShape, PresentedDie, SavePosition } from "@devils-toys/shared";
+import type { DicePhysicsReplay } from "@devils-toys/shared";
+import { physicalRandom, physicalResult } from "./dice-physics.js";
 
 /** 32 unbiased random bits, also usable by creation's non-dice choices. */
-export const diceRandom = () => randomInt(0, 2 ** 32) / 2 ** 32;
+export const diceRandom = () => physicalRandom(() => randomInt(0, 2 ** 32) / 2 ** 32);
 
 export interface DiceResult {
   expression: string;
@@ -14,6 +16,8 @@ export interface DiceResult {
   modifier: number;
   detail: string;
   dice: PresentedDie[];
+  /** Live-only replay, deliberately non-enumerable when present. */
+  physics?: DicePhysicsReplay;
 }
 
 export interface SaveOutcome {
@@ -38,6 +42,25 @@ function selectedIndexes(rolls: number[], selector?: string, selectorCount = 1) 
 }
 
 export function rollDice(input: string, random?: () => number): DiceResult {
+  if (!random || random === diceRandom) {
+    const result = physicalResult(
+      `standard:${input}`,
+      () => rollDice(input, () => 0),
+      (faces) => {
+        const template = rollDice(input, () => 0);
+        const percentile = /^\d+d100(?:\D|$)/.test(template.expression);
+        const draws = percentile
+          ? Array.from(
+              { length: faces.length / 2 },
+              (_, i) => ((faces[i * 2] * 10 + faces[i * 2 + 1] || 100) - 0.5) / 100
+            )
+          : faces.map((face, i) => (face + 0.5) / template.dice[i].shape);
+        let index = 0;
+        return rollDice(input, () => draws[index++]);
+      }
+    );
+    if (result) return result;
+  }
   const expression = input
     .trim()
     .toLowerCase()
@@ -146,6 +169,17 @@ export function rollDice(input: string, random?: () => number): DiceResult {
 }
 
 export function rollCustomDie(systemId: string, die: CustomDie, count = 1, random?: () => number): DiceResult {
+  if (!random) {
+    const result = physicalResult(
+      `custom:${systemId}:${die.id}:${count}`,
+      () => rollCustomDie(systemId, die, count, () => 0),
+      (faces) => {
+        let index = 0;
+        return rollCustomDie(systemId, die, count, () => (faces[index++] + 0.5) / die.values.length);
+      }
+    );
+    if (result) return result;
+  }
   if (!Number.isInteger(count) || count < 1 || count > 20) throw new Error("Roll between 1 and 20 dice.");
   const dice: PresentedDie[] = Array.from({ length: count }, (_, group) => {
     const face = random ? Math.floor(random() * die.values.length) : randomInt(die.values.length);

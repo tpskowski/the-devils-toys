@@ -77,6 +77,17 @@ export interface DicePresentation {
   modifier: number;
   appearance: DiceAppearance;
   dice: PresentedDie[];
+  physics?: DicePhysicsReplay;
+}
+
+/** Positions are in a single shared tray; clients only scale its recorded replay. */
+export interface DicePhysicsReplay {
+  width: number;
+  height: number;
+  radius: number;
+  stepMs: number;
+  /** Each frame contains [x, y, z, qx, qy, qz, qw] for each die. */
+  frames: number[][];
 }
 
 export const vAdd = (a: DiceVector, b: DiceVector): DiceVector => a.map((v, i) => v + b[i]) as DiceVector;
@@ -180,7 +191,14 @@ export function diceGeometry(sides: DiceShape): DiceGeometry {
     for (const z of [-0.8, 0.8])
       for (let i = 0; i < sides * 2; i++)
         vertices.push([Math.cos((i * Math.PI) / sides), Math.sin((i * Math.PI) / sides), z]);
-  } else if (sides === 24 || sides === 16) {
+    vertices.push([0, 0, 1.8], [0, 0, -1.8]);
+  } else if (sides === 24) {
+    // Dual of a rhombicuboctahedron: 24 broad kite faces that settle readily.
+    const long = 1 + Math.sqrt(2);
+    for (const x of [-1, 1])
+      for (const y of [-1, 1])
+        for (const z of [-1, 1]) vertices.push([x * long, y, z], [x, y * long, z], [x, y, z * long]);
+  } else if (sides === 16) {
     for (let i = 0; i < sides / 2; i++)
       vertices.push([Math.cos((i * Math.PI * 4) / sides), Math.sin((i * Math.PI * 4) / sides), 0]);
     vertices.push([0, 0, 1.25], [0, 0, -1.25]);
@@ -194,7 +212,7 @@ export function diceGeometry(sides: DiceShape): DiceGeometry {
       }
   }
   result = normalized(convexDiceGeometry(vertices));
-  if (sides === 12) result = dual(result);
+  if (sides === 12 || sides === 24) result = dual(result);
   else if (sides === 30) {
     const edges = new Map<string, DiceVector>();
     for (const face of result.faces)

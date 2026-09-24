@@ -5,9 +5,11 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./theme.css": "./styles/theme.css"
+    "./theme.css": "./styles/theme.css",
+    "./dice-physics": "./src/dice-physics.ts"
   },
   "dependencies": {
+    "cannon-es": "^0.20.0",
     "remark-directive": "4.0.0",
     "remark-parse": "^11.0.0",
     "remark-stringify": "^11.0.0",

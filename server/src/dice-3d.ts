@@ -14,6 +14,23 @@ import { db, one } from "./db.js";
 import { broadcastRoom, sendToRoomGms, sendToRoomAccount } from "./realtime.js";
 import { systemOrThrow } from "./systems.js";
 import type { DiceResult } from "./dice.js";
+import { withPhysicalDice } from "./dice-physics.js";
+
+export async function withRoomDice<T>(roomId: number, accountId: number, action: () => T): Promise<T> {
+  const role = roomRole(accountId, roomId);
+  if (!role) throw new Error("Room access is no longer available.");
+  const enabled = one<{ enabled: number }>(
+    "SELECT dice_3d_enabled AS enabled FROM rooms WHERE id = ?",
+    roomId
+  )?.enabled;
+  const evaluate = () => {
+    if (roomRole(accountId, roomId) !== role) throw new Error("Room access changed while the dice were rolling.");
+    return action();
+  };
+  const result = enabled ? await withPhysicalDice(evaluate) : evaluate();
+  if (roomRole(accountId, roomId) !== role) throw new Error("Room access changed while the dice were rolling.");
+  return result;
+}
 
 const color = z.string().regex(/^#[0-9a-fA-F]{6}$/);
 export const dicePreferencesSchema = z
@@ -59,7 +76,7 @@ export type DiceAudience = "room" | "roller" | "roller-and-gms";
 export function presentDice(
   roomId: number,
   accountId: number,
-  roll: Pick<DiceResult, "dice" | "total" | "modifier" | "expression">,
+  roll: Pick<DiceResult, "dice" | "total" | "modifier" | "expression" | "physics">,
   audience: DiceAudience,
   label = roll.expression
 ): DicePresentation[] {
@@ -79,7 +96,8 @@ export function presentDice(
     total: roll.total,
     modifier: roll.modifier,
     appearance: diceAppearance(readDicePreferences(accountId), room.theme),
-    dice: roll.dice
+    dice: roll.dice,
+    ...(roll.physics ? { physics: roll.physics } : {})
   };
   const event = { type: "dice-roll", animation };
   if (audience === "room") broadcastRoom(roomId, event);

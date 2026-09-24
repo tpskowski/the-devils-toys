@@ -21,9 +21,11 @@ the room's **Free roll → System die** selector even when 3D animation is disab
 ```
 
 `shape` is one of 3, 4, 5, 6, 7, 8, 10, 12, 14, 16, 20, 24, or 30. `values`
-has exactly that many integers between -999 and 999. Each entry is equally likely;
-repeated values occur with proportionally greater probability. The server selects
-the face index, then reads its value. The animation preserves that face identity.
+has exactly that many integers between -999 and 999. With the room's 3D dice
+switch off, each entry is equally likely. With it on, the server simulates the
+actual shape and reads the face where it settles; geometry affects outcome
+frequencies, especially for authored asymmetric shapes. Repeated values assign
+more faces to that result. The animation replays the same physical throw.
 The odd barrels repeat the value sequence on their additional physical facets.
 
 Ids are lowercase, begin with a letter, and contain at most 32 letters, digits,
@@ -76,7 +78,7 @@ result face must have a parallel opposite face for a stable face-up landing.
 The built-in tetrahedron handles its special tip-reading convention separately.
 
 `resultFaces` maps each value to a distinct geometric face index. Unselected faces
-are unnumbered and never selected as outcomes. Number placement and upright
+are unnumbered; a die resting on one is given another physical tumble. Number placement and upright
 landing orientation are derived from each polygon; an author does not supply
 executable placement logic. The renderer centers and normalizes the geometry.
 

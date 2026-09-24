@@ -13,7 +13,7 @@ import { requireAuth, roomRole } from "./auth.js";
 import { db, one } from "./db.js";
 import { availableSets, findSet, tablesForSystem } from "./table-sets.js";
 import { rollDice, type DiceResult } from "./dice.js";
-import { presentDice, type DiceAudience } from "./dice-3d.js";
+import { presentDice, withRoomDice, type DiceAudience } from "./dice-3d.js";
 import { inGameDisplayName } from "./display-name.js";
 import { rowForRoll, rowText } from "./roll-tables.js";
 import { broadcastRoom, sendToRoomGms, sendToRoomPlayers } from "./realtime.js";
@@ -212,7 +212,7 @@ tableRouter.get("/rooms/:roomId/rules-tables/:setId/:tableId", requireAuth, (req
   return res.json({ table: rest });
 });
 
-tableRouter.post("/rooms/:roomId/tables/roll", requireAuth, (req: AuthedRequest, res) => {
+tableRouter.post("/rooms/:roomId/tables/roll", requireAuth, async (req: AuthedRequest, res) => {
   const roomId = gmRoom(req, res);
   if (!roomId) return;
   const parsed = z
@@ -229,7 +229,9 @@ tableRouter.post("/rooms/:roomId/tables/roll", requireAuth, (req: AuthedRequest,
   if (!found || !table) return res.status(404).json({ error: "Table not found." });
 
   const visibility: TableRollVisibility = parsed.data.visibility;
-  const sequence = rollTableSequence(found.set, found.tables, table, visibility, parsed.data.modifier);
+  const sequence = await withRoomDice(roomId, req.account!.id, () =>
+    rollTableSequence(found.set, found.tables, table, visibility, parsed.data.modifier)
+  );
   const [roll, ...followUps] = sequence;
   const label = sequence.map((entry) => rollTableLabel(entry.tableName, entry.dice)).join(" → ");
   const headline = sequenceHeadline(sequence);
