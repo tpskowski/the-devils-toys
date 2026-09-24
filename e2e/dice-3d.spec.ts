@@ -57,7 +57,11 @@ test("3D dice: room gate, preferences, all shapes, bounded desktop/mobile render
     animation
   );
   await expect(canvas).toBeVisible();
-  await page.waitForTimeout(1700);
+  await page.waitForTimeout(400);
+  await page.screenshot({ path: testInfo.outputPath("dice-bounce-start.png") });
+  await page.waitForTimeout(800);
+  await page.screenshot({ path: testInfo.outputPath("dice-bounce-rebound.png") });
+  await page.waitForTimeout(1500);
   await page.screenshot({ path: testInfo.outputPath("dice-all-shapes.png") });
   expect(await page.locator(".dice-overlay").evaluate((el) => getComputedStyle(el).pointerEvents)).toBe("none");
   const bounds = await page.locator(".scene-stage .table-media-panel").boundingBox(),
@@ -67,7 +71,7 @@ test("3D dice: room gate, preferences, all shapes, bounded desktop/mobile render
   expect(tray!.width).toBeCloseTo(bounds!.width, 0);
   expect(tray!.height).toBeCloseTo(Math.min(bounds!.y + bounds!.height, page.viewportSize()!.height) - bounds!.y, 0);
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.waitForTimeout(1500);
+  await page.waitForTimeout(1650);
   await page.evaluate(
     (animation) =>
       window.dispatchEvent(
@@ -77,7 +81,7 @@ test("3D dice: room gate, preferences, all shapes, bounded desktop/mobile render
       ),
     animation
   );
-  await page.waitForTimeout(1550);
+  await page.waitForTimeout(2700);
   await page.screenshot({ path: testInfo.outputPath("dice-phone.png") });
   const phone = await page.locator(".dice-overlay").boundingBox();
   expect(phone!.width).toBeLessThanOrEqual(390);

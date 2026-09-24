@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { buildDiceMotion, diceTrayExtents, DICE_TUMBLE_MS, sampleDiceMotion } from "./dice-motion";
 import {
   diceGeometry,
   diceResultFaces,
@@ -73,13 +74,6 @@ interface DieObject {
   object: THREE.Group;
   shadow: THREE.Mesh;
   geometry: DiceGeometry;
-  end: THREE.Quaternion;
-  axis: THREE.Vector3;
-  spin: number;
-  startX: number;
-  startY: number;
-  endX: number;
-  endY: number;
   size: number;
   kept: boolean;
 }
@@ -160,15 +154,6 @@ function disposeObject(object: THREE.Object3D) {
   });
   textures.forEach((texture) => texture.dispose());
 }
-function seeded(seed: number) {
-  return () => {
-    seed |= 0;
-    seed = (seed + 0x6d2b79f5) | 0;
-    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
 function shadowTexture() {
   const canvas = document.createElement("canvas");
   canvas.width = 64;
@@ -222,12 +207,16 @@ export class DiceRenderer {
   }
   play(presentation: DicePresentation, onDone: () => void, staticOnly = false, hold = false) {
     this.clear();
-    const random = seeded(presentation.seed),
-      dice = presentation.dice;
-    const columns = Math.ceil(Math.sqrt((dice.length * this.width) / Math.max(this.height, 1)));
-    const rows = Math.ceil(dice.length / columns);
-    const size = Math.max(5, Math.min(44, (this.width - 24) / (columns * 2.7), (this.height - 40) / (rows * 2.7)));
-    const objects: DieObject[] = dice.map((die, i) => {
+    const dice = presentation.dice;
+    const motion = buildDiceMotion(
+      this.width,
+      this.height,
+      presentation.seed,
+      dice.map((die) => landingQuaternion(die))
+    );
+    const originalWidth = this.width,
+      originalHeight = this.height;
+    const objects: DieObject[] = dice.map((die) => {
       const object = buildDie(die, presentation.appearance),
         geometry = geometryFor(die);
       const shadow = new THREE.Mesh(
@@ -235,21 +224,11 @@ export class DiceRenderer {
         new THREE.MeshBasicMaterial({ map: shadowTexture(), transparent: true, depthWrite: false })
       );
       this.scene.add(shadow, object);
-      const row = Math.floor(i / columns),
-        col = i % columns;
-      const rowCount = Math.min(columns, dice.length - row * columns);
       return {
         object,
         shadow,
         geometry,
-        end: landingQuaternion(die, geometry),
-        axis: new THREE.Vector3(random() - 0.5, random() - 0.5, random() - 0.5).normalize(),
-        spin: (4 + random() * 4) * Math.PI,
-        startX: 0.05 + random() * 0.15,
-        startY: 0.15 + random() * 0.7,
-        endX: 0.5 + ((col - (rowCount - 1) / 2) * size * 2.6) / this.width,
-        endY: 0.5 + ((row - (rows - 1) / 2) * size * 2.6) / this.height,
-        size,
+        size: motion.radius,
         kept: die.kept
       };
     });
@@ -260,35 +239,24 @@ export class DiceRenderer {
         disposeObject(shadow);
       });
     const started = performance.now(),
-      duration = staticOnly ? 0 : 1350;
+      duration = staticOnly ? 0 : DICE_TUMBLE_MS;
     const update = (now: number) => {
       if (this.disposed) return;
       const elapsed = now - started,
-        t = duration ? Math.min(1, elapsed / duration) : 1,
-        eased = 1 - (1 - t) ** 3;
+        settled = elapsed >= duration;
       const fade = hold ? 1 : Math.max(0, Math.min(1, (duration + 1650 - elapsed) / 350));
       this.host.style.opacity = String(fade);
-      for (const die of objects) {
-        const size = Math.min(die.size, Math.max(3, (this.width - 16) / 2.5), Math.max(3, (this.height - 16) / 2.5));
+      for (const [index, die] of objects.entries()) {
+        const size = die.size * Math.min(1, this.width / originalWidth, this.height / originalHeight);
         die.object.scale.setScalar(size);
-        const rotation = new THREE.Quaternion().setFromAxisAngle(die.axis, die.spin * (1 - eased));
-        die.object.quaternion.copy(die.end).multiply(rotation);
-        const safeX = Math.max(0, this.width / 2 - size * 1.4 - 8),
-          safeY = Math.max(0, this.height / 2 - size * 1.8 - 8);
-        const x = THREE.MathUtils.clamp(
-          (die.startX + (die.endX - die.startX) * eased - 0.5) * this.width,
-          -safeX,
-          safeX
-        );
-        const y = THREE.MathUtils.clamp(
-          (die.startY + (die.endY - die.startY) * eased - 0.5) * this.height +
-            Math.sin(t * Math.PI * 2) * size * (1 - t),
-          -safeY,
-          safeY
-        );
+        const pose = sampleDiceMotion(motion.frames, index, staticOnly ? DICE_TUMBLE_MS : elapsed);
+        const extents = diceTrayExtents(this.width, this.height, size);
+        const x = pose.x * extents.x,
+          y = pose.y * extents.y;
+        die.object.quaternion.copy(pose.rotation);
         const support =
           -Math.min(...die.geometry.vertices.map((v) => vector(v).applyQuaternion(die.object.quaternion).z)) * size;
-        const bounce = Math.abs(Math.sin(t * Math.PI * 3)) * size * 2 * (1 - t);
+        const bounce = pose.height * size;
         die.object.position.set(x, y, support + bounce + 1);
         die.shadow.position.set(x + size * 0.18, y - size * 0.18, 0);
         die.shadow.scale.setScalar(size * (2.5 + (bounce / size) * 0.25));
@@ -296,7 +264,7 @@ export class DiceRenderer {
         die.object.traverse((child) => {
           if (child instanceof THREE.Mesh) {
             child.material.transparent = true;
-            child.material.opacity = t === 1 && !die.kept ? 0.38 : 1;
+            child.material.opacity = settled && !die.kept ? 0.38 : 1;
           }
         });
       }

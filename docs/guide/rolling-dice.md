@@ -40,6 +40,10 @@ Once enabled, rolls appear across the main table area; on a phone with Chat or
 Combat open, they use that panel instead. They do not block clicks, map controls,
 or the chat composer. Results still appear in text immediately.
 
+Dice bounce off the tray edges, tumble across the floor, and knock into each
+other before settling. The throw takes about 2.6 seconds. The server chooses the
+result; the motion lands on that recorded number without changing face labels.
+
 Open the dice box and expand **Your 3D dice** to turn animations off for yourself,
 choose a set, or customize the body, numbers, accent, and finish. Press **Save dice
 preferences** to remember the choice for your account across rooms and devices.

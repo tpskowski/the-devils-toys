@@ -4,7 +4,7 @@ Status: Phase 1 implemented, 2026-09-23. The original design rationale follows; 
 
 ## Phase 1 decisions
 
-- The server selects results with cryptographic randomness. A lazy-loaded Three.js renderer tumbles fixed, numbered meshes into the selected landing orientation; no physics server is needed.
+- The server selects results with cryptographic randomness. A lazy-loaded Three.js renderer uses a client-side collision simulation for wall rebounds, floor bounces, and dice collisions. Starting orientations are solved from the completed motion and requested result, so fixed numbered meshes settle correctly without a final orientation correction or face relabeling. No physics server is needed.
 - Rooms start with 3D dice off. Personal animation starts on and is saved per account across rooms and devices. The default set follows the room theme; a named set or custom palette stays fixed. Authorized viewers see the roller's colors.
 - All thirteen requested shapes, percentile tens, full percentile pairs, and existing d44/d66 digit pairs are supported. Odd dice use barrels with repeated labels, d4 reads its upper tip, d14 uses a trapezohedron, d16/d24 use bipyramids, and d30 uses a rhombic triacontahedron.
 - `d%` aliases the full `d100` roll. `d%10` rolls the tens die alone, from 00 through 90.
