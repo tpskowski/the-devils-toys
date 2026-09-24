@@ -119,8 +119,10 @@ export function exportRoomCampaign(roomId: number): ExportedCampaign {
     music_enabled: number;
     map_notation_enabled: number;
     wiki_enabled: number;
+    dice_3d_enabled: number;
+    dice_3d_theme: string;
   }>(
-    `SELECT name, system, theme, calendar_enabled, calendar_json, music_enabled, map_notation_enabled, wiki_enabled
+    `SELECT name, system, theme, calendar_enabled, calendar_json, music_enabled, map_notation_enabled, wiki_enabled, dice_3d_enabled, dice_3d_theme
      FROM rooms WHERE id = ?`,
     roomId
   );
@@ -152,7 +154,9 @@ export function exportRoomCampaign(roomId: number): ExportedCampaign {
     calendarEnabled: Boolean(room.calendar_enabled),
     musicEnabled: Boolean(room.music_enabled),
     mapNotationEnabled: Boolean(room.map_notation_enabled),
-    wikiEnabled: Boolean(room.wiki_enabled)
+    wikiEnabled: Boolean(room.wiki_enabled),
+    dice3dEnabled: Boolean(room.dice_3d_enabled),
+    dice3dTheme: room.dice_3d_theme
   });
 
   // Through the same forgiving reader as every other stored blob: a calendar

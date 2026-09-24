@@ -1309,5 +1309,8 @@ function applyRoomSettings(campaign: Campaign, roomId: number) {
     );
   if (room.wikiEnabled !== undefined)
     set("wiki_enabled", room.wikiEnabled ? 1 : 0, `wiki ${room.wikiEnabled ? "on" : "off"}`);
+  if (room.dice3dEnabled !== undefined)
+    set("dice_3d_enabled", room.dice3dEnabled ? 1 : 0, room.dice3dEnabled ? "3D dice on" : "3D dice off");
+  if (room.dice3dTheme !== undefined) set("dice_3d_theme", room.dice3dTheme, "dice theme set to " + room.dice3dTheme);
   return taken;
 }

@@ -1,5 +1,7 @@
 # Changelog
 
+- Campaign bundles preserve the room’s 3D-dice switch and dice theme. Importing an older bundle leaves existing dice settings unchanged.
+
 - Room settings places Dice theme directly below Theme, with matching swatch pickers. Dice swatches show the actual body, number, and accent colors.
 
 - Settled 3D dice remain visible for two seconds longer. When 3D dice are enabled, Room settings offers a default dice-theme picker; personal dice sets and custom colors still take precedence.

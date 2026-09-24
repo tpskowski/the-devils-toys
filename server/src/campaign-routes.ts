@@ -287,7 +287,9 @@ campaignRouter.post(
           archived: false,
           calendarEnabled: Boolean(campaign.calendar),
           mapNotationEnabled: Boolean(campaign.room.mapNotationEnabled),
-          musicEnabled: Boolean(campaign.room.musicEnabled)
+          musicEnabled: Boolean(campaign.room.musicEnabled),
+          dice3dEnabled: Boolean(campaign.room.dice3dEnabled),
+          dice3dTheme: campaign.room.dice3dTheme ?? "room"
         },
         campaign: campaign.manifest.name,
         // Nested rather than spread: the import result has a `room` of its own —

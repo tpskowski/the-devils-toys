@@ -94,7 +94,9 @@ const roomSchema = z
     calendarEnabled: z.boolean().optional(),
     musicEnabled: z.boolean().optional(),
     mapNotationEnabled: z.boolean().optional(),
-    wikiEnabled: z.boolean().optional()
+    wikiEnabled: z.boolean().optional(),
+    dice3dEnabled: z.boolean().optional(),
+    dice3dTheme: z.string().optional()
   })
   .strict();
 
@@ -735,6 +737,19 @@ export function readCampaign(directory: string, options: ReadOptions = {}): Camp
       `room.json names the theme "${room.theme}", which this server does not have. The room keeps its own.`
     );
     delete room.theme;
+  }
+
+  if (
+    room.dice3dTheme !== undefined &&
+    room.dice3dTheme !== "room" &&
+    !(THEME_IDS as readonly string[]).includes(room.dice3dTheme)
+  ) {
+    warnings.push(
+      'room.json names the dice theme "' +
+        room.dice3dTheme +
+        '", which this server does not have. The room keeps its own.'
+    );
+    delete room.dice3dTheme;
   }
 
   const media = MEDIA_FOLDERS.flatMap((folder) => readMediaFolder(directory, folder, warnings));

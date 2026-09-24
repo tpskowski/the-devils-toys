@@ -206,6 +206,44 @@ function projection(roomId: number) {
 }
 
 describe("a room exported and imported again", () => {
+  it.each([
+    { enabled: true, theme: "digital" },
+    { enabled: false, theme: "shinji" },
+    { enabled: true, theme: "room" }
+  ])("preserves dice settings: $enabled / $theme", ({ enabled, theme }) => {
+    const first = makeRoom("Dice source");
+    db.prepare("UPDATE rooms SET dice_3d_enabled = ?, dice_3d_theme = ? WHERE id = ?").run(
+      Number(enabled),
+      theme,
+      first
+    );
+    const files = unzipSync(exportRoomCampaign(first).archive);
+    expect(JSON.parse(Buffer.from(files["room.json"]).toString())).toMatchObject({
+      dice3dEnabled: enabled,
+      dice3dTheme: theme
+    });
+    const second = makeRoom("Dice destination");
+    db.prepare("UPDATE rooms SET dice_3d_enabled = ?, dice_3d_theme = 'grim' WHERE id = ?").run(
+      Number(!enabled),
+      second
+    );
+    importInto(second, files);
+    expect(one("SELECT dice_3d_enabled, dice_3d_theme FROM rooms WHERE id = ?", second)).toEqual({
+      dice_3d_enabled: Number(enabled),
+      dice_3d_theme: theme
+    });
+  });
+
+  it("leaves dice settings alone when importing an older bundle", () => {
+    const roomId = makeRoom("Existing dice");
+    db.prepare("UPDATE rooms SET dice_3d_enabled = 1, dice_3d_theme = 'digital' WHERE id = ?").run(roomId);
+    importInto(roomId, source());
+    expect(one("SELECT dice_3d_enabled, dice_3d_theme FROM rooms WHERE id = ?", roomId)).toEqual({
+      dice_3d_enabled: 1,
+      dice_3d_theme: "digital"
+    });
+  });
+
   it("produces the same room", () => {
     const first = makeRoom("Source");
     importInto(first, source());

@@ -247,6 +247,22 @@ describe("reading a campaign", () => {
     expect(campaign.warnings[0]).toMatch(/names the theme "ember", which this server does not have/);
   });
 
+  it("warns and omits an unknown dice theme while retaining the room switch", () => {
+    const room = JSON.stringify({ dice3dEnabled: true, dice3dTheme: "future-theme" });
+    const campaign = readCampaign(stage({ "room.json": room, "maps/a.png": "x" }));
+    expect(campaign.room.dice3dEnabled).toBe(true);
+    expect(campaign.room.dice3dTheme).toBeUndefined();
+    expect(campaign.warnings).toContain(
+      'room.json names the dice theme "future-theme", which this server does not have. The room keeps its own.'
+    );
+  });
+
+  it.each([{ dice3dEnabled: "true" }, { dice3dTheme: 42 }])("refuses malformed dice settings: %j", (settings) => {
+    expect(() => readCampaign(stage({ "room.json": JSON.stringify(settings), "maps/a.png": "x" }))).toThrow(
+      /room\.json is not valid/
+    );
+  });
+
   it("refuses a room.json carrying a setting that is not one", () => {
     expect(() => readCampaign(stage({ "room.json": '{"nickname":"Tomb"}', "maps/a.png": "x" }))).toThrow(
       /room\.json is not valid/
