@@ -1,4 +1,5 @@
 import { expect, type APIRequestContext } from "@playwright/test";
+import { DEFAULT_DICE_PREFERENCES } from "../shared/src/dice-3d";
 import { FIXTURE_SYSTEM, bundleSystemRepo } from "../scripts/harness.mjs";
 
 /** All specs share one server; each browser gets its own authenticated session. */
@@ -9,6 +10,9 @@ export async function prepareTable(request: APIRequestContext) {
   if (setup.status() === 409) {
     expect((await request.post("/api/login", { data: credentials })).status()).toBe(200);
   }
+  // Browser contexts are isolated, but this GM account is shared in the database.
+  // Reset preferences before each scenario, including after an earlier failure.
+  expect((await request.put("/api/me/dice", { data: DEFAULT_DICE_PREFERENCES })).ok()).toBe(true);
   const { id: system, zip } = await bundleSystemRepo(FIXTURE_SYSTEM);
   const installed = await request.post("/api/admin/systems", {
     multipart: { bundle: { name: `${system}.devilsystem.zip`, mimeType: "application/zip", buffer: zip } }

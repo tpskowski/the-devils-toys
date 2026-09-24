@@ -9,6 +9,7 @@ test("3D dice: room gate, preferences, all shapes, bounded desktop/mobile render
   page
 }, testInfo) => {
   test.setTimeout(60000);
+  await page.clock.install();
   const system = await prepareTable(page.request);
   const created = await (await page.request.post("/api/rooms", { data: { name: "3D Dice Workshop", system } })).json();
   const roomId = created.room.id;
@@ -94,16 +95,19 @@ test("3D dice: room gate, preferences, all shapes, bounded desktop/mobile render
     dice: animation.dice.map((die, i) => ({ ...die, face: physical.faces[i], value: physical.faces[i] + 1 }))
   };
   const duration = (physical.replay.frames.length - 1) * physical.replay.stepMs;
+  // Advance only the animation clock: screenshot/rendering time on a slow CI
+  // runner must not consume the settled-dice interval we are measuring.
+  await page.clock.pauseAt(await page.evaluate(() => Date.now() + 1000));
   await page.evaluate(
     (animation) => window.dispatchEvent(new CustomEvent("devils-dice-roll", { detail: animation })),
     replayAnimation
   );
   await expect(canvas).toBeVisible();
-  await page.waitForTimeout(400);
+  await page.clock.fastForward(400);
   await page.screenshot({ path: testInfo.outputPath("dice-bounce-start.png") });
-  await page.waitForTimeout(800);
+  await page.clock.fastForward(800);
   await page.screenshot({ path: testInfo.outputPath("dice-bounce-rebound.png") });
-  await page.waitForTimeout(Math.max(100, duration - 1200 + 100));
+  await page.clock.fastForward(Math.max(100, duration - 1200 + 100));
   await page.screenshot({ path: testInfo.outputPath("dice-all-shapes.png") });
   expect(await page.locator(".dice-overlay").evaluate((el) => getComputedStyle(el).pointerEvents)).toBe("none");
   const bounds = await page.locator(".scene-stage .table-media-panel").boundingBox(),
@@ -112,9 +116,9 @@ test("3D dice: room gate, preferences, all shapes, bounded desktop/mobile render
   expect(tray!.y).toBeCloseTo(bounds!.y, 0);
   expect(tray!.width).toBeCloseTo(bounds!.width, 0);
   expect(tray!.height).toBeCloseTo(Math.min(bounds!.y + bounds!.height, page.viewportSize()!.height) - bounds!.y, 0);
-  await page.waitForTimeout(2100);
+  await page.clock.fastForward(2100);
   await expect(page.locator(".dice-overlay")).toHaveAttribute("data-active", "true");
-  await page.waitForTimeout(1700);
+  await page.clock.fastForward(1700);
   await expect(page.locator(".dice-overlay")).toHaveAttribute("data-active", "false");
   await page.setViewportSize({ width: 390, height: 844 });
   await page.evaluate(
@@ -126,7 +130,7 @@ test("3D dice: room gate, preferences, all shapes, bounded desktop/mobile render
       ),
     replayAnimation
   );
-  await page.waitForTimeout(duration + 100);
+  await page.clock.fastForward(duration + 100);
   await page.screenshot({ path: testInfo.outputPath("dice-phone.png") });
   const phone = await page.locator(".dice-overlay").boundingBox();
   expect(phone!.width).toBeLessThanOrEqual(390);
@@ -134,6 +138,7 @@ test("3D dice: room gate, preferences, all shapes, bounded desktop/mobile render
   const composer = await page.locator(".chat-form").boundingBox();
   if (composer) expect(phone!.y + phone!.height).toBeLessThanOrEqual(composer.y + 1);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.clock.resume();
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.evaluate(
     (animation) =>
@@ -143,7 +148,7 @@ test("3D dice: room gate, preferences, all shapes, bounded desktop/mobile render
     animation
   );
   await expect(page.locator(".dice-caption")).toContainText("All standard dice");
-  await page.request.put("/api/me/dice", { data: { ...DEFAULT_DICE_PREFERENCES, enabled: false } });
+  await page.request.put("/api/me/dice", { data: { ...DEFAULT_DICE_PREFERENCES, enabled: false, theme: "shinji" } });
   await page.goto(`/?room=${roomId}`);
   await expect(page.locator(".table-shell")).toBeVisible();
   await page.evaluate(
@@ -154,7 +159,6 @@ test("3D dice: room gate, preferences, all shapes, bounded desktop/mobile render
     animation
   );
   await expect(page.locator(".dice-overlay")).toHaveAttribute("data-active", "false");
-  await page.request.put("/api/me/dice", { data: DEFAULT_DICE_PREFERENCES });
 });
 
 test("roll metadata respects server audiences, custom dice and fresh live delivery", async ({ page, browser }) => {
@@ -235,7 +239,6 @@ test("a device without WebGL still completes and displays its roll", async ({ pa
   const created = await (await page.request.post("/api/rooms", { data: { name: "Dice fallback", system } })).json();
   const roomId = created.room.id;
   await page.request.patch(`/api/rooms/${roomId}`, { data: { dice3dEnabled: true } });
-  await page.request.put("/api/me/dice", { data: DEFAULT_DICE_PREFERENCES });
   await page.addInitScript(() => {
     const getContext = HTMLCanvasElement.prototype.getContext;
     HTMLCanvasElement.prototype.getContext = function (type: string, ...args: any[]) {
