@@ -1,5 +1,5 @@
-import { useEffect, useRef } from "react";
-import { THEME_IDS, type ThemeId } from "@devils-toys/shared";
+import { useEffect, useRef, type ReactNode } from "react";
+import { DICE_THEMES, THEME_IDS, type ThemeId } from "@devils-toys/shared";
 
 export function ThemePalette({ theme }: { theme: ThemeId }) {
   return (
@@ -21,6 +21,68 @@ export function ThemePicker({
   value: ThemeId;
   names: Record<ThemeId, string>;
   onChange: (theme: ThemeId) => void;
+}) {
+  return (
+    <PalettePicker
+      value={value}
+      names={names}
+      options={THEME_IDS}
+      onChange={onChange}
+      label="Theme"
+      menuLabel="Themes"
+      palette={(theme) => <ThemePalette theme={theme} />}
+    />
+  );
+}
+
+export function DiceThemePicker({
+  value,
+  roomTheme,
+  onChange
+}: {
+  value: ThemeId | "room";
+  roomTheme: ThemeId;
+  onChange: (theme: ThemeId | "room") => void;
+}) {
+  const names = Object.fromEntries(THEME_IDS.map((id) => [id, DICE_THEMES[id].name])) as Record<ThemeId, string>;
+  return (
+    <PalettePicker
+      value={value}
+      names={{ room: "Match room theme", ...names }}
+      options={["room", ...THEME_IDS]}
+      onChange={onChange}
+      label="Dice theme"
+      menuLabel="Dice themes"
+      palette={(theme) => {
+        const set = DICE_THEMES[theme === "room" ? roomTheme : theme];
+        return (
+          <span className="theme-palette dice-theme-palette" aria-hidden="true">
+            <span style={{ background: set.body, color: set.ink }}>{theme === "room" && "Match room theme"}</span>
+            <span style={{ background: set.ink }} />
+            <span style={{ background: set.accent }} />
+          </span>
+        );
+      }}
+    />
+  );
+}
+
+function PalettePicker<T extends string>({
+  value,
+  names,
+  options,
+  onChange,
+  label,
+  menuLabel,
+  palette
+}: {
+  value: T;
+  names: Record<T, string>;
+  options: readonly T[];
+  onChange: (value: T) => void;
+  label: string;
+  menuLabel: string;
+  palette: (value: T) => ReactNode;
 }) {
   const picker = useRef<HTMLDetailsElement>(null);
 
@@ -46,11 +108,11 @@ export function ThemePicker({
         picker.current.querySelector("summary")?.focus();
       }}
     >
-      <summary aria-label={`Theme: ${names[value]}`} title={names[value]}>
-        <ThemePalette theme={value} />
+      <summary aria-label={`${label}: ${names[value]}`} title={names[value]}>
+        {palette(value)}
       </summary>
-      <div className="theme-picker-menu" role="listbox" aria-label="Themes">
-        {THEME_IDS.map((theme) => (
+      <div className="theme-picker-menu" role="listbox" aria-label={menuLabel}>
+        {options.map((theme) => (
           <button
             type="button"
             role="option"
@@ -67,7 +129,7 @@ export function ThemePicker({
               }
             }}
           >
-            <ThemePalette theme={theme} />
+            {palette(theme)}
           </button>
         ))}
       </div>

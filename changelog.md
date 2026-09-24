@@ -1,5 +1,7 @@
 # Changelog
 
+- Room settings places Dice theme directly below Theme, with matching swatch pickers. Dice swatches show the actual body, number, and accent colors.
+
 - Settled 3D dice remain visible for two seconds longer. When 3D dice are enabled, Room settings offers a default dice-theme picker; personal dice sets and custom colors still take precedence.
 
 - 3D dice now use server-side rigid-body physics to determine the result. Actual die shapes bounce, tumble, and collide; viewers replay the same recorded throw. Dice resting on an edge or an unnumbered end get another physical tumble, with no forced landing orientation or face relabeling.

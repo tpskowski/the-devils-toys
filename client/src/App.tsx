@@ -99,8 +99,8 @@ import { useHoverTip } from "./HoverTip";
 import { mediaLabel, sortMediaByLabel } from "./media-label";
 import { describeTraits } from "@devils-toys/shared";
 import { rollBodyParts } from "./weapon-roll";
-import { ThemePicker } from "./ThemePicker";
-import { DEFAULT_DICE_PREFERENCES, DICE_THEMES, type DicePreferences } from "@devils-toys/shared";
+import { ThemePicker, DiceThemePicker } from "./ThemePicker";
+import { DEFAULT_DICE_PREFERENCES, type DicePreferences } from "@devils-toys/shared";
 import { DiceOverlay } from "./DiceOverlay";
 import { receiveDice } from "./dice-events";
 interface SystemStatus {
@@ -2242,6 +2242,12 @@ export function RoomSettings({
             }}
           />
         </div>
+        {dice3dEnabled && (
+          <div className="theme-field room-dice-theme">
+            <span>Dice theme</span>
+            <DiceThemePicker value={dice3dTheme} roomTheme={theme} onChange={setDice3dTheme} />
+          </div>
+        )}
         <p className="modal-intro">The game system is fixed as {room.system}. Themes can change at any time.</p>
         <label className={`toggle-row ${calendarEnabled ? "enabled" : ""}`}>
           <span className="toggle-copy">
@@ -2307,27 +2313,6 @@ export function RoomSettings({
             <span aria-hidden="true" />
           </span>
         </label>
-        {dice3dEnabled && (
-          <div className="room-dice-theme">
-            <label>
-              Dice theme
-              <select
-                value={dice3dTheme}
-                onChange={(event) => setDice3dTheme(event.target.value as typeof dice3dTheme)}
-              >
-                <option value="room">Match room theme</option>
-                {Object.entries(DICE_THEMES).map(([id, set]) => (
-                  <option key={id} value={id}>
-                    {set.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <p className="modal-intro">
-              The default for this room. Each person can choose their own set in Your 3D dice.
-            </p>
-          </div>
-        )}
         {optionalRules.map((rule) =>
           rule.required ? (
             // A switch that cannot move is a lie, so a required rule is stated
