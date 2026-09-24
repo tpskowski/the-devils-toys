@@ -13,7 +13,7 @@ Status: Phase 1 implemented, 2026-09-23. The original design rationale follows; 
 - Custom dice are declarative numeric definitions: built-in templates or validated convex geometry, with repeated numeric values supported. Each roll carries a validated definition snapshot so an in-flight roll survives a system update. Selection is through the dice picker or roll API; custom expression syntax and symbol rules are outside Phase 1.
 - Reduced motion, unavailable WebGL, and context loss preserve textual results. There are no dice sounds or image textures in this phase.
 
-See [the player guide](guide/rolling-dice.md) and [custom-dice authoring](custom-dice.md) for the supported controls and data format.
+See [the player guide](guide/rolling-dice.md) and [custom-dice authoring](guide/admin/custom-dice.md) for the supported controls and data format.
 
 ## Direction
 

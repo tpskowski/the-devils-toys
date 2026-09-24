@@ -1,6 +1,6 @@
 # Game systems
 
-System authors can also declare [custom numeric dice and shapes](../../custom-dice.md)
+System authors can also declare [custom numeric dice and shapes](custom-dice.md)
 in `system.json`.
 
 [← Back to the admin guide](README.md)
