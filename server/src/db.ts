@@ -59,6 +59,7 @@ const roomsColumns = `
     map_notation_enabled INTEGER NOT NULL DEFAULT 0,
     music_enabled INTEGER NOT NULL DEFAULT 0,
     wiki_enabled INTEGER NOT NULL DEFAULT 1,
+    dice_3d_enabled INTEGER NOT NULL DEFAULT 0,
     created_by INTEGER NOT NULL REFERENCES accounts(id),
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP`;
 
@@ -597,6 +598,7 @@ if (
     "map_notation_enabled",
     "music_enabled",
     "wiki_enabled",
+    "dice_3d_enabled",
     "created_by",
     "created_at"
   ].filter((column) => hasColumn("rooms", column));
@@ -684,6 +686,13 @@ if (!hasColumn("rooms", "music_enabled")) {
 if (!hasColumn("rooms", "wiki_enabled")) {
   db.exec("ALTER TABLE rooms ADD COLUMN wiki_enabled INTEGER NOT NULL DEFAULT 1");
 }
+if (!hasColumn("rooms", "dice_3d_enabled")) {
+  db.exec("ALTER TABLE rooms ADD COLUMN dice_3d_enabled INTEGER NOT NULL DEFAULT 0");
+}
+db.exec(`CREATE TABLE IF NOT EXISTS dice_preferences (
+  account_id INTEGER PRIMARY KEY REFERENCES accounts(id) ON DELETE CASCADE,
+  settings_json TEXT NOT NULL
+)`);
 if (!hasColumn("accounts", "created_by"))
   db.exec("ALTER TABLE accounts ADD COLUMN created_by INTEGER REFERENCES accounts(id) ON DELETE SET NULL");
 if (!hasColumn("characters", "created_by"))

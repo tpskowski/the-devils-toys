@@ -8,6 +8,9 @@ import {
   SYSTEM_RULE_FEATURES,
   SYSTEM_RULE_ID,
   THEME_IDS,
+  invalidDiceGeometry,
+  faceNormal,
+  vDot,
   creationSteps,
   type CharacterCreationDefinition,
   type GameSystem,
@@ -625,6 +628,74 @@ const characterCreation = z
     { message: "Two creation steps share an id; a half-built character records what it has done against those ids." }
   );
 
+const customDie = z
+  .object({
+    id: z.string().regex(/^[a-z][a-z0-9-]{0,31}$/),
+    name: z.string().trim().min(1).max(60),
+    shape: z
+      .union([
+        z.literal(3),
+        z.literal(4),
+        z.literal(5),
+        z.literal(6),
+        z.literal(7),
+        z.literal(8),
+        z.literal(10),
+        z.literal(12),
+        z.literal(14),
+        z.literal(16),
+        z.literal(20),
+        z.literal(24),
+        z.literal(30)
+      ])
+      .optional(),
+    geometry: z
+      .object({
+        vertices: z
+          .array(
+            z.tuple([
+              z.number().finite().min(-10).max(10),
+              z.number().finite().min(-10).max(10),
+              z.number().finite().min(-10).max(10)
+            ])
+          )
+          .min(4)
+          .max(64),
+        faces: z
+          .array(z.array(z.number().int().min(0).max(63)).min(3).max(32))
+          .min(4)
+          .max(64)
+      })
+      .strict()
+      .optional(),
+    resultFaces: z.array(z.number().int().min(0).max(63)).min(2).max(64).optional(),
+    values: z.array(z.number().int().min(-999).max(999)).min(2).max(64)
+  })
+  .strict()
+  .superRefine((die, ctx) => {
+    const fail = (message: string) => ctx.addIssue({ code: z.ZodIssueCode.custom, message });
+    if (Boolean(die.shape) === Boolean(die.geometry)) return fail("Choose one built-in shape or a custom geometry.");
+    if (die.shape) {
+      if (die.resultFaces || die.values.length !== die.shape)
+        fail("A template needs one numeric value per outcome and no resultFaces.");
+    } else if (die.geometry) {
+      const invalid = invalidDiceGeometry(die.geometry);
+      if (invalid) return fail(invalid);
+      if (
+        !die.resultFaces ||
+        die.resultFaces.length !== die.values.length ||
+        new Set(die.resultFaces).size !== die.resultFaces.length ||
+        die.resultFaces.some((i) => i >= die.geometry!.faces.length)
+      )
+        return fail("Map each numeric outcome to a distinct result face.");
+      for (const index of die.resultFaces) {
+        const normal = faceNormal(die.geometry, die.geometry.faces[index]);
+        if (!die.geometry.faces.some((face) => vDot(normal, faceNormal(die.geometry!, face)) < -0.99999))
+          return fail("Each custom result face needs a parallel opposite face for a stable face-up landing.");
+      }
+    }
+  });
+
 export const gameSystemSchema = z
   .object({
     id: z.string().regex(SYSTEM_ID_PATTERN, "A system id is lowercase, starts with a letter, and is 2-32 characters."),
@@ -668,6 +739,16 @@ export const gameSystemSchema = z
       })
       .optional(),
     characterCreation: characterCreation.optional(),
+    dice3d: z
+      .object({
+        version: z.literal(1),
+        dice: z
+          .array(customDie)
+          .max(24)
+          .refine((dice) => new Set(dice.map((die) => die.id)).size === dice.length, "Custom dice ids must be unique.")
+      })
+      .strict()
+      .optional(),
     dice
   })
   .strict();

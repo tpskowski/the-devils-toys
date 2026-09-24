@@ -25,6 +25,7 @@ import { rollDice } from "./dice.js";
 import { roomHirelings } from "./group.js";
 import { groupRow, publicHireling, type SheetRow } from "./group-rows.js";
 import { broadcastRoom } from "./realtime.js";
+import { presentDice } from "./dice-3d.js";
 import { npcCatalog, validateStatblock } from "./npcs.js";
 import { parseNpcStatblock } from "./npc-statblocks.js";
 import { systemOrThrow } from "./systems.js";
@@ -1106,13 +1107,17 @@ encounterRouter.post(
     }, 0);
 
     const update = db.prepare("UPDATE encounter_sides SET initiative = ? WHERE encounter_id = ? AND side = ?");
+    const diceAnimations = [];
     for (const side of sidesFor(existing.context.system)) {
       const modifier = side.id === "party" && rules.roll.modifierFrom === "best-dex" ? bestPartyDex : 0;
       const expression = `${rules.roll.dice}${modifier ? (modifier > 0 ? `+${modifier}` : String(modifier)) : ""}`;
-      update.run(rollDice(expression).total, existing.encounter.id, side.id);
+      const rolled = rollDice(expression);
+      update.run(rolled.total, existing.encounter.id, side.id);
+      // Initiative includes unrevealed enemy sides, so effects are GM-only.
+      diceAnimations.push(...presentDice(roomId, req.account!.id, rolled, "roller-and-gms", `${side.id} initiative`));
     }
     broadcastRoom(roomId, { type: "encounters-updated" });
-    res.json({ encounter: visibleEncounter(req.account!.id, roomId, existing.encounter.id) });
+    res.json({ encounter: visibleEncounter(req.account!.id, roomId, existing.encounter.id), diceAnimations });
   }
 );
 

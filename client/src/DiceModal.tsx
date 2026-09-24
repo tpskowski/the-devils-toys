@@ -1,9 +1,11 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { BookOpen, Dices } from "lucide-react";
 import type { ChatMessage, DiceRules, SavePosition } from "@devils-toys/shared";
 import { api } from "./api";
 import { Modal } from "./Modal";
 import type { SaveRollSetup } from "./save-roll";
+import { SUPPORTED_DIE_SIDES, type CustomDie, type DicePreferences, type ThemeId } from "@devils-toys/shared";
+import { DicePreferencesPanel } from "./DicePreferencesPanel";
 
 type RollMode = "dice" | "save" | "skill" | "damage";
 type DamagePosition = "normal" | "impaired" | "enhanced";
@@ -27,7 +29,11 @@ export function DiceModal({
   initialSave,
   onRolled,
   onClose,
-  onRules
+  onRules,
+  preferences,
+  onPreferences,
+  theme = "heroic",
+  room3dEnabled = false
 }: {
   roomId: number;
   diceRules: DiceRules;
@@ -36,10 +42,30 @@ export function DiceModal({
   onRolled: (message: ChatMessage) => void;
   onClose: () => void;
   onRules: () => void;
+  preferences?: DicePreferences;
+  onPreferences?: (preferences: DicePreferences) => void;
+  theme?: ThemeId;
+  room3dEnabled?: boolean;
 }) {
   const [mode, setMode] = useState<RollMode>(initialSave ? "save" : "dice");
   const [count, setCount] = useState(1);
-  const [sides, setSides] = useState(20);
+  const [sides, setSides] = useState<number | "%10">(20);
+  const [customDice, setCustomDice] = useState<CustomDie[]>([]);
+  const [customId, setCustomId] = useState("");
+  const [appearanceOpen, setAppearanceOpen] = useState(false);
+  const [rolling, setRolling] = useState(false);
+  useEffect(() => {
+    let stopped = false;
+    void api<{ dice: CustomDie[] }>(`/api/rooms/${roomId}/dice`)
+      .then(({ dice }) => {
+        if (!stopped) setCustomDice(dice);
+      })
+      .catch(() => {});
+    return () => {
+      stopped = true;
+    };
+  }, [roomId]);
+  const selectedCustom = mode === "dice" ? customDice.find((die) => die.id === customId) : undefined;
   const [modifier, setModifier] = useState(0);
   const [selection, setSelection] = useState<Selection>("");
   const [saveLabel, setSaveLabel] = useState(initialSave?.label ?? diceRules.save.types[0]?.label ?? "Save");
@@ -62,17 +88,27 @@ export function DiceModal({
             ? (diceRules.damage?.impairedSides ?? 4)
             : (diceRules.damage?.enhancedSides ?? 12)
           : sides;
-  const rollSelection = mode === "damage" && rollCount > 1 ? "kh1" : mode === "dice" && rollCount > 1 ? selection : "";
-  const rollModifier = mode === "save" ? 0 : modifier;
+  const rollSelection =
+    rollSides === "%10"
+      ? ""
+      : mode === "damage" && rollCount > 1
+        ? "kh1"
+        : mode === "dice" && rollCount > 1
+          ? selection
+          : "";
+  const rollModifier = mode === "save" || rollSides === "%10" ? 0 : modifier;
   const expression = `${rollCount}d${rollSides}${rollSelection}${rollModifier ? `${rollModifier > 0 ? "+" : ""}${rollModifier}` : ""}`;
 
   async function roll() {
     setError("");
+    setRolling(true);
     try {
       const response = await api<{ message: ChatMessage }>(`/api/rooms/${roomId}/rolls`, {
         method: "POST",
         body: JSON.stringify({
-          expression,
+          expression: selectedCustom ? undefined : expression,
+          customDie: selectedCustom?.id,
+          count: selectedCustom ? count : undefined,
           private: visibility !== "public",
           invisible: visibility === "invisible",
           save: mode === "save" ? { target, label: saveLabel, position: savePosition } : undefined,
@@ -82,6 +118,8 @@ export function DiceModal({
       onRolled(response.message);
     } catch (cause) {
       setError((cause as Error).message);
+    } finally {
+      setRolling(false);
     }
   }
 
@@ -97,7 +135,14 @@ export function DiceModal({
               ...(diceRules.damage ? (["damage"] as const) : [])
             ] as RollMode[]
           ).map((item) => (
-            <button key={item} className={mode === item ? "selected" : ""} onClick={() => setMode(item)}>
+            <button
+              key={item}
+              className={mode === item ? "selected" : ""}
+              onClick={() => {
+                setMode(item);
+                if (item !== "dice" && sides === "%10") setSides(10);
+              }}
+            >
               {item === "dice" ? "Free roll" : item === "save" ? "Save" : item === "skill" ? "Skill check" : "Damage"}
             </button>
           ))}
@@ -202,13 +247,38 @@ export function DiceModal({
                 ))}
               </div>
             )}
-            {(mode === "dice" || damagePosition === "normal") && (
+            {mode === "dice" && customDice.length > 0 && (
+              <label className="dice-custom-select">
+                System die
+                <select value={customId} onChange={(e) => setCustomId(e.target.value)}>
+                  <option value="">Standard dice</option>
+                  {customDice.map((die) => (
+                    <option key={die.id} value={die.id}>
+                      {die.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+            {!selectedCustom && (mode === "dice" || damagePosition === "normal") && (
               <div className="die-row">
-                {[4, 6, 8, 10, 12, 20, 44, 66, 100].map((die) => (
+                {[...SUPPORTED_DIE_SIDES].reverse().map((die) => (
                   <button key={die} className={sides === die ? "selected" : ""} onClick={() => setSides(die)}>
                     d{die}
                   </button>
                 ))}
+                {mode === "dice" && (
+                  <button
+                    className={sides === "%10" ? "selected" : ""}
+                    onClick={() => {
+                      setSides("%10");
+                      setSelection("");
+                      setModifier(0);
+                    }}
+                  >
+                    d%10
+                  </button>
+                )}
               </div>
             )}
             {mode === "damage" && damagePosition !== "normal" && (
@@ -216,7 +286,7 @@ export function DiceModal({
                 {damagePosition === "impaired" ? "Impaired damage uses d4." : "Enhanced damage uses d12."}
               </p>
             )}
-            {mode === "dice" && count > 1 && (
+            {mode === "dice" && count > 1 && !selectedCustom && sides !== "%10" && (
               <label>
                 Combine
                 <select value={selection} onChange={(event) => setSelection(event.target.value as Selection)}>
@@ -231,16 +301,18 @@ export function DiceModal({
                 Multiple attackers, bonus damage, and dual weapons keep the single highest die.
               </p>
             )}
-            <label>
-              Modifier
-              <input
-                type="number"
-                min={-100}
-                max={100}
-                value={modifier}
-                onChange={(event) => setModifier(Number(event.target.value))}
-              />
-            </label>
+            {!selectedCustom && sides !== "%10" && (
+              <label>
+                Modifier
+                <input
+                  type="number"
+                  min={-100}
+                  max={100}
+                  value={modifier}
+                  onChange={(event) => setModifier(Number(event.target.value))}
+                />
+              </label>
+            )}
           </>
         )}
 
@@ -277,9 +349,29 @@ export function DiceModal({
         <button className="rules-link" type="button" onClick={onRules}>
           <BookOpen /> Read rolling rules
         </button>
-        <button className="primary-button" onClick={roll}>
-          <Dices /> Roll {expression}
+        <button className="primary-button" onClick={roll} disabled={rolling}>
+          <Dices /> {rolling ? "Rolling…" : `Roll ${selectedCustom ? `${count} × ${selectedCustom.name}` : expression}`}
         </button>
+        {preferences && onPreferences && (
+          <>
+            <button
+              type="button"
+              className="dice-appearance-toggle"
+              aria-expanded={appearanceOpen}
+              onClick={() => setAppearanceOpen(!appearanceOpen)}
+            >
+              Your 3D dice {appearanceOpen ? "−" : "+"}
+            </button>
+            {appearanceOpen && (
+              <DicePreferencesPanel
+                preferences={preferences}
+                onChanged={onPreferences}
+                theme={theme}
+                roomEnabled={room3dEnabled}
+              />
+            )}
+          </>
+        )}
       </div>
     </Modal>
   );

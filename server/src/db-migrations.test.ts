@@ -514,6 +514,27 @@ describe("database migrations", () => {
     const reopened = await openDatabase(directory);
     expect(reopened.all("SELECT group_revision FROM room_state WHERE room_id = 1")).toEqual([{ group_revision: 7 }]);
   });
+
+  it("adds the 3D dice switch to an existing current-schema room and preserves its value on restart", async () => {
+    const directory = dataDir();
+    const fresh = await openDatabase(directory);
+    fresh.db.exec("ALTER TABLE rooms DROP COLUMN dice_3d_enabled");
+    fresh.db.close();
+    opened.splice(opened.indexOf(fresh), 1);
+    const migrated = await openDatabase(directory);
+    expect(
+      migrated.all<{ name: string }>("PRAGMA table_info(rooms)").some((column) => column.name === "dice_3d_enabled")
+    ).toBe(true);
+    migrated.db.exec(
+      "INSERT INTO accounts (id,username,password_hash) VALUES (1,'dice-migration','unused'); INSERT INTO systems (id,name,origin) VALUES ('migration','Migration','installed'); INSERT INTO rooms (id,name,system,theme,created_by) VALUES (1,'Dice','migration','heroic',1)"
+    );
+    expect(migrated.all<{ dice_3d_enabled: number }>("SELECT dice_3d_enabled FROM rooms")[0].dice_3d_enabled).toBe(0);
+    migrated.db.exec("UPDATE rooms SET dice_3d_enabled=1");
+    migrated.db.close();
+    opened.splice(opened.indexOf(migrated), 1);
+    const restarted = await openDatabase(directory);
+    expect(restarted.all<{ dice_3d_enabled: number }>("SELECT dice_3d_enabled FROM rooms")[0].dice_3d_enabled).toBe(1);
+  });
   it("waits for the other application when both open the shared database", async () => {
     const directory = dataDir();
     const lock = await holdDatabaseLock(directory);

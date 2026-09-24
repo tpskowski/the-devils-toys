@@ -81,7 +81,7 @@ describe("turning CSV into tables", () => {
   });
 
   it("refuses a die it cannot roll", () => {
-    const { problems: found } = tablesFromCsv("table,dice,tags,roll,Result\nOmens,d7,,1,a\n");
+    const { problems: found } = tablesFromCsv("table,dice,tags,roll,Result\nOmens,d9,,1,a\n");
     expect(found[0].message).toContain("not a die this can roll");
   });
 

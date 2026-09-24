@@ -39,7 +39,7 @@ describe("installed table validation", () => {
     { tags: "fantasy" },
     { tags: [null] },
     { columns: [] },
-    { dice: "d7" },
+    { dice: "d9" },
     { rows: [null] },
     { rows: [{ label: "1", min: 1, max: 1, cells: [12] }] },
     { rows: [{ label: "1", min: 2, max: 1, cells: ["Invalid"] }] },
@@ -66,7 +66,7 @@ describe("custom table JSON compatibility", () => {
       vocabulary
     );
     expect(normalized.dice).toBe("d5");
-    expect(() => normalizeCustomTables([{ ...table, dice: "d7" }], vocabulary)).toThrow(
+    expect(() => normalizeCustomTables([{ ...table, dice: "d9" }], vocabulary)).toThrow(
       /invalid name, die, or columns/
     );
   });

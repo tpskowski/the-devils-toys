@@ -33,7 +33,7 @@ import {
 } from "@devils-toys/shared";
 import { characterItemsFor } from "./character-items.js";
 import { characterVicesFor } from "./character-vices.js";
-import { evaluateSave, rollDice } from "./dice.js";
+import { diceRandom, evaluateSave, rollDice, type DiceResult } from "./dice.js";
 import { compactEntry, compactTables, parseCompactRollTables, type CompactRollTable } from "./roll-tables.js";
 import { systemMarkdown, systemOrThrow } from "./systems.js";
 
@@ -111,6 +111,8 @@ export interface CreationRunContext {
   /** Defaults to the system's own installed tables. */
   tables?: CreationTableSource;
   random?: () => number;
+  /** Collect live dice at the calling route; never broadcast from the engine. */
+  onRoll?: (roll: DiceResult) => void;
   /**
    * What the player picked rather than left to the dice: a packet's section, or
    * the table a `roll-table` entry declaring `choose` is rolled on.
@@ -139,7 +141,7 @@ export function performCreationStep(step: CreationStep, context: CreationRunCont
   const run: Run = {
     step,
     context,
-    random: context.random ?? Math.random,
+    random: context.random ?? diceRandom,
     definition: () => (definition ??= systemOrThrow(context.system)),
     rolled: [],
     set: {},
@@ -199,9 +201,15 @@ function perform(run: Run): PartialOutcome {
 /* roll-scores                                                                  */
 /* -------------------------------------------------------------------------- */
 
+function rollForCreation(run: Run, expression: string) {
+  const result = rollDice(expression, run.random);
+  run.context.onRoll?.(result);
+  return result;
+}
+
 function performRollScores(run: Run, step: CreationRollScoresStep): PartialOutcome {
   const scores = step.scores.map((score) => {
-    const roll = rollDice(score.dice, run.random);
+    const roll = rollForCreation(run, score.dice);
     run.rolled.push({ label: score.label, expression: roll.expression, total: roll.total, detail: roll.detail });
     return { label: score.label, currentKey: score.currentKey, maximumKey: score.maximumKey, total: roll.total };
   });
@@ -309,7 +317,7 @@ function rollTableEntry(
       fromStep: entry.fromStep
     };
   } else {
-    const roll = rollDice(table.dice, run.random);
+    const roll = rollForCreation(run, table.dice);
     total = roll.total;
     record = { label: table.name, expression: roll.expression, total, detail: roll.detail, table: table.name };
   }
@@ -557,7 +565,7 @@ function performPacket(run: Run, step: CreationPacketStep): PartialOutcome {
     if (!chosen) throw new Error(`"${run.context.choice}" is not one of the sections under "${step.under}".`);
   } else {
     if (!step.dice) throw new Error(`The "${step.id}" step is chosen rather than rolled.`);
-    const roll = rollDice(step.dice, run.random);
+    const roll = rollForCreation(run, step.dice);
     total = roll.total;
     chosen = options[roll.total - 1];
     if (!chosen)
@@ -669,7 +677,7 @@ function performGrant(run: Run, step: CreationGrantStep): PartialOutcome {
     run.stow.push({ key: step.listKey, items });
   }
   for (const roll of step.roll ?? []) {
-    const result = rollDice(roll.dice, run.random);
+    const result = rollForCreation(run, roll.dice);
     run.rolled.push({ label: roll.label, expression: result.expression, total: result.total, detail: result.detail });
     run.set[roll.field] = result.total;
   }
@@ -686,7 +694,7 @@ function performSave(run: Run, step: CreationSaveStep): PartialOutcome {
   const target = Number(run.context.sheet[step.key]);
   if (!Number.isInteger(target) || target < 1 || target > rules.save.sides)
     throw new Error(`This save is rolled against "${step.key}", which the sheet has no score in yet.`);
-  const roll = rollDice(`d${rules.save.sides}`, run.random);
+  const roll = rollForCreation(run, `d${rules.save.sides}`);
   const outcome = evaluateSave(roll.total, target, "normal", rules);
   run.rolled.push({
     label: step.label,
@@ -1104,7 +1112,7 @@ function choose<T>(values: readonly T[], random: () => number): T | undefined {
 export function rollHirelingCreation(
   definition: HirelingCreationRoll,
   source: HirelingCreationSource,
-  random: () => number = Math.random,
+  random: () => number = diceRandom,
   /** Where the starting weapon is stowed, so it can be drawn like any other. */
   weaponList?: string
 ) {

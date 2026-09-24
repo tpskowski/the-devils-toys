@@ -76,7 +76,7 @@ describe("dice expressions", () => {
   });
 
   it("still refuses a die it does not have", () => {
-    expect(() => rollDice("d7")).toThrow(/dice expression/);
+    expect(() => rollDice("d9")).toThrow(/dice expression/);
     expect(() => rollDice("d50")).toThrow(/dice expression/);
   });
 
@@ -120,7 +120,7 @@ describe("dice expressions", () => {
   });
 
   it("rejects unsupported dice and invalid selectors", () => {
-    expect(() => rollDice("1d3")).toThrow();
+    expect(() => rollDice("1d2")).toThrow();
     expect(() => rollDice("2d6kh3")).toThrow();
     expect(() => rollDice("2d6dl2")).toThrow();
   });

@@ -1,5 +1,9 @@
+import { randomInt } from "node:crypto";
 import { DIE_SIDES_PATTERN } from "@devils-toys/shared";
-import type { DiceRules, SavePosition } from "@devils-toys/shared";
+import type { CustomDie, DiceRules, DiceShape, PresentedDie, SavePosition } from "@devils-toys/shared";
+
+/** 32 unbiased random bits, also usable by creation's non-dice choices. */
+export const diceRandom = () => randomInt(0, 2 ** 32) / 2 ** 32;
 
 export interface DiceResult {
   expression: string;
@@ -9,6 +13,7 @@ export interface DiceResult {
   droppedRolls: number[];
   modifier: number;
   detail: string;
+  dice: PresentedDie[];
 }
 
 export interface SaveOutcome {
@@ -32,8 +37,33 @@ function selectedIndexes(rolls: number[], selector?: string, selectorCount = 1) 
   return new Set(indexed.filter(({ index }) => !affected.has(index)).map(({ index }) => index));
 }
 
-export function rollDice(input: string, random = Math.random): DiceResult {
-  const expression = input.trim().toLowerCase().replace(/\s+/g, "");
+export function rollDice(input: string, random?: () => number): DiceResult {
+  const expression = input
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "")
+    .replace(/d%(?!10)/, "d100");
+  const tens = /^(\d{0,2})d%10$/.exec(expression);
+  if (tens) {
+    const rolled = rollDice(`${tens[1]}d10`, random);
+    const rolls = rolled.rolls.map((value) => (value - 1) * 10);
+    return {
+      ...rolled,
+      expression: `${rolls.length}d%10`,
+      rolls,
+      keptRolls: rolls,
+      total: rolls.reduce((a, b) => a + b, 0),
+      detail: `[${rolls.map((v) => String(v).padStart(2, "0")).join(", ")}]`,
+      dice: rolled.dice.map((die, i) => ({
+        ...die,
+        definition: "d%10",
+        value: rolls[i],
+        face: rolls[i] / 10,
+        role: "tens",
+        labels: [0, 10, 20, 30, 40, 50, 60, 70, 80, 90]
+      }))
+    };
+  }
   const match = new RegExp(`^(\\d{0,2})d(${DIE_SIDES_PATTERN})(?:(kh|kl|dh|dl)(\\d{0,2}))?([+-]\\d{1,3})?$`).exec(
     expression
   );
@@ -51,9 +81,10 @@ export function rollDice(input: string, random = Math.random): DiceResult {
 
   const compoundSides = sides === 44 ? 4 : sides === 66 ? 6 : undefined;
   const componentRolls: number[][] = [];
+  const draw = (sides: number) => (random ? Math.floor(random() * sides) + 1 : randomInt(1, sides + 1));
   const rolls = Array.from({ length: count }, () => {
-    if (!compoundSides) return Math.floor(random() * sides) + 1;
-    const digits = [Math.floor(random() * compoundSides) + 1, Math.floor(random() * compoundSides) + 1];
+    if (!compoundSides) return draw(sides);
+    const digits = [draw(compoundSides), draw(compoundSides)];
     componentRolls.push(digits);
     return digits[0] * 10 + digits[1];
   });
@@ -76,7 +107,69 @@ export function rollDice(input: string, random = Math.random): DiceResult {
     keptRolls,
     droppedRolls,
     modifier,
-    detail
+    detail,
+    dice: rolls.flatMap((value, group): PresentedDie[] => {
+      const common = { kept: keptIndexes.has(group), group };
+      if (compoundSides)
+        return componentRolls[group].map((v, i) => ({
+          ...common,
+          definition: `d${compoundSides}`,
+          shape: compoundSides,
+          face: v - 1,
+          value: v,
+          role: i ? "units" : "tens"
+        }));
+      if (sides === 100)
+        return [
+          {
+            ...common,
+            definition: "d%10",
+            shape: 10,
+            face: Math.floor((value % 100) / 10),
+            value: Math.floor((value % 100) / 10) * 10,
+            role: "tens",
+            labels: [0, 10, 20, 30, 40, 50, 60, 70, 80, 90]
+          },
+          {
+            ...common,
+            definition: "d%1",
+            shape: 10,
+            face: value % 10,
+            value: value % 10,
+            role: "units",
+            labels: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+          }
+        ];
+      return [{ ...common, definition: `d${sides}`, shape: sides as DiceShape, face: value - 1, value }];
+    })
+  };
+}
+
+export function rollCustomDie(systemId: string, die: CustomDie, count = 1, random?: () => number): DiceResult {
+  if (!Number.isInteger(count) || count < 1 || count > 20) throw new Error("Roll between 1 and 20 dice.");
+  const dice: PresentedDie[] = Array.from({ length: count }, (_, group) => {
+    const face = random ? Math.floor(random() * die.values.length) : randomInt(die.values.length);
+    return {
+      definition: `${systemId}:${die.id}`,
+      shape: die.shape ?? 6,
+      face,
+      value: die.values[face],
+      kept: true,
+      group,
+      labels: die.values,
+      custom: die
+    };
+  });
+  const rolls = dice.map((die) => die.value);
+  return {
+    expression: `${count} × ${die.name}`,
+    rolls,
+    keptRolls: rolls,
+    droppedRolls: [],
+    modifier: 0,
+    total: rolls.reduce((a, b) => a + b, 0),
+    detail: `[${rolls.join(", ")}]`,
+    dice
   };
 }
 

@@ -12,7 +12,8 @@ import type { AuthedRequest } from "./auth.js";
 import { requireAuth, roomRole } from "./auth.js";
 import { db, one } from "./db.js";
 import { availableSets, findSet, tablesForSystem } from "./table-sets.js";
-import { rollDice } from "./dice.js";
+import { rollDice, type DiceResult } from "./dice.js";
+import { presentDice, type DiceAudience } from "./dice-3d.js";
 import { inGameDisplayName } from "./display-name.js";
 import { rowForRoll, rowText } from "./roll-tables.js";
 import { broadcastRoom, sendToRoomGms, sendToRoomPlayers } from "./realtime.js";
@@ -136,9 +137,9 @@ export function rollTableSequence(
   first: RollTable,
   visibility: TableRollVisibility,
   modifier = 0,
-  random = Math.random
+  random?: () => number
 ) {
-  const sequence: TableRollResult[] = [];
+  const sequence: (TableRollResult & { diceResult: DiceResult })[] = [];
   const visited = new Set<string>();
   let table: RollTable | undefined = first;
   while (table && sequence.length < 20 && !visited.has(table.id)) {
@@ -154,6 +155,7 @@ export function rollTableSequence(
       dice: table.dice,
       total: rolled.total,
       detail: rolled.detail,
+      diceResult: rolled,
       row,
       text: rowText(table, row),
       visibility
@@ -233,18 +235,20 @@ tableRouter.post("/rooms/:roomId/tables/roll", requireAuth, (req: AuthedRequest,
   const headline = sequenceHeadline(sequence);
   const resultText = sequenceText(sequence);
   const rolled = { total: roll.total, detail: sequence.map((entry) => entry.detail).join(" · ") };
+  const animate = (audience: DiceAudience) =>
+    sequence.flatMap((entry) => presentDice(roomId, req.account!.id, entry.diceResult, audience, entry.tableName));
 
   if (visibility === "public") {
     const message = privateTableMessage(roomId, req.account!.id, label, rolled, resultText, "private", headline);
     const notice = publicTableMessage(roomId, req.account!.id, DEFAULT_TABLE_ROLL_NOTICE, null);
     sendToRoomGms(roomId, { type: "message", message });
     sendToRoomPlayers(roomId, { type: "message", message: notice });
-    return res.status(201).json({ roll, followUps, message, private: true });
+    return res.status(201).json({ roll, followUps, message, private: true, diceAnimations: animate("roller-and-gms") });
   }
   if (visibility === "reveal") {
     const message = publicTableMessage(roomId, req.account!.id, headline, resultText || rolled.detail);
     broadcastRoom(roomId, { type: "message", message });
-    return res.status(201).json({ roll, followUps, message });
+    return res.status(201).json({ roll, followUps, message, diceAnimations: animate("room") });
   }
 
   // Private and invisible rolls stay in the GM's own log; only a private roll
@@ -254,5 +258,5 @@ tableRouter.post("/rooms/:roomId/tables/roll", requireAuth, (req: AuthedRequest,
     const notice = publicTableMessage(roomId, req.account!.id, `Rolled privately on ${table.name}`, null);
     broadcastRoom(roomId, { type: "message", message: notice });
   }
-  res.status(201).json({ roll, followUps, message, private: true });
+  res.status(201).json({ roll, followUps, message, private: true, diceAnimations: animate("roller") });
 });
