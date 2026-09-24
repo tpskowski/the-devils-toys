@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { DICE_SHAPES, DICE_THEMES, DEFAULT_DICE_PREFERENCES } from "../shared/src/dice-3d";
+import { DICE_SHAPES, DICE_THEMES, DEFAULT_DICE_PREFERENCES, diceAppearance } from "../shared/src/dice-3d";
 import { prepareTable } from "./setup";
 import { bundleSystemRepo, MINIMAL_SYSTEM } from "../scripts/harness.mjs";
 import { simulateDice } from "../shared/src/dice-physics";
@@ -20,11 +20,22 @@ test("3D dice: room gate, preferences, all shapes, bounded desktop/mobile render
   await page.goto("/");
   await page.getByRole("button", { name: "Open 3D Dice Workshop, Game master" }).click();
   await page.getByTitle("Room settings", { exact: true }).click();
+  await expect(page.getByRole("combobox", { name: "Dice theme", exact: true })).toHaveCount(0);
   await page.getByRole("checkbox", { name: /^3D dice / }).check();
+  await page.getByRole("combobox", { name: "Dice theme", exact: true }).selectOption("grim");
+  await page.getByRole("checkbox", { name: /^3D dice / }).uncheck();
+  await expect(page.getByRole("combobox", { name: "Dice theme", exact: true })).toHaveCount(0);
+  await page.getByRole("checkbox", { name: /^3D dice / }).check();
+  await expect(page.getByRole("combobox", { name: "Dice theme", exact: true })).toHaveValue("grim");
+  await page.screenshot({ path: testInfo.outputPath("dice-room-settings.png") });
   await page.getByRole("button", { name: "Save changes", exact: true }).click();
   await expect
     .poll(async () => (await (await page.request.get(`/api/rooms/${roomId}`)).json()).room.dice3dEnabled)
     .toBe(true);
+  expect((await (await page.request.get(`/api/rooms/${roomId}`)).json()).room.dice3dTheme).toBe("grim");
+  await page.getByTitle("Room settings", { exact: true }).click();
+  await expect(page.getByRole("combobox", { name: "Dice theme", exact: true })).toHaveValue("grim");
+  await page.getByRole("button", { name: "Close", exact: true }).click();
   await page.getByRole("button", { name: "Roll dice", exact: true }).click();
   await page.getByRole("button", { name: "Your 3D dice", exact: false }).click();
   await page.getByRole("combobox", { name: "Dice set", exact: true }).selectOption("shinji");
@@ -84,8 +95,11 @@ test("3D dice: room gate, preferences, all shapes, bounded desktop/mobile render
   expect(tray!.y).toBeCloseTo(bounds!.y, 0);
   expect(tray!.width).toBeCloseTo(bounds!.width, 0);
   expect(tray!.height).toBeCloseTo(Math.min(bounds!.y + bounds!.height, page.viewportSize()!.height) - bounds!.y, 0);
+  await page.waitForTimeout(2100);
+  await expect(page.locator(".dice-overlay")).toHaveAttribute("data-active", "true");
+  await page.waitForTimeout(1700);
+  await expect(page.locator(".dice-overlay")).toHaveAttribute("data-active", "false");
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.waitForTimeout(1650);
   await page.evaluate(
     (animation) =>
       window.dispatchEvent(
@@ -130,7 +144,7 @@ test("roll metadata respects server audiences, custom dice and fresh live delive
   const system = await prepareTable(page.request);
   const created = await page.request.post("/api/rooms", { data: { name: "Dice Privacy", system } });
   const roomId = (await created.json()).room.id;
-  await page.request.patch(`/api/rooms/${roomId}`, { data: { dice3dEnabled: true } });
+  await page.request.patch(`/api/rooms/${roomId}`, { data: { dice3dEnabled: true, dice3dTheme: "grim" } });
   const invitation = await (
     await page.request.post(`/api/rooms/${roomId}/invitations`, { data: { username: "Dice3DPlayer" } })
   ).json();
@@ -146,6 +160,10 @@ test("roll metadata respects server audiences, custom dice and fresh live delive
     window.addEventListener("devils-dice-roll", (e) => (window as any).diceEvents.push((e as CustomEvent).detail));
   });
   expect((await context.request.patch(`/api/rooms/${roomId}`, { data: { dice3dEnabled: false } })).status()).toBe(403);
+  expect((await context.request.patch(`/api/rooms/${roomId}`, { data: { dice3dTheme: "digital" } })).status()).toBe(
+    403
+  );
+  expect((await page.request.patch(`/api/rooms/${roomId}`, { data: { dice3dTheme: "unknown" } })).status()).toBe(400);
   const publicRoll = await (
     await page.request.post(`/api/rooms/${roomId}/rolls`, { data: { expression: "d100" } })
   ).json();
@@ -156,6 +174,7 @@ test("roll metadata respects server audiences, custom dice and fresh live delive
     publicRoll.diceAnimations[0].physics
   );
   expect(publicRoll.roll.physics).toBeUndefined();
+  expect(publicRoll.diceAnimations[0].appearance).toEqual(diceAppearance(DEFAULT_DICE_PREFERENCES, "grim"));
   await page.request.post(`/api/rooms/${roomId}/rolls`, { data: { expression: "d20", private: true } });
   await page.request.post(`/api/rooms/${roomId}/rolls`, { data: { expression: "d20", invisible: true } });
   await player.waitForTimeout(250);

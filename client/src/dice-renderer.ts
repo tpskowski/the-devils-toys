@@ -207,7 +207,7 @@ export class DiceRenderer {
       if (this.disposed) return;
       const elapsed = now - started,
         settled = elapsed >= duration;
-      const fade = hold ? 1 : Math.max(0, Math.min(1, (duration + 1650 - elapsed) / 350));
+      const fade = hold ? 1 : Math.max(0, Math.min(1, (duration + 3650 - elapsed) / 350));
       this.host.style.opacity = String(fade);
       for (const [index, die] of objects.entries()) {
         const scale = Math.max(0.01, Math.min((this.width - 24) / motion.width, (this.height - 24) / motion.height));
@@ -232,7 +232,7 @@ export class DiceRenderer {
         });
       }
       this.renderer.render(this.scene, this.camera);
-      if (elapsed < duration + 1650) this.frame = requestAnimationFrame(update);
+      if (elapsed < duration + 3650) this.frame = requestAnimationFrame(update);
       else {
         if (!hold) this.clear();
         onDone();

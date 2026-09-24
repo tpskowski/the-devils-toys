@@ -60,6 +60,7 @@ const roomsColumns = `
     music_enabled INTEGER NOT NULL DEFAULT 0,
     wiki_enabled INTEGER NOT NULL DEFAULT 1,
     dice_3d_enabled INTEGER NOT NULL DEFAULT 0,
+    dice_3d_theme TEXT NOT NULL DEFAULT 'room' CHECK(dice_3d_theme IN ('room', ${themeCheckList})),
     created_by INTEGER NOT NULL REFERENCES accounts(id),
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP`;
 
@@ -599,6 +600,7 @@ if (
     "music_enabled",
     "wiki_enabled",
     "dice_3d_enabled",
+    "dice_3d_theme",
     "created_by",
     "created_at"
   ].filter((column) => hasColumn("rooms", column));
@@ -688,6 +690,11 @@ if (!hasColumn("rooms", "wiki_enabled")) {
 }
 if (!hasColumn("rooms", "dice_3d_enabled")) {
   db.exec("ALTER TABLE rooms ADD COLUMN dice_3d_enabled INTEGER NOT NULL DEFAULT 0");
+}
+if (!hasColumn("rooms", "dice_3d_theme")) {
+  db.exec(
+    `ALTER TABLE rooms ADD COLUMN dice_3d_theme TEXT NOT NULL DEFAULT 'room' CHECK(dice_3d_theme IN ('room', ${themeCheckList}))`
+  );
 }
 db.exec(`CREATE TABLE IF NOT EXISTS dice_preferences (
   account_id INTEGER PRIMARY KEY REFERENCES accounts(id) ON DELETE CASCADE,

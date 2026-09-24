@@ -80,8 +80,8 @@ export function presentDice(
   audience: DiceAudience,
   label = roll.expression
 ): DicePresentation[] {
-  const room = one<{ dice_3d_enabled: number; theme: ThemeId }>(
-    "SELECT dice_3d_enabled, theme FROM rooms WHERE id = ?",
+  const room = one<{ dice_3d_enabled: number; theme: ThemeId; dice_3d_theme: ThemeId | "room" }>(
+    "SELECT dice_3d_enabled, theme, dice_3d_theme FROM rooms WHERE id = ?",
     roomId
   );
   if (!room?.dice_3d_enabled || !roll.dice.length) return [];
@@ -95,7 +95,10 @@ export function presentDice(
     label,
     total: roll.total,
     modifier: roll.modifier,
-    appearance: diceAppearance(readDicePreferences(accountId), room.theme),
+    appearance: diceAppearance(
+      readDicePreferences(accountId),
+      room.dice_3d_theme === "room" ? room.theme : room.dice_3d_theme
+    ),
     dice: roll.dice,
     ...(roll.physics ? { physics: roll.physics } : {})
   };

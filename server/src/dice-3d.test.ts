@@ -1,5 +1,11 @@
 import { beforeAll, describe, expect, it, vi } from "vitest";
-import { DEFAULT_DICE_PREFERENCES, DICE_SHAPES, diceGeometry, type CustomDie } from "@devils-toys/shared";
+import {
+  DEFAULT_DICE_PREFERENCES,
+  diceAppearance,
+  DICE_SHAPES,
+  diceGeometry,
+  type CustomDie
+} from "@devils-toys/shared";
 import { rollDice, rollCustomDie } from "./dice.js";
 import { gameSystemSchema } from "./system-schema.js";
 import { installToybox, toyboxDefinition } from "./test-fixture.js";
@@ -109,6 +115,28 @@ describe("audience and preference boundaries", () => {
     const [animation] = presentDice(920, 920, rollDice("d6"), "room");
     expect(animation.appearance.body).toBe("#e4e0d7");
     expect(readDicePreferences(920).enabled).toBe(false);
+  });
+  it("uses the room dice set by default and preserves personal overrides", () => {
+    const setPreferences = (preferences: typeof DEFAULT_DICE_PREFERENCES) =>
+      db
+        .prepare("UPDATE dice_preferences SET settings_json = ? WHERE account_id = 920")
+        .run(JSON.stringify(preferences));
+    setPreferences(DEFAULT_DICE_PREFERENCES);
+    db.exec("UPDATE rooms SET dice_3d_theme='shinji' WHERE id=920");
+    expect(presentDice(920, 920, rollDice("d6"), "room")[0].appearance).toEqual(
+      diceAppearance(DEFAULT_DICE_PREFERENCES, "shinji")
+    );
+    setPreferences({ ...DEFAULT_DICE_PREFERENCES, theme: "grim" });
+    expect(presentDice(920, 920, rollDice("d6"), "room")[0].appearance).toEqual(
+      diceAppearance(DEFAULT_DICE_PREFERENCES, "grim")
+    );
+    setPreferences({ ...DEFAULT_DICE_PREFERENCES, theme: "custom" });
+    expect(presentDice(920, 920, rollDice("d6"), "room")[0].appearance).toEqual(DEFAULT_DICE_PREFERENCES.custom);
+    setPreferences(DEFAULT_DICE_PREFERENCES);
+    db.exec("UPDATE rooms SET dice_3d_theme='room' WHERE id=920");
+    expect(presentDice(920, 920, rollDice("d6"), "room")[0].appearance).toEqual(
+      diceAppearance(DEFAULT_DICE_PREFERENCES, "digital")
+    );
   });
   it("routes result metadata only to the explicit audience", () => {
     for (const audience of ["room", "roller", "roller-and-gms"] as const) {

@@ -1,5 +1,7 @@
 # Changelog
 
+- Settled 3D dice remain visible for two seconds longer. When 3D dice are enabled, Room settings offers a default dice-theme picker; personal dice sets and custom colors still take precedence.
+
 - 3D dice now use server-side rigid-body physics to determine the result. Actual die shapes bounce, tumble, and collide; viewers replay the same recorded throw. Dice resting on an edge or an unnumbered end get another physical tumble, with no forced landing orientation or face relabeling.
 
 - Optional 3D dice roll across the main table area, with a GM room switch and account-wide personal opt-out. Six inverted theme sets, custom body/number/accent colors, and matte/satin/gloss finishes are available from the dice box. Server-generated results drive numbered d3–d30 shapes, percentile pairs and tens dice, and existing d44/d66 compound rolls; private audiences, keep/drop decisions, phone layouts, reduced motion, and text fallback are preserved. Systems can import validated numeric custom dice and convex geometry in `system.json`.

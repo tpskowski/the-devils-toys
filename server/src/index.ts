@@ -327,6 +327,7 @@ app.get("/api/rooms", requireAuth, (req: AuthedRequest, res) => {
     role: "gm" | "player";
     archived: number;
     dice3dEnabled: number;
+    dice3dTheme: ThemeId | "room";
     calendar_enabled: number;
     map_notation_enabled: number;
     music_enabled: number;
@@ -336,7 +337,7 @@ app.get("/api/rooms", requireAuth, (req: AuthedRequest, res) => {
     // definition, so a room on a system that is retired — or whose bundle will
     // not load — still says what it is rather than showing a bare id.
     `SELECT r.id, r.name, r.system, s.name AS systemName, r.theme, m.role, r.archived, r.calendar_enabled,
-            r.map_notation_enabled, r.music_enabled, r.wiki_enabled, r.dice_3d_enabled AS dice3dEnabled FROM rooms r
+            r.map_notation_enabled, r.music_enabled, r.wiki_enabled, r.dice_3d_enabled AS dice3dEnabled, r.dice_3d_theme AS dice3dTheme FROM rooms r
      JOIN memberships m ON m.room_id = r.id
      JOIN systems s ON s.id = r.system WHERE m.account_id = ? ORDER BY r.archived, r.name`,
     req.account!.id
@@ -385,6 +386,7 @@ app.post("/api/rooms", requireAuth, (req: AuthedRequest, res) => {
       musicEnabled: false,
       wikiEnabled: true,
       dice3dEnabled: false,
+      dice3dTheme: "room",
       // Nothing is recorded for a room this new, so these are the system's
       // own defaults — which is what the room is actually playing by.
       rules: roomRules(roomId, body.system)
@@ -405,11 +407,12 @@ app.get("/api/rooms/:roomId", requireAuth, (req: AuthedRequest, res) => {
     calendar_enabled: number;
     calendar_json: string | null;
     dice3dEnabled: number;
+    dice3dTheme: ThemeId | "room";
     map_notation_enabled: number;
     music_enabled: number;
     wiki_enabled: number;
   }>(
-    `SELECT id, name, system, theme, archived, calendar_enabled, calendar_json, map_notation_enabled, music_enabled, wiki_enabled, dice_3d_enabled AS dice3dEnabled
+    `SELECT id, name, system, theme, archived, calendar_enabled, calendar_json, map_notation_enabled, music_enabled, wiki_enabled, dice_3d_enabled AS dice3dEnabled, dice_3d_theme AS dice3dTheme
      FROM rooms WHERE id = ?`,
     roomId
   )!;
@@ -470,6 +473,7 @@ app.patch("/api/rooms/:roomId", requireAuth, (req: AuthedRequest, res) => {
         musicEnabled: z.boolean().optional(),
         wikiEnabled: z.boolean().optional(),
         dice3dEnabled: z.boolean().optional(),
+        dice3dTheme: z.enum(["room", ...THEME_IDS]).optional(),
         /** Only the rules being moved, by the ids the system declared them under. */
         rules: z.record(z.string(), z.boolean()).optional()
       })
@@ -482,6 +486,7 @@ app.patch("/api/rooms/:roomId", requireAuth, (req: AuthedRequest, res) => {
           value.musicEnabled !== undefined ||
           value.wikiEnabled !== undefined ||
           value.dice3dEnabled !== undefined ||
+          value.dice3dTheme !== undefined ||
           value.rules !== undefined
       ),
     req.body,
@@ -522,6 +527,8 @@ app.patch("/api/rooms/:roomId", requireAuth, (req: AuthedRequest, res) => {
     db.prepare("UPDATE rooms SET wiki_enabled = ? WHERE id = ?").run(body.wikiEnabled ? 1 : 0, roomId);
   if (body.dice3dEnabled !== undefined)
     db.prepare("UPDATE rooms SET dice_3d_enabled = ? WHERE id = ?").run(body.dice3dEnabled ? 1 : 0, roomId);
+  if (body.dice3dTheme !== undefined)
+    db.prepare("UPDATE rooms SET dice_3d_theme = ? WHERE id = ?").run(body.dice3dTheme, roomId);
   const easterEggMessages = [
     firstCalendarEnable ? recordSystemMessage(roomId, req.account!.id, CALENDAR_STRICT_TIME_EGG_MESSAGE) : undefined,
     firstMapNotationEnable ? recordSystemMessage(roomId, req.account!.id, MAP_NOTATION_ROAD_EGG_MESSAGE) : undefined

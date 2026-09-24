@@ -113,7 +113,7 @@ export function DicePreferencesPanel({
               value={draft.theme}
               onChange={(e) => setDraft({ ...draft, theme: e.target.value as DicePreferences["theme"] })}
             >
-              <option value="room">Match room theme</option>
+              <option value="room">Use room dice theme</option>
               {THEME_IDS.map((id) => (
                 <option key={id} value={id}>
                   {DICE_THEMES[id].name}

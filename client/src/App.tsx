@@ -100,7 +100,7 @@ import { mediaLabel, sortMediaByLabel } from "./media-label";
 import { describeTraits } from "@devils-toys/shared";
 import { rollBodyParts } from "./weapon-roll";
 import { ThemePicker } from "./ThemePicker";
-import { DEFAULT_DICE_PREFERENCES, type DicePreferences } from "@devils-toys/shared";
+import { DEFAULT_DICE_PREFERENCES, DICE_THEMES, type DicePreferences } from "@devils-toys/shared";
 import { DiceOverlay } from "./DiceOverlay";
 import { receiveDice } from "./dice-events";
 interface SystemStatus {
@@ -1605,7 +1605,9 @@ function TableRoom({
           roomId={room.id}
           preferences={dicePreferences ?? DEFAULT_DICE_PREFERENCES}
           onPreferences={setDicePreferences}
-          theme={detail.room.theme}
+          theme={
+            detail.room.dice3dTheme && detail.room.dice3dTheme !== "room" ? detail.room.dice3dTheme : detail.room.theme
+          }
           room3dEnabled={Boolean(detail.room.dice3dEnabled)}
           diceRules={systemDefinition.dice}
           isGm={detail.room.role === "gm"}
@@ -2169,6 +2171,7 @@ export function RoomSettings({
   const [musicEnabled, setMusicEnabled] = useState(room.musicEnabled);
   const [wikiEnabled, setWikiEnabled] = useState(room.wikiEnabled);
   const [dice3dEnabled, setDice3dEnabled] = useState(Boolean(room.dice3dEnabled));
+  const [dice3dTheme, setDice3dTheme] = useState(room.dice3dTheme ?? "room");
   const [rules, setRules] = useState<RoomRuleSettings>(room.rules);
   const [confirmName, setConfirmName] = useState("");
   const [error, setError] = useState("");
@@ -2191,6 +2194,7 @@ export function RoomSettings({
           musicEnabled,
           wikiEnabled,
           dice3dEnabled,
+          dice3dTheme,
           rules: moved
         })
       });
@@ -2303,6 +2307,27 @@ export function RoomSettings({
             <span aria-hidden="true" />
           </span>
         </label>
+        {dice3dEnabled && (
+          <div className="room-dice-theme">
+            <label>
+              Dice theme
+              <select
+                value={dice3dTheme}
+                onChange={(event) => setDice3dTheme(event.target.value as typeof dice3dTheme)}
+              >
+                <option value="room">Match room theme</option>
+                {Object.entries(DICE_THEMES).map(([id, set]) => (
+                  <option key={id} value={id}>
+                    {set.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <p className="modal-intro">
+              The default for this room. Each person can choose their own set in Your 3D dice.
+            </p>
+          </div>
+        )}
         {optionalRules.map((rule) =>
           rule.required ? (
             // A switch that cannot move is a lie, so a required rule is stated

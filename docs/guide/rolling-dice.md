@@ -36,6 +36,8 @@ are setting up.
 ## 3D dice
 
 The GM can enable **3D dice** in **Room settings**. It starts off for each room.
+When enabled, **Dice theme** chooses the room’s default set, or follows the room’s
+app theme. Settled dice stay visible for 3.65 seconds, including their fade.
 Once enabled, rolls appear across the main table area; on a phone with Chat or
 Combat open, they use that panel instead. They do not block clicks, map controls,
 or the chat composer. Results still appear in text immediately.
@@ -58,8 +60,8 @@ The GM has the same personal controls. Disabling and re-enabling the room does
 not reset anyone's preference.
 
 The six sets match the app themes with their light/dark balance reversed: dark
-themes have pale dice, and light themes have dark dice. **Match room theme** follows
-the room palette; selecting a named set keeps it fixed. Other viewers see the
+themes have pale dice, and light themes have dark dice. **Use room dice theme** follows
+the default set chosen in room settings; selecting a named set keeps it fixed. Other viewers see the
 roller's set. Your on/off preference only affects your screen.
 
 Available dice are d3, d4, d5, d6, d7, d8, d10, d12, d14, d16, d20, d24, d30,

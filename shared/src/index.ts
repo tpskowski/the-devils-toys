@@ -75,6 +75,8 @@ export interface RoomSummary {
   musicEnabled: boolean;
   wikiEnabled: boolean;
   dice3dEnabled?: boolean;
+  /** Default set used when a person follows the room dice theme. */
+  dice3dTheme?: ThemeId | "room";
   /**
    * Where this room stands on each of its system's optional rules, already
    * resolved: the room's own setting, the rule's default, or on regardless for a
