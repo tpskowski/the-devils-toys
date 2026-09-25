@@ -119,6 +119,16 @@ describe("landing a campaign's library in a room", () => {
     expect(tracks.map((track) => track.filename)).toEqual(["march.mp3", "dirge.mp3"]);
   });
 
+  it("takes dice settings only when room settings are requested", () => {
+    const room = text(JSON.stringify({ dice3dEnabled: true, dice3dTheme: "digital" }));
+    const settings = () => one("SELECT dice_3d_enabled, dice_3d_theme FROM rooms WHERE id = ?", roomId);
+    apply(stage({ "room.json": room, "maps/keep.png": png() }));
+    expect(settings()).toEqual({ dice_3d_enabled: 0, dice_3d_theme: "room" });
+    const result = apply(stage({ "room.json": room, "maps/other.png": png() }), { takeRoomSettings: true });
+    expect(settings()).toEqual({ dice_3d_enabled: 1, dice_3d_theme: "digital" });
+    expect(result.room).toEqual(["3D dice on", "dice theme set to digital"]);
+  });
+
   it("takes the room's settings only when asked", () => {
     const room = text(JSON.stringify({ name: "The Tomb Below", musicEnabled: true }));
     apply(stage({ "room.json": room, "maps/keep.png": png() }));

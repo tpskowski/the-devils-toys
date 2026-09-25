@@ -1,4 +1,6 @@
 import { previewApiPath } from "./player-preview";
+import { receiveDice } from "./dice-events";
+import type { DicePresentation } from "@devils-toys/shared";
 
 /**
  * A failed request, carrying the status beside the server's own sentence. A
@@ -34,5 +36,15 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
   }
   if (response.status === 204) return undefined as T;
   const type = response.headers.get("content-type") ?? "";
-  return (type.includes("application/json") ? response.json() : response.text()) as Promise<T>;
+  const payload = type.includes("application/json") ? await response.json() : await response.text();
+  if (
+    init?.method &&
+    init.method !== "GET" &&
+    typeof payload === "object" &&
+    payload &&
+    Array.isArray(payload.diceAnimations)
+  ) {
+    for (const animation of payload.diceAnimations as DicePresentation[]) receiveDice(animation);
+  }
+  return payload as T;
 }

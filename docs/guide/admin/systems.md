@@ -1,5 +1,8 @@
 # Game systems
 
+System authors can also declare [custom numeric dice and shapes](custom-dice.md)
+in `system.json`.
+
 [← Back to the admin guide](README.md)
 
 The Devil's Toys ships no game system. It is the tabletop; a game system is

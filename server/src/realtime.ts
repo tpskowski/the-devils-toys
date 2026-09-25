@@ -120,6 +120,10 @@ export function broadcastRoom(roomId: number, event: unknown) {
   }
 }
 
+export function sendToRoomAccount(roomId: number, accountId: number, event: unknown) {
+  for (const client of clients) if (client.roomId === roomId && client.accountId === accountId) send(client, event);
+}
+
 /**
  * One event, built per reader, because what it may carry depends on who is
  * reading it. The calendar is why this exists: a hidden event is on the GM's

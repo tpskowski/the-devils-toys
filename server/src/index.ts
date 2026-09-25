@@ -16,7 +16,9 @@ import { inGameDisplayName } from "./display-name.js";
 import { config } from "./config.js";
 import { logger } from "./logger.js";
 import { invitationRouter } from "./invitations.js";
-import { evaluateCheck, evaluateSave, parseRollCommand, rollDice } from "./dice.js";
+import { evaluateCheck, evaluateSave, parseRollCommand, rollDice, rollCustomDie, type DiceResult } from "./dice.js";
+import { dice3dRouter, presentDice, withRoomDice } from "./dice-3d.js";
+import { DicePhysicsError } from "./dice-physics.js";
 import { characterRouter } from "./characters.js";
 import { roomAdminRouter } from "./room-admin.js";
 import { createRoom } from "./rooms.js";
@@ -102,6 +104,7 @@ app.use("/api", playlistRouter);
 app.use("/api", campaignRouter);
 app.use("/api", helpRouter);
 app.use("/api", wikiRouter);
+app.use("/api", dice3dRouter);
 app.use("/api", systemRouter);
 function publicMessage(row: {
   id: number;
@@ -323,6 +326,8 @@ app.get("/api/rooms", requireAuth, (req: AuthedRequest, res) => {
     theme: ThemeId;
     role: "gm" | "player";
     archived: number;
+    dice3dEnabled: number;
+    dice3dTheme: ThemeId | "room";
     calendar_enabled: number;
     map_notation_enabled: number;
     music_enabled: number;
@@ -332,13 +337,14 @@ app.get("/api/rooms", requireAuth, (req: AuthedRequest, res) => {
     // definition, so a room on a system that is retired — or whose bundle will
     // not load — still says what it is rather than showing a bare id.
     `SELECT r.id, r.name, r.system, s.name AS systemName, r.theme, m.role, r.archived, r.calendar_enabled,
-            r.map_notation_enabled, r.music_enabled, r.wiki_enabled FROM rooms r
+            r.map_notation_enabled, r.music_enabled, r.wiki_enabled, r.dice_3d_enabled AS dice3dEnabled, r.dice_3d_theme AS dice3dTheme FROM rooms r
      JOIN memberships m ON m.room_id = r.id
      JOIN systems s ON s.id = r.system WHERE m.account_id = ? ORDER BY r.archived, r.name`,
     req.account!.id
   ).map(({ calendar_enabled, map_notation_enabled, music_enabled, wiki_enabled, ...room }) => ({
     ...room,
     archived: Boolean(room.archived),
+    dice3dEnabled: Boolean(room.dice3dEnabled),
     calendarEnabled: Boolean(calendar_enabled),
     mapNotationEnabled: Boolean(map_notation_enabled),
     musicEnabled: Boolean(music_enabled),
@@ -379,6 +385,8 @@ app.post("/api/rooms", requireAuth, (req: AuthedRequest, res) => {
       mapNotationEnabled: false,
       musicEnabled: false,
       wikiEnabled: true,
+      dice3dEnabled: false,
+      dice3dTheme: "room",
       // Nothing is recorded for a room this new, so these are the system's
       // own defaults — which is what the room is actually playing by.
       rules: roomRules(roomId, body.system)
@@ -398,11 +406,13 @@ app.get("/api/rooms/:roomId", requireAuth, (req: AuthedRequest, res) => {
     archived: number;
     calendar_enabled: number;
     calendar_json: string | null;
+    dice3dEnabled: number;
+    dice3dTheme: ThemeId | "room";
     map_notation_enabled: number;
     music_enabled: number;
     wiki_enabled: number;
   }>(
-    `SELECT id, name, system, theme, archived, calendar_enabled, calendar_json, map_notation_enabled, music_enabled, wiki_enabled
+    `SELECT id, name, system, theme, archived, calendar_enabled, calendar_json, map_notation_enabled, music_enabled, wiki_enabled, dice_3d_enabled AS dice3dEnabled, dice_3d_theme AS dice3dTheme
      FROM rooms WHERE id = ?`,
     roomId
   )!;
@@ -432,6 +442,7 @@ app.get("/api/rooms/:roomId", requireAuth, (req: AuthedRequest, res) => {
     room: {
       ...roomFields,
       archived: Boolean(room.archived),
+      dice3dEnabled: Boolean(room.dice3dEnabled),
       role,
       calendarEnabled: Boolean(calendar_enabled),
       calendar: calendarForRole(readCalendar(calendar_json), role),
@@ -461,6 +472,8 @@ app.patch("/api/rooms/:roomId", requireAuth, (req: AuthedRequest, res) => {
         mapNotationEnabled: z.boolean().optional(),
         musicEnabled: z.boolean().optional(),
         wikiEnabled: z.boolean().optional(),
+        dice3dEnabled: z.boolean().optional(),
+        dice3dTheme: z.enum(["room", ...THEME_IDS]).optional(),
         /** Only the rules being moved, by the ids the system declared them under. */
         rules: z.record(z.string(), z.boolean()).optional()
       })
@@ -472,6 +485,8 @@ app.patch("/api/rooms/:roomId", requireAuth, (req: AuthedRequest, res) => {
           value.mapNotationEnabled !== undefined ||
           value.musicEnabled !== undefined ||
           value.wikiEnabled !== undefined ||
+          value.dice3dEnabled !== undefined ||
+          value.dice3dTheme !== undefined ||
           value.rules !== undefined
       ),
     req.body,
@@ -510,6 +525,10 @@ app.patch("/api/rooms/:roomId", requireAuth, (req: AuthedRequest, res) => {
   }
   if (body.wikiEnabled !== undefined)
     db.prepare("UPDATE rooms SET wiki_enabled = ? WHERE id = ?").run(body.wikiEnabled ? 1 : 0, roomId);
+  if (body.dice3dEnabled !== undefined)
+    db.prepare("UPDATE rooms SET dice_3d_enabled = ? WHERE id = ?").run(body.dice3dEnabled ? 1 : 0, roomId);
+  if (body.dice3dTheme !== undefined)
+    db.prepare("UPDATE rooms SET dice_3d_theme = ? WHERE id = ?").run(body.dice3dTheme, roomId);
   const easterEggMessages = [
     firstCalendarEnable ? recordSystemMessage(roomId, req.account!.id, CALENDAR_STRICT_TIME_EGG_MESSAGE) : undefined,
     firstMapNotationEnable ? recordSystemMessage(roomId, req.account!.id, MAP_NOTATION_ROAD_EGG_MESSAGE) : undefined
@@ -736,7 +755,7 @@ app.delete("/api/rooms/:roomId/messages", requireAuth, (req: AuthedRequest, res)
   res.status(204).end();
 });
 
-app.post("/api/rooms/:roomId/messages", requireAuth, (req: AuthedRequest, res) => {
+app.post("/api/rooms/:roomId/messages", requireAuth, async (req: AuthedRequest, res) => {
   const roomId = Number(req.params.roomId);
   if (!roomRole(req.account!.id, roomId)) return res.status(404).json({ error: "Room not found." });
   const body = parse(z.object({ body: z.string().trim().min(1).max(2000) }), req.body, res);
@@ -745,9 +764,11 @@ app.post("/api/rooms/:roomId/messages", requireAuth, (req: AuthedRequest, res) =
   let kind: "chat" | "roll" = "chat";
   let messageBody = body.body;
   let detail: string | undefined;
+  let diceResult: DiceResult | undefined;
   if (expression) {
     try {
-      const rolled = rollDice(expression);
+      const rolled = await withRoomDice(roomId, req.account!.id, () => rollDice(expression));
+      diceResult = rolled;
       kind = "roll";
       messageBody = `${rolled.expression} → ${rolled.total}`;
       detail = rolled.detail;
@@ -769,16 +790,23 @@ app.post("/api/rooms/:roomId/messages", requireAuth, (req: AuthedRequest, res) =
   )!;
   const message = publicMessage(row);
   broadcastRoom(roomId, { type: "message", message });
-  res.status(201).json({ message });
+  res
+    .status(201)
+    .json({ message, diceAnimations: diceResult ? presentDice(roomId, req.account!.id, diceResult, "room") : [] });
 });
 
-app.post("/api/rooms/:roomId/rolls", requireAuth, (req: AuthedRequest, res) => {
+app.post("/api/rooms/:roomId/rolls", requireAuth, async (req: AuthedRequest, res) => {
   const roomId = Number(req.params.roomId);
   const role = roomRole(req.account!.id, roomId);
   if (!role) return res.status(404).json({ error: "Room not found." });
   const body = parse(
     z.object({
       expression: z.string().min(1).max(24).optional(),
+      customDie: z
+        .string()
+        .regex(/^[a-z][a-z0-9-]{0,31}$/)
+        .optional(),
+      count: z.number().int().min(1).max(20).default(1),
       private: z.boolean().default(false),
       /** Stricter than private: the room is not even told a roll happened. */
       invisible: z.boolean().default(false),
@@ -813,7 +841,10 @@ app.post("/api/rooms/:roomId/rolls", requireAuth, (req: AuthedRequest, res) => {
     res
   );
   if (!body) return;
-  if (!body.expression && !body.attack) return res.status(400).json({ error: "Give a dice expression to roll." });
+  if (!body.expression && !body.attack && !body.customDie)
+    return res.status(400).json({ error: "Give a dice expression to roll." });
+  if (body.customDie && (body.expression || body.attack || body.save || body.check))
+    return res.status(400).json({ error: "Roll a custom die separately from standard checks and attacks." });
   const hidden = body.private || body.invisible;
   // Anyone may keep a roll between themselves and the GM. Leaving no trace at
   // all stays the GM's own privilege.
@@ -821,13 +852,18 @@ app.post("/api/rooms/:roomId/rolls", requireAuth, (req: AuthedRequest, res) => {
     return res.status(403).json({ error: "Invisible rolls are reserved for the GM." });
   const system = one<{ system: SystemId }>("SELECT system FROM rooms WHERE id = ?", roomId)!.system;
   const diceRules = systemOrThrow(system).dice;
+  const customDie = body.customDie
+    ? systemOrThrow(system).dice3d?.dice.find((die) => die.id === body.customDie)
+    : undefined;
+  if (body.customDie && !customDie)
+    return res.status(400).json({ error: "That die is not declared by this room's system." });
   if (body.check && !diceRules.skillCheck)
     return res.status(400).json({ error: `${systemOrThrow(system).name} does not define skill checks.` });
   if (body.save && body.save.position !== "normal" && !diceRules.save.outcomes[body.save.position])
     return res.status(400).json({
       error: `${systemOrThrow(system).name} does not define ${body.save.position} for saves.`
     });
-  let attackExpression;
+  let attackExpression: string | undefined;
   if (body.attack && !body.save) {
     attackExpression = damageExpression(body.attack.damage, diceRules.damage?.multipleRolls);
     if (!attackExpression)
@@ -835,26 +871,28 @@ app.post("/api/rooms/:roomId/rolls", requireAuth, (req: AuthedRequest, res) => {
         error: `${body.attack.damage} is not one roll; roll it in the dice builder.`
       });
   }
-  let rolled;
+  let rolled: DiceResult & { outcome?: ReturnType<typeof evaluateSave> | ReturnType<typeof evaluateCheck> };
   let saveOutcome;
   let checkOutcome;
   try {
-    rolled = rollDice(body.save ? "1d20" : (attackExpression ?? body.expression!));
-    if (body.attack && !body.save) rolled = { ...rolled, detail: `${rolled.detail} · ${body.attack.damage}` };
+    rolled = await withRoomDice(roomId, req.account!.id, () =>
+      customDie
+        ? rollCustomDie(system, customDie, body.count)
+        : rollDice(body.save ? "1d20" : (attackExpression ?? body.expression!))
+    );
+    if (body.attack && !body.save) rolled.detail = `${rolled.detail} · ${body.attack.damage}`;
     if (body.save) {
       saveOutcome = evaluateSave(rolled.total, body.save.target, body.save.position, diceRules);
-      rolled = {
-        ...rolled,
+      Object.assign(rolled, {
         outcome: saveOutcome,
         detail: `${rolled.detail} · ${body.save.label} ${body.save.target} · ${saveOutcome.label}`
-      };
+      });
     } else if (body.check) {
       checkOutcome = evaluateCheck(rolled.total, body.check.difficulty);
-      rolled = {
-        ...rolled,
+      Object.assign(rolled, {
         outcome: checkOutcome,
         detail: `${rolled.detail} · difficulty ${body.check.difficulty} · ${checkOutcome.label}`
-      };
+      });
     }
   } catch (error) {
     return res.status(400).json({ error: (error as Error).message });
@@ -896,7 +934,18 @@ app.post("/api/rooms/:roomId/rolls", requireAuth, (req: AuthedRequest, res) => {
     // The GM reads the table's private rolls, so a player's arrives live; the
     // roller already has it in this response.
     if (role !== "gm") sendToRoomGms(roomId, { type: "message", message });
-    return res.status(201).json({ roll: rolled, message, private: true });
+    return res.status(201).json({
+      roll: rolled,
+      message,
+      private: true,
+      diceAnimations: presentDice(
+        roomId,
+        req.account!.id,
+        rolled,
+        role === "gm" ? "roller" : "roller-and-gms",
+        rollLabel
+      )
+    });
   }
   const result = db
     .prepare("INSERT INTO messages (room_id, account_id, kind, body, detail) VALUES (?, ?, 'roll', ?, ?)")
@@ -917,7 +966,12 @@ app.post("/api/rooms/:roomId/rolls", requireAuth, (req: AuthedRequest, res) => {
   )!;
   const message = publicMessage(row);
   broadcastRoom(roomId, { type: "message", message });
-  res.status(201).json({ roll: rolled, message, private: false });
+  res.status(201).json({
+    roll: rolled,
+    message,
+    private: false,
+    diceAnimations: presentDice(roomId, req.account!.id, rolled, "room", rollLabel)
+  });
 });
 
 app.get("/api/rooms/:roomId/private-rolls", requireAuth, (req: AuthedRequest, res) => {
@@ -952,6 +1006,7 @@ if (fs.existsSync(clientDist)) {
 }
 
 app.use((error: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  if (error instanceof DicePhysicsError) return res.status(400).json({ error: error.message });
   logger.error("Request failed", { error: error instanceof Error ? error.message : String(error) });
   res.status(500).json({ error: "The server could not complete that request." });
 });

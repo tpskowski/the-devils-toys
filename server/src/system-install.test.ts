@@ -361,13 +361,12 @@ describe("what a creation declaration has to be true of to install", () => {
     );
   });
 
-  // A book with three backgrounds has no die to offer: `SUPPORTED_DIE_SIDES` has
-  // no d3. Finding that out at install is the whole point of checking it here.
+  // An unsupported die must be caught at install rather than during creation.
   it("refuses a die the roller has no sides for", () => {
     const bundle = bentCreation((creation) => {
-      stepOf(creation, "trade").dice = "d3";
+      stepOf(creation, "trade").dice = "d9";
     });
-    expect(() => refuseUninstallableCreation(bundle)).toThrow(/"trade" rolls "d3", which this build cannot roll/);
+    expect(() => refuseUninstallableCreation(bundle)).toThrow(/"trade" rolls "d9", which this build cannot roll/);
   });
 
   it("refuses a dice expression that rolls more dice than the roller will throw", () => {

@@ -1,7 +1,7 @@
 import type { RollTable, RollTableRow, RollTableSource, RollTableSummary, TableTag } from "./index.js";
 
 /** Sides the dice engine can roll, largest first so inference prefers the widest match. */
-export const SUPPORTED_DIE_SIDES = [100, 66, 44, 30, 20, 12, 10, 8, 6, 5, 4] as const;
+export const SUPPORTED_DIE_SIDES = [100, 66, 44, 30, 24, 20, 16, 14, 12, 10, 8, 7, 6, 5, 4, 3] as const;
 
 /**
  * The same list as a regex alternation, so a die is added in one place rather

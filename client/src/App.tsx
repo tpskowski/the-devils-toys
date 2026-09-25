@@ -99,7 +99,10 @@ import { useHoverTip } from "./HoverTip";
 import { mediaLabel, sortMediaByLabel } from "./media-label";
 import { describeTraits } from "@devils-toys/shared";
 import { rollBodyParts } from "./weapon-roll";
-import { ThemePicker } from "./ThemePicker";
+import { ThemePicker, DiceThemePicker } from "./ThemePicker";
+import { DEFAULT_DICE_PREFERENCES, type DicePreferences } from "@devils-toys/shared";
+import { DiceOverlay } from "./DiceOverlay";
+import { receiveDice } from "./dice-events";
 interface SystemStatus {
   id: SystemId;
   name: string;
@@ -807,6 +810,25 @@ function TableRoom({
   const [rulesFocus, setRulesFocus] = useState("");
   const [diceOpen, setDiceOpen] = useState(false);
   const [diceInitialSave, setDiceInitialSave] = useState<SaveRollSetup>();
+  const [dicePreferences, setDicePreferences] = useState<DicePreferences>();
+  useEffect(() => {
+    let stopped = false;
+    if (previewSelection()) return;
+    const refresh = () =>
+      api<{ preferences: DicePreferences }>("/api/me/dice")
+        .then(({ preferences }) => {
+          if (!stopped) setDicePreferences(preferences);
+        })
+        .catch(() => {
+          if (!stopped) setDicePreferences(undefined);
+        });
+    void refresh();
+    window.addEventListener("focus", refresh);
+    return () => {
+      stopped = true;
+      window.removeEventListener("focus", refresh);
+    };
+  }, [accountId]);
   const [charactersOpen, setCharactersOpen] = useState(false);
   const [characterToOpen, setCharacterToOpen] = useState<number>();
   const [charactersRevision, setCharactersRevision] = useState(0);
@@ -1044,6 +1066,7 @@ function TableRoom({
       };
       socket.onmessage = (event) => {
         const data = JSON.parse(event.data);
+        if (data.type === "dice-roll") receiveDice(data.animation);
         if (data.type === "message" || data.type === "presence-notice") noteMessage(data.message);
         if (data.type === "messages-cleared") setMessages((current) => current.filter((message) => message.private));
         if (data.type === "presence") setPresence(data.members);
@@ -1158,6 +1181,10 @@ function TableRoom({
   const hasAudioDock = detail.room.musicEnabled && audio.tracks.length > 0;
   return (
     <section className={`table-shell${hasAudioDock ? " has-audio-dock" : ""}`}>
+      <DiceOverlay
+        roomId={room.id}
+        enabled={Boolean(detail.room.dice3dEnabled && dicePreferences?.enabled && !preview)}
+      />
       <header className="table-header">
         <div>
           <p className="eyebrow">
@@ -1576,6 +1603,12 @@ function TableRoom({
       {diceOpen && (
         <SystemDiceModal
           roomId={room.id}
+          preferences={dicePreferences ?? DEFAULT_DICE_PREFERENCES}
+          onPreferences={setDicePreferences}
+          theme={
+            detail.room.dice3dTheme && detail.room.dice3dTheme !== "room" ? detail.room.dice3dTheme : detail.room.theme
+          }
+          room3dEnabled={Boolean(detail.room.dice3dEnabled)}
           diceRules={systemDefinition.dice}
           isGm={detail.room.role === "gm"}
           initialSave={diceInitialSave}
@@ -2137,6 +2170,8 @@ export function RoomSettings({
   const [mapNotationEnabled, setMapNotationEnabled] = useState(room.mapNotationEnabled);
   const [musicEnabled, setMusicEnabled] = useState(room.musicEnabled);
   const [wikiEnabled, setWikiEnabled] = useState(room.wikiEnabled);
+  const [dice3dEnabled, setDice3dEnabled] = useState(Boolean(room.dice3dEnabled));
+  const [dice3dTheme, setDice3dTheme] = useState(room.dice3dTheme ?? "room");
   const [rules, setRules] = useState<RoomRuleSettings>(room.rules);
   const [confirmName, setConfirmName] = useState("");
   const [error, setError] = useState("");
@@ -2152,7 +2187,16 @@ export function RoomSettings({
     try {
       await api(`/api/rooms/${room.id}`, {
         method: "PATCH",
-        body: JSON.stringify({ theme, calendarEnabled, mapNotationEnabled, musicEnabled, wikiEnabled, rules: moved })
+        body: JSON.stringify({
+          theme,
+          calendarEnabled,
+          mapNotationEnabled,
+          musicEnabled,
+          wikiEnabled,
+          dice3dEnabled,
+          dice3dTheme,
+          rules: moved
+        })
       });
       await onChanged();
       onClose();
@@ -2198,6 +2242,12 @@ export function RoomSettings({
             }}
           />
         </div>
+        {dice3dEnabled && (
+          <div className="theme-field room-dice-theme">
+            <span>Dice theme</span>
+            <DiceThemePicker value={dice3dTheme} roomTheme={theme} onChange={setDice3dTheme} />
+          </div>
+        )}
         <p className="modal-intro">The game system is fixed as {room.system}. Themes can change at any time.</p>
         <label className={`toggle-row ${calendarEnabled ? "enabled" : ""}`}>
           <span className="toggle-copy">
@@ -2244,6 +2294,22 @@ export function RoomSettings({
           </span>
           <span className="toggle-control">
             <input type="checkbox" checked={wikiEnabled} onChange={(event) => setWikiEnabled(event.target.checked)} />
+            <span aria-hidden="true" />
+          </span>
+        </label>
+        <label className={`toggle-row ${dice3dEnabled ? "enabled" : ""}`}>
+          <span className="toggle-copy">
+            <strong>3D dice</strong>
+            <small>
+              Roll dice across the table. Each person can turn animations off and choose their own dice set.
+            </small>
+          </span>
+          <span className="toggle-control">
+            <input
+              type="checkbox"
+              checked={dice3dEnabled}
+              onChange={(event) => setDice3dEnabled(event.target.checked)}
+            />
             <span aria-hidden="true" />
           </span>
         </label>

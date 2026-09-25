@@ -15,6 +15,7 @@ export * from "./system-rules.js";
 export * from "./system-creation.js";
 export * from "./system-versions.js";
 export * from "./calendar.js";
+export * from "./dice-3d.js";
 export * from "./wiki-markdown.js";
 
 /**
@@ -73,6 +74,9 @@ export interface RoomSummary {
   mapNotationEnabled: boolean;
   musicEnabled: boolean;
   wikiEnabled: boolean;
+  dice3dEnabled?: boolean;
+  /** Default set used when a person follows the room dice theme. */
+  dice3dTheme?: ThemeId | "room";
   /**
    * Where this room stands on each of its system's optional rules, already
    * resolved: the room's own setting, the rule's default, or on regardless for a
@@ -998,6 +1002,8 @@ export interface TableRollResult {
 }
 
 export interface GameSystem {
+  /** Numeric custom dice, declarative and validated on install. */
+  dice3d?: { version: 1; dice: import("./dice-3d.js").CustomDie[] };
   id: SystemId;
   name: string;
   shortName: string;

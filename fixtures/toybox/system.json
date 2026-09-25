@@ -6,6 +6,13 @@
   "defaultTheme": "heroic",
   "tagline": "A system that exists so the application can be tested without one.",
   "rollRulesQuery": "Saves",
+  "dice3d": {
+    "version": 1,
+    "dice": [
+      { "id": "fate", "name": "Fate die", "shape": 6, "values": [-1, -1, 0, 0, 1, 1] },
+      { "id": "hazard", "name": "Hazard die", "shape": 14, "values": [1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7] }
+    ]
+  },
   "sourceDocuments": [
     {
       "id": "toybox",

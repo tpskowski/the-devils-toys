@@ -54,6 +54,8 @@ one with the shell.
 5. **[Operating the server](operating.md)** — configuration, storage, backups,
    logs, and the table editor.
 
+6. **[Custom numeric dice](custom-dice.md)** — declaring dice and shapes in a system bundle.
+
 ## One warning before you start
 
 This is alpha software. Data shapes still change between versions, and
