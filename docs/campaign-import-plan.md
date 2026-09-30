@@ -613,7 +613,7 @@ a bigger surface than this change should quietly grow into.
 
 ## What this does not do
 
-- **It is not a room backup.** No accounts, characters, chat, or session state. The roadmap's "export/import of a single table, including characters and players" is a different feature with a different threat model — it moves people between servers, and that needs answers about account matching this plan does not have. The two should share `zip-safety.ts` and nothing else.
+- **It is not a room backup.** No accounts, characters, chat, or session state. [Room transfer including characters and memberships (#48)](https://github.com/tpskowski/the-devils-toys/issues/48) is a different feature with a different threat model — it moves people between servers, and that needs answers about account matching this plan does not have. The two should share `zip-safety.ts` and nothing else.
 - **It does not merge two campaigns.** Importing a second bundle into a room adds to it; nothing reconciles two campaigns' NPCs.
 - **It does not remove a campaign.** The ledger makes that answerable later; the route is out of scope.
 - **It does not install a system**, per decision 11.

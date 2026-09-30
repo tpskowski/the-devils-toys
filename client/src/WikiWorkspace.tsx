@@ -217,6 +217,8 @@ export function WikiWorkspace({
   const closeButtonRef = useRef<HTMLButtonElement | null>(null);
   const pendingNavigationRef = useRef<WikiNavigation | undefined>(undefined);
   const draftIdentity = useRef(0);
+  const draftRef = useRef(draft);
+  draftRef.current = draft;
   pendingNavigationRef.current = pendingNavigation;
 
   const setEditorHandle = useCallback((handle: WikiEditorHandle | undefined) => {
@@ -446,8 +448,15 @@ export function WikiWorkspace({
 
   async function savePage(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!draft) return;
+    if (!draft || busy) return;
     const submittedDraft = { ...draft, markdown: editorRef.current?.flush() ?? draft.markdown };
+    // The editor stays usable during Save. Read its live document again when
+    // the response arrives, but only if this is still the same editing session.
+    const currentDraft = () => {
+      const current = draftRef.current;
+      if (!current || current.identity !== submittedDraft.identity) return;
+      return { ...current, markdown: editorRef.current?.flush() ?? current.markdown };
+    };
     const title = submittedDraft.title.trim();
     if (!title) {
       setError("Give this page a title.");
@@ -470,16 +479,27 @@ export function WikiWorkspace({
             method: "POST",
             body: JSON.stringify({ title, markdown: submittedDraft.markdown, folderId: submittedDraft.folderId })
           });
-      setPage(response.page);
-      setSelectedSlug(response.page.slug);
-      setDraft(undefined);
-      setConflict(undefined);
+      const latest = currentDraft();
+      if (latest) {
+        setPage(response.page);
+        setSelectedSlug(response.page.slug);
+        const changed =
+          latest.title !== submittedDraft.title ||
+          latest.markdown !== submittedDraft.markdown ||
+          latest.folderId !== submittedDraft.folderId;
+        // New pages adopt their slug as well, so the next save updates the
+        // created page instead of creating a second one.
+        setDraft(changed ? { ...latest, slug: response.page.slug, revision: response.page.revision } : undefined);
+        setConflict(undefined);
+      }
       await load();
     } catch (cause) {
+      const latest = currentDraft();
+      if (!latest) return;
       if (cause instanceof ApiError && cause.status === 409) {
         const payload = cause.payload as { page?: WikiPage; current?: WikiPage };
         const current = payload.page ?? payload.current;
-        if (current) setConflict({ current, ours: submittedDraft });
+        if (current) setConflict({ current, ours: latest });
         else setError(cause.message);
       } else setError((cause as Error).message);
     } finally {
@@ -848,11 +868,7 @@ export function WikiWorkspace({
                   ))}
               </select>
             </header>
-            <WikiEditorLoadBoundary
-              key={draft.slug ?? `new-${draft.identity ?? 0}`}
-              markdown={draft.markdown}
-              onMarkdownChange={setDraftMarkdown}
-            >
+            <WikiEditorLoadBoundary key={draft.identity} markdown={draft.markdown} onMarkdownChange={setDraftMarkdown}>
               <Suspense fallback={<p className="wiki-message">Opening rich editor…</p>}>
                 <LazyWikiEditor
                   roomId={roomId}
@@ -888,7 +904,8 @@ export function WikiWorkspace({
                         markdown: page.markdown,
                         folderId: page.folderId,
                         revision: page.revision,
-                        slug: page.slug
+                        slug: page.slug,
+                        identity: ++draftIdentity.current
                       })
                     }
                   >

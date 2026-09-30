@@ -596,9 +596,14 @@ function Workspace({
           <button onClick={() => setDocument("credits")} title="Credits">
             <Sparkles size={16} /> <span>Credits</span>
           </button>
-          <button onClick={() => setDocument("roadmap")} title="Roadmap">
-            <ScrollText size={16} /> <span>Roadmap</span>
-          </button>
+          <a
+            href="https://github.com/tpskowski/the-devils-toys/issues"
+            target="_blank"
+            rel="noopener noreferrer"
+            title="Issues and planned work"
+          >
+            <ScrollText size={16} /> <span>Issues</span>
+          </a>
           <button onClick={() => setDocument("changelog")} title="Changelog">
             <FileText size={16} /> <span>Changelog</span>
           </button>

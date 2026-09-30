@@ -11,6 +11,8 @@ A local-first virtual tabletop. It ships no game system: an admin installs one a
 - [Admin's Guide](docs/guide/admin/README.md) — first run, accounts and roles, rooms, installable game systems, and operating the server.
 - [The Devil's Tables](devils-tables.md) — using the random-table editor.
 
+Outstanding bugs, enhancements, and requests needing clarification are tracked in [GitHub Issues](https://github.com/tpskowski/the-devils-toys/issues).
+
 ## Requirements
 
 Use either:
@@ -71,6 +73,27 @@ The catalogue is [devils-toys-systems](https://github.com/tpskowski/devils-toys-
 Installed content is kept under `systems/` inside `DEVILS_TOYS_DATA_DIR` and registered in the database. Retiring a system only removes it from new-room choices; rooms and characters already using it keep working. Because the files and the registry row belong together, back up and restore the whole data directory rather than copying one system out of it.
 
 See [Game systems](docs/guide/admin/systems.md) in the Admin's Guide for the lifecycle, and [`schema/`](schema) for what a system may declare.
+
+### Future games
+
+Candidates for future system repositories, carried over from the roadmap. These are ideas to investigate, not shipped integrations; source and licensing notes below remain to be verified before implementation.
+
+1. OSE SRD
+2. OSRIC (no SRD)
+3. WWN SRD
+4. SWN SRD
+5. Swords & Wizardry Complete (AELF)
+6. Basic Fantasy RPG (CC)
+7. Cepheus engine
+8. Eclipse Phase
+9. 24XX
+10. Forged in the Dark
+11. FATE
+12. Index Card RPG
+13. Knave
+14. Maze Rats
+15. Beam Saber
+16. OSRIC Pocket SRD
 
 ### Writing one
 
