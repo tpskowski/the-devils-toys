@@ -213,6 +213,9 @@ export function GroupPage({
   // Two edits to the same row cannot go at once: the second has to carry the
   // revision the first produced, which is only known once the first has answered.
   const rowSaves = useRef(new Map<string, RowSave>());
+  // Queue entries retire even on failure. An edit remains dirty until that
+  // exact snapshot saves (or its row is deliberately removed).
+  const rowEdits = useRef(new Map<string, () => Record<string, unknown>>());
   // A row may become idle between edits. Its revision still belongs to that
   // row, not to the transient queue entry that happened to save it last.
   const rowRevisions = useRef(new Map<string, number>());
@@ -256,6 +259,7 @@ export function GroupPage({
     // The rows just answered for themselves, so a revision remembered from a
     // write against the previous set of them no longer describes anything.
     rowSaves.current.clear();
+    rowEdits.current.clear();
     rowRevisions.current.clear();
     dirtyRef.current = false;
     stateDirtyRef.current = false;
@@ -367,6 +371,7 @@ export function GroupPage({
   function queueRowSave(kind: RosterKind, id: number, body: () => Record<string, unknown>) {
     if (!canEditGroup) return;
     const key = `${kind}:${id}`;
+    rowEdits.current.set(key, body);
     // Marked dirty for as long as anything is pending, so a change reported over
     // the socket does not reload the roster on top of what is still being typed.
     dirtyRef.current = true;
@@ -400,6 +405,7 @@ export function GroupPage({
               rowRevisions.current.set(key, saved.revision);
               noteRevision(kind, id, saved.revision);
             }
+            if (rowEdits.current.get(key) === body) rowEdits.current.delete(key);
             const idle = finishRowSave(key);
             if (idle) dirtyRef.current = false;
             setStatus(idle ? "Saved" : "Unsaved");
@@ -407,9 +413,10 @@ export function GroupPage({
           .catch((cause: Error) => {
             // Still dirty: the edit is on the page and not in the database, so a
             // reload must not be allowed to quietly replace it.
-            finishRowSave(key);
-            setStatus("Unsaved");
-            setError(cause.message);
+            const idle = finishRowSave(key);
+            if (idle) dirtyRef.current = false;
+            setStatus(idle ? "Saved" : "Unsaved");
+            if (rowEdits.current.has(key)) setError(cause.message);
           });
       }, 650)
     );
@@ -417,10 +424,26 @@ export function GroupPage({
 
   /**
    * Whether the page owes the server nothing at all: no group field waiting to
-   * go, and no row waiting on a timer or on a reply.
+   * go, and no row waiting on a timer, a reply, or a retry after failure.
    */
   function savesIdle() {
-    return !stateDirtyRef.current && rowSaveTimers.current.size === 0 && rowSaves.current.size === 0;
+    return (
+      !stateDirtyRef.current &&
+      rowSaveTimers.current.size === 0 &&
+      rowSaves.current.size === 0 &&
+      rowEdits.current.size === 0
+    );
+  }
+
+  function forgetRowEdit(kind: RosterKind, id: number) {
+    const key = `${kind}:${id}`;
+    window.clearTimeout(rowSaveTimers.current.get(key));
+    rowSaveTimers.current.delete(key);
+    rowEdits.current.delete(key);
+    rowRevisions.current.delete(key);
+    const idle = savesIdle();
+    if (idle) dirtyRef.current = false;
+    setStatus(idle ? "Saved" : "Unsaved");
   }
 
   /** Retires one finished write, and answers whether it was the last of them. */
@@ -504,6 +527,7 @@ export function GroupPage({
     setError("");
     try {
       await api(`/api/rooms/${roomId}/group/obligations/${id}`, { method: "DELETE" });
+      forgetRowEdit("obligations", id);
       setObligations((current) => current.filter((obligation) => obligation.id !== id));
     } catch (cause) {
       setError((cause as Error).message);
@@ -637,6 +661,7 @@ export function GroupPage({
     setError("");
     try {
       await api(`/api/rooms/${roomId}/group/hirelings/${hirelingId}`, { method: "DELETE" });
+      forgetRowEdit("hirelings", hirelingId);
       setHirelings((current) => current.filter((entry) => entry.id !== hirelingId));
       setEditingHirelingMaximums((current) => (current?.startsWith(`${hirelingId}:`) ? undefined : current));
     } catch (cause) {

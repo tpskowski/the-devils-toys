@@ -223,6 +223,8 @@ export function CharacterModal({
   const unsavedChangesRef = useRef(false);
   const editVersionRef = useRef(0);
   const selectedIdRef = useRef<number | undefined>(undefined);
+  const loadGenerationRef = useRef(0);
+  const foregroundLoadsRef = useRef(0);
 
   const selected = characters.find((character) => character.id === selectedId);
   const building = characters.find((character) => character.id === buildingId);
@@ -241,28 +243,55 @@ export function CharacterModal({
   unsavedChangesRef.current = hasChanges;
   selectedIdRef.current = selectedId;
 
-  async function load(preferredId?: number) {
-    const result = await api<CharacterResponse>(`/api/rooms/${roomId}/characters`);
-    setCharacters(result.characters);
-    setDefinition(result.sheetDefinition);
-    setActiveId(result.activeCharacterId);
-    setPartyLabel(result.partyLabel);
-    setItemCatalogue(result.itemCatalogue);
-    setViceCatalogue(result.viceCatalogue);
-    setCreationDefinition(result.creationDefinition);
-    setSelectedId((current) => {
-      const desired = preferredId ?? current ?? result.activeCharacterId ?? undefined;
-      return result.characters.some((character) => character.id === desired) ? desired : result.characters[0]?.id;
-    });
+  async function load(preferredId?: number, background = false) {
+    // A socket refresh cannot supersede a load that is selecting a newly
+    // created, claimed, or explicitly opened character.
+    if (background && foregroundLoadsRef.current > 0) return;
+    const generation = ++loadGenerationRef.current;
+    const editVersion = editVersionRef.current;
+    const selectedId = selectedIdRef.current;
+    if (!background) foregroundLoadsRef.current += 1;
+    try {
+      const result = await api<CharacterResponse>(`/api/rooms/${roomId}/characters`);
+      if (generation !== loadGenerationRef.current) return;
+      // A clean sheet at request time may have been edited (and even saved)
+      // before this older snapshot arrives.
+      if (
+        background &&
+        (unsavedChangesRef.current ||
+          pendingSaveCountRef.current > 0 ||
+          editVersion !== editVersionRef.current ||
+          selectedId !== selectedIdRef.current)
+      )
+        return;
+      setCharacters(result.characters);
+      setDefinition(result.sheetDefinition);
+      setActiveId(result.activeCharacterId);
+      setPartyLabel(result.partyLabel);
+      setItemCatalogue(result.itemCatalogue);
+      setViceCatalogue(result.viceCatalogue);
+      setCreationDefinition(result.creationDefinition);
+      setSelectedId((current) => {
+        const desired = preferredId ?? current ?? result.activeCharacterId ?? undefined;
+        return result.characters.some((character) => character.id === desired) ? desired : result.characters[0]?.id;
+      });
+    } catch (cause) {
+      if (generation === loadGenerationRef.current) throw cause;
+    } finally {
+      if (!background) foregroundLoadsRef.current -= 1;
+    }
   }
 
   useEffect(() => {
     load(initialCharacterId).catch((cause: Error) => setError(cause.message));
+    return () => {
+      loadGenerationRef.current += 1;
+    };
   }, [roomId, initialCharacterId]);
 
   useEffect(() => {
     if (revision === 0 || unsavedChangesRef.current || pendingSaveCountRef.current > 0) return;
-    load().catch((cause: Error) => setError(cause.message));
+    load(undefined, true).catch((cause: Error) => setError(cause.message));
   }, [revision]);
 
   useEffect(() => {
@@ -287,7 +316,8 @@ export function CharacterModal({
     setActiveRule(undefined);
     setName(selected.name);
     setSheet(structuredClone(selected.sheet));
-    editVersionRef.current = 0;
+    // Never reset: an older refresh may still arrive after this save completes.
+    editVersionRef.current += 1;
   }, [selectedId, selected?.updatedAt]);
 
   useEffect(() => {

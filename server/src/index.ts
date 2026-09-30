@@ -214,7 +214,6 @@ app.get("/api/project/:document", requireAuth, (req, res) => {
   const files: Record<string, string> = {
     credits: "credits.md",
     changelog: "changelog.md",
-    roadmap: "roadmap.md",
     "devils-tables": "devils-tables.md",
     notice: "NOTICE.md"
   };

@@ -1,5 +1,9 @@
 # Changelog
 
+- Wiki saves preserve edits made while waiting for a response. Failed group-row autosaves remain unsaved until retried or removed. Delayed character refreshes no longer replace newer edits, and Room Config ignores responses from a room that has been left.
+
+- Planned work is tracked in GitHub Issues. The navigation's Issues link replaces the local Roadmap view.
+
 - Campaign bundles preserve the room’s 3D-dice switch and dice theme. Importing an older bundle leaves existing dice settings unchanged.
 
 - Room settings places Dice theme directly below Theme, with matching swatch pickers. Dice swatches show the actual body, number, and accent colors.

@@ -28,7 +28,7 @@ COPY --from=build /app/raw/tables/*.json ./raw/tables/
 COPY --from=build /app/docs/guide ./docs/guide
 # Served at /api/systems/schema, for the authors of systems this server can run.
 COPY --from=build /app/schema ./schema
-COPY --from=build /app/credits.md /app/changelog.md /app/roadmap.md /app/devils-tables.md /app/NOTICE.md ./
+COPY --from=build /app/credits.md /app/changelog.md /app/devils-tables.md /app/NOTICE.md ./
 VOLUME ["/data"]
 EXPOSE 4000
 CMD ["npm", "start"]

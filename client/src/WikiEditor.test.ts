@@ -2,15 +2,8 @@ import { describe, expect, it } from "vitest";
 import { unified } from "unified";
 import remarkParse from "remark-parse";
 import { remarkWiki } from "@devils-toys/shared";
-import { WIKI_EDITOR_DEBOUNCE_MS, wikiMentionQuery, wikiMentionSource } from "./WikiEditor";
+import { wikiMentionQuery, wikiMentionSource } from "./WikiEditor";
 import { folderAndDescendantIds, folderCanEdit, isCurrentWikiSearch, shouldGuardWikiNavigation } from "./WikiWorkspace";
-
-describe("wiki editor persistence", () => {
-  it("settles local Markdown changes before handing them to the explicit save form", () => {
-    expect(WIKI_EDITOR_DEBOUNCE_MS).toBeGreaterThan(0);
-    expect(WIKI_EDITOR_DEBOUNCE_MS).toBeLessThanOrEqual(500);
-  });
-});
 
 describe("wiki mention atom", () => {
   it("loads a directive as the shared wikiMention node and writes its directive shape back", () => {

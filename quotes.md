@@ -490,3 +490,6 @@ The Nameless One, Planescape Torment, 1999
 
 Today you boys will be involved in such activities as marching, bayonet drills, grenade throwing, trench digging, map reading, gas defense, camouflage, ambush techniques, war games, firing guns and blowing stuff up.
 Captain Klenzendorf, Jojo Rabbit
+
+She begins at first with doing tricks rather strange then hurtfull: yea some of them are pretty and pleasing. But it is dangerous to gather floures that grow on the banks of the pit of hell, for fear of falling in; yea they which play with the devils rattles, will be brought by degrees to wield his sword, and from making of sport they come to doing of mischief.
+Thomas Fuller

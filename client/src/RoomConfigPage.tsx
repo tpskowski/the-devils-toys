@@ -61,6 +61,8 @@ export function RoomConfigPage() {
   // Bumped whenever the room reports a change, so each section refetches its own
   // data rather than the shell knowing what any of them holds.
   const [revision, setRevision] = useState(0);
+  const selectedRoomRef = useRef(roomId);
+  const configGeneration = useRef(0);
 
   const loadRooms = useCallback(async () => {
     try {
@@ -75,10 +77,17 @@ export function RoomConfigPage() {
   }, []);
 
   const loadConfig = useCallback(async (id: number) => {
+    // A completed write can request a reload after the user has switched rooms.
+    if (selectedRoomRef.current !== id) return;
+    const generation = ++configGeneration.current;
+    const isCurrent = () => selectedRoomRef.current === id && configGeneration.current === generation;
     try {
-      setConfig(await api<RoomConfigPayload>(`/api/room-config/${id}`));
+      const response = await api<RoomConfigPayload>(`/api/room-config/${id}`);
+      if (!isCurrent()) return;
+      setConfig(response);
       setError("");
     } catch (cause) {
+      if (!isCurrent()) return;
       const message = (cause as Error).message;
       if (message === "Sign in required.") setSignedOut(true);
       else setError(message);
@@ -96,11 +105,18 @@ export function RoomConfigPage() {
       return;
     }
     loadConfig(roomId);
+    return () => {
+      configGeneration.current += 1;
+    };
   }, [roomId, loadConfig]);
 
   // The address is the panel's memory of which room it is on, so a reload and a
   // shared link both land in the same place.
   const openRoom = useCallback((id: number | undefined) => {
+    selectedRoomRef.current = id;
+    configGeneration.current += 1;
+    setConfig(undefined);
+    setError("");
     setRoomId(id);
     window.history.replaceState(null, "", roomConfigPath(id));
   }, []);
