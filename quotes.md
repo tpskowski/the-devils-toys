@@ -1,8 +1,33 @@
 When I was young, I had to choose between the life of being and the life of doing. And I leapt at the latter like a trout to a fly. But each deed you do, each act, binds you to itself and to its consequences, and makes you act again and yet again.
 The Archmage, The Farthest Shore, 1972
 
+So there I was, between a rock and a hard place, when I thought "What am I doing on this side of the rock?"
+Star Commander Karra, Clan Ghost Bear
+
+I am Kai Allard-Liao. I am a killer of men. This pass is mine to ward.
+Kai Allard-Liao, Twycross, 3050
+
+He’s going home in a shoebox!
+Thunder
+Mechcommander, 1998
+
+Come, my friends, ‘Tis not too late to seek a newer world.
+Lord Tennyson, Ulysses
+
+The war is still coming, Charles, and I intend to fight it, by any means necessary.’
+Magnetio
+X-Men, 2000
+
+Let's just say God works too slowly.
+Magnetio
+X-Men, 2000
+
+To hell with information-ammunition is ammuniation!
+Patch McGuire, tech, 1st Somerset Strikers
+
 Only a coward feels mighty when stepping on ants.
-Apocalypse, X-Men '97, 2026
+Apocalypse
+X-Men '97, 2026
 
 It's time we find out if this ship is capable of deicide.
 Misato Katsuragi
@@ -22,6 +47,9 @@ please help ...
 This is Free Trader Beowulf ...
 Mayday ...
 Traveller, 1977
+
+"All dead come here. Some must have traveled with you once."
+Dhall, Planscape Torment, 1999
 
 When in doubt, have a man come through a door with a gun in his hand.
 Raymond Chandler, 1950

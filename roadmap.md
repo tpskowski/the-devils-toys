@@ -13,6 +13,12 @@
 
 1. Keyboard shortcuts
 2. 3d dice
+3. The "open sheet" under group isn't styled to match the site
+4. advancing time says "Tim
+10:25 PM
+
+It is now segment 1 of 4, April 20th, 1." what is the 1.
+
 
 ## Library
 
