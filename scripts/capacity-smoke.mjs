@@ -85,12 +85,6 @@ await runSmoke(
     );
 
     playerConnections[9].socket.close();
-    await waitFor(
-      gmConnection.events,
-      (message) => message.type === "presence-notice" && /left/.test(message.message.body),
-      "GM-only leave notice",
-      latest
-    );
     const afterLeave = await waitFor(
       gmConnection.events,
       (message) =>
@@ -100,5 +94,21 @@ await runSmoke(
       latest
     );
     assert.equal(afterLeave.members.filter((member) => member.role === "player").length, 20);
+    // Live presence changes immediately; the chat notice waits through the
+    // ten-second reconnect grace period. Allow scheduling headroom in CI.
+    assert.equal(
+      gmConnection.events.some((message) => message.type === "presence-notice" && /left/.test(message.message.body)),
+      false
+    );
+    await waitFor(
+      gmConnection.events,
+      (message) => message.type === "presence-notice" && /left/.test(message.message.body),
+      "GM-only leave notice after the reconnect grace period",
+      { latest: true, timeoutMs: 15_000 }
+    );
+    assert.equal(
+      playerConnections[0].events.some((message) => message.type === "presence-notice"),
+      false
+    );
   }
 );
