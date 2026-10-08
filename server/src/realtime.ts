@@ -1,5 +1,6 @@
 import type { IncomingMessage } from "node:http";
 import type { Server } from "node:http";
+import { randomUUID } from "node:crypto";
 import { parse } from "cookie";
 import { WebSocketServer, WebSocket } from "ws";
 import type { AuthAccount } from "./auth.js";
@@ -11,6 +12,12 @@ import { roomConfigAccess } from "./room-config-permissions.js";
 
 interface Client {
   socket: WebSocket;
+  connectionId: string;
+  connectedAt: number;
+  lastPongAt?: number;
+  lastMessageAt?: number;
+  awaitingPong: boolean;
+  closeCause?: "session-revoked" | "heartbeat-timeout" | "socket-error";
   sessionId: string;
   account: AuthAccount;
   accountId: number;
@@ -28,12 +35,34 @@ interface Client {
 const clients = new Set<Client>();
 let presenceNoticeId = -1;
 let scenePingId = 1;
+const HEARTBEAT_MS = 25_000;
+const PRESENCE_GRACE_MS = 10_000;
+
+/** IDs and timings only: never log cookies, message bodies, or peer close reasons. */
+function connectionDetails(client: Client) {
+  const now = Date.now();
+  return {
+    connectionId: client.connectionId,
+    accountId: client.accountId,
+    roomId: client.roomId,
+    watchingRoomId: client.watchingRoomId,
+    durationMs: now - client.connectedAt,
+    lastPongAgoMs: client.lastPongAt === undefined ? undefined : now - client.lastPongAt,
+    lastMessageAgoMs: client.lastMessageAt === undefined ? undefined : now - client.lastMessageAt,
+    closeCause: client.closeCause
+  };
+}
+
+function revokeSession(client: Client) {
+  client.closeCause = "session-revoked";
+  client.socket.close(4001, "Session revoked");
+}
 
 function authenticated(client: Client) {
   if (client.socket.readyState !== WebSocket.OPEN) return false;
   const account = accountForSession(client.sessionId);
   if (!account) {
-    client.socket.close(4001, "Session revoked");
+    revokeSession(client);
     return false;
   }
   client.account = account;
@@ -162,11 +191,11 @@ export function refreshRoomPresence(roomId: number) {
 
 export function disconnectSession(sessionId?: string) {
   if (!sessionId) return;
-  for (const client of clients) if (client.sessionId === sessionId) client.socket.close(4001, "Session revoked");
+  for (const client of clients) if (client.sessionId === sessionId) revokeSession(client);
 }
 
 export function disconnectAccount(accountId: number) {
-  for (const client of clients) if (client.accountId === accountId) client.socket.close(4001, "Session revoked");
+  for (const client of clients) if (client.accountId === accountId) revokeSession(client);
 }
 
 export function refreshRoomAccess(roomId: number) {
@@ -189,12 +218,41 @@ export function refreshRoomAccess(roomId: number) {
 
 export function attachRealtime(server: Server) {
   const wss = new WebSocketServer({ noServer: true });
+  let serverClosed = false;
+  // Only notices are delayed; presence and access checks still use live sockets.
+  const departures = new Map<
+    string,
+    { timer: ReturnType<typeof setTimeout>; disconnectedAt: number; connectionId: string }
+  >();
+  const presenceKey = (roomId: number, accountId: number) => `${roomId}:${accountId}`;
   // Sessions can expire or be revoked by the separate tables server or CLI.
   const sessionCheck = setInterval(() => {
     for (const client of clients) if (wss.clients.has(client.socket)) authenticated(client);
   }, 30_000);
   sessionCheck.unref();
-  server.once("close", () => clearInterval(sessionCheck));
+  // Browsers answer protocol pings without application JavaScript, including
+  // when a background tab's JavaScript timers are throttled.
+  const heartbeat = setInterval(() => {
+    for (const client of clients) {
+      if (!wss.clients.has(client.socket) || !authenticated(client)) continue;
+      if (client.awaitingPong) {
+        client.closeCause = "heartbeat-timeout";
+        logger.warn("WebSocket heartbeat timed out", connectionDetails(client));
+        client.socket.terminate();
+        continue;
+      }
+      client.awaitingPong = true;
+      client.socket.ping();
+    }
+  }, HEARTBEAT_MS);
+  heartbeat.unref();
+  server.once("close", () => {
+    serverClosed = true;
+    clearInterval(sessionCheck);
+    clearInterval(heartbeat);
+    for (const departure of departures.values()) clearTimeout(departure.timer);
+    departures.clear();
+  });
 
   server.on("upgrade", (request, socket, head) => {
     if (new URL(request.url ?? "/", "http://local").pathname !== "/ws") return socket.destroy();
@@ -205,21 +263,34 @@ export function attachRealtime(server: Server) {
   });
 
   wss.on("connection", (socket: WebSocket, request: IncomingMessage, account: AuthAccount) => {
-    // Protocol errors are emitted before a message can reach the JSON handler.
-    socket.on("error", () => socket.terminate());
     const client: Client = {
       socket,
+      connectionId: randomUUID(),
+      connectedAt: Date.now(),
+      awaitingPong: false,
       sessionId: parse(request.headers.cookie ?? "").devils_session!,
       account,
       accountId: account.id,
       username: account.username
     };
     clients.add(client);
+    logger.info("WebSocket connected", connectionDetails(client));
+    // Protocol errors are emitted before a message can reach the JSON handler.
+    socket.on("error", (error: Error & { code?: string }) => {
+      client.closeCause = "socket-error";
+      logger.warn("WebSocket error", { ...connectionDetails(client), errorCode: error.code });
+      socket.terminate();
+    });
+    socket.on("pong", () => {
+      client.awaitingPong = false;
+      client.lastPongAt = Date.now();
+    });
     send(client, { type: "ready" });
 
     socket.on("message", (raw) => {
       // A revoked socket may still have buffered messages while it closes.
       if (!authenticated(client)) return;
+      client.lastMessageAt = Date.now();
       const account = client.account;
       try {
         const message = JSON.parse(raw.toString()) as { type?: string; roomId?: number };
@@ -249,6 +320,7 @@ export function attachRealtime(server: Server) {
           if (client.roomId !== undefined) return;
           if (!Number.isInteger(message.roomId) || !roomConfigAccess(account, message.roomId!)) return;
           client.watchingRoomId = Number(message.roomId);
+          logger.info("WebSocket watching room", connectionDetails(client));
           return;
         }
 
@@ -268,20 +340,61 @@ export function attachRealtime(server: Server) {
             publishPresenceNotice(previous, account.id, account.username, false);
           publishPresence(previous);
         }
-        if (!hasOtherRoomConnection(roomId, account.id, client))
+        const key = presenceKey(roomId, account.id);
+        const departure = departures.get(key);
+        if (departure) {
+          clearTimeout(departure.timer);
+          departures.delete(key);
+          logger.info("WebSocket reconnected to room", {
+            ...connectionDetails(client),
+            previousConnectionId: departure.connectionId,
+            reconnectGapMs: Date.now() - departure.disconnectedAt
+          });
+        } else {
+          logger.info("WebSocket joined room", connectionDetails(client));
+        }
+        if (!departure && !hasOtherRoomConnection(roomId, account.id, client))
           publishPresenceNotice(roomId, account.id, account.username, true);
         publishPresence(roomId);
       } catch (error) {
-        logger.warn("Ignored invalid WebSocket message", { error: String(error) });
+        logger.warn("Ignored invalid WebSocket message", {
+          ...connectionDetails(client),
+          errorType: error instanceof Error ? error.name : "UnknownError"
+        });
       }
     });
 
-    socket.on("close", () => {
+    socket.on("close", (closeCode) => {
       const roomId = client.roomId;
       clients.delete(client);
+      const log =
+        [1000, 1001, 4001].includes(closeCode) &&
+        !["heartbeat-timeout", "socket-error"].includes(client.closeCause ?? "")
+          ? logger.info
+          : logger.warn;
+      log("WebSocket closed", { ...connectionDetails(client), closeCode });
+      if (serverClosed) return;
       if (roomId) {
-        if (!hasOtherRoomConnection(roomId, account.id, client))
-          publishPresenceNotice(roomId, account.id, account.username, false);
+        if (!hasOtherRoomConnection(roomId, account.id, client)) {
+          const key = presenceKey(roomId, account.id);
+          const pending = departures.get(key);
+          if (pending) clearTimeout(pending.timer);
+          const timer = setTimeout(() => {
+            departures.delete(key);
+            // The room or membership may have been removed while waiting.
+            if (!hasOtherRoomConnection(roomId, account.id, client) && roomRole(account.id, roomId)) {
+              publishPresenceNotice(roomId, account.id, account.username, false);
+              logger.info("Room departure confirmed", {
+                connectionId: client.connectionId,
+                accountId: account.id,
+                roomId,
+                graceMs: PRESENCE_GRACE_MS
+              });
+            }
+          }, PRESENCE_GRACE_MS);
+          timer.unref();
+          departures.set(key, { timer, disconnectedAt: Date.now(), connectionId: client.connectionId });
+        }
         publishPresence(roomId);
       }
     });
