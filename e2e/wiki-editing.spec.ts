@@ -1,13 +1,56 @@
 import { expect, test, type Locator } from "@playwright/test";
 import { prepareTable } from "./setup";
 
+test("Wiki table breaks survive rich editing, mode switches, and saving", async ({ page }) => {
+  const system = await prepareTable(page.request);
+  const roomName = `Wiki tables ${Date.now() % 100000}`;
+  const created = await page.request.post("/api/rooms", { data: { name: roomName, system } });
+  const roomId = (await created.json()).room.id;
+  const saved = await page.request.post(`/api/rooms/${roomId}/wiki/pages`, {
+    data: { title: "Table notes", markdown: "| Note | Owner |\n| --- | --- |\n| First</br>Second | Alice |" }
+  });
+  expect(saved.status()).toBe(201);
+  await page.goto("/");
+  await page.getByRole("button", { name: `Open ${roomName}, Game master` }).click();
+  await page.getByRole("button", { name: "Wiki", exact: true }).click();
+  await page.getByRole("button", { name: "Table notes", exact: true }).click();
+  const reader = page.locator(".wiki-markdown");
+  await expect(reader.locator("tr")).toHaveCount(2);
+  await expect(reader.locator("td")).toHaveText([/^First\s*Second$/, "Alice"]);
+  await expect(reader.locator("td br")).toHaveCount(1);
+  await page.getByRole("button", { name: "Edit", exact: true }).click();
+  const editor = page.locator(".wiki-milkdown .ProseMirror");
+  await expect(editor.locator("tr")).toHaveCount(2);
+  await expect(editor.locator("td")).toHaveText([/^First\s*Second$/, "Alice"]);
+  await page.getByRole("button", { name: "Use plain Markdown" }).click();
+  const source = page.getByLabel("Page Markdown");
+  expect((await source.inputValue()).trim().split("\n")).toHaveLength(3);
+  await expect(source).toHaveValue(/First<br \/>Second/);
+  await page.getByRole("button", { name: "Try rich editor" }).click();
+  await expect(editor.locator("tr")).toHaveCount(2);
+  const note = editor.locator("td p").first();
+  await note.click();
+  await editor.press("End");
+  await editor.press("Shift+Enter");
+  await editor.pressSequentially("Third");
+  await expect(note).toHaveText(/^First\s*Second\s*Third$/);
+  await expect(note.locator("br")).toHaveCount(2);
+  await page.getByRole("button", { name: "Save", exact: true }).click();
+  await expect(reader.locator("tr")).toHaveCount(2);
+  await expect(reader.locator("td")).toHaveText([/^First\s*Second\s*Third$/, "Alice"]);
+  await expect(reader.locator("td br")).toHaveCount(2);
+  await page.getByRole("button", { name: "Edit", exact: true }).click();
+  await expect(editor.locator("tr")).toHaveCount(2);
+  await expect(editor.locator("td")).toHaveText([/^First\s*Second\s*Third$/, "Alice"]);
+});
+
 test("Wiki rich editing preserves spacing, hides its toolbar, and keeps Save still", async ({ page }) => {
   const system = await prepareTable(page.request);
   const roomName = `Wiki ${Date.now() % 100000}`;
   const created = await page.request.post("/api/rooms", { data: { name: roomName, system } });
   const roomId = (await created.json()).room.id;
   const saved = await page.request.post(`/api/rooms/${roomId}/wiki/pages`, {
-    data: { title: "Spacing", markdown: "## Heading\n\nFirst line  \nSecond line\n\n<br />\n\nThird paragraph" }
+    data: { title: "Spacing", markdown: "## Heading\n\nFirst line</br>Second line\n\n</br>\n\nThird paragraph" }
   });
   expect(saved.status()).toBe(201);
   await page.goto("/");
@@ -15,7 +58,7 @@ test("Wiki rich editing preserves spacing, hides its toolbar, and keeps Save sti
   await page.getByRole("button", { name: "Wiki", exact: true }).click();
   await page.getByRole("button", { name: "Spacing", exact: true }).click();
   const reader = page.locator(".wiki-markdown");
-  await expect(reader).not.toContainText("<br");
+  await expect(reader).not.toContainText(/<\/?br/i);
   await expect(reader.locator("p")).toHaveCount(3);
   await expect(reader.locator("br")).toHaveCount(1);
   await page.getByRole("button", { name: "Edit", exact: true }).click();
@@ -43,7 +86,7 @@ test("Wiki rich editing preserves spacing, hides its toolbar, and keeps Save sti
   await editor.pressSequentially("After break");
   await expect(editor.locator("p")).toHaveCount(5);
   await page.getByRole("button", { name: "Use plain Markdown" }).click();
-  await expect(page.getByLabel("Page Markdown")).not.toHaveValue(/<br\s*\/?\s*>/i);
+  await expect(page.getByLabel("Page Markdown")).not.toHaveValue(/<\/?br\s*\/?\s*>/i);
   await expect(page.getByLabel("Page Markdown")).toHaveValue(/\n\n\n\nAfter blank/);
   await page.getByRole("button", { name: "Try rich editor" }).click();
   await expect(editor.locator("p")).toHaveCount(5);
@@ -66,12 +109,16 @@ test("Wiki rich editing preserves spacing, hides its toolbar, and keeps Save sti
   const save = page.getByRole("button", { name: "Save", exact: true });
   await save.scrollIntoViewIfNeeded();
   const beforeHover = await save.boundingBox();
+  const labelColor = await save.evaluate((button) => getComputedStyle(button).color);
   await save.hover();
+  await expect(save).toHaveCSS("color", labelColor);
+  await expect(save.locator("svg")).toHaveCSS("color", labelColor);
+  expect(await save.evaluate((button) => getComputedStyle(button).backgroundColor)).not.toBe(labelColor);
   await expect(save).toHaveCSS("transform", "none");
   expect(await save.boundingBox()).toEqual(beforeHover);
   await save.click();
   await expect(reader.locator("p")).toHaveCount(5);
-  await expect(reader).not.toContainText("<br");
+  await expect(reader).not.toContainText(/<\/?br/i);
   expect(await metrics(reader)).toEqual(editingMetrics);
   await page.getByRole("button", { name: "Edit", exact: true }).click();
   await expect(editor.locator("p")).toHaveCount(5);

@@ -1,5 +1,7 @@
 # Changelog
 
+- Wiki editors and saved pages treat legacy `</br>` tags as line breaks, preserving breaks inside table cells when editing and saving. The Save button keeps its label and icon visible on hover.
+
 - Wiki saves preserve edits made while waiting for a response. Failed group-row autosaves remain unsaved until retried or removed. Delayed character refreshes no longer replace newer edits, and Room Config ignores responses from a room that has been left.
 
 - Planned work is tracked in GitHub Issues. The navigation's Issues link replaces the local Roadmap view.

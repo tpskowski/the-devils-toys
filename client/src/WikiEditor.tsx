@@ -2,6 +2,7 @@ import { Component, useCallback, useEffect, useRef, useState, type ErrorInfo, ty
 import { Editor, defaultValueCtx, editorViewCtx, remarkPluginsCtx, rootCtx } from "@milkdown/kit/core";
 import {
   commonmark,
+  hardbreakFilterNodes,
   remarkPreserveEmptyLinePlugin,
   toggleStrongCommand,
   toggleEmphasisCommand,
@@ -23,7 +24,13 @@ import { TextSelection } from "@milkdown/kit/prose/state";
 import { $nodeSchema, callCommand, getMarkdown } from "@milkdown/kit/utils";
 import { Bold, Italic, Code, Heading2, Heading3, Pilcrow, List, ListOrdered, Quote, Undo2, Redo2 } from "lucide-react";
 import { Milkdown, MilkdownProvider, useEditor } from "@milkdown/react";
-import { normalizeWikiBreaks, remarkWiki, remarkWikiSpacing, type WikiMentionKind } from "@devils-toys/shared";
+import {
+  normalizeWikiBreaks,
+  remarkWiki,
+  remarkWikiSpacing,
+  remarkWikiTableBreaks,
+  type WikiMentionKind
+} from "@devils-toys/shared";
 import { api } from "./api";
 import "@milkdown/kit/prose/view/style/prosemirror.css";
 import "./WikiEditor.css";
@@ -307,12 +314,15 @@ function MilkdownEditor({
         .config((ctx) => {
           ctx.set(rootCtx, root);
           ctx.set(defaultValueCtx, markdownRef.current);
+          // Wiki table breaks have a safe single-line Markdown representation.
+          ctx.update(hardbreakFilterNodes.key, (nodes) => nodes.filter((name) => name !== "table"));
           // Milkdown stores plugins as an attacher plus an options object. The
           // shared attacher takes no options, but unified safely calls it with
           // this empty record when rebuilding its parser and serializer.
           ctx.set(remarkPluginsCtx, [
             { plugin: remarkWiki() as never, options: {} },
-            { plugin: remarkWikiSpacing() as never, options: {} }
+            { plugin: remarkWikiSpacing() as never, options: {} },
+            { plugin: remarkWikiTableBreaks() as never, options: {} }
           ]);
           ctx.set(wikiMentionPicker.key, {
             view: (view) => new WikiMentionPickerView(roomId, view)
