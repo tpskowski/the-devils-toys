@@ -130,7 +130,7 @@
 }
 .wiki-nav-actions button:hover,
 .wiki-page-actions button:hover,
-.wiki-editor footer button:hover,
+.wiki-editor footer button:not(.primary-button):hover,
 .wiki-conflict button:hover {
   border-color: var(--accent);
   color: var(--accent);

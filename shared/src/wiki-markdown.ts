@@ -1,7 +1,10 @@
-import type { Root, Text } from "mdast";
+import type { Nodes, Root, Text } from "mdast";
 import type { TextDirective } from "mdast-util-directive";
+import { defaultHandlers } from "mdast-util-to-markdown";
 import remarkDirective from "remark-directive";
+import remarkGfm from "remark-gfm";
 import remarkParse from "remark-parse";
+import type {} from "remark-stringify";
 import { unified, type Plugin, type Processor, type Transformer } from "unified";
 
 /** The kinds of thing a page may point at. A kind this build has not got is not a mention. */
@@ -89,15 +92,19 @@ function mentionNode(mention: WikiMention, position: TextDirective["position"]):
 }
 
 type TreeNode = { type?: unknown; children?: unknown };
+const wikiBreakTag = /^<(?:br[ \t]*\/?|\/br)[ \t]*>$/i;
 
 /** Replace only parsed, bare HTML breaks. Code examples, escaped tags, and all
  * other HTML remain literal text; this never enables HTML rendering. */
 export function normalizeWikiBreaks(markdown: string): string {
-  const tree = unified().use(remarkParse).parse(markdown);
+  const tree = unified().use(remarkParse).use(remarkGfm).parse(markdown);
   const replacements: Array<{ start: number; end: number; text: string }> = [];
   function visit(node: TreeNode, parent?: TreeNode) {
+    // A source newline would split a table row. The Wiki table plugin handles
+    // these breaks after GFM has parsed the cell boundaries instead.
+    if (node.type === "table") return;
     const html = node as { type?: string; value?: string; position?: Root["position"] };
-    if (html.type === "html" && /^<br[ \t]*\/?[ \t]*>$/i.test(html.value?.trim() ?? "")) {
+    if (html.type === "html" && wikiBreakTag.test(html.value?.trim() ?? "")) {
       const start = html.position?.start.offset;
       const end = html.position?.end.offset;
       if (start !== undefined && end !== undefined) {
@@ -111,6 +118,33 @@ export function normalizeWikiBreaks(markdown: string): string {
   for (const { start, end, text } of replacements.reverse())
     markdown = markdown.slice(0, start) + text + markdown.slice(end);
   return markdown;
+}
+
+/** GFM cells cannot contain source newlines. Read only bare break tags as safe
+ * break nodes, and keep rich-editor saves on one source line per table row. */
+export function remarkWikiTableBreaks(): Plugin<[], Root> {
+  return function (this: Processor): Transformer<Root> {
+    const data = this.data();
+    const extensions = data.toMarkdownExtensions ?? (data.toMarkdownExtensions = []);
+    extensions.push({
+      handlers: {
+        break(node, parent, state, info) {
+          return state.stack.includes("tableCell") ? "<br />" : defaultHandlers.break(node, parent, state, info);
+        }
+      }
+    });
+    function visit(node: Nodes, inTable = false): void {
+      if (!("children" in node)) return;
+      const children = node.children as Nodes[];
+      for (let index = 0; index < children.length; index++) {
+        const child = children[index];
+        if (inTable && child.type === "html" && wikiBreakTag.test(child.value.trim())) {
+          children[index] = { type: "break", position: child.position };
+        } else visit(child, inTable || node.type === "table");
+      }
+    }
+    return (tree) => visit(tree);
+  };
 }
 
 /** An empty rich-text paragraph serializes as an extra pair of newlines.

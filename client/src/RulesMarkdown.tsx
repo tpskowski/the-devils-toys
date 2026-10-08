@@ -2,7 +2,13 @@ import { useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { defaultUrlTransform } from "react-markdown";
-import { normalizeWikiBreaks, remarkWiki, remarkWikiSpacing, type WikiMentionKind } from "@devils-toys/shared";
+import {
+  normalizeWikiBreaks,
+  remarkWiki,
+  remarkWikiSpacing,
+  remarkWikiTableBreaks,
+  type WikiMentionKind
+} from "@devils-toys/shared";
 import { extractRuleHeadings, headingSlug, stripMarkdownMetadata } from "./rules";
 import { TableRollModal } from "./TableRollModal";
 
@@ -14,7 +20,7 @@ export interface WikiMentionTarget {
 
 /** Rules and Library Markdown stay literal unless a wiki reader opts in. */
 export function rulesMarkdownPlugins(wikiMentions: boolean) {
-  return wikiMentions ? [remarkGfm, remarkWiki(), remarkWikiSpacing()] : [remarkGfm];
+  return wikiMentions ? [remarkGfm, remarkWiki(), remarkWikiSpacing(), remarkWikiTableBreaks()] : [remarkGfm];
 }
 
 function decodeFragment(value: string) {

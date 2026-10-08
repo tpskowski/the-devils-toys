@@ -19,16 +19,30 @@ describe("RulesMarkdown wiki grammar boundary", () => {
   });
 
   it("only adds directive parsing and paragraph spacing for an opted-in wiki reader", () => {
-    expect(rulesMarkdownPlugins(true)).toHaveLength(3);
+    expect(rulesMarkdownPlugins(true)).toHaveLength(4);
   });
 
-  it("renders Wiki breaks and blank paragraphs while keeping arbitrary HTML and code literal", () => {
-    const markdown = "First<br>Second\n\n<br />\n\nThird\n\n`<br>`\n\n<script>alert(1)</script>";
+  it.each(["<br>", "<br />", "</br>"])(
+    "renders Wiki %s breaks and blank paragraphs while keeping arbitrary HTML and code literal",
+    (tag) => {
+      const markdown = `First${tag}Second\n\n${tag}\n\nThird\n\n\`<br>\`\n\n<script>alert(1)</script>`;
+      const html = renderToStaticMarkup(
+        createElement(RulesMarkdown, { markdown, idPrefix: "wiki", wikiMentions: true })
+      );
+      expect(html).toContain("First<br/>");
+      expect(html).toContain("<p></p>");
+      expect(html).toContain("<code>&lt;br&gt;</code>");
+      expect(html).not.toContain("<script>");
+      expect(html).toContain("&lt;script&gt;");
+    }
+  );
+
+  it.each(["<br>", "<br />", "</br>"])("keeps %s breaks inside their Wiki table cells", (tag) => {
+    const markdown = `| Note | Owner |\n| --- | --- |\n| First${tag}Second | Alice |`;
     const html = renderToStaticMarkup(createElement(RulesMarkdown, { markdown, idPrefix: "wiki", wikiMentions: true }));
-    expect(html).toContain("First<br/>");
-    expect(html).toContain("<p></p>");
-    expect(html).toContain("<code>&lt;br&gt;</code>");
-    expect(html).not.toContain("<script>");
-    expect(html).toContain("&lt;script&gt;");
+    expect(html.match(/<tr>/g)).toHaveLength(2);
+    expect(html).toContain("<td>First<br/>");
+    expect(html).toContain("Second</td>");
+    expect(html).toContain("<td>Alice</td>");
   });
 });
