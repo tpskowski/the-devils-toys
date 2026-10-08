@@ -305,10 +305,12 @@ export async function runSmoke(name, run, { env = {}, withTablesServer = false }
    * Polls `events` until one matches. `match` is either an event type or a predicate.
    * Pass `latest` when earlier events can also match and only the newest one is the answer,
    * as with presence counts that climb while players are still connecting.
+   * Set timeoutMs for intentionally delayed events; ordinary events keep a short wait.
    */
-  async function waitFor(events, match, label = String(match), { latest = false } = {}) {
+  async function waitFor(events, match, label = String(match), { latest = false, timeoutMs = 2500 } = {}) {
     const predicate = typeof match === "function" ? match : (event) => event.type === match;
-    for (let attempt = 0; attempt < 100; attempt += 1) {
+    const deadline = performance.now() + timeoutMs;
+    while (performance.now() < deadline) {
       const found = latest ? [...events].reverse().find(predicate) : events.find(predicate);
       if (found) return found;
       await sleep(25);

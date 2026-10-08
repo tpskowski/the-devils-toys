@@ -116,8 +116,50 @@ access.
 to standard output.
 
 Fields whose names look like a secret — password, token, secret, authorization,
-cookie — are written as `[redacted]`, so the log is safe to read and to attach
-to a bug report without combing through it first.
+cookie — are written as `[redacted]`. This is field-name redaction, not a scan
+of arbitrary text; review logs before sharing them.
+
+### Tracking room disconnects
+
+The default `info` level records WebSocket connections, room joins and watches,
+closes, brief reconnects, and confirmed departures. No extra logging setting is
+needed. Filter for messages beginning with `WebSocket` or `Room departure`.
+
+Each connection has a random `connectionId`; `accountId`, `roomId`, and
+`watchingRoomId` identify who and where without recording cookies, session IDs,
+chat contents, or browser-supplied close reasons. A `WebSocket closed` entry
+includes `closeCode`, `durationMs`, and, when available, `lastPongAgoMs` and
+`lastMessageAgoMs`. A reconnect within the grace period records
+`previousConnectionId` and `reconnectGapMs`, so it remains visible in the log
+even though it no longer adds messages to the GM's chat.
+
+| Diagnostic                                       | Meaning                                                                                                                     |
+| ------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------- |
+| `closeCode: 1000` or `1001`                      | The peer completed a normal close or reported going away.                                                                   |
+| `closeCode: 1005`                                | The peer closed without providing a status code.                                                                            |
+| `closeCode: 1006`                                | The connection ended without completing a close handshake; this alone does not identify the network cause.                  |
+| `closeCause: heartbeat-timeout`                  | No pong arrived by the next heartbeat, so the server terminated the connection.                                             |
+| `closeCause: session-revoked`, `closeCode: 4001` | The application closed the connection because its session expired or was revoked.                                           |
+| `closeCause: socket-error`                       | A socket or WebSocket protocol error occurred; the preceding `WebSocket error` entry includes an error code when available. |
+
+Unexpected closes, heartbeat timeouts, and socket errors are warnings. Successful
+pings and pongs are not logged individually. The server sends a protocol ping
+every 25 seconds, and the browser answers automatically. A missing answer is
+detected at the next heartbeat. This keeps idle connections active through
+proxies whose idle timeout exceeds that interval.
+
+After the last connection for an account in a room closes, its leave notice
+waits 10 seconds. Rejoining the same room within that window cancels both the
+leave and the new join notice. The online indicator still reflects live
+connections immediately, and session revocation is immediate. Switching rooms
+in the browser closes the old connection, so its departure notice also waits
+10 seconds; joining the new room is announced immediately. Room Config watchers
+never produce presence notices.
+
+If drops continue, compare `durationMs`, timestamps, and `accountId` across
+several closes. A regular cadence suggests a timeout; many accounts dropping
+together suggests a shared server or network interruption. Those are clues,
+not proof: correlate the entries with proxy logs and server restarts.
 
 Nothing rotates it. On a long-lived instance, truncate or rotate it yourself.
 

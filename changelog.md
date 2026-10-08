@@ -1,5 +1,7 @@
 # Changelog
 
+- Idle room connections now receive WebSocket keepalives. A 10-second reconnect grace period suppresses brief leave/join chatter for GMs, while live presence still updates immediately. Structured logs record connection IDs, account and room IDs, close codes, heartbeat failures, connection durations, and brief reconnect timing for troubleshooting.
+
 - Wiki editors and saved pages treat legacy `</br>` tags as line breaks, preserving breaks inside table cells when editing and saving. The Save button keeps its label and icon visible on hover.
 
 - Wiki saves preserve edits made while waiting for a response. Failed group-row autosaves remain unsaved until retried or removed. Delayed character refreshes no longer replace newer edits, and Room Config ignores responses from a room that has been left.
