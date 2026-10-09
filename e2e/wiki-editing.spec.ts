@@ -30,6 +30,21 @@ test("Wiki table breaks survive rich editing, mode switches, and saving", async 
   await expect(editor.locator("tr")).toHaveCount(2);
   const note = editor.locator("td p").first();
   await note.click();
+  // Verify the real click selected this cell before normalizing the offset.
+  // Otherwise the range below could conceal a click that landed in the header.
+  await expect
+    .poll(() =>
+      note.evaluate((paragraph) => {
+        const selection = window.getSelection();
+        return (
+          !!selection?.anchorNode &&
+          !!selection.focusNode &&
+          paragraph.contains(selection.anchorNode) &&
+          paragraph.contains(selection.focusNode)
+        );
+      })
+    )
+    .toBe(true);
   // A paragraph-centre click can land on either line, and focusing the whole
   // contenteditable again can move its caret. Pin the insertion point to this
   // cell, then type through the keyboard without refocusing the editor root.
