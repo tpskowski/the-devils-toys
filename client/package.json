@@ -15,8 +15,8 @@
     "@fontsource/dm-mono": "^5.2.6",
     "@fontsource/inter": "^5.2.6",
     "@fontsource/unbounded": "^5.2.6",
-    "@milkdown/kit": "7.21.3",
-    "@milkdown/react": "7.21.3",
+    "@milkdown/kit": "7.22.2",
+    "@milkdown/react": "7.22.2",
     "lucide-react": "^0.468.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
@@ -30,6 +30,6 @@
     "@types/three": "^0.186.0",
     "@vitejs/plugin-react": "^4.5.2",
     "vite": "^7.0.0",
-    "vitest": "^3.2.4"
+    "vitest": "^4.1.11"
   }
 }
