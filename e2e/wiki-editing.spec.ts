@@ -30,9 +30,20 @@ test("Wiki table breaks survive rich editing, mode switches, and saving", async 
   await expect(editor.locator("tr")).toHaveCount(2);
   const note = editor.locator("td p").first();
   await note.click();
-  await editor.press("End");
-  await editor.press("Shift+Enter");
-  await editor.pressSequentially("Third");
+  // A paragraph-centre click can land on either line, and focusing the whole
+  // contenteditable again can move its caret. Pin the insertion point to this
+  // cell, then type through the keyboard without refocusing the editor root.
+  await note.evaluate((paragraph) => {
+    const range = document.createRange();
+    range.selectNodeContents(paragraph);
+    range.collapse(false);
+    const selection = window.getSelection()!;
+    selection.removeAllRanges();
+    selection.addRange(range);
+  });
+  await expect(editor).toBeFocused();
+  await page.keyboard.press("Shift+Enter");
+  await page.keyboard.type("Third");
   await expect(note).toHaveText(/^First\s*Second\s*Third$/);
   await expect(note.locator("br")).toHaveCount(2);
   await page.getByRole("button", { name: "Save", exact: true }).click();
