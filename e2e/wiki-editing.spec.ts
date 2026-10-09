@@ -30,9 +30,35 @@ test("Wiki table breaks survive rich editing, mode switches, and saving", async 
   await expect(editor.locator("tr")).toHaveCount(2);
   const note = editor.locator("td p").first();
   await note.click();
-  await editor.press("End");
-  await editor.press("Shift+Enter");
-  await editor.pressSequentially("Third");
+  // Verify the real click selected this cell before normalizing the offset.
+  // Otherwise the range below could conceal a click that landed in the header.
+  await expect
+    .poll(() =>
+      note.evaluate((paragraph) => {
+        const selection = window.getSelection();
+        return (
+          !!selection?.anchorNode &&
+          !!selection.focusNode &&
+          paragraph.contains(selection.anchorNode) &&
+          paragraph.contains(selection.focusNode)
+        );
+      })
+    )
+    .toBe(true);
+  // A paragraph-centre click can land on either line, and focusing the whole
+  // contenteditable again can move its caret. Pin the insertion point to this
+  // cell, then type through the keyboard without refocusing the editor root.
+  await note.evaluate((paragraph) => {
+    const range = document.createRange();
+    range.selectNodeContents(paragraph);
+    range.collapse(false);
+    const selection = window.getSelection()!;
+    selection.removeAllRanges();
+    selection.addRange(range);
+  });
+  await expect(editor).toBeFocused();
+  await page.keyboard.press("Shift+Enter");
+  await page.keyboard.type("Third");
   await expect(note).toHaveText(/^First\s*Second\s*Third$/);
   await expect(note.locator("br")).toHaveCount(2);
   await page.getByRole("button", { name: "Save", exact: true }).click();

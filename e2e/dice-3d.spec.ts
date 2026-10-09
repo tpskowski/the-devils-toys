@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { randomUUID } from "node:crypto";
 import { DICE_SHAPES, DICE_THEMES, DEFAULT_DICE_PREFERENCES, diceAppearance } from "../shared/src/dice-3d";
 import { prepareTable } from "./setup";
 import { bundleSystemRepo, MINIMAL_SYSTEM } from "../scripts/harness.mjs";
@@ -11,7 +12,8 @@ test("3D dice: room gate, preferences, all shapes, bounded desktop/mobile render
   test.setTimeout(60000);
   await page.clock.install();
   const system = await prepareTable(page.request);
-  const created = await (await page.request.post("/api/rooms", { data: { name: "3D Dice Workshop", system } })).json();
+  const roomName = `3D Dice Workshop ${randomUUID().slice(0, 8)}`;
+  const created = await (await page.request.post("/api/rooms", { data: { name: roomName, system } })).json();
   const roomId = created.room.id;
   expect(created.room.dice3dEnabled).toBe(false);
   const disabled = await (
@@ -19,7 +21,7 @@ test("3D dice: room gate, preferences, all shapes, bounded desktop/mobile render
   ).json();
   expect(disabled.diceAnimations).toEqual([]);
   await page.goto("/");
-  await page.getByRole("button", { name: "Open 3D Dice Workshop, Game master" }).click();
+  await page.getByRole("button", { name: `Open ${roomName}, Game master`, exact: true }).click();
   await page.getByTitle("Room settings", { exact: true }).click();
   await expect(page.locator(".room-dice-theme summary")).toHaveCount(0);
   await page.getByRole("checkbox", { name: /^3D dice / }).check();
@@ -139,7 +141,20 @@ test("3D dice: room gate, preferences, all shapes, bounded desktop/mobile render
   if (composer) expect(phone!.y + phone!.height).toBeLessThanOrEqual(composer.y + 1);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.clock.resume();
+  // Emulation updates the media query before its change event is delivered.
+  // Let the overlay clear the previous animation before sending the next roll.
+  const motionChange = await page.evaluateHandle(() => ({
+    settled: new Promise<void>((resolve) => {
+      window.matchMedia("(prefers-reduced-motion: reduce)").addEventListener("change", () => resolve(), {
+        once: true
+      });
+    })
+  }));
   await page.emulateMedia({ reducedMotion: "reduce" });
+  await motionChange.evaluate(({ settled }) => settled);
+  await motionChange.dispose();
+  // Keep the fallback's short lifetime independent of CI scheduling delays.
+  await page.clock.pauseAt(await page.evaluate(() => Date.now() + 1000));
   await page.evaluate(
     (animation) =>
       window.dispatchEvent(
@@ -148,6 +163,9 @@ test("3D dice: room gate, preferences, all shapes, bounded desktop/mobile render
     animation
   );
   await expect(page.locator(".dice-caption")).toContainText("All standard dice");
+  await page.clock.fastForward(1801);
+  await expect(page.locator(".dice-caption")).toHaveCount(0);
+  await page.clock.resume();
   await page.request.put("/api/me/dice", { data: { ...DEFAULT_DICE_PREFERENCES, enabled: false, theme: "shinji" } });
   await page.goto(`/?room=${roomId}`);
   await expect(page.locator(".table-shell")).toBeVisible();
@@ -167,7 +185,9 @@ test("roll metadata respects server audiences, custom dice and fresh live delive
   const roomId = (await created.json()).room.id;
   await page.request.patch(`/api/rooms/${roomId}`, { data: { dice3dEnabled: true, dice3dTheme: "grim" } });
   const invitation = await (
-    await page.request.post(`/api/rooms/${roomId}/invitations`, { data: { username: "Dice3DPlayer" } })
+    await page.request.post(`/api/rooms/${roomId}/invitations`, {
+      data: { username: `Dice3DPlayer${randomUUID().slice(0, 8)}` }
+    })
   ).json();
   const context = await browser.newContext({ baseURL: new URL(created.url()).origin });
   await context.request.post(`/api/invitations/${invitation.invitation.token}/redeem`, {
