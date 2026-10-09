@@ -1,5 +1,7 @@
 # Changelog
 
+- Updated runtime and development dependencies to resolve npm security advisories, including uploads, image processing, the Wiki editor, and the test runner. The math parser uses a scoped override to select patched KaTeX.
+
 - Idle room connections now receive WebSocket keepalives. A 10-second reconnect grace period suppresses brief leave/join chatter for GMs, while live presence still updates immediately. Structured logs record connection IDs, account and room IDs, close codes, heartbeat failures, connection durations, and brief reconnect timing for troubleshooting.
 
 - Wiki editors and saved pages treat legacy `</br>` tags as line breaks, preserving breaks inside table cells when editing and saving. The Save button keeps its label and icon visible on hover.
