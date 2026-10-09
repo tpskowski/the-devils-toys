@@ -50,6 +50,8 @@ describe("what a running server writes is never committable", () => {
     // The database, wherever somebody has put it.
     ["somewhere/else/devils-toys.sqlite"],
     ["somewhere/else/devils-toys.sqlite-wal"],
+    ["somewhere/else/migration-lock.sqlite"],
+    ["somewhere/else/migration-lock.sqlite-journal"],
     // What the application hands out, downloaded into the checkout.
     ["cairn.devilsystem.zip"],
     ["docs/tomb-of-the-serpent-kings.devilcampaign.zip"],

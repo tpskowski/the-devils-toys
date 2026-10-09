@@ -5,6 +5,7 @@ import { BUILTIN_TABLE_TAGS, defaultTagLabel, serializeSet, THEME_IDS } from "@d
 import { builtinSystems } from "./builtin-systems.js";
 import { config } from "./config.js";
 import { refuseUnisolatedTestDatabase } from "./test-data-guard.js";
+import { withMigrationLock } from "./migration-lock.js";
 
 refuseUnisolatedTestDatabase();
 fs.mkdirSync(config.dataDir, { recursive: true });
@@ -12,9 +13,6 @@ fs.mkdirSync(path.join(config.dataDir, "uploads"), { recursive: true });
 fs.mkdirSync(path.join(config.dataDir, "logs"), { recursive: true });
 
 export const db = new DatabaseSync(path.join(config.dataDir, "devils-toys.sqlite"));
-// The Devil's Tables runs as its own process against this same file, so a writer
-// waits its turn instead of failing the request outright.
-db.exec("PRAGMA busy_timeout = 5000; PRAGMA foreign_keys = ON; PRAGMA journal_mode = WAL;");
 
 const themeCheckList = THEME_IDS.map((theme) => `'${theme}'`).join(",");
 
@@ -172,7 +170,19 @@ const charactersColumns = `
     created_by INTEGER REFERENCES accounts(id) ON DELETE SET NULL,
     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP`;
 
-db.exec(`
+try {
+  withMigrationLock(config.dataDir, initializeDatabase);
+} catch (cause) {
+  db.close();
+  throw cause;
+}
+
+function initializeDatabase() {
+  // The Devil's Tables runs as its own process against this same file, so a writer
+  // waits its turn instead of failing the request outright.
+  db.exec("PRAGMA busy_timeout = 5000; PRAGMA foreign_keys = ON; PRAGMA journal_mode = WAL;");
+
+  db.exec(`
   CREATE TABLE IF NOT EXISTS accounts (
     id INTEGER PRIMARY KEY,
     username TEXT NOT NULL COLLATE NOCASE UNIQUE,
@@ -500,277 +510,278 @@ db.exec(`
     ON room_tags (room_id, media_id, tag) WHERE media_id IS NOT NULL;
 `);
 
-/**
- * Fill the registry before anything is asked to point at it.
- *
- * A compiled system's row is written on every start, so a rename in the code
- * reaches the database and a system added to a build appears without ceremony.
- * Rows are never deleted here: a room may be on a system this build no longer
- * ships, and that room should still open.
- *
- * Any system id already recorded against a room or a character but not compiled
- * in gets a row too, retired, so that adding the foreign key below cannot fail
- * on a database whose rooms outlived their system.
- */
-const upsertBuiltinSystem = db.prepare(
-  `INSERT INTO systems (id, name, origin) VALUES (?, ?, 'builtin')
+  /**
+   * Fill the registry before anything is asked to point at it.
+   *
+   * A compiled system's row is written on every start, so a rename in the code
+   * reaches the database and a system added to a build appears without ceremony.
+   * Rows are never deleted here: a room may be on a system this build no longer
+   * ships, and that room should still open.
+   *
+   * Any system id already recorded against a room or a character but not compiled
+   * in gets a row too, retired, so that adding the foreign key below cannot fail
+   * on a database whose rooms outlived their system.
+   */
+  const upsertBuiltinSystem = db.prepare(
+    `INSERT INTO systems (id, name, origin) VALUES (?, ?, 'builtin')
    ON CONFLICT(id) DO UPDATE SET name = excluded.name, origin = 'builtin', updated_at = CURRENT_TIMESTAMP`
-);
-for (const [id, definition] of Object.entries(builtinSystems)) upsertBuiltinSystem.run(id, definition.name);
-
-/**
- * A system this build no longer compiles in is no longer built in.
- *
- * Databases exist that were written when Cairn, Monolith, and Cities Without
- * Number shipped inside the application, and their rows still say so. `builtin`
- * means "content lives in the repository", which for those rows is now false —
- * and `loadInstalledSystems` skips anything not marked `installed`, so the row
- * would never load however the content arrived. Its rooms would open on a system
- * that could never be restored to them.
- *
- * They are not retired here. A system with no content is already absent from the
- * choices for a new room, because the registry only offers what it could load;
- * retiring as well would mean re-installing and then remembering to restore it.
- */
-const stranded = db
-  .prepare(`SELECT id FROM systems WHERE origin = 'builtin'`)
-  .all()
-  .filter((row) => !Object.hasOwn(builtinSystems, (row as { id: string }).id)) as { id: string }[];
-for (const row of stranded) {
-  db.prepare("UPDATE systems SET origin = 'installed', updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(row.id);
-}
-
-for (const { system } of db
-  .prepare(
-    `SELECT DISTINCT system FROM rooms
-     UNION SELECT DISTINCT system FROM characters`
-  )
-  .all() as { system: string }[]) {
-  db.prepare("INSERT OR IGNORE INTO systems (id, name, origin, retired) VALUES (?, ?, 'installed', 1)").run(
-    system,
-    system
   );
-}
+  for (const [id, definition] of Object.entries(builtinSystems)) upsertBuiltinSystem.run(id, definition.name);
 
-function hasColumn(table: string, column: string) {
-  return (db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[]).some((item) => item.name === column);
-}
+  /**
+   * A system this build no longer compiles in is no longer built in.
+   *
+   * Databases exist that were written when Cairn, Monolith, and Cities Without
+   * Number shipped inside the application, and their rows still say so. `builtin`
+   * means "content lives in the repository", which for those rows is now false —
+   * and `loadInstalledSystems` skips anything not marked `installed`, so the row
+   * would never load however the content arrived. Its rooms would open on a system
+   * that could never be restored to them.
+   *
+   * They are not retired here. A system with no content is already absent from the
+   * choices for a new room, because the registry only offers what it could load;
+   * retiring as well would mean re-installing and then remembering to restore it.
+   */
+  const stranded = db
+    .prepare(`SELECT id FROM systems WHERE origin = 'builtin'`)
+    .all()
+    .filter((row) => !Object.hasOwn(builtinSystems, (row as { id: string }).id)) as { id: string }[];
+  for (const row of stranded) {
+    db.prepare("UPDATE systems SET origin = 'installed', updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(row.id);
+  }
 
-function storedSchema(table: string) {
-  return one<{ sql: string }>("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?", table)?.sql ?? "";
-}
+  for (const { system } of db
+    .prepare(
+      `SELECT DISTINCT system FROM rooms
+     UNION SELECT DISTINCT system FROM characters`
+    )
+    .all() as { system: string }[]) {
+    db.prepare("INSERT OR IGNORE INTO systems (id, name, origin, retired) VALUES (?, ?, 'installed', 1)").run(
+      system,
+      system
+    );
+  }
 
-function tableExists(table: string) {
-  return Boolean(storedSchema(table));
-}
+  function hasColumn(table: string, column: string) {
+    return (db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[]).some((item) => item.name === column);
+  }
 
-/**
- * Rebuild `rooms` when its recorded schema is stale in any of three ways: a
- * theme added since the database was made is still rejected by the older CHECK,
- * `system` still carries a CHECK at all, or `system` does not yet point at the
- * registry.
- *
- * The system constraint is dropped rather than widened. It listed the compiled
- * systems, so every release that added one required this rebuild — and an
- * installed system could never be listed, because its id is not known until an
- * admin uploads it. What replaces it is a foreign key, which answers the
- * question the CHECK could not: whether a system may be deleted.
- *
- * Each condition is read from the stored schema, which is what makes this
- * idempotent — once the constraint is gone and the reference is there, none of
- * the three can match again.
- */
-const roomsSchema =
-  one<{ sql: string }>("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'rooms'")?.sql ?? "";
-const roomsConstrainsSystem = /CHECK\s*\(\s*system\s+IN/i.test(roomsSchema);
-const roomsReferencesSystems = /system\s+TEXT[^,]*REFERENCES\s+systems/i.test(roomsSchema);
-if (
-  roomsSchema &&
-  (roomsConstrainsSystem || !roomsReferencesSystems || THEME_IDS.some((theme) => !roomsSchema.includes(`'${theme}'`)))
-) {
-  const preservedColumns = [
-    "id",
-    "name",
-    "system",
-    "theme",
-    "archived",
-    "calendar_enabled",
-    "calendar_json",
-    "map_notation_enabled",
-    "music_enabled",
-    "wiki_enabled",
-    "dice_3d_enabled",
-    "dice_3d_theme",
-    "created_by",
-    "created_at"
-  ].filter((column) => hasColumn("rooms", column));
-  db.exec("PRAGMA foreign_keys = OFF");
-  db.exec("BEGIN IMMEDIATE");
-  try {
-    db.exec(`CREATE TABLE rooms_rebuilt (${roomsColumns}
+  function storedSchema(table: string) {
+    return one<{ sql: string }>("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?", table)?.sql ?? "";
+  }
+
+  function tableExists(table: string) {
+    return Boolean(storedSchema(table));
+  }
+
+  /**
+   * Rebuild `rooms` when its recorded schema is stale in any of three ways: a
+   * theme added since the database was made is still rejected by the older CHECK,
+   * `system` still carries a CHECK at all, or `system` does not yet point at the
+   * registry.
+   *
+   * The system constraint is dropped rather than widened. It listed the compiled
+   * systems, so every release that added one required this rebuild — and an
+   * installed system could never be listed, because its id is not known until an
+   * admin uploads it. What replaces it is a foreign key, which answers the
+   * question the CHECK could not: whether a system may be deleted.
+   *
+   * Each condition is read from the stored schema, which is what makes this
+   * idempotent — once the constraint is gone and the reference is there, none of
+   * the three can match again.
+   */
+  const roomsSchema =
+    one<{ sql: string }>("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'rooms'")?.sql ?? "";
+  const roomsConstrainsSystem = /CHECK\s*\(\s*system\s+IN/i.test(roomsSchema);
+  const roomsReferencesSystems = /system\s+TEXT[^,]*REFERENCES\s+systems/i.test(roomsSchema);
+  if (
+    roomsSchema &&
+    (roomsConstrainsSystem || !roomsReferencesSystems || THEME_IDS.some((theme) => !roomsSchema.includes(`'${theme}'`)))
+  ) {
+    const preservedColumns = [
+      "id",
+      "name",
+      "system",
+      "theme",
+      "archived",
+      "calendar_enabled",
+      "calendar_json",
+      "map_notation_enabled",
+      "music_enabled",
+      "wiki_enabled",
+      "dice_3d_enabled",
+      "dice_3d_theme",
+      "created_by",
+      "created_at"
+    ].filter((column) => hasColumn("rooms", column));
+    db.exec("PRAGMA foreign_keys = OFF");
+    db.exec("BEGIN IMMEDIATE");
+    try {
+      db.exec(`CREATE TABLE rooms_rebuilt (${roomsColumns}
     )`);
-    db.exec(`INSERT INTO rooms_rebuilt (${preservedColumns.join(", ")})
+      db.exec(`INSERT INTO rooms_rebuilt (${preservedColumns.join(", ")})
              SELECT ${preservedColumns.join(", ")} FROM rooms`);
-    db.exec("DROP TABLE rooms");
-    db.exec("ALTER TABLE rooms_rebuilt RENAME TO rooms");
-    db.exec("COMMIT");
-  } catch (cause) {
-    db.exec("ROLLBACK");
-    throw cause;
-  } finally {
-    db.exec("PRAGMA foreign_keys = ON");
+      db.exec("DROP TABLE rooms");
+      db.exec("ALTER TABLE rooms_rebuilt RENAME TO rooms");
+      db.exec("COMMIT");
+    } catch (cause) {
+      db.exec("ROLLBACK");
+      throw cause;
+    } finally {
+      db.exec("PRAGMA foreign_keys = ON");
+    }
   }
-}
 
-/**
- * Give `characters.system` the same reference. It has never carried a constraint
- * of any kind, so a character could be recorded against a system that was never
- * installed and nothing would notice until its sheet failed to render.
- */
-const charactersSchema = storedSchema("characters");
-if (charactersSchema && !/system\s+TEXT[^,]*REFERENCES\s+systems/i.test(charactersSchema)) {
-  const preservedColumns = [
-    "id",
-    "system",
-    "owner_account_id",
-    "pool_room_id",
-    "name",
-    "sheet_json",
-    "portrait_filename",
-    "portrait_stored_name",
-    "portrait_mime_type",
-    "portrait_size",
-    "creation_json",
-    "created_by",
-    "updated_at"
-  ].filter((column) => hasColumn("characters", column));
-  db.exec("PRAGMA foreign_keys = OFF");
-  db.exec("BEGIN IMMEDIATE");
-  try {
-    db.exec(`CREATE TABLE characters_rebuilt (${charactersColumns}
+  /**
+   * Give `characters.system` the same reference. It has never carried a constraint
+   * of any kind, so a character could be recorded against a system that was never
+   * installed and nothing would notice until its sheet failed to render.
+   */
+  const charactersSchema = storedSchema("characters");
+  if (charactersSchema && !/system\s+TEXT[^,]*REFERENCES\s+systems/i.test(charactersSchema)) {
+    const preservedColumns = [
+      "id",
+      "system",
+      "owner_account_id",
+      "pool_room_id",
+      "name",
+      "sheet_json",
+      "portrait_filename",
+      "portrait_stored_name",
+      "portrait_mime_type",
+      "portrait_size",
+      "creation_json",
+      "created_by",
+      "updated_at"
+    ].filter((column) => hasColumn("characters", column));
+    db.exec("PRAGMA foreign_keys = OFF");
+    db.exec("BEGIN IMMEDIATE");
+    try {
+      db.exec(`CREATE TABLE characters_rebuilt (${charactersColumns}
     )`);
-    db.exec(`INSERT INTO characters_rebuilt (${preservedColumns.join(", ")})
+      db.exec(`INSERT INTO characters_rebuilt (${preservedColumns.join(", ")})
              SELECT ${preservedColumns.join(", ")} FROM characters`);
-    db.exec("DROP TABLE characters");
-    db.exec("ALTER TABLE characters_rebuilt RENAME TO characters");
-    db.exec("COMMIT");
-  } catch (cause) {
-    db.exec("ROLLBACK");
-    throw cause;
-  } finally {
-    db.exec("PRAGMA foreign_keys = ON");
+      db.exec("DROP TABLE characters");
+      db.exec("ALTER TABLE characters_rebuilt RENAME TO characters");
+      db.exec("COMMIT");
+    } catch (cause) {
+      db.exec("ROLLBACK");
+      throw cause;
+    } finally {
+      db.exec("PRAGMA foreign_keys = ON");
+    }
   }
-}
 
-if (!hasColumn("accounts", "account_role")) {
-  db.exec("ALTER TABLE accounts ADD COLUMN account_role TEXT NOT NULL DEFAULT 'player'");
-  db.exec(`UPDATE accounts SET account_role = CASE
+  if (!hasColumn("accounts", "account_role")) {
+    db.exec("ALTER TABLE accounts ADD COLUMN account_role TEXT NOT NULL DEFAULT 'player'");
+    db.exec(`UPDATE accounts SET account_role = CASE
     WHEN is_admin = 1 THEN 'admin'
     WHEN EXISTS (
       SELECT 1 FROM memberships WHERE memberships.account_id = accounts.id AND memberships.role = 'gm'
     ) THEN 'gm'
     ELSE 'player'
   END`);
-}
+  }
 
-if (!hasColumn("rooms", "calendar_enabled")) {
-  db.exec("ALTER TABLE rooms ADD COLUMN calendar_enabled INTEGER NOT NULL DEFAULT 0");
-}
-if (!hasColumn("rooms", "calendar_json")) {
-  db.exec("ALTER TABLE rooms ADD COLUMN calendar_json TEXT");
-}
-if (!hasColumn("rooms", "map_notation_enabled")) {
-  db.exec("ALTER TABLE rooms ADD COLUMN map_notation_enabled INTEGER NOT NULL DEFAULT 0");
-}
-if (!hasColumn("rooms", "music_enabled")) {
-  db.exec("ALTER TABLE rooms ADD COLUMN music_enabled INTEGER NOT NULL DEFAULT 0");
-}
-if (!hasColumn("rooms", "wiki_enabled")) {
-  db.exec("ALTER TABLE rooms ADD COLUMN wiki_enabled INTEGER NOT NULL DEFAULT 1");
-}
-if (!hasColumn("rooms", "dice_3d_enabled")) {
-  db.exec("ALTER TABLE rooms ADD COLUMN dice_3d_enabled INTEGER NOT NULL DEFAULT 0");
-}
-if (!hasColumn("rooms", "dice_3d_theme")) {
-  db.exec(
-    `ALTER TABLE rooms ADD COLUMN dice_3d_theme TEXT NOT NULL DEFAULT 'room' CHECK(dice_3d_theme IN ('room', ${themeCheckList}))`
-  );
-}
-db.exec(`CREATE TABLE IF NOT EXISTS dice_preferences (
+  if (!hasColumn("rooms", "calendar_enabled")) {
+    db.exec("ALTER TABLE rooms ADD COLUMN calendar_enabled INTEGER NOT NULL DEFAULT 0");
+  }
+  if (!hasColumn("rooms", "calendar_json")) {
+    db.exec("ALTER TABLE rooms ADD COLUMN calendar_json TEXT");
+  }
+  if (!hasColumn("rooms", "map_notation_enabled")) {
+    db.exec("ALTER TABLE rooms ADD COLUMN map_notation_enabled INTEGER NOT NULL DEFAULT 0");
+  }
+  if (!hasColumn("rooms", "music_enabled")) {
+    db.exec("ALTER TABLE rooms ADD COLUMN music_enabled INTEGER NOT NULL DEFAULT 0");
+  }
+  if (!hasColumn("rooms", "wiki_enabled")) {
+    db.exec("ALTER TABLE rooms ADD COLUMN wiki_enabled INTEGER NOT NULL DEFAULT 1");
+  }
+  if (!hasColumn("rooms", "dice_3d_enabled")) {
+    db.exec("ALTER TABLE rooms ADD COLUMN dice_3d_enabled INTEGER NOT NULL DEFAULT 0");
+  }
+  if (!hasColumn("rooms", "dice_3d_theme")) {
+    db.exec(
+      `ALTER TABLE rooms ADD COLUMN dice_3d_theme TEXT NOT NULL DEFAULT 'room' CHECK(dice_3d_theme IN ('room', ${themeCheckList}))`
+    );
+  }
+  db.exec(`CREATE TABLE IF NOT EXISTS dice_preferences (
   account_id INTEGER PRIMARY KEY REFERENCES accounts(id) ON DELETE CASCADE,
   settings_json TEXT NOT NULL
 )`);
-if (!hasColumn("accounts", "created_by"))
-  db.exec("ALTER TABLE accounts ADD COLUMN created_by INTEGER REFERENCES accounts(id) ON DELETE SET NULL");
-if (!hasColumn("characters", "created_by"))
-  db.exec("ALTER TABLE characters ADD COLUMN created_by INTEGER REFERENCES accounts(id) ON DELETE SET NULL");
-if (!hasColumn("characters", "portrait_filename")) db.exec("ALTER TABLE characters ADD COLUMN portrait_filename TEXT");
-if (!hasColumn("characters", "portrait_stored_name"))
-  db.exec("ALTER TABLE characters ADD COLUMN portrait_stored_name TEXT");
-if (!hasColumn("characters", "portrait_mime_type"))
-  db.exec("ALTER TABLE characters ADD COLUMN portrait_mime_type TEXT");
-if (!hasColumn("characters", "portrait_size")) db.exec("ALTER TABLE characters ADD COLUMN portrait_size INTEGER");
-// A half-built character, and nothing else. One nullable column rather than a
-// table: there is exactly one draft per character, it has no rows of its own,
-// and it goes with the character it belongs to by being part of it. NULL is
-// both "never started" and "finished", which is the point — a finished
-// character is a sheet and carries no record of having been built.
-if (!hasColumn("characters", "creation_json")) db.exec("ALTER TABLE characters ADD COLUMN creation_json TEXT");
-if (!hasColumn("custom_npcs", "statblock_json"))
-  db.exec("ALTER TABLE custom_npcs ADD COLUMN statblock_json TEXT NOT NULL DEFAULT '{}'");
-// The cast may be named to players without exposing the GM's notes or
-// statblock. It is deliberately a column on the NPC itself, like Library
-// visibility, rather than a per-account reveal ledger.
-if (!hasColumn("custom_npcs", "revealed"))
-  db.exec("ALTER TABLE custom_npcs ADD COLUMN revealed INTEGER NOT NULL DEFAULT 0");
-// A nested wiki tree originally used RESTRICT on its parent link.  That guards
-// an individual folder delete, but it also stops SQLite half way through a
-// room's own cascade: the parent is removed before the child can follow it.
-// The route remains the user-facing non-empty-delete guard; the schema instead
-// must let a room take its entire tree with it.
-const wikiFoldersSchema = storedSchema("wiki_folders");
-if (
-  wikiFoldersSchema &&
-  !/parent_id\s+INTEGER\s+REFERENCES\s+wiki_folders\s*\(\s*id\s*\)\s+ON\s+DELETE\s+CASCADE/i.test(wikiFoldersSchema)
-) {
-  db.exec("PRAGMA foreign_keys = OFF");
-  db.exec("BEGIN IMMEDIATE");
-  try {
-    db.exec(`CREATE TABLE wiki_folders_rebuilt (${wikiFolderColumns}
+  if (!hasColumn("accounts", "created_by"))
+    db.exec("ALTER TABLE accounts ADD COLUMN created_by INTEGER REFERENCES accounts(id) ON DELETE SET NULL");
+  if (!hasColumn("characters", "created_by"))
+    db.exec("ALTER TABLE characters ADD COLUMN created_by INTEGER REFERENCES accounts(id) ON DELETE SET NULL");
+  if (!hasColumn("characters", "portrait_filename"))
+    db.exec("ALTER TABLE characters ADD COLUMN portrait_filename TEXT");
+  if (!hasColumn("characters", "portrait_stored_name"))
+    db.exec("ALTER TABLE characters ADD COLUMN portrait_stored_name TEXT");
+  if (!hasColumn("characters", "portrait_mime_type"))
+    db.exec("ALTER TABLE characters ADD COLUMN portrait_mime_type TEXT");
+  if (!hasColumn("characters", "portrait_size")) db.exec("ALTER TABLE characters ADD COLUMN portrait_size INTEGER");
+  // A half-built character, and nothing else. One nullable column rather than a
+  // table: there is exactly one draft per character, it has no rows of its own,
+  // and it goes with the character it belongs to by being part of it. NULL is
+  // both "never started" and "finished", which is the point — a finished
+  // character is a sheet and carries no record of having been built.
+  if (!hasColumn("characters", "creation_json")) db.exec("ALTER TABLE characters ADD COLUMN creation_json TEXT");
+  if (!hasColumn("custom_npcs", "statblock_json"))
+    db.exec("ALTER TABLE custom_npcs ADD COLUMN statblock_json TEXT NOT NULL DEFAULT '{}'");
+  // The cast may be named to players without exposing the GM's notes or
+  // statblock. It is deliberately a column on the NPC itself, like Library
+  // visibility, rather than a per-account reveal ledger.
+  if (!hasColumn("custom_npcs", "revealed"))
+    db.exec("ALTER TABLE custom_npcs ADD COLUMN revealed INTEGER NOT NULL DEFAULT 0");
+  // A nested wiki tree originally used RESTRICT on its parent link.  That guards
+  // an individual folder delete, but it also stops SQLite half way through a
+  // room's own cascade: the parent is removed before the child can follow it.
+  // The route remains the user-facing non-empty-delete guard; the schema instead
+  // must let a room take its entire tree with it.
+  const wikiFoldersSchema = storedSchema("wiki_folders");
+  if (
+    wikiFoldersSchema &&
+    !/parent_id\s+INTEGER\s+REFERENCES\s+wiki_folders\s*\(\s*id\s*\)\s+ON\s+DELETE\s+CASCADE/i.test(wikiFoldersSchema)
+  ) {
+    db.exec("PRAGMA foreign_keys = OFF");
+    db.exec("BEGIN IMMEDIATE");
+    try {
+      db.exec(`CREATE TABLE wiki_folders_rebuilt (${wikiFolderColumns}
     )`);
-    db.exec(`INSERT INTO wiki_folders_rebuilt
+      db.exec(`INSERT INTO wiki_folders_rebuilt
       (id, room_id, parent_id, name, sort_order, owner_account_id, created_at, updated_at)
       SELECT id, room_id, parent_id, name, sort_order, owner_account_id, created_at, updated_at
         FROM wiki_folders`);
-    db.exec("DROP TABLE wiki_folders");
-    db.exec("ALTER TABLE wiki_folders_rebuilt RENAME TO wiki_folders");
-    db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS wiki_folders_name
+      db.exec("DROP TABLE wiki_folders");
+      db.exec("ALTER TABLE wiki_folders_rebuilt RENAME TO wiki_folders");
+      db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS wiki_folders_name
       ON wiki_folders (room_id, COALESCE(parent_id, 0), name COLLATE NOCASE)`);
-    db.exec("COMMIT");
-  } catch (cause) {
-    db.exec("ROLLBACK");
-    throw cause;
-  } finally {
-    db.exec("PRAGMA foreign_keys = ON");
+      db.exec("COMMIT");
+    } catch (cause) {
+      db.exec("ROLLBACK");
+      throw cause;
+    } finally {
+      db.exec("PRAGMA foreign_keys = ON");
+    }
   }
-}
-// An early wiki build carried the row-backed targets but predates catalogue
-// items. Keep its derived index readable while new saves write the stable text
-// identity too; the index itself is rewritten whole on the next page save.
-if (!hasColumn("wiki_mentions", "item_id")) db.exec("ALTER TABLE wiki_mentions ADD COLUMN item_id TEXT");
-if (!hasColumn("wiki_mentions", "room_item_id"))
-  db.exec("ALTER TABLE wiki_mentions ADD COLUMN room_item_id INTEGER REFERENCES room_items(id) ON DELETE CASCADE");
-// `wiki_mentions` was introduced while the wiki was being built.  An early
-// development schema represented items solely by their room-row key, which
-// cannot represent a system catalogue item.  Rebuild its CHECK from the same
-// current shape rather than leaving a newly added text column unusable.
-const wikiMentionSql =
-  one<{ sql: string }>("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'wiki_mentions'")?.sql ?? "";
-if (!wikiMentionSql.includes("kind = 'item' AND item_id IS NOT NULL")) {
-  db.exec("PRAGMA foreign_keys = OFF");
-  try {
-    db.exec("BEGIN");
-    db.exec(`
+  // An early wiki build carried the row-backed targets but predates catalogue
+  // items. Keep its derived index readable while new saves write the stable text
+  // identity too; the index itself is rewritten whole on the next page save.
+  if (!hasColumn("wiki_mentions", "item_id")) db.exec("ALTER TABLE wiki_mentions ADD COLUMN item_id TEXT");
+  if (!hasColumn("wiki_mentions", "room_item_id"))
+    db.exec("ALTER TABLE wiki_mentions ADD COLUMN room_item_id INTEGER REFERENCES room_items(id) ON DELETE CASCADE");
+  // `wiki_mentions` was introduced while the wiki was being built.  An early
+  // development schema represented items solely by their room-row key, which
+  // cannot represent a system catalogue item.  Rebuild its CHECK from the same
+  // current shape rather than leaving a newly added text column unusable.
+  const wikiMentionSql =
+    one<{ sql: string }>("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'wiki_mentions'")?.sql ?? "";
+  if (!wikiMentionSql.includes("kind = 'item' AND item_id IS NOT NULL")) {
+    db.exec("PRAGMA foreign_keys = OFF");
+    try {
+      db.exec("BEGIN");
+      db.exec(`
       CREATE TABLE wiki_mentions_replacement (
         page_id INTEGER NOT NULL REFERENCES wiki_pages(id) ON DELETE CASCADE,
         kind TEXT NOT NULL CHECK (kind IN ('pc', 'npc', 'follower', 'asset', 'item', 'page')),
@@ -802,14 +813,14 @@ if (!wikiMentionSql.includes("kind = 'item' AND item_id IS NOT NULL")) {
       ALTER TABLE wiki_mentions_replacement RENAME TO wiki_mentions;
       COMMIT;
     `);
-  } catch (error) {
-    db.exec("ROLLBACK");
-    throw error;
-  } finally {
-    db.exec("PRAGMA foreign_keys = ON");
+    } catch (error) {
+      db.exec("ROLLBACK");
+      throw error;
+    } finally {
+      db.exec("PRAGMA foreign_keys = ON");
+    }
   }
-}
-db.exec(`
+  db.exec(`
   CREATE INDEX IF NOT EXISTS wiki_mentions_character ON wiki_mentions (character_id) WHERE character_id IS NOT NULL;
   CREATE INDEX IF NOT EXISTS wiki_mentions_npc ON wiki_mentions (npc_id) WHERE npc_id IS NOT NULL;
   CREATE INDEX IF NOT EXISTS wiki_mentions_hireling ON wiki_mentions (hireling_id) WHERE hireling_id IS NOT NULL;
@@ -818,49 +829,49 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS wiki_mentions_item ON wiki_mentions (item_id) WHERE item_id IS NOT NULL;
   CREATE INDEX IF NOT EXISTS wiki_mentions_page_target ON wiki_mentions (target_page_id) WHERE target_page_id IS NOT NULL;
 `);
-// A record cloned out of the bestiary to put something into a fight is a spawn,
-// not a monster the GM wrote. It is tracked, but it does not belong in the
-// bestiary beside the entries it was copied from.
-if (!hasColumn("custom_npcs", "spawned"))
-  db.exec("ALTER TABLE custom_npcs ADD COLUMN spawned INTEGER NOT NULL DEFAULT 0");
-if (!hasColumn("media", "category")) db.exec("ALTER TABLE media ADD COLUMN category TEXT");
-if (!hasColumn("media", "display_name")) db.exec("ALTER TABLE media ADD COLUMN display_name TEXT");
-if (!hasColumn("media", "artist")) db.exec("ALTER TABLE media ADD COLUMN artist TEXT");
-if (!hasColumn("media", "title")) db.exec("ALTER TABLE media ADD COLUMN title TEXT");
-// Album and track number arrived after rooms already held music, and every one
-// of those tracks is marked as read. Marking them unread sends them back
-// through the tag reader once; it fills only what is missing, so an artist or a
-// title the GM corrected by hand survives the second pass.
-if (!hasColumn("media", "album")) {
-  db.exec("ALTER TABLE media ADD COLUMN album TEXT");
-  db.exec("ALTER TABLE media ADD COLUMN track_no INTEGER");
-  db.exec("UPDATE media SET metadata_loaded = 0 WHERE kind = 'audio'");
-}
-if (!hasColumn("table_sets", "tags_json"))
-  db.exec("ALTER TABLE table_sets ADD COLUMN tags_json TEXT NOT NULL DEFAULT '[]'");
-// A short-lived JSON migration stored the original Markdown alongside its JSON.
-// Restore that exact source where possible; JSON-only rows are serialized once
-// so Markdown remains the sole active custom-table format from this point on.
-if (hasColumn("table_sets", "tables_json")) {
-  const hasBackup = hasColumn("table_sets", "migration_markdown");
-  const oldRows = db
-    .prepare(
-      `SELECT id, name, tables_json, ${hasBackup ? "migration_markdown" : "NULL AS migration_markdown"}, tags_json, created_by, created_at, updated_at FROM table_sets`
-    )
-    .all() as {
-    id: number;
-    name: string;
-    tables_json: string;
-    migration_markdown: string | null;
-    tags_json: string;
-    created_by: number;
-    created_at: string;
-    updated_at: string;
-  }[];
-  db.exec("PRAGMA foreign_keys = OFF");
-  db.exec("BEGIN IMMEDIATE");
-  try {
-    db.exec(`CREATE TABLE table_sets_rebuilt (
+  // A record cloned out of the bestiary to put something into a fight is a spawn,
+  // not a monster the GM wrote. It is tracked, but it does not belong in the
+  // bestiary beside the entries it was copied from.
+  if (!hasColumn("custom_npcs", "spawned"))
+    db.exec("ALTER TABLE custom_npcs ADD COLUMN spawned INTEGER NOT NULL DEFAULT 0");
+  if (!hasColumn("media", "category")) db.exec("ALTER TABLE media ADD COLUMN category TEXT");
+  if (!hasColumn("media", "display_name")) db.exec("ALTER TABLE media ADD COLUMN display_name TEXT");
+  if (!hasColumn("media", "artist")) db.exec("ALTER TABLE media ADD COLUMN artist TEXT");
+  if (!hasColumn("media", "title")) db.exec("ALTER TABLE media ADD COLUMN title TEXT");
+  // Album and track number arrived after rooms already held music, and every one
+  // of those tracks is marked as read. Marking them unread sends them back
+  // through the tag reader once; it fills only what is missing, so an artist or a
+  // title the GM corrected by hand survives the second pass.
+  if (!hasColumn("media", "album")) {
+    db.exec("ALTER TABLE media ADD COLUMN album TEXT");
+    db.exec("ALTER TABLE media ADD COLUMN track_no INTEGER");
+    db.exec("UPDATE media SET metadata_loaded = 0 WHERE kind = 'audio'");
+  }
+  if (!hasColumn("table_sets", "tags_json"))
+    db.exec("ALTER TABLE table_sets ADD COLUMN tags_json TEXT NOT NULL DEFAULT '[]'");
+  // A short-lived JSON migration stored the original Markdown alongside its JSON.
+  // Restore that exact source where possible; JSON-only rows are serialized once
+  // so Markdown remains the sole active custom-table format from this point on.
+  if (hasColumn("table_sets", "tables_json")) {
+    const hasBackup = hasColumn("table_sets", "migration_markdown");
+    const oldRows = db
+      .prepare(
+        `SELECT id, name, tables_json, ${hasBackup ? "migration_markdown" : "NULL AS migration_markdown"}, tags_json, created_by, created_at, updated_at FROM table_sets`
+      )
+      .all() as {
+      id: number;
+      name: string;
+      tables_json: string;
+      migration_markdown: string | null;
+      tags_json: string;
+      created_by: number;
+      created_at: string;
+      updated_at: string;
+    }[];
+    db.exec("PRAGMA foreign_keys = OFF");
+    db.exec("BEGIN IMMEDIATE");
+    try {
+      db.exec(`CREATE TABLE table_sets_rebuilt (
       id INTEGER PRIMARY KEY,
       name TEXT NOT NULL,
       markdown TEXT NOT NULL,
@@ -869,233 +880,233 @@ if (hasColumn("table_sets", "tables_json")) {
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
       updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     )`);
-    const insert = db.prepare(
-      "INSERT INTO table_sets_rebuilt (id, name, markdown, tags_json, created_by, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)"
-    );
-    for (const row of oldRows) {
-      let markdown = row.migration_markdown;
-      if (markdown === null) {
-        const document = JSON.parse(row.tables_json) as { tables?: Parameters<typeof serializeSet>[0] };
-        markdown = serializeSet(document.tables ?? [], row.name);
+      const insert = db.prepare(
+        "INSERT INTO table_sets_rebuilt (id, name, markdown, tags_json, created_by, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)"
+      );
+      for (const row of oldRows) {
+        let markdown = row.migration_markdown;
+        if (markdown === null) {
+          const document = JSON.parse(row.tables_json) as { tables?: Parameters<typeof serializeSet>[0] };
+          markdown = serializeSet(document.tables ?? [], row.name);
+        }
+        insert.run(row.id, row.name, markdown, row.tags_json, row.created_by, row.created_at, row.updated_at);
       }
-      insert.run(row.id, row.name, markdown, row.tags_json, row.created_by, row.created_at, row.updated_at);
+      db.exec("DROP TABLE table_sets");
+      db.exec("ALTER TABLE table_sets_rebuilt RENAME TO table_sets");
+      db.exec("COMMIT");
+    } catch (cause) {
+      db.exec("ROLLBACK");
+      throw cause;
+    } finally {
+      db.exec("PRAGMA foreign_keys = ON");
     }
-    db.exec("DROP TABLE table_sets");
-    db.exec("ALTER TABLE table_sets_rebuilt RENAME TO table_sets");
-    db.exec("COMMIT");
-  } catch (cause) {
-    db.exec("ROLLBACK");
-    throw cause;
-  } finally {
-    db.exec("PRAGMA foreign_keys = ON");
   }
-}
-if (!hasColumn("media", "metadata_loaded"))
-  db.exec("ALTER TABLE media ADD COLUMN metadata_loaded INTEGER NOT NULL DEFAULT 0");
-if (!hasColumn("media", "visible")) {
-  db.exec("ALTER TABLE media ADD COLUMN visible INTEGER NOT NULL DEFAULT 0");
-  db.exec(`UPDATE media SET visible = 1
+  if (!hasColumn("media", "metadata_loaded"))
+    db.exec("ALTER TABLE media ADD COLUMN metadata_loaded INTEGER NOT NULL DEFAULT 0");
+  if (!hasColumn("media", "visible")) {
+    db.exec("ALTER TABLE media ADD COLUMN visible INTEGER NOT NULL DEFAULT 0");
+    db.exec(`UPDATE media SET visible = 1
     WHERE id IN (SELECT map_id FROM room_state WHERE map_id IS NOT NULL)
        OR id IN (SELECT scene_id FROM room_state WHERE scene_id IS NOT NULL)
        OR id IN (SELECT media_id FROM revealed_references WHERE removed_at IS NULL)`);
-}
-// What the encounter tab shows above the roster: the chosen map, or the zones
-// the GM laid out. Existing encounters keep showing their image.
-if (!hasColumn("encounters", "display"))
-  db.exec("ALTER TABLE encounters ADD COLUMN display TEXT NOT NULL DEFAULT 'map'");
-if (!hasColumn("encounter_combatants", "zone_id"))
-  db.exec(
-    "ALTER TABLE encounter_combatants ADD COLUMN zone_id INTEGER REFERENCES encounter_zones(id) ON DELETE SET NULL"
-  );
-// Coordinates are normalized against the image so a token stays in place as
-// the encounter map scales from a desktop table to a phone.
-if (!hasColumn("encounter_combatants", "map_x")) db.exec("ALTER TABLE encounter_combatants ADD COLUMN map_x REAL");
-if (!hasColumn("encounter_combatants", "map_y")) db.exec("ALTER TABLE encounter_combatants ADD COLUMN map_y REAL");
-if (!hasColumn("room_state", "map_id"))
-  db.exec("ALTER TABLE room_state ADD COLUMN map_id INTEGER REFERENCES media(id)");
-if (!hasColumn("room_state", "group_json"))
-  db.exec("ALTER TABLE room_state ADD COLUMN group_json TEXT NOT NULL DEFAULT '{}'");
-if (!hasColumn("room_state", "group_revision"))
-  db.exec("ALTER TABLE room_state ADD COLUMN group_revision INTEGER NOT NULL DEFAULT 0");
-
-/*
- * Hirelings, ships, and obligations were array entries inside `room_state`'s
- * `group_json` blob, identified by a string the browser minted and that nothing
- * enforced. They are rows now, each with its own sheet in the shape `characters`
- * already uses. Three steps, each idempotent and each detectable from the stored
- * schema rather than from a version counter.
- */
-
-/** One row per entry, in the order the array had them. */
-function backfillGroupRows() {
-  const rows = all<{ room_id: number; group_json: string }>("SELECT room_id, group_json FROM room_state");
-  const record = (value: unknown) =>
-    value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : undefined;
-
-  const insertHireling = db.prepare(
-    `INSERT INTO group_hirelings (room_id, name, sort_order, sheet_json, legacy_id) VALUES (?, ?, ?, ?, ?)`
-  );
-  const insertAsset = db.prepare(
-    `INSERT INTO group_assets (room_id, kind, name, sort_order, sheet_json, legacy_id) VALUES (?, 'starship', ?, ?, ?, ?)`
-  );
-  const insertObligation = db.prepare(
-    `INSERT INTO group_obligations (room_id, name, owed_to, amount, details, sort_order, legacy_id)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`
-  );
-  const writeState = db.prepare("UPDATE room_state SET group_json = ? WHERE room_id = ?");
-
-  for (const row of rows) {
-    const state = record(JSON.parse(row.group_json || "{}")) ?? {};
-    // Two shapes predate the arrays and are still in real databases: one ship
-    // under `starship`, and the whole of a group's debt as one `groupDebt`
-    // string. This is the last thing that ever has to know about either.
-    const hirelings = Array.isArray(state.hirelings) ? state.hirelings : [];
-    const legacyShip = record(state.starship);
-    const ships = Array.isArray(state.starships)
-      ? state.starships
-      : legacyShip && Object.keys(legacyShip).length
-        ? [{ ...legacyShip, id: "legacy-starship" }]
-        : [];
-    const legacyDebt = typeof state.groupDebt === "string" ? state.groupDebt.trim() : "";
-    const obligations = Array.isArray(state.obligations)
-      ? state.obligations
-      : legacyDebt
-        ? [{ id: "legacy-debt", name: "Group debt", details: legacyDebt }]
-        : [];
-    if (!("hirelings" in state) && !ships.length && !obligations.length && !("starship" in state)) {
-      if (!("groupDebt" in state)) continue;
-    }
-
-    hirelings.forEach((entry, index) => {
-      const hireling = record(entry);
-      if (!hireling) return;
-      const { id, name, ...sheet } = hireling;
-      insertHireling.run(
-        row.room_id,
-        String(name ?? ""),
-        index,
-        JSON.stringify(sheet),
-        String(id || `hireling-${index + 1}`)
-      );
-    });
-    ships.forEach((entry, index) => {
-      const ship = record(entry);
-      if (!ship) return;
-      const { id, name, ...sheet } = ship;
-      insertAsset.run(
-        row.room_id,
-        String(name ?? ""),
-        index,
-        JSON.stringify(sheet),
-        String(id || `starship-${index + 1}`)
-      );
-    });
-    obligations.forEach((entry, index) => {
-      const obligation = record(entry);
-      if (!obligation) return;
-      insertObligation.run(
-        row.room_id,
-        String(obligation.name ?? ""),
-        String(obligation.owedTo ?? ""),
-        String(obligation.amount ?? ""),
-        String(obligation.details ?? ""),
-        index,
-        String(obligation.id || `obligation-${index + 1}`)
-      );
-    });
-
-    // Stripping the moved keys is what makes this idempotent: a second run finds
-    // nothing left to move, so it cannot duplicate a roster.
-    const { hirelings: _h, starships: _s, starship: _ss, obligations: _o, groupDebt: _d, ...kept } = state;
-    writeState.run(JSON.stringify(kept), row.room_id);
   }
-}
+  // What the encounter tab shows above the roster: the chosen map, or the zones
+  // the GM laid out. Existing encounters keep showing their image.
+  if (!hasColumn("encounters", "display"))
+    db.exec("ALTER TABLE encounters ADD COLUMN display TEXT NOT NULL DEFAULT 'map'");
+  if (!hasColumn("encounter_combatants", "zone_id"))
+    db.exec(
+      "ALTER TABLE encounter_combatants ADD COLUMN zone_id INTEGER REFERENCES encounter_zones(id) ON DELETE SET NULL"
+    );
+  // Coordinates are normalized against the image so a token stays in place as
+  // the encounter map scales from a desktop table to a phone.
+  if (!hasColumn("encounter_combatants", "map_x")) db.exec("ALTER TABLE encounter_combatants ADD COLUMN map_x REAL");
+  if (!hasColumn("encounter_combatants", "map_y")) db.exec("ALTER TABLE encounter_combatants ADD COLUMN map_y REAL");
+  if (!hasColumn("room_state", "map_id"))
+    db.exec("ALTER TABLE room_state ADD COLUMN map_id INTEGER REFERENCES media(id)");
+  if (!hasColumn("room_state", "group_json"))
+    db.exec("ALTER TABLE room_state ADD COLUMN group_json TEXT NOT NULL DEFAULT '{}'");
+  if (!hasColumn("room_state", "group_revision"))
+    db.exec("ALTER TABLE room_state ADD COLUMN group_revision INTEGER NOT NULL DEFAULT 0");
 
-// Detected by the blob still holding one of the keys. Old rows keep them until
-// they are moved; a database created today has none and does no work.
-const blobsToMove =
-  one<{ count: number }>(
-    `SELECT COUNT(*) AS count FROM room_state
+  /*
+   * Hirelings, ships, and obligations were array entries inside `room_state`'s
+   * `group_json` blob, identified by a string the browser minted and that nothing
+   * enforced. They are rows now, each with its own sheet in the shape `characters`
+   * already uses. Three steps, each idempotent and each detectable from the stored
+   * schema rather than from a version counter.
+   */
+
+  /** One row per entry, in the order the array had them. */
+  function backfillGroupRows() {
+    const rows = all<{ room_id: number; group_json: string }>("SELECT room_id, group_json FROM room_state");
+    const record = (value: unknown) =>
+      value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : undefined;
+
+    const insertHireling = db.prepare(
+      `INSERT INTO group_hirelings (room_id, name, sort_order, sheet_json, legacy_id) VALUES (?, ?, ?, ?, ?)`
+    );
+    const insertAsset = db.prepare(
+      `INSERT INTO group_assets (room_id, kind, name, sort_order, sheet_json, legacy_id) VALUES (?, 'starship', ?, ?, ?, ?)`
+    );
+    const insertObligation = db.prepare(
+      `INSERT INTO group_obligations (room_id, name, owed_to, amount, details, sort_order, legacy_id)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`
+    );
+    const writeState = db.prepare("UPDATE room_state SET group_json = ? WHERE room_id = ?");
+
+    for (const row of rows) {
+      const state = record(JSON.parse(row.group_json || "{}")) ?? {};
+      // Two shapes predate the arrays and are still in real databases: one ship
+      // under `starship`, and the whole of a group's debt as one `groupDebt`
+      // string. This is the last thing that ever has to know about either.
+      const hirelings = Array.isArray(state.hirelings) ? state.hirelings : [];
+      const legacyShip = record(state.starship);
+      const ships = Array.isArray(state.starships)
+        ? state.starships
+        : legacyShip && Object.keys(legacyShip).length
+          ? [{ ...legacyShip, id: "legacy-starship" }]
+          : [];
+      const legacyDebt = typeof state.groupDebt === "string" ? state.groupDebt.trim() : "";
+      const obligations = Array.isArray(state.obligations)
+        ? state.obligations
+        : legacyDebt
+          ? [{ id: "legacy-debt", name: "Group debt", details: legacyDebt }]
+          : [];
+      if (!("hirelings" in state) && !ships.length && !obligations.length && !("starship" in state)) {
+        if (!("groupDebt" in state)) continue;
+      }
+
+      hirelings.forEach((entry, index) => {
+        const hireling = record(entry);
+        if (!hireling) return;
+        const { id, name, ...sheet } = hireling;
+        insertHireling.run(
+          row.room_id,
+          String(name ?? ""),
+          index,
+          JSON.stringify(sheet),
+          String(id || `hireling-${index + 1}`)
+        );
+      });
+      ships.forEach((entry, index) => {
+        const ship = record(entry);
+        if (!ship) return;
+        const { id, name, ...sheet } = ship;
+        insertAsset.run(
+          row.room_id,
+          String(name ?? ""),
+          index,
+          JSON.stringify(sheet),
+          String(id || `starship-${index + 1}`)
+        );
+      });
+      obligations.forEach((entry, index) => {
+        const obligation = record(entry);
+        if (!obligation) return;
+        insertObligation.run(
+          row.room_id,
+          String(obligation.name ?? ""),
+          String(obligation.owedTo ?? ""),
+          String(obligation.amount ?? ""),
+          String(obligation.details ?? ""),
+          index,
+          String(obligation.id || `obligation-${index + 1}`)
+        );
+      });
+
+      // Stripping the moved keys is what makes this idempotent: a second run finds
+      // nothing left to move, so it cannot duplicate a roster.
+      const { hirelings: _h, starships: _s, starship: _ss, obligations: _o, groupDebt: _d, ...kept } = state;
+      writeState.run(JSON.stringify(kept), row.room_id);
+    }
+  }
+
+  // Detected by the blob still holding one of the keys. Old rows keep them until
+  // they are moved; a database created today has none and does no work.
+  const blobsToMove =
+    one<{ count: number }>(
+      `SELECT COUNT(*) AS count FROM room_state
       WHERE group_json LIKE '%"hirelings"%' OR group_json LIKE '%"starships"%' OR group_json LIKE '%"starship"%'
          OR group_json LIKE '%"obligations"%' OR group_json LIKE '%"groupDebt"%'`
-  )?.count ?? 0;
-if (blobsToMove) {
-  db.exec("BEGIN IMMEDIATE");
-  try {
-    backfillGroupRows();
-    db.exec("COMMIT");
-  } catch (cause) {
-    db.exec("ROLLBACK");
-    throw cause;
+    )?.count ?? 0;
+  if (blobsToMove) {
+    db.exec("BEGIN IMMEDIATE");
+    try {
+      backfillGroupRows();
+      db.exec("COMMIT");
+    } catch (cause) {
+      db.exec("ROLLBACK");
+      throw cause;
+    }
   }
-}
 
-/**
- * Portraits move onto the rows they belong to, and the side tables go. Their
- * absence from `sqlite_master` is what says this has run.
- */
-for (const [table, target, key] of [
-  ["hireling_images", "group_hirelings", "hireling_id"],
-  ["starship_images", "group_assets", "starship_id"]
-] as const) {
-  if (!tableExists(table)) continue;
-  db.exec("BEGIN IMMEDIATE");
-  try {
-    db.exec(`UPDATE ${target} SET
+  /**
+   * Portraits move onto the rows they belong to, and the side tables go. Their
+   * absence from `sqlite_master` is what says this has run.
+   */
+  for (const [table, target, key] of [
+    ["hireling_images", "group_hirelings", "hireling_id"],
+    ["starship_images", "group_assets", "starship_id"]
+  ] as const) {
+    if (!tableExists(table)) continue;
+    db.exec("BEGIN IMMEDIATE");
+    try {
+      db.exec(`UPDATE ${target} SET
       portrait_filename = (SELECT filename FROM ${table} i WHERE i.room_id = ${target}.room_id AND i.${key} = ${target}.legacy_id),
       portrait_stored_name = (SELECT stored_name FROM ${table} i WHERE i.room_id = ${target}.room_id AND i.${key} = ${target}.legacy_id),
       portrait_mime_type = (SELECT mime_type FROM ${table} i WHERE i.room_id = ${target}.room_id AND i.${key} = ${target}.legacy_id),
       portrait_size = (SELECT size FROM ${table} i WHERE i.room_id = ${target}.room_id AND i.${key} = ${target}.legacy_id)
       WHERE EXISTS (SELECT 1 FROM ${table} i WHERE i.room_id = ${target}.room_id AND i.${key} = ${target}.legacy_id)`);
-    db.exec(`DROP TABLE ${table}`);
-    db.exec("COMMIT");
-  } catch (cause) {
-    db.exec("ROLLBACK");
-    throw cause;
+      db.exec(`DROP TABLE ${table}`);
+      db.exec("COMMIT");
+    } catch (cause) {
+      db.exec("ROLLBACK");
+      throw cause;
+    }
   }
-}
 
-/*
- * `encounter_combatants.hireling_id` was a bare TEXT column naming a string in
- * the blob, with no foreign key and nothing to stop it outliving what it named.
- * It becomes an integer reference that cascades. Changing a column's type, its
- * CHECK, and its foreign key all at once is the rooms-style rebuild.
- */
-if (
-  tableExists("encounter_combatants") &&
-  !storedSchema("encounter_combatants").includes("REFERENCES group_hirelings")
-) {
-  const preserved = [
-    "id",
-    "encounter_id",
-    "kind",
-    "character_id",
-    "npc_id",
-    "name",
-    "side",
-    "initiative",
-    "acts_first_turn",
-    "sort_order",
-    "hp_current",
-    "hp_max",
-    "statblock_json",
-    "conditions",
-    "included",
-    "zone_id",
-    "map_x",
-    "map_y",
-    "created_at",
-    "updated_at"
-  ].filter((column) => hasColumn("encounter_combatants", column));
-  db.exec("PRAGMA foreign_keys = OFF");
-  db.exec("BEGIN IMMEDIATE");
-  try {
-    db.exec(`CREATE TABLE encounter_combatants_rebuilt (${encounterCombatantColumns}
+  /*
+   * `encounter_combatants.hireling_id` was a bare TEXT column naming a string in
+   * the blob, with no foreign key and nothing to stop it outliving what it named.
+   * It becomes an integer reference that cascades. Changing a column's type, its
+   * CHECK, and its foreign key all at once is the rooms-style rebuild.
+   */
+  if (
+    tableExists("encounter_combatants") &&
+    !storedSchema("encounter_combatants").includes("REFERENCES group_hirelings")
+  ) {
+    const preserved = [
+      "id",
+      "encounter_id",
+      "kind",
+      "character_id",
+      "npc_id",
+      "name",
+      "side",
+      "initiative",
+      "acts_first_turn",
+      "sort_order",
+      "hp_current",
+      "hp_max",
+      "statblock_json",
+      "conditions",
+      "included",
+      "zone_id",
+      "map_x",
+      "map_y",
+      "created_at",
+      "updated_at"
+    ].filter((column) => hasColumn("encounter_combatants", column));
+    db.exec("PRAGMA foreign_keys = OFF");
+    db.exec("BEGIN IMMEDIATE");
+    try {
+      db.exec(`CREATE TABLE encounter_combatants_rebuilt (${encounterCombatantColumns}
     )`);
-    // A combatant whose hireling no longer resolves is dropped rather than
-    // carried across. It was already invisible: the encounter view scanned the
-    // blob for its id and skipped it when nothing answered.
-    db.exec(`INSERT INTO encounter_combatants_rebuilt (${preserved.join(", ")}, hireling_id)
+      // A combatant whose hireling no longer resolves is dropped rather than
+      // carried across. It was already invisible: the encounter view scanned the
+      // blob for its id and skipped it when nothing answered.
+      db.exec(`INSERT INTO encounter_combatants_rebuilt (${preserved.join(", ")}, hireling_id)
              SELECT ${preserved.map((column) => `c.${column}`).join(", ")},
                     CASE WHEN c.kind = 'hireling' THEN (
                       SELECT h.id FROM group_hirelings h
@@ -1107,46 +1118,47 @@ if (
                     SELECT 1 FROM group_hirelings h
                      JOIN encounters e ON e.id = c.encounter_id
                      WHERE h.room_id = e.room_id AND h.legacy_id = c.hireling_id)`);
-    db.exec("DROP TABLE encounter_combatants");
-    db.exec("ALTER TABLE encounter_combatants_rebuilt RENAME TO encounter_combatants");
-    db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS encounter_combatants_character
+      db.exec("DROP TABLE encounter_combatants");
+      db.exec("ALTER TABLE encounter_combatants_rebuilt RENAME TO encounter_combatants");
+      db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS encounter_combatants_character
                ON encounter_combatants (encounter_id, character_id) WHERE character_id IS NOT NULL`);
-    db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS encounter_combatants_hireling
+      db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS encounter_combatants_hireling
                ON encounter_combatants (encounter_id, hireling_id) WHERE hireling_id IS NOT NULL`);
-    db.exec("COMMIT");
-  } catch (cause) {
-    db.exec("ROLLBACK");
-    throw cause;
-  } finally {
-    db.exec("PRAGMA foreign_keys = ON");
+      db.exec("COMMIT");
+    } catch (cause) {
+      db.exec("ROLLBACK");
+      throw cause;
+    } finally {
+      db.exec("PRAGMA foreign_keys = ON");
+    }
   }
+
+  // These tables arrived with the roster migration, so only a database made
+  // between that change and this one lacks the counter that replaced comparing
+  // timestamps a second apart.
+  for (const table of ["group_hirelings", "group_assets", "group_obligations"])
+    if (!hasColumn(table, "revision")) db.exec(`ALTER TABLE ${table} ADD COLUMN revision INTEGER NOT NULL DEFAULT 0`);
+
+  // The tag vocabulary is editable, so the tags shipped with the application are
+  // seeded rather than fixed. Ignoring a conflict leaves a tag that has since been
+  // relabelled exactly as the instance renamed it.
+  const seedTableTag = db.prepare(
+    "INSERT OR IGNORE INTO table_tags (slug, label, builtin, sort_order) VALUES (?, ?, 1, ?)"
+  );
+  BUILTIN_TABLE_TAGS.forEach((slug, position) => seedTableTag.run(slug, defaultTagLabel(slug), position));
+
+  // A tag added to the application after a database was made would otherwise take
+  // its new position while the tags already there kept their old ones, leaving the
+  // vocabulary interleaved. Position is presentation only, so it is safe to
+  // restate: built-ins sit where they are declared, and anything this instance
+  // added keeps its own order after them.
+  const placeBuiltinTag = db.prepare("UPDATE table_tags SET sort_order = ? WHERE slug = ? AND sort_order <> ?");
+  BUILTIN_TABLE_TAGS.forEach((slug, position) => placeBuiltinTag.run(position, slug, position));
+  db.prepare("UPDATE table_tags SET sort_order = sort_order + ? WHERE builtin = 0 AND sort_order < ?").run(
+    BUILTIN_TABLE_TAGS.length,
+    BUILTIN_TABLE_TAGS.length
+  );
 }
-
-// These tables arrived with the roster migration, so only a database made
-// between that change and this one lacks the counter that replaced comparing
-// timestamps a second apart.
-for (const table of ["group_hirelings", "group_assets", "group_obligations"])
-  if (!hasColumn(table, "revision")) db.exec(`ALTER TABLE ${table} ADD COLUMN revision INTEGER NOT NULL DEFAULT 0`);
-
-// The tag vocabulary is editable, so the tags shipped with the application are
-// seeded rather than fixed. Ignoring a conflict leaves a tag that has since been
-// relabelled exactly as the instance renamed it.
-const seedTableTag = db.prepare(
-  "INSERT OR IGNORE INTO table_tags (slug, label, builtin, sort_order) VALUES (?, ?, 1, ?)"
-);
-BUILTIN_TABLE_TAGS.forEach((slug, position) => seedTableTag.run(slug, defaultTagLabel(slug), position));
-
-// A tag added to the application after a database was made would otherwise take
-// its new position while the tags already there kept their old ones, leaving the
-// vocabulary interleaved. Position is presentation only, so it is safe to
-// restate: built-ins sit where they are declared, and anything this instance
-// added keeps its own order after them.
-const placeBuiltinTag = db.prepare("UPDATE table_tags SET sort_order = ? WHERE slug = ? AND sort_order <> ?");
-BUILTIN_TABLE_TAGS.forEach((slug, position) => placeBuiltinTag.run(position, slug, position));
-db.prepare("UPDATE table_tags SET sort_order = sort_order + ? WHERE builtin = 0 AND sort_order < ?").run(
-  BUILTIN_TABLE_TAGS.length,
-  BUILTIN_TABLE_TAGS.length
-);
 
 export function one<T>(sql: string, ...params: (string | number | bigint | null | Uint8Array)[]): T | undefined {
   return db.prepare(sql).get(...params) as T | undefined;

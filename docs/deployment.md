@@ -4,6 +4,14 @@
 
 Install Node.js 22.5 or later, run `npm ci`, then `npm run build` and `npm start`. Put the process behind a reverse proxy for TLS when exposing it beyond a trusted local network. Persist and back up the directory configured by `DEVILS_TOYS_DATA_DIR`.
 
+Startup schema checks and migrations are serialized between the game and table
+servers using `migration-lock.sqlite` in the data directory. A second startup
+waits up to 30 seconds for the first to finish. This file stores no application
+data or migration version; SQLite releases its lock when the process closes or
+exits. Leave the file in place, including after a crash: deleting it while another
+process holds it can allow two migrations to run at once. Stop both applications
+before taking a full backup or replacing the data directory.
+
 ## Uploads, and the reverse proxy in front of them
 
 A campaign bundle is the largest thing this application accepts: a room's maps
