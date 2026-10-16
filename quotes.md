@@ -8,26 +8,25 @@ I am Kai Allard-Liao. I am a killer of men. This pass is mine to ward.
 Kai Allard-Liao, Twycross, 3050
 
 He’s going home in a shoebox!
-Thunder
-Mechcommander, 1998
+Thunder, Mechcommander, 1998
 
 Come, my friends, ‘Tis not too late to seek a newer world.
 Lord Tennyson, Ulysses
 
-The war is still coming, Charles, and I intend to fight it, by any means necessary.’
-Magnetio
-X-Men, 2000
+If you wish to make an apple pie from scratch, you must first invent the universe.
+Carl Sagan, Cosmos, 1980
+
+The war is still coming, Charles, and I intend to fight it, by any means necessary.
+Magnetio, X-Men, 2000
 
 Let's just say God works too slowly.
-Magnetio
-X-Men, 2000
+Magnetio, X-Men, 2000
 
 To hell with information-ammunition is ammuniation!
 Patch McGuire, tech, 1st Somerset Strikers
 
 Only a coward feels mighty when stepping on ants.
-Apocalypse
-X-Men '97, 2026
+Apocalypse, X-Men '97, 2026
 
 It's time we find out if this ship is capable of deicide.
 Misato Katsuragi
@@ -48,7 +47,7 @@ This is Free Trader Beowulf ...
 Mayday ...
 Traveller, 1977
 
-"All dead come here. Some must have traveled with you once."
+All dead come here. Some must have traveled with you once.
 Dhall, Planscape Torment, 1999
 
 When in doubt, have a man come through a door with a gun in his hand.
